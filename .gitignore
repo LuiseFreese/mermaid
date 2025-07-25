@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.generated
+.env.updated
+*.log
+.DS_Store
+.vscode/
+dist/
+coverage/
+*-backup.*
+*-test.*

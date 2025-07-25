@@ -1,0 +1,45 @@
+erDiagram
+    Employee {
+        string employee_id PK
+        string first_name
+        string last_name
+        string email UK
+        string department
+        decimal salary
+        datetime hire_date
+        string manager_id FK
+        boolean is_active
+    }
+    
+    Department {
+        string department_id PK
+        string department_name
+        string description
+        string budget_code
+        string manager_id FK
+    }
+    
+    Project {
+        string project_id PK
+        string project_name
+        string description
+        datetime start_date
+        datetime end_date
+        decimal budget
+        string status
+    }
+    
+    ProjectAssignment {
+        string assignment_id PK
+        string employee_id FK
+        string project_id FK
+        datetime assigned_date
+        int hours_allocated
+        string role
+    }
+    
+    Employee ||--o{ Employee : manages
+    Department ||--o{ Employee : employs
+    Employee ||--o{ Department : manages
+    Employee ||--o{ ProjectAssignment : assigned_to
+    Project ||--o{ ProjectAssignment : has_assignments

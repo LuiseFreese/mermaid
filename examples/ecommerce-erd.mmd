@@ -1,0 +1,51 @@
+erDiagram
+    Customer {
+        string customer_id PK
+        string first_name
+        string last_name
+        string email UK
+        string phone
+        datetime created_date
+        boolean is_active
+    }
+    
+    Order {
+        string order_id PK
+        string customer_id FK
+        decimal total_amount
+        datetime order_date
+        string status
+        string shipping_address
+    }
+    
+    OrderItem {
+        string order_item_id PK
+        string order_id FK
+        string product_id FK
+        int quantity
+        decimal unit_price
+        decimal line_total
+    }
+    
+    Product {
+        string product_id PK
+        string product_name
+        string description
+        decimal price
+        int stock_quantity
+        string category
+        boolean is_available
+    }
+    
+    Category {
+        string category_id PK
+        string category_name
+        string description
+        string parent_category_id FK
+    }
+    
+    Customer ||--o{ Order : places
+    Order ||--o{ OrderItem : contains
+    Product ||--o{ OrderItem : includes
+    Category ||--o{ Product : categorizes
+    Category ||--o{ Category : parent_child
