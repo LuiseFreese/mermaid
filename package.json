@@ -6,6 +6,9 @@
     "type": "module",
     "scripts": {
         "start": "node src/index.js",
+        "create": "node src/index.js create",
+        "convert": "node src/index.js convert",
+        "publishers": "node src/index.js publishers",
         "test": "node --test src/tests/parser.test.js src/tests/schema-generator.test.js",
         "dev": "node --watch src/index.js",
         "cleanup": "node scripts/cleanup.js"

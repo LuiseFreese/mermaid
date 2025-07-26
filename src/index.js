@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Mermaid to Dataverse Converter CLI
+ *   .option('-s, --solution <name>', 'Solution name to create entities in (will prompt if not provided)')ermaid to Dataverse Converter CLI
  * Main entry point for the application
  */
 
@@ -9,6 +9,7 @@ import { Command } from 'commander';
 import { readFileSync, existsSync } from 'fs';
 import { config } from 'dotenv';
 import process from 'process';
+import readline from 'readline/promises';
 import { MermaidERDParser } from './parser.js';
 import { DataverseSchemaGenerator } from './schema-generator.js';
 import { DataverseClient } from './dataverse-client.js';
@@ -20,7 +21,7 @@ const program = new Command();
 
 program
   .name('mermaid-to-dataverse')
-  .description('Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships')
+  .description('Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships\n\nQuick start: npm start create examples/ecommerce-erd.mmd')
   .version('1.0.0');
 
 program
@@ -36,6 +37,50 @@ program
   .option('--no-create-publisher', 'Do not create publisher if it doesn\'t exist (fail instead)')
   .action(async (options) => {
     try {
+      await convertMermaidToDataverse(options);
+    } catch (error) {
+      console.error('❌ Conversion failed:', error.message);
+      if (options.verbose) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
+// Add a simple shortcut command for quick conversion
+program
+  .command('create [erdFile]')
+  .description('Quick convert: Create Dataverse solution from ERD file (interactive)')
+  .option('--dry-run', 'Preview the conversion without creating entities')
+  .option('--verbose', 'Show detailed output')
+  .option('--publisher-prefix <prefix>', 'Custom publisher prefix (default: mmd)', 'mmd')
+  .action(async (erdFile, options) => {
+    try {
+      // If no erdFile provided, prompt for it
+      if (!erdFile) {
+        const { createInterface } = await import('readline/promises');
+        const rl = createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        
+        console.log('🚀 Mermaid to Dataverse Converter');
+        console.log('================================');
+        console.log('📁 Available examples:');
+        console.log('   - examples/ecommerce-erd.mmd');
+        console.log('   - examples/hr-system-erd.mmd\n');
+        
+        erdFile = await rl.question('📄 Enter ERD file path: ');
+        rl.close();
+        
+        if (!erdFile.trim()) {
+          console.error('❌ ERD file path is required');
+          process.exit(1);
+        }
+      }
+      
+      // Set the input file and call the main convert function
+      options.input = erdFile;
       await convertMermaidToDataverse(options);
     } catch (error) {
       console.error('❌ Conversion failed:', error.message);
@@ -81,6 +126,185 @@ program
 program.parse();
 
 /**
+ * Create readline interface for user prompts
+ */
+function createReadlineInterface() {
+  return readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+}
+
+/**
+ * Generate a safe unique name for Dataverse solution
+ * @param {string} displayName - User-friendly display name
+ * @returns {string} Safe unique name (PascalCase, no spaces, special chars)
+ */
+function generateSolutionUniqueName(displayName) {
+  if (!displayName) return displayName;
+  
+  // Create a safe unique name from display name using PascalCase convention
+  let uniqueName = displayName
+    .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars except spaces
+    .split(/\s+/) // Split on whitespace
+    .filter(word => word.length > 0) // Remove empty strings
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // PascalCase each word
+    .join(''); // Join without separators
+  
+  // Ensure it starts with a letter
+  if (uniqueName && !/^[a-zA-Z]/.test(uniqueName)) {
+    uniqueName = 'Solution' + uniqueName;
+  }
+  
+  // Limit length (Dataverse has limits)
+  if (uniqueName.length > 100) {
+    uniqueName = uniqueName.substring(0, 100);
+  }
+  
+  return uniqueName;
+}
+
+/**
+ * Sanitize publisher prefix to meet Dataverse requirements
+ * @param {string} prefix - Raw publisher prefix
+ * @returns {string} Sanitized publisher prefix
+ */
+/**
+ * Sanitize publisher prefix to meet Dataverse requirements
+ * @param {string} prefix - Raw publisher prefix
+ * @returns {string} Sanitized publisher prefix
+ */
+function sanitizePublisherPrefix(prefix) {
+  if (!prefix) return prefix;
+  
+  // Publisher prefix should be 2-8 characters, lowercase letters only
+  let sanitized = prefix
+    .toLowerCase()
+    .replace(/[^a-z]/g, '') // Only lowercase letters
+    .substring(0, 8); // Max 8 characters
+  
+  // Ensure minimum length
+  if (sanitized.length < 2) {
+    sanitized = 'mmd'; // Fallback to default
+  }
+  
+  return sanitized;
+}
+
+/**
+ * Prompt user for input with a default value
+ * @param {Object} rl - Readline interface
+ * @param {string} question - Question to ask
+ * @param {string} defaultValue - Default value if user presses enter
+ * @returns {Promise<string>} User input or default value
+ */
+async function promptWithDefault(rl, question, defaultValue = '') {
+  const answer = await rl.question(question);
+  return answer.trim() || defaultValue;
+}
+
+/**
+ * Interactive prompts for solution creation
+ * @param {Object} options - Current CLI options
+ * @returns {Promise<Object>} Updated options with user input
+ */
+async function promptForSolutionDetails(options) {
+  const rl = createReadlineInterface();
+  
+  try {
+    console.log('📝 Solution Configuration');
+    console.log('========================\n');
+    
+    // Prompt for solution name if not provided
+    if (!options.solution) {
+      console.log('💡 Solution names will be displayed exactly as you enter them in Dataverse.');
+      console.log('   You can use spaces and descriptive names like:');
+      console.log('   • "Customer Management System"');
+      console.log('   • "Inventory Tracker 2025"');
+      console.log('   • "HR Portal - Employee Data"');
+      console.log('   ✅ Spaces and special characters are welcome!\n');
+      
+      const solutionDisplayName = await promptWithDefault(
+        rl, 
+        '📦 Enter solution display name (required): '
+      );
+      
+      if (!solutionDisplayName) {
+        throw new Error('Solution name is required to create entities in Dataverse.');
+      }
+      
+      // Generate a safe unique name for internal use
+      const solutionUniqueName = generateSolutionUniqueName(solutionDisplayName);
+      
+      console.log(`\n✅ Solution configured:`);
+      console.log(`   📦 Display Name: "${solutionDisplayName}"`);
+      console.log(`   🔧 Technical Name: "${solutionUniqueName}"`);
+      
+      // Store both names in options
+      options.solution = solutionUniqueName;
+      options.solutionDisplayName = solutionDisplayName;
+    }
+    
+    // Ensure publisher prefix has a default value
+    if (!options.publisherPrefix) {
+      options.publisherPrefix = 'mmd';
+    }
+    
+    // Prompt for publisher prefix if using default
+    if (options.publisherPrefix === 'mmd') {
+      console.log('\n💡 Publisher prefix should be 2-8 characters, unique to your organization.');
+      console.log('   Examples: "contoso", "fabrikam", "acme", "myorg"');
+      console.log('   ⚠️  Note: Only lowercase letters allowed, other characters will be removed.');
+      console.log('   This will be used to prefix all entity and field names.\n');
+      
+      const publisherPrefix = await promptWithDefault(
+        rl,
+        `🏷️  Enter publisher prefix (default: ${options.publisherPrefix}): `,
+        options.publisherPrefix
+      );
+      
+      // Sanitize the publisher prefix
+      const sanitizedPrefix = sanitizePublisherPrefix(publisherPrefix);
+      
+      if (sanitizedPrefix !== publisherPrefix) {
+        console.log(`\n⚠️  Publisher prefix sanitized: "${publisherPrefix}" → "${sanitizedPrefix}"`);
+        console.log('   (Only lowercase letters allowed, 2-8 characters)');
+      }
+      
+      options.publisherPrefix = sanitizedPrefix;
+    }
+    
+    // Show summary
+    console.log('\n✅ Configuration Summary:');
+    console.log(`   📦 Solution: ${options.solutionDisplayName || options.solution}`);
+    console.log(`   🏷️  Publisher Prefix: ${options.publisherPrefix}`);
+    console.log(`   📄 Input File: ${options.input}`);
+    
+    if (options.dryRun) {
+      console.log('   🔍 Mode: Dry Run (preview only)');
+    }
+    
+    console.log('');
+    
+    const confirm = await promptWithDefault(
+      rl,
+      '❓ Continue with this configuration? (Y/n): ',
+      'Y'
+    );
+    
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
+      console.log('❌ Operation cancelled by user.');
+      process.exit(0);
+    }
+    
+    return options;
+    
+  } finally {
+    rl.close();
+  }
+}
+
+/**
  * Convert Mermaid ERD to Dataverse entities
  * @param {Object} options - CLI options
  */
@@ -95,6 +319,11 @@ async function convertMermaidToDataverse(options) {
 
   if (!existsSync(options.input)) {
     throw new Error(`Input file not found: ${options.input}`);
+  }
+
+  // For non-dry-run operations, prompt for solution details interactively
+  if (!options.dryRun && !options.output) {
+    options = await promptForSolutionDetails(options);
   }
 
   // Validate solution name for actual Dataverse operations (not for dry run or output only)
@@ -218,10 +447,20 @@ async function convertMermaidToDataverse(options) {
   console.log('✅ Authentication successful');
 
   console.log('\n🏗️  Creating entities and relationships...');
+  
+  // Debug: Log the options being passed
+  if (options.verbose) {
+    console.log('🔍 Debug - Options being passed to createFromSchema:');
+    console.log(`   solutionName: ${options.solution}`);
+    console.log(`   publisherPrefix: ${options.publisherPrefix}`);
+    console.log(`   verbose: ${options.verbose}`);
+  }
+  
   const results = await client.createFromSchema(schema, {
     dryRun: false,
     verbose: options.verbose,
     solutionName: options.solution,
+    solutionDisplayName: options.solutionDisplayName,
     publisherPrefix: options.publisherPrefix,
     listPublishers: options.listPublishers,
     createPublisher: options.createPublisher !== false // default true unless --no-create-publisher
@@ -230,7 +469,7 @@ async function convertMermaidToDataverse(options) {
   // Final summary
   console.log('\n🎉 Conversion completed!');
   if (options.solution) {
-    console.log(`   Solution: ${options.solution}`);
+    console.log(`   Solution: ${options.solutionDisplayName || options.solution}`);
   }
   console.log(`   Entities created: ${results.entities.length}`);
   console.log(`   Relationships created: ${results.relationships.length}`);

@@ -92,7 +92,11 @@ cp .env.example .env
 
 3. Run the tool:
 ```bash
-npm start -- --input ./examples/sample-erd.mmd
+# Interactive mode (recommended for first-time users)
+node src/index.js create examples/ecommerce-erd.mmd
+
+# Or preview first with dry run
+node src/index.js create examples/ecommerce-erd.mmd --dry-run
 ```
 
 ## Supported Mermaid ERD Syntax
@@ -126,14 +130,70 @@ erDiagram
 
 ## Usage
 
-### Basic Commands
+### Quick Start (Interactive)
+
+The easiest way to get started is with the interactive `create` command:
 
 ```bash
-# Convert a single ERD file (creates a solution and entities)
-npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution
+# Interactive mode - will prompt for solution name and publisher prefix  
+node src/index.js create examples/ecommerce-erd.mmd
+
+# Preview without creating (dry run)
+node src/index.js create examples/ecommerce-erd.mmd --dry-run
+
+# Quick shortcut for interactive mode
+npm run create
+# Then provide the file path when prompted
+```
+
+This will:
+1. 📝 **Prompt for solution name** - Enter a descriptive name for your Dataverse solution
+2. 🏷️ **Prompt for publisher prefix** - Enter 2-8 characters unique to your organization  
+3. ✅ **Show configuration summary** - Review your settings before proceeding
+4. 🚀 **Create the solution** - Build entities and relationships in Dataverse
+
+### Solution Naming
+
+The tool supports user-friendly solution names with spaces and special characters:
+
+✅ **Good Solution Names:**
+- "Customer Management System"
+- "Inventory Tracker 2025"  
+- "HR Portal - Employee Data"
+
+The tool automatically handles the technical requirements:
+- **Display Name**: Shown exactly as you enter it in Dataverse (e.g., "Customer Management System")
+- **Technical Name**: Auto-generated API-safe name using PascalCase (e.g., "CustomerManagementSystem")
+
+This gives you the best of both worlds - readable names for users and API-compliant names for the system.
+
+### Available npm Scripts
+
+For convenience, several npm scripts are available:
+
+```bash
+npm run create      # Interactive create (prompts for file path)
+npm run publishers  # List available publishers
+npm run cleanup     # Remove temporary/debug files
+npm test           # Run tests
+```
+
+Note: For commands with arguments, use the direct `node src/index.js` syntax shown above.
+
+### Advanced Commands
+
+```bash
+# Specify all options via command line (non-interactive)
+node src/index.js convert my-erd.mmd MyProjectSolution contoso
+
+# Dry run with specific parameters
+node src/index.js convert my-erd.mmd MyProjectSolution contoso --dry-run
 
 # List available publishers in your environment
-npm start publishers
+node src/index.js publishers
+# OR use the shortcut
+npm run publishers
+```
 
 # Use a specific publisher prefix
 npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution --publisher-prefix "contoso"
@@ -189,3 +249,23 @@ This script automatically removes:
 - Schema output files (`*-schema.json`)
 - Temporary .env files (`.env.generated`, `.env.updated`)
 - Keeps only essential examples (`ecommerce-erd.mmd`, `hr-system-erd.mmd`)
+
+## Developer Documentation
+
+For developers who want to understand, maintain, or contribute to this project:
+
+📖 **[Developer Documentation](docs/DEVELOPER.md)** - Comprehensive technical guide covering:
+- Architecture overview and design decisions
+- Component breakdown and data flow
+- Authentication strategy and security considerations  
+- Field type mapping and extension points
+- Testing strategy and contributing guidelines
+- Troubleshooting and performance optimization
+
+## Contributing
+
+We welcome contributions! Please see the [Developer Documentation](docs/DEVELOPER.md) for:
+- Development setup and coding standards
+- Pull request process and code review guidelines
+- How to add new field types and features
+- Testing requirements and best practices

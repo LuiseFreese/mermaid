@@ -547,6 +547,7 @@ export class DataverseClient {
       dryRun = false, 
       verbose = false, 
       solutionName = null,
+      solutionDisplayName = null,
       publisherPrefix = 'mmd',
       listPublishers = false,
       createPublisher = true
@@ -572,7 +573,8 @@ export class DataverseClient {
         this.solutionName = solutionName; // Set solution name for entity creation
         console.log(`🎯 Ensuring solution '${solutionName}' exists...`);
         try {
-          const solution = await this.ensureSolution(solutionName, solutionName, publisherPrefix, {
+          const displayName = solutionDisplayName || solutionName;
+          const solution = await this.ensureSolution(solutionName, displayName, publisherPrefix, {
             listPublishers,
             allowCreatePublisher: createPublisher
           });

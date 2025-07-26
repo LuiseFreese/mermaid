@@ -1,0 +1,16 @@
+erDiagram
+    Room ||--o{ Equipment : contains
+    Room {
+        guid room_id PK
+        string room_name
+        string room_number
+        int floor
+        bool is_accessible
+    }
+    Equipment {
+        guid equipment_id PK
+        string equipment_name
+        string type
+        string asset_tag
+        guid assigned_room FK
+    }
