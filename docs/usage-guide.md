@@ -9,7 +9,7 @@ This guide explains how to use the Mermaid to Dataverse converter effectively.
    npm install
    ```
 
-2. **Configure authentication** (see [Azure Setup Guide](azure-setup.md))
+2. **Configure authentication** (see [Entra ID Setup Guide](entra-id-setup.md))
 
 3. **Validate your ERD**:
    ```bash

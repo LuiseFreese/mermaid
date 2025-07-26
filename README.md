@@ -18,7 +18,7 @@ A tool that reads Mermaid ERD diagrams and creates corresponding tables, fields,
 ### Prerequisites
 
 You need:
-- **Power Platform CLI** - [Installation Guide](docs/power-platform-cli-setup.md) | [Official Docs](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+- **Power Platform CLI** - [Official Documentation](https://learn.microsoft.com/power-platform/developer/cli/introduction)
   - **Important**: After installation, **restart VS Code** to ensure `pac` command is available
   - Test installation: Run `pac --version` in terminal
 
@@ -54,7 +54,7 @@ TENANT_ID=your-tenant-id-here
 
 3. Run the automated setup:
 ```bash
-node scripts/setup-application-user.cjs
+node scripts/setup.cjs
 ```
 
 That's it! The script handles everything else automatically.
@@ -71,8 +71,6 @@ For more details about the authentication setup and troubleshooting, see [script
 
 ### Alternative Setup (Manual)
 
-If you prefer manual setup or need to understand the process:
-
 1. Install dependencies:
 ```bash
 npm install
@@ -82,7 +80,7 @@ npm install
 ```bash
 cp .env.example .env
 # Edit .env with your Dataverse and Microsoft Entra ID details
-# See docs/azure-setup.md for detailed instructions
+# See docs/entra-id-setup.md for detailed instructions
 ```
 
 3. Run the tool:

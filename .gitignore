@@ -9,3 +9,14 @@ dist/
 coverage/
 *-backup.*
 *-test.*
+
+# Development scripts archive
+scripts/archive/
+scripts/archive/**
+
+# Documentation archive
+docs/archive/
+docs/archive/**
+
+# Development summary files
+DOCS_CLEANUP_SUMMARY.md
