@@ -173,3 +173,19 @@ Options:
   --list-publishers               List available publishers before creating solution
   --no-create-publisher           Do not create publisher if it doesn't exist
 ```
+
+## Maintenance
+
+### Cleanup Repository
+
+To remove temporary files, debug scripts, and test outputs:
+
+```bash
+npm run cleanup
+```
+
+This script automatically removes:
+- Debug and test scripts (`debug-*.js`, `check-*.js`, etc.)
+- Schema output files (`*-schema.json`)
+- Temporary .env files (`.env.generated`, `.env.updated`)
+- Keeps only essential examples (`ecommerce-erd.mmd`, `hr-system-erd.mmd`)

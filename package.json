@@ -7,7 +7,8 @@
     "scripts": {
         "start": "node src/index.js",
         "test": "node --test src/tests/parser.test.js src/tests/schema-generator.test.js",
-        "dev": "node --watch src/index.js"
+        "dev": "node --watch src/index.js",
+        "cleanup": "node scripts/cleanup.js"
     },
     "dependencies": {
         "@azure/msal-node": "^2.6.4",
