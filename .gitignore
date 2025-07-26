@@ -19,4 +19,7 @@ docs/archive/
 docs/archive/**
 
 # Development summary files
-DOCS_CLEANUP_SUMMARY.md
+CLEANUP_SUMMARY.md
+AUTH-TROUBLESHOOTING.md
+SOLUTION-*.md
+PUBLISHER-MANAGEMENT.md

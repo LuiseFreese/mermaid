@@ -17,10 +17,22 @@ A tool that reads Mermaid ERD diagrams and creates corresponding tables, fields,
 
 ### Prerequisites
 
-You need:
-- **Power Platform CLI** - [Official Documentation](https://learn.microsoft.com/power-platform/developer/cli/introduction)
-  - **Important**: After installation, **restart VS Code** to ensure `pac` command is available
-  - Test installation: Run `pac --version` in terminal
+Before you begin, make sure you have:
+
+1. **Power Platform CLI** - [Official Documentation](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+   - **Important**: After installation, **restart VS Code** to ensure `pac` command is available
+   - Test installation: Run `pac` in terminal
+
+2. **Azure CLI** - Required for automated setup
+   - Install from [Azure CLI docs](https://learn.microsoft.com/cli/azure/install-azure-cli)
+   - Log in as admin: `az login`
+
+3. **Node.js** - Required to run the tool
+   - Install dependencies: `npm install`
+
+4. **Dataverse Environment Access**
+   - Your Dataverse environment URL (find it in [Power Platform Admin Center](https://admin.powerplatform.microsoft.com))
+   - Admin permissions in your Dataverse environment
 
 ### Quick Setup (Automated)
 
@@ -32,11 +44,6 @@ The script automatically:
 - Creates the Dataverse Application User with proper permissions
 - Handles the bootstrap authentication problem seamlessly
 - Tests the complete setup to ensure everything works
-
-**Prerequisites**: 
-- Azure CLI installed and logged in as admin (`az login`)
-- Node.js with dependencies installed (`npm install`)
-- Your Dataverse environment URL (find it in [Power Platform Admin Center](https://admin.powerplatform.microsoft.com))
 
 **Setup Steps:**
 
