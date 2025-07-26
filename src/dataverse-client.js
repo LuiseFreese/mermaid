@@ -20,6 +20,7 @@ export class DataverseClient {
     this.msalInstance = new ConfidentialClientApplication(this.clientConfig);
     this.accessToken = null;
     this.apiVersion = '9.2';
+    this.solutionName = null; // Will be set when working with solutions
   }
 
   /**
@@ -48,9 +49,10 @@ export class DataverseClient {
    * @param {string} method - HTTP method
    * @param {string} endpoint - API endpoint
    * @param {Object} data - Request data
+   * @param {Object} additionalHeaders - Additional headers to include
    * @returns {Promise<Object>} API response
    */
-  async makeRequest(method, endpoint, data = null) {
+  async makeRequest(method, endpoint, data = null, additionalHeaders = {}) {
     if (!this.accessToken) {
       await this.authenticate();
     }
@@ -64,7 +66,8 @@ export class DataverseClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'OData-MaxVersion': '4.0',
-        'OData-Version': '4.0'
+        'OData-Version': '4.0',
+        ...additionalHeaders // Merge additional headers
       }
     };
 
@@ -96,7 +99,14 @@ export class DataverseClient {
     console.log(`Creating entity: ${entityMetadata.LogicalName}`);
     
     try {
-      const response = await this.makeRequest('POST', 'EntityDefinitions', entityMetadata);
+      // Add solution header if solution name is available
+      const headers = {};
+      if (this.solutionName) {
+        headers['MSCRM.SolutionUniqueName'] = this.solutionName;
+        console.log(`🔧 Adding entity to solution: ${this.solutionName}`);
+      }
+      
+      const response = await this.makeRequest('POST', 'EntityDefinitions', entityMetadata, headers);
       console.log(`✅ Entity created: ${entityMetadata.LogicalName}`);
       return response;
     } catch (error) {
@@ -153,6 +163,39 @@ export class DataverseClient {
   }
 
   /**
+   * Create a column/attribute for an entity
+   * @param {string} entityLogicalName - Entity logical name
+   * @param {Object} columnMetadata - Column metadata
+   * @returns {Promise<Object>} Creation response
+   */
+  async createColumn(entityLogicalName, columnMetadata) {
+    if (this.verbose) {
+      console.log(`Creating column ${columnMetadata.LogicalName} for entity ${entityLogicalName}...`);
+      console.log('Column metadata:', JSON.stringify(columnMetadata, null, 2));
+    }
+
+    try {
+      const response = await this.makeRequest(
+        'POST',
+        `EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes`,
+        columnMetadata,
+        {
+          'MSCRM.SolutionUniqueName': this.solutionName
+        }
+      );
+      
+      if (this.verbose) {
+        console.log(`✅ Column ${columnMetadata.LogicalName} created successfully`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`❌ Failed to create column ${columnMetadata.LogicalName}:`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Publish all customizations
    * @returns {Promise<Object>} Publish response
    */
@@ -177,6 +220,24 @@ export class DataverseClient {
   async entityExists(logicalName) {
     try {
       await this.makeRequest('GET', `EntityDefinitions(LogicalName='${logicalName}')`);
+      return true;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a column exists on an entity
+   * @param {string} entityLogicalName - Entity logical name
+   * @param {string} columnLogicalName - Column logical name
+   * @returns {Promise<boolean>} True if column exists
+   */
+  async columnExists(entityLogicalName, columnLogicalName) {
+    try {
+      await this.makeRequest('GET', `EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes(LogicalName='${columnLogicalName}')`);
       return true;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -349,12 +410,20 @@ export class DataverseClient {
    */
   async addEntityToSolution(solutionName, entityLogicalName) {
     try {
+      // First get the solution ID
+      const solutionResponse = await this.makeRequest('GET', `solutions?$filter=uniquename eq '${solutionName}'`);
+      if (!solutionResponse.value || solutionResponse.value.length === 0) {
+        throw new Error(`Solution '${solutionName}' not found`);
+      }
+      
+      const solutionId = solutionResponse.value[0].solutionid;
+      
       const solutionComponentData = {
         ComponentType: 1, // Entity component type
         'ObjectId@odata.bind': `/EntityDefinitions(LogicalName='${entityLogicalName}')`
       };
 
-      await this.makeRequest('POST', `solutions(uniquename='${solutionName}')/solutioncomponents`, solutionComponentData);
+      await this.makeRequest('POST', `solutions(${solutionId})/solutioncomponents`, solutionComponentData);
       console.log(`✅ Added entity ${entityLogicalName} to solution ${solutionName}`);
     } catch (error) {
       console.error(`❌ Failed to add entity ${entityLogicalName} to solution ${solutionName}:`, error.response?.data || error.message);
@@ -379,6 +448,7 @@ export class DataverseClient {
     } = options;
     const results = {
       entities: [],
+      columns: [],
       relationships: [],
       errors: [],
       solution: null
@@ -394,6 +464,7 @@ export class DataverseClient {
     try {
       // First, ensure solution exists if solution name provided
       if (solutionName) {
+        this.solutionName = solutionName; // Set solution name for entity creation
         console.log(`🎯 Ensuring solution '${solutionName}' exists...`);
         try {
           const solution = await this.ensureSolution(solutionName, solutionName, publisherPrefix, {
@@ -420,50 +491,15 @@ export class DataverseClient {
           const exists = await this.entityExists(entity.LogicalName);
           if (exists) {
             console.log(`⚠️  Entity ${entity.LogicalName} already exists, skipping creation`);
-            
-            // Still try to add to solution if solution name provided
-            if (solutionName) {
-              try {
-                await this.addEntityToSolution(solutionName, entity.LogicalName);
-              } catch (solutionError) {
-                console.log(`ℹ️  Entity ${entity.LogicalName} may already be in solution or unable to add`);
-              }
-            }
             continue;
           }
 
-          // Create entity without custom attributes first
-          const entityWithoutAttributes = { ...entity };
-          delete entityWithoutAttributes.Attributes;
-
-          const createdEntity = await this.createEntity(entityWithoutAttributes);
+          // Create entity - it will be automatically added to solution via MSCRM.SolutionUniqueName header
+          const createdEntity = await this.createEntity(entity);
           results.entities.push(createdEntity);
 
-          // Add entity to solution if solution name provided
-          if (solutionName) {
-            await this.addEntityToSolution(solutionName, entity.LogicalName);
-          }
-
-          // Wait a bit for entity creation to complete
-          await this.sleep(2000);
-
-          // Create custom attributes
-          if (entity.Attributes && entity.Attributes.length > 0) {
-            for (const attribute of entity.Attributes) {
-              try {
-                await this.createAttribute(entity.LogicalName, attribute);
-                await this.sleep(1000); // Wait between attribute creations
-              } catch (attrError) {
-                console.error(`Failed to create attribute ${attribute.LogicalName}:`, attrError.message);
-                results.errors.push({
-                  type: 'attribute',
-                  entity: entity.LogicalName,
-                  attribute: attribute.LogicalName,
-                  error: attrError.message
-                });
-              }
-            }
-          }
+          // Wait longer for entity creation to complete before creating columns
+          await this.sleep(5000);
 
         } catch (error) {
           console.error(`Failed to create entity ${entity.LogicalName}:`, error.message);
@@ -472,6 +508,47 @@ export class DataverseClient {
             entity: entity.LogicalName,
             error: error.message
           });
+        }
+      }
+
+      // Create additional columns for each entity
+      if (schema.additionalColumns && schema.additionalColumns.length > 0) {
+        console.log('\n🏛️  Creating additional columns...');
+        
+        for (const columnInfo of schema.additionalColumns) {
+          try {
+            // Check if entity exists before creating column
+            const entityExists = await this.entityExists(columnInfo.entityLogicalName);
+            if (!entityExists) {
+              console.log(`⚠️  Entity ${columnInfo.entityLogicalName} does not exist, skipping column creation`);
+              continue;
+            }
+
+            // Check if column already exists
+            const columnExists = await this.columnExists(columnInfo.entityLogicalName, columnInfo.columnMetadata.LogicalName);
+            if (columnExists) {
+              console.log(`⚠️  Column ${columnInfo.columnMetadata.LogicalName} already exists on entity ${columnInfo.entityLogicalName}, skipping creation`);
+              continue;
+            }
+
+            await this.createColumn(columnInfo.entityLogicalName, columnInfo.columnMetadata);
+            results.columns.push({
+              entity: columnInfo.entityLogicalName,
+              column: columnInfo.columnMetadata.LogicalName
+            });
+            
+            // Wait a bit between column creations
+            await this.sleep(1000);
+
+          } catch (error) {
+            console.error(`Failed to create column ${columnInfo.columnMetadata.LogicalName} for entity ${columnInfo.entityLogicalName}:`, error.message);
+            results.errors.push({
+              type: 'column',
+              entity: columnInfo.entityLogicalName,
+              column: columnInfo.columnMetadata.LogicalName,
+              error: error.message
+            });
+          }
         }
       }
 
@@ -504,6 +581,7 @@ export class DataverseClient {
         console.log(`🎯 Solution: ${solutionName}`);
       }
       console.log(`✅ Entities created: ${results.entities.length}`);
+      console.log(`✅ Columns created: ${results.columns.length}`);
       console.log(`✅ Relationships created: ${results.relationships.length}`);
       if (results.errors.length > 0) {
         console.log(`❌ Errors encountered: ${results.errors.length}`);

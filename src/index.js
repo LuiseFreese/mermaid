@@ -162,6 +162,27 @@ async function convertMermaidToDataverse(options) {
       }
     });
 
+    // Show additional columns that will be created after entities
+    if (schema.additionalColumns && schema.additionalColumns.length > 0) {
+      console.log('\n🏛️  Additional columns to be created:');
+      const columnsByEntity = {};
+      schema.additionalColumns.forEach(col => {
+        if (!columnsByEntity[col.entityLogicalName]) {
+          columnsByEntity[col.entityLogicalName] = [];
+        }
+        columnsByEntity[col.entityLogicalName].push(col.columnMetadata);
+      });
+      
+      Object.entries(columnsByEntity).forEach(([entityName, columns]) => {
+        const entity = schema.entities.find(e => e.LogicalName === entityName);
+        const displayName = entity ? entity.DisplayName.LocalizedLabels[0].Label : entityName;
+        console.log(`   - ${entityName} (${displayName}):`);
+        columns.forEach(col => {
+          console.log(`     * ${col.LogicalName} (${col['@odata.type'].split('.').pop()})`);
+        });
+      });
+    }
+
     console.log('\n🔗 Relationships to be created:');
     schema.relationships.forEach(rel => {
       console.log(`   - ${rel.SchemaName} (${rel.RelationshipType})`);
@@ -354,6 +375,7 @@ function showConfiguration() {
     console.log(`${status} ${config.name}: ${value}`);
   });
 
-  console.log('\nSet these values in your .env file or environment variables.');
-  console.log('See docs/azure-setup.md for setup instructions.');
+  console.log('\n💡 Configuration Help:');
+  console.log('• If values are missing, run: node scripts/setup.cjs');
+  console.log('• For manual setup, see: docs/entra-id-setup.md');
 }

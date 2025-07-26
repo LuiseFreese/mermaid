@@ -167,7 +167,11 @@ export class MermaidERDParser {
       'uuid': 'Edm.Guid',
       'text': 'Edm.String',
       'varchar': 'Edm.String',
-      'nvarchar': 'Edm.String'
+      'nvarchar': 'Edm.String',
+      'image': 'Edm.Image',
+      'file': 'Edm.File',
+      'autonumber': 'Edm.AutoNumber',
+      'duration': 'Edm.Duration'
     };
 
     return typeMap[mermaidType.toLowerCase()] || 'Edm.String';
