@@ -82,7 +82,8 @@ export class MermaidERDParser {
    */
   parseAttribute(line) {
     // Pattern: type name [constraints]
-    const attributePattern = /^(\w+)\s+(\w+)(?:\s+(PK|FK|UK|.*?))?$/;
+    // Handle choice types like: choice(option1,option2) name constraints
+    const attributePattern = /^((?:choice\([^)]+\)|\w+))\s+(\w+)(?:\s+(PK|FK|UK|.*?))?$/;
     const match = line.match(attributePattern);
 
     if (!match) {
@@ -91,15 +92,25 @@ export class MermaidERDParser {
 
     const [, type, name, constraints = ''] = match;
 
-    return {
+    const typeInfo = this.mapMermaidTypeToDataverse(type);
+
+    const attribute = {
       name: name,
       displayName: this.formatDisplayName(name),
-      type: this.mapMermaidTypeToDataverse(type),
+      type: typeInfo.dataType || typeInfo, // Handle both old and new format
       isPrimaryKey: constraints.includes('PK'),
       isForeignKey: constraints.includes('FK'),
       isUnique: constraints.includes('UK'),
       isRequired: constraints.includes('NOT NULL') || constraints.includes('PK')
     };
+
+    // Add choice-specific properties
+    if (typeInfo.isChoice) {
+      attribute.isChoice = true;
+      attribute.choiceOptions = typeInfo.choiceOptions;
+    }
+
+    return attribute;
   }
 
   /**
@@ -149,7 +160,7 @@ export class MermaidERDParser {
   /**
    * Map Mermaid data types to Dataverse field types
    * @param {string} mermaidType - The Mermaid type
-   * @returns {string} Dataverse field type
+   * @returns {Object} Dataverse field type and additional metadata
    */
   mapMermaidTypeToDataverse(mermaidType) {
     const typeMap = {
@@ -174,7 +185,22 @@ export class MermaidERDParser {
       'duration': 'Edm.Duration'
     };
 
-    return typeMap[mermaidType.toLowerCase()] || 'Edm.String';
+    // Check for choice type with options: choice(option1,option2,option3)
+    const choiceMatch = mermaidType.match(/^choice\(([^)]+)\)$/i);
+    if (choiceMatch) {
+      const options = choiceMatch[1].split(',').map(opt => opt.trim());
+      return {
+        dataType: 'Edm.Int32', // Choice fields are stored as integers
+        isChoice: true,
+        choiceOptions: options
+      };
+    }
+
+    const mappedType = typeMap[mermaidType.toLowerCase()] || 'Edm.String';
+    return {
+      dataType: mappedType,
+      isChoice: false
+    };
   }
 
   /**

@@ -1,0 +1,208 @@
+{
+  "globalChoiceSets": [
+    {
+      "@odata.type": "Microsoft.Dynamics.CRM.OptionSetMetadata",
+      "Name": "mmd_color",
+      "DisplayName": {
+        "LocalizedLabels": [
+          {
+            "Label": "Color",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "Description": {
+        "LocalizedLabels": [
+          {
+            "Label": "Global choice set for Color",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "OptionSetType": "Picklist",
+      "IsGlobal": true,
+      "Options": [
+        {
+          "Value": 1,
+          "Label": {
+            "LocalizedLabels": [
+              {
+                "Label": "red",
+                "LanguageCode": 1033
+              }
+            ]
+          }
+        },
+        {
+          "Value": 2,
+          "Label": {
+            "LocalizedLabels": [
+              {
+                "Label": "amber",
+                "LanguageCode": 1033
+              }
+            ]
+          }
+        },
+        {
+          "Value": 3,
+          "Label": {
+            "LocalizedLabels": [
+              {
+                "Label": "green",
+                "LanguageCode": 1033
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "@odata.type": "Microsoft.Dynamics.CRM.EntityMetadata",
+      "LogicalName": "mmd_testchoiceentity",
+      "SchemaName": "mmd_TestChoiceEntity",
+      "DisplayName": {
+        "LocalizedLabels": [
+          {
+            "Label": "TestChoiceEntity",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "DisplayCollectionName": {
+        "LocalizedLabels": [
+          {
+            "Label": "TestChoiceEntitys",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "Description": {
+        "LocalizedLabels": [
+          {
+            "Label": "Entity generated from Mermaid ERD: TestChoiceEntity",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "OwnershipType": "UserOwned",
+      "IsActivity": false,
+      "HasNotes": false,
+      "HasActivities": false,
+      "Attributes": [
+        {
+          "LogicalName": "mmd_name",
+          "SchemaName": "mmd_Name",
+          "DisplayName": {
+            "LocalizedLabels": [
+              {
+                "Label": "Id",
+                "LanguageCode": 1033
+              }
+            ]
+          },
+          "RequiredLevel": {
+            "Value": "None",
+            "CanBeChanged": true,
+            "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+          },
+          "Description": {
+            "LocalizedLabels": [
+              {
+                "Label": "Primary name field",
+                "LanguageCode": 1033
+              }
+            ]
+          },
+          "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+          "AttributeType": "String",
+          "AttributeTypeName": {
+            "Value": "StringType"
+          },
+          "MaxLength": 100,
+          "IsPrimaryName": true,
+          "FormatName": {
+            "Value": "Text"
+          }
+        }
+      ]
+    }
+  ],
+  "relationships": [],
+  "additionalColumns": [
+    {
+      "entityLogicalName": "mmd_testchoiceentity",
+      "columnMetadata": {
+        "LogicalName": "mmd_color",
+        "SchemaName": "mmd_Color",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Color",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Color field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.PicklistAttributeMetadata",
+        "AttributeType": "Picklist",
+        "AttributeTypeName": {
+          "Value": "PicklistType"
+        },
+        "OptionSet@odata.bind": "/GlobalOptionSetDefinitions(Name='mmd_color')"
+      }
+    },
+    {
+      "entityLogicalName": "mmd_testchoiceentity",
+      "columnMetadata": {
+        "LogicalName": "mmd_description",
+        "SchemaName": "mmd_Description",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Description",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Description field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "TextArea"
+        },
+        "MaxLength": 2000
+      }
+    }
+  ],
+  "metadata": {
+    "publisherPrefix": "mmd",
+    "generatedAt": "2025-07-26T13:47:34.124Z",
+    "source": "mermaid-erd"
+  }
+}

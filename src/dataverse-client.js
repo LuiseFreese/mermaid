@@ -248,6 +248,78 @@ export class DataverseClient {
   }
 
   /**
+   * Check if a global choice set exists
+   * @param {string} choiceSetName - Global choice set name
+   * @returns {Promise<boolean>} True if choice set exists
+   */
+  async globalChoiceSetExists(choiceSetName) {
+    try {
+      const response = await this.makeRequest('GET', `GlobalOptionSetDefinitions?$filter=Name eq '${choiceSetName}'&$select=MetadataId,Name`);
+      return response.value && response.value.length > 0;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Create a global choice set
+   * @param {Object} choiceSetMetadata - Choice set metadata
+   * @returns {Promise<Object>} Created choice set response with ID
+   */
+  async createGlobalChoiceSet(choiceSetMetadata) {
+    try {
+      console.log(`Creating global choice set: ${choiceSetMetadata.Name}`);
+      
+      // Create options for the global choice set
+      const options = choiceSetMetadata.options.map((option, index) => ({
+        Value: index + 1, // Start from 1
+        Label: {
+          LocalizedLabels: [{
+            Label: option,
+            LanguageCode: 1033
+          }]
+        }
+      }));
+
+      // Create the global option set with embedded options
+      const optionSetPayload = {
+        '@odata.type': 'Microsoft.Dynamics.CRM.OptionSetMetadata',
+        Name: choiceSetMetadata.Name,
+        DisplayName: choiceSetMetadata.DisplayName,
+        Description: choiceSetMetadata.Description,
+        IsGlobal: choiceSetMetadata.IsGlobal,
+        OptionSetType: 'Picklist',
+        Options: options
+      };
+
+      let response;
+      if (this.solutionName) {
+        response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload, {
+          'MSCRM.SolutionUniqueName': this.solutionName
+        });
+      } else {
+        response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload);
+      }
+
+      const optionSetId = response.MetadataId;
+      console.log(`✅ Created global choice set ${choiceSetMetadata.Name} with ID: ${optionSetId}`);
+
+      return {
+        MetadataId: optionSetId,
+        Name: choiceSetMetadata.Name,
+        options: choiceSetMetadata.options
+      };
+
+    } catch (error) {
+      console.error(`Failed to create global choice set ${choiceSetMetadata.Name}:`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get solution information
    * @param {string} solutionName - Solution unique name
    * @returns {Promise<Object>} Solution information
@@ -432,6 +504,39 @@ export class DataverseClient {
   }
 
   /**
+   * Add a global choice set to a solution
+   * @param {string} solutionName - Solution unique name
+   * @param {string} globalChoiceSetId - Global choice set MetadataId
+   * @returns {Promise<void>}
+   */
+  async addGlobalChoiceSetToSolution(solutionName, globalChoiceSetId) {
+    try {
+      // First get the solution ID
+      const solutionResponse = await this.makeRequest('GET', `solutions?$filter=uniquename eq '${solutionName}'`);
+      if (!solutionResponse.value || solutionResponse.value.length === 0) {
+        throw new Error(`Solution '${solutionName}' not found`);
+      }
+      
+      const solutionId = solutionResponse.value[0].solutionid;
+      
+      // Use the AddSolutionComponent action
+      const actionData = {
+        ComponentId: globalChoiceSetId,
+        ComponentType: 9, // Global Option Set component type
+        SolutionUniqueName: solutionName,
+        AddRequiredComponents: false,
+        DoNotIncludeSubcomponents: false
+      };
+
+      await this.makeRequest('POST', 'AddSolutionComponent', actionData);
+      console.log(`✅ Added global choice set ${globalChoiceSetId} to solution ${solutionName}`);
+    } catch (error) {
+      console.error(`❌ Failed to add global choice set ${globalChoiceSetId} to solution ${solutionName}:`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Create entities and relationships from schema
    * @param {Object} schema - Generated Dataverse schema
    * @param {Object} options - Creation options
@@ -484,6 +589,51 @@ export class DataverseClient {
         }
       }
 
+      // Create global choice sets first (they need to exist before columns that reference them)
+      const globalChoiceSets = new Map(); // Store choice set name -> ID mapping
+      if (schema.globalChoiceSets && schema.globalChoiceSets.length > 0) {
+        console.log('\n🎨 Creating global choice sets...');
+        for (const choiceSet of schema.globalChoiceSets) {
+          try {
+            const exists = await this.globalChoiceSetExists(choiceSet.Name);
+            if (exists) {
+              console.log(`⚠️  Global choice set ${choiceSet.Name} already exists, skipping creation`);
+              // Still need to get the ID for existing choice sets
+              const existingResponse = await this.makeRequest('GET', `GlobalOptionSetDefinitions?$filter=Name eq '${choiceSet.Name}'&$select=MetadataId,Name`);
+              if (existingResponse.value && existingResponse.value.length > 0) {
+                globalChoiceSets.set(choiceSet.Name, existingResponse.value[0].MetadataId);
+              }
+              continue;
+            }
+
+            const createdChoiceSet = await this.createGlobalChoiceSet(choiceSet);
+            globalChoiceSets.set(choiceSet.Name, createdChoiceSet.MetadataId);
+            console.log(`✅ Created global choice set: ${choiceSet.Name} (ID: ${createdChoiceSet.MetadataId})`);
+            
+            // Add the global choice set to the solution if solution is specified
+            if (solutionName) {
+              try {
+                await this.addGlobalChoiceSetToSolution(solutionName, createdChoiceSet.MetadataId);
+              } catch (solutionError) {
+                console.error(`⚠️  Failed to add global choice set ${choiceSet.Name} to solution ${solutionName}:`, solutionError.message);
+                // Don't fail the whole process if we can't add to solution
+              }
+            }
+            
+            // Wait for choice set creation to complete
+            await this.sleep(2000);
+            
+          } catch (error) {
+            console.error(`❌ Failed to create global choice set ${choiceSet.Name}:`, error.message);
+            results.errors.push({
+              type: 'globalChoiceSet',
+              choiceSet: choiceSet.Name,
+              error: error.message
+            });
+          }
+        }
+      }
+
       // Create entities first (without custom attributes)
       for (const entity of schema.entities) {
         try {
@@ -531,7 +681,21 @@ export class DataverseClient {
               continue;
             }
 
-            await this.createColumn(columnInfo.entityLogicalName, columnInfo.columnMetadata);
+            // Resolve global choice set references if needed
+            let resolvedColumnMetadata = { ...columnInfo.columnMetadata };
+            if (resolvedColumnMetadata._globalChoiceSetName) {
+              const choiceSetId = globalChoiceSets.get(resolvedColumnMetadata._globalChoiceSetName);
+              if (choiceSetId) {
+                // Use proper OData binding for global option set
+                resolvedColumnMetadata['OptionSet@odata.bind'] = `/GlobalOptionSetDefinitions(${choiceSetId})`;
+                delete resolvedColumnMetadata._globalChoiceSetName; // Remove the temporary property
+              } else {
+                console.error(`❌ Global choice set ${resolvedColumnMetadata._globalChoiceSetName} not found for column ${resolvedColumnMetadata.LogicalName}`);
+                continue;
+              }
+            }
+
+            await this.createColumn(columnInfo.entityLogicalName, resolvedColumnMetadata);
             results.columns.push({
               entity: columnInfo.entityLogicalName,
               column: columnInfo.columnMetadata.LogicalName

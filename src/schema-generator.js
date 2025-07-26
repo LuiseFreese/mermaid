@@ -30,11 +30,14 @@ export class DataverseSchemaGenerator {
    * @returns {Object} Dataverse schema definitions
    */
   generateSchema(erdData) {
+    // Re-enable global choice sets now that solution component support is added
+    const globalChoiceSets = this.generateGlobalChoiceSets(erdData.entities);
     const entities = this.generateEntities(erdData.entities);
     const relationships = this.generateRelationships(erdData.relationships, erdData.entities);
     const additionalColumns = this.generateAdditionalColumns(erdData.entities);
 
     return {
+      globalChoiceSets,
       entities,
       relationships,
       additionalColumns,
@@ -44,6 +47,59 @@ export class DataverseSchemaGenerator {
         source: 'mermaid-erd'
       }
     };
+  }
+
+  /**
+   * Generate global choice sets from choice fields across all entities
+   * @param {Array} entities - Array of parsed entities
+   * @returns {Array} Global choice set definitions
+   */
+  generateGlobalChoiceSets(entities) {
+    const choiceSets = new Map();
+
+    // Collect all choice fields from all entities
+    entities.forEach(entity => {
+      entity.attributes.forEach(attr => {
+        if (attr.isChoice) {
+          const choiceSetName = `${this.publisherPrefix}_${attr.name.toLowerCase()}`;
+          
+          // Check if we already have this choice set (by name)
+          if (!choiceSets.has(choiceSetName)) {
+            choiceSets.set(choiceSetName, {
+              name: choiceSetName,
+              displayName: attr.displayName,
+              options: attr.choiceOptions,
+              entities: [entity.name]
+            });
+          } else {
+            // Add entity to the list of entities using this choice set
+            const existing = choiceSets.get(choiceSetName);
+            if (!existing.entities.includes(entity.name)) {
+              existing.entities.push(entity.name);
+            }
+          }
+        }
+      });
+    });
+
+    // Convert to Dataverse global choice set metadata using correct format
+    return Array.from(choiceSets.values()).map(choiceSet => ({
+      Name: choiceSet.name,
+      DisplayName: {
+        LocalizedLabels: [{
+          Label: choiceSet.displayName,
+          LanguageCode: 1033
+        }]
+      },
+      Description: {
+        LocalizedLabels: [{
+          Label: `Global choice set for ${choiceSet.displayName}`,
+          LanguageCode: 1033
+        }]
+      },
+      IsGlobal: true,
+      options: choiceSet.options // Store options for separate creation
+    }));
   }
 
   /**
@@ -225,6 +281,21 @@ export class DataverseSchemaGenerator {
         ]
       }
     };
+
+    // Handle choice fields with global choice sets
+    if (attr.isChoice) {
+      attributeMetadata['@odata.type'] = 'Microsoft.Dynamics.CRM.PicklistAttributeMetadata';
+      attributeMetadata.AttributeType = 'Picklist';
+      attributeMetadata.AttributeTypeName = {
+        Value: 'PicklistType'
+      };
+      
+      // Reference the global choice set that should be created
+      const globalChoiceSetName = `${this.publisherPrefix}_${attr.name.toLowerCase()}`;
+      attributeMetadata._globalChoiceSetName = globalChoiceSetName; // Temporary property for resolution later
+      
+      return attributeMetadata;
+    }
 
     // Add type-specific metadata
     switch (attr.type) {
