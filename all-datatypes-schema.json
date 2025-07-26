@@ -1,0 +1,793 @@
+{
+  "entities": [
+    {
+      "@odata.type": "Microsoft.Dynamics.CRM.EntityMetadata",
+      "LogicalName": "mmd_alldatatypes",
+      "SchemaName": "mmd_AllDataTypes",
+      "DisplayName": {
+        "LocalizedLabels": [
+          {
+            "Label": "AllDataTypes",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "DisplayCollectionName": {
+        "LocalizedLabels": [
+          {
+            "Label": "AllDataTypess",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "Description": {
+        "LocalizedLabels": [
+          {
+            "Label": "Entity generated from Mermaid ERD: AllDataTypes",
+            "LanguageCode": 1033
+          }
+        ]
+      },
+      "OwnershipType": "UserOwned",
+      "IsActivity": false,
+      "HasNotes": false,
+      "HasActivities": false,
+      "Attributes": [
+        {
+          "LogicalName": "mmd_name",
+          "SchemaName": "mmd_Name",
+          "DisplayName": {
+            "LocalizedLabels": [
+              {
+                "Label": "Id",
+                "LanguageCode": 1033
+              }
+            ]
+          },
+          "RequiredLevel": {
+            "Value": "None",
+            "CanBeChanged": true,
+            "ManagedPropertyLogicalName": "canmodifyrequirementlevelsettings"
+          },
+          "Description": {
+            "LocalizedLabels": [
+              {
+                "Label": "Primary name field",
+                "LanguageCode": 1033
+              }
+            ]
+          },
+          "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+          "AttributeType": "String",
+          "AttributeTypeName": {
+            "Value": "StringType"
+          },
+          "MaxLength": 100,
+          "IsPrimaryName": true,
+          "FormatName": {
+            "Value": "Text"
+          }
+        }
+      ]
+    }
+  ],
+  "relationships": [],
+  "additionalColumns": [
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_single_line_text",
+        "SchemaName": "mmd_SingleLineText",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Single Line Text",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Single Line Text field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Text"
+        },
+        "MaxLength": 100
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_email",
+        "SchemaName": "mmd_Email",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Email",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Email field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Email"
+        },
+        "MaxLength": 100
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_phone",
+        "SchemaName": "mmd_Phone",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Phone",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Phone field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Phone"
+        },
+        "MaxLength": 50
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_ticker_symbol",
+        "SchemaName": "mmd_TickerSymbol",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Ticker Symbol",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Ticker Symbol field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "TickerSymbol"
+        },
+        "MaxLength": 10
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_url",
+        "SchemaName": "mmd_Url",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Url",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Url field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Url"
+        },
+        "MaxLength": 200
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_plain_text_area",
+        "SchemaName": "mmd_PlainTextArea",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Plain Text Area",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Plain Text Area field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "TextArea"
+        },
+        "MaxLength": 2000
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_rich_text",
+        "SchemaName": "mmd_RichText",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Rich Text",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Rich Text field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "RichText"
+        },
+        "MaxLength": 1048576
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_whole_number",
+        "SchemaName": "mmd_WholeNumber",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Whole Number",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Whole Number field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.IntegerAttributeMetadata",
+        "AttributeType": "Integer",
+        "AttributeTypeName": {
+          "Value": "IntegerType"
+        },
+        "MinValue": -2147483648,
+        "MaxValue": 2147483647
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_decimal_number",
+        "SchemaName": "mmd_DecimalNumber",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Decimal Number",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Decimal Number field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.DecimalAttributeMetadata",
+        "AttributeType": "Decimal",
+        "AttributeTypeName": {
+          "Value": "DecimalType"
+        },
+        "MinValue": -100000000000,
+        "MaxValue": 100000000000,
+        "Precision": 2
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_float_number",
+        "SchemaName": "mmd_FloatNumber",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Float Number",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Float Number field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.DecimalAttributeMetadata",
+        "AttributeType": "Decimal",
+        "AttributeTypeName": {
+          "Value": "DecimalType"
+        },
+        "MinValue": -100000000000,
+        "MaxValue": 100000000000,
+        "Precision": 2
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_language_code",
+        "SchemaName": "mmd_LanguageCode",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Language Code",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Language Code field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.IntegerAttributeMetadata",
+        "AttributeType": "Integer",
+        "AttributeTypeName": {
+          "Value": "IntegerType"
+        },
+        "MinValue": 1025,
+        "MaxValue": 1164
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_duration",
+        "SchemaName": "mmd_Duration",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Duration",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Duration field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.IntegerAttributeMetadata",
+        "AttributeType": "Integer",
+        "AttributeTypeName": {
+          "Value": "DurationType"
+        },
+        "Format": "Duration",
+        "MinValue": 0,
+        "MaxValue": 2147483647
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_time_zone",
+        "SchemaName": "mmd_TimeZone",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Time Zone",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Time Zone field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.IntegerAttributeMetadata",
+        "AttributeType": "Integer",
+        "AttributeTypeName": {
+          "Value": "IntegerType"
+        },
+        "MinValue": -1500,
+        "MaxValue": 1500
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_currency",
+        "SchemaName": "mmd_Currency",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Currency",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Currency field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.MoneyAttributeMetadata",
+        "AttributeType": "Money",
+        "AttributeTypeName": {
+          "Value": "MoneyType"
+        },
+        "MinValue": -922337203685477,
+        "MaxValue": 922337203685477,
+        "Precision": 4,
+        "PrecisionSource": 2
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_autonumber",
+        "SchemaName": "mmd_Autonumber",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Autonumber",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Autonumber field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Text"
+        },
+        "MaxLength": 100
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_yes_no",
+        "SchemaName": "mmd_YesNo",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Yes No",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Yes No field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.BooleanAttributeMetadata",
+        "AttributeType": "Boolean",
+        "AttributeTypeName": {
+          "Value": "BooleanType"
+        },
+        "OptionSet": {
+          "TrueOption": {
+            "Value": 1,
+            "Label": {
+              "LocalizedLabels": [
+                {
+                  "Label": "Yes",
+                  "LanguageCode": 1033
+                }
+              ]
+            }
+          },
+          "FalseOption": {
+            "Value": 0,
+            "Label": {
+              "LocalizedLabels": [
+                {
+                  "Label": "No",
+                  "LanguageCode": 1033
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_date_time",
+        "SchemaName": "mmd_DateTime",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Date Time",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Date Time field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata",
+        "AttributeType": "DateTime",
+        "AttributeTypeName": {
+          "Value": "DateTimeType"
+        },
+        "Format": "DateAndTime",
+        "DateTimeBehavior": {
+          "Value": "UserLocal"
+        }
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_date_only",
+        "SchemaName": "mmd_DateOnly",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Date Only",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Date Only field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.DateTimeAttributeMetadata",
+        "AttributeType": "DateTime",
+        "AttributeTypeName": {
+          "Value": "DateTimeType"
+        },
+        "Format": "DateOnly",
+        "DateTimeBehavior": {
+          "Value": "UserLocal"
+        }
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_image",
+        "SchemaName": "mmd_Image",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "Image",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "Image field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Text"
+        },
+        "MaxLength": 100
+      }
+    },
+    {
+      "entityLogicalName": "mmd_alldatatypes",
+      "columnMetadata": {
+        "LogicalName": "mmd_file",
+        "SchemaName": "mmd_File",
+        "DisplayName": {
+          "LocalizedLabels": [
+            {
+              "Label": "File",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "RequiredLevel": {
+          "Value": "None"
+        },
+        "Description": {
+          "LocalizedLabels": [
+            {
+              "Label": "File field",
+              "LanguageCode": 1033
+            }
+          ]
+        },
+        "@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+        "AttributeType": "String",
+        "AttributeTypeName": {
+          "Value": "StringType"
+        },
+        "FormatName": {
+          "Value": "Text"
+        },
+        "MaxLength": 100
+      }
+    }
+  ],
+  "metadata": {
+    "publisherPrefix": "mmd",
+    "generatedAt": "2025-07-26T08:29:45.270Z",
+    "source": "mermaid-erd"
+  }
+}
