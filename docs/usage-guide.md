@@ -44,7 +44,8 @@ erDiagram
 
 ### Supported Data Types
 
-|--------------|----------------|-------------|
+| Data Type | Dataverse Type | Description |
+|-----------|---------------|-------------|
 | `string` | `Edm.String` | Text field (max 100 chars by default) |
 | `int`, `integer` | `Edm.Int32` | 32-bit integer |
 | `decimal` | `Edm.Decimal` | Decimal number with precision |
@@ -110,7 +111,6 @@ npm start validate [options]
 
 **Example:**
 npm start validate -- -i my-erd.mmd
-```
 
 ## Solution Management
 
@@ -161,9 +161,9 @@ Shows current configuration status and required environment variables.
 - **Foreign keys**: Reference the related table (e.g., `customer_id` in Order table)
 - **Boolean fields**: Start with `is_` or `has_` (e.g., `is_active`)
 - **Date fields**: End with `_date` or `_time` (e.g., `created_date`)
-2. **Use dry runs**: Preview changes before applying to Dataverse
-4. **Version control**: Keep your Mermaid files in source control
-5. **Document changes**: Use meaningful commit messages for ERD updates
+- **Use dry runs**: Preview changes before applying to Datavese.
+- **Version control**: Keep your Mermaid files in source control
+- **Document changes**: Use meaningful commit messages for ERD updates
 - **Backup before changes**: Create solution backups
 - **Monitor creation**: Use verbose mode to track progress
 - **Validate results**: Check created entities in Dataverse maker portal
@@ -172,18 +172,18 @@ Shows current configuration status and required environment variables.
 
 ### Current Limitations
 
-1. **No update support**: The tool only creates new entities (no updates to existing)
-2. **Basic field types**: Limited to common Dataverse field types
-3. **No calculated fields**: Doesn't support calculated or rollup fields
-4. **No business rules**: Doesn't create business rules or workflows
-5. **No forms/views**: Only creates entities and fields, not UI components
+- **No update support**: The tool only creates new entities (no updates to existing)
+- **Basic field types**: Limited to common Dataverse field types
+- **No calculated fields**: Doesn't support calculated or rollup fields
+- **No business rules**: Doesn't create business rules or workflows
+- **No forms/views**: Only creates entities and fields, not UI components
 
 ### Workarounds
 
-1. **Manual updates**: Use Dataverse maker portal for entity updates
-2. **Custom fields**: Add specialized fields manually after creation
-3. **Business logic**: Implement business rules separately
-4. **User interface**: Design forms and views in Power Apps
+- **Manual updates**: Use Dataverse maker portal for entity updates
+- **Custom fields**: Add specialized fields manually after creation
+- **Business logic**: Implement business rules separately
+- **User interface**: Design forms and views in Power Apps
 
 ## Troubleshooting
 
