@@ -7,25 +7,31 @@ graph TB
     A[Mermaid ERD File] --> B[CLI Interface]
     B --> C[ERD Parser]
     C --> D[Schema Generator]
-    D --> E[Dataverse Client]
-    E --> F[Microsoft Dataverse]
+    D --> E[Relationship Validator]
+    E --> F[Dataverse Client]
+    F --> G[Microsoft Dataverse]
     
-    B --> G[Interactive Prompts]
-    G --> H[Configuration]
-    H --> E
+    B --> H[Interactive Prompts]
+    H --> I[Configuration]
+    I --> F
     
-    E --> I[Authentication]
-    I --> J[Microsoft Entra ID]
+    F --> J[Authentication]
+    J --> K[Microsoft Entra ID]
     
     subgraph "Core Components"
         C
         D
         E
+        F
     end
     
     subgraph "External Services"
-        F
-        J
+        G
+        K
+    end
+    
+    subgraph "Validation Layer"
+        E
     end
 ```
 
@@ -37,6 +43,7 @@ sequenceDiagram
     participant CLI
     participant Parser
     participant Generator
+    participant Validator
     participant Client
     participant Dataverse
     participant EntraID
@@ -47,7 +54,9 @@ sequenceDiagram
     CLI->>Parser: Parse ERD file
     Parser->>CLI: Return structured data
     CLI->>Generator: Generate Dataverse schema
-    Generator->>CLI: Return API-ready metadata
+    Generator->>Validator: Validate relationships
+    Validator->>Generator: Return validation results
+    Generator->>CLI: Return API-ready metadata with warnings
     CLI->>Client: Create entities with schema
     Client->>EntraID: Authenticate
     EntraID->>Client: Return access token
@@ -56,7 +65,7 @@ sequenceDiagram
     Client->>Dataverse: Create relationships
     Dataverse->>Client: Confirm creation
     Client->>CLI: Report results
-    CLI->>User: Display summary
+    CLI->>User: Display summary with validation warnings
 ```
 
 ## Component Relationships
@@ -84,6 +93,14 @@ classDiagram
         +mapFieldTypes()
     }
     
+    class RelationshipValidator {
+        +validateRelationships()
+        +detectMultipleParental()
+        +detectCircularCascades()
+        +detectSelfReferences()
+        +generateWarnings()
+    }
+    
     class DataverseClient {
         +authenticate()
         +createSolution()
@@ -96,5 +113,6 @@ classDiagram
     CLIInterface --> SchemaGenerator
     CLIInterface --> DataverseClient
     ERDParser --> SchemaGenerator
+    SchemaGenerator --> RelationshipValidator
     SchemaGenerator --> DataverseClient
 ```

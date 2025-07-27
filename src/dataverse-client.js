@@ -144,16 +144,64 @@ export class DataverseClient {
     console.log(`Creating relationship: ${relationshipMetadata.SchemaName}`);
     
     try {
-      let endpoint;
-      if (relationshipMetadata['@odata.type'].includes('OneToMany')) {
-        endpoint = 'RelationshipDefinitions/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata';
-      } else if (relationshipMetadata['@odata.type'].includes('ManyToMany')) {
-        endpoint = 'RelationshipDefinitions/Microsoft.Dynamics.CRM.ManyToManyRelationshipMetadata';
-      } else {
-        throw new Error(`Unsupported relationship type: ${relationshipMetadata['@odata.type']}`);
+      // Clean the metadata for API (remove display-only properties)
+      const cleanMetadata = { ...relationshipMetadata };
+      delete cleanMetadata.RelationshipType; // This is for display only, not for API
+      delete cleanMetadata.DisplayRelationshipType; // This is for display only, not for API
+      
+      // ✅ Get the real primary key attribute dynamically
+      if (cleanMetadata.ReferencedEntity) {
+        console.log('🔍 Getting real primary key attribute...');
+        try {
+          const meta = await this.makeRequest(
+            'GET',
+            `EntityDefinitions(LogicalName='${cleanMetadata.ReferencedEntity}')?$select=PrimaryIdAttribute,LogicalName`
+          );
+          const actualPrimaryKey = meta.PrimaryIdAttribute;
+          cleanMetadata.ReferencedAttribute = actualPrimaryKey;
+          
+          // Also update the Lookup LogicalName to match
+          if (cleanMetadata.Lookup) {
+            cleanMetadata.Lookup.LogicalName = actualPrimaryKey;
+          }
+          
+          console.log(`✅ Using actual PrimaryIdAttribute: ${actualPrimaryKey}`);
+        } catch (pkError) {
+          console.warn(`⚠️  Could not fetch PrimaryIdAttribute, using default:`, pkError.message);
+        }
       }
+      
+      // ✅ Diagnostic check: Verify ReferencedAttribute exists
+      if (cleanMetadata.ReferencedEntity && cleanMetadata.ReferencedAttribute) {
+        console.log('🔍 ReferencedAttribute exists? Checking...');
+        try {
+          const attributes = await this.makeRequest(
+            'GET',
+            `EntityDefinitions(LogicalName='${cleanMetadata.ReferencedEntity}')/Attributes`
+          );
 
-      const response = await this.makeRequest('POST', endpoint, relationshipMetadata);
+          const found = attributes.value.find(attr =>
+            attr.LogicalName === cleanMetadata.ReferencedAttribute
+          );
+
+          if (!found) {
+            throw new Error(`ReferencedAttribute ${cleanMetadata.ReferencedAttribute} not found on ${cleanMetadata.ReferencedEntity}`);
+          }
+          
+          console.log(`✅ ReferencedAttribute ${cleanMetadata.ReferencedAttribute} verified on ${cleanMetadata.ReferencedEntity}`);
+        } catch (attrError) {
+          console.error(`❌ Failed to verify ReferencedAttribute:`, attrError.response?.data || attrError.message);
+          throw attrError;
+        }
+      }
+      
+      // Debug: Always log the cleaned payload to help with debugging
+      console.log('🔍 Relationship payload being sent to API:', JSON.stringify(cleanMetadata, null, 2));
+      
+      // ✅ Use the plain RelationshipDefinitions endpoint (not the typed sub-path)
+      const endpoint = 'RelationshipDefinitions';
+
+      const response = await this.makeRequest('POST', endpoint, cleanMetadata);
       console.log(`✅ Relationship created: ${relationshipMetadata.SchemaName}`);
       return response;
     } catch (error) {
@@ -235,13 +283,30 @@ export class DataverseClient {
    * @param {string} columnLogicalName - Column logical name
    * @returns {Promise<boolean>} True if column exists
    */
+  /**
+   * Check if a column exists on an entity
+   * @param {string} entityLogicalName - Entity logical name
+   * @param {string} columnLogicalName - Column logical name
+   * @returns {Promise<boolean>} True if column exists
+   */
   async columnExists(entityLogicalName, columnLogicalName) {
     try {
+      // Check by LogicalName first
       await this.makeRequest('GET', `EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes(LogicalName='${columnLogicalName}')`);
       return true;
     } catch (error) {
       if (error.response?.status === 404) {
-        return false;
+        // If not found by LogicalName, check by SchemaName (case insensitive search)
+        try {
+          const attributes = await this.makeRequest('GET', `EntityDefinitions(LogicalName='${entityLogicalName}')/Attributes?$select=LogicalName,SchemaName`);
+          const found = attributes.value.find(attr => 
+            attr.LogicalName.toLowerCase() === columnLogicalName.toLowerCase() ||
+            attr.SchemaName.toLowerCase() === columnLogicalName.toLowerCase()
+          );
+          return !!found;
+        } catch (searchError) {
+          return false;
+        }
       }
       throw error;
     }
@@ -393,6 +458,9 @@ export class DataverseClient {
     // Get the publisher (or create if allowed)
     const publisher = await this.getOrCreatePublisher(publisherPrefix, allowCreatePublisher);
     
+    // Debug: Log publisher details
+    console.log('🔍 Publisher details:', JSON.stringify(publisher, null, 2));
+    
     // Create solution metadata
     const solutionMetadata = {
       uniquename: solutionName,
@@ -403,6 +471,7 @@ export class DataverseClient {
     };
 
     console.log(`Creating new solution: ${solutionName} with publisher: ${publisher.friendlyname}`);
+    console.log('🔍 Solution metadata:', JSON.stringify(solutionMetadata, null, 2));
     return await this.createSolution(solutionMetadata);
   }
 
@@ -466,7 +535,17 @@ export class DataverseClient {
       console.log(`Creating new publisher with prefix: ${prefix}`);
       const createdPublisher = await this.makeRequest('POST', 'publishers', publisherMetadata);
       console.log(`✅ Publisher created: ${prefix}`);
-      return createdPublisher;
+      
+      // Debug: Check what's in the response
+      console.log('🔍 Publisher creation response:', JSON.stringify(createdPublisher, null, 2));
+      
+      // Query for the created publisher to get the full data including publisherid
+      const newPublisher = await this.getPublisherByPrefix(prefix);
+      if (!newPublisher) {
+        throw new Error(`Failed to retrieve created publisher with prefix '${prefix}'`);
+      }
+      
+      return newPublisher;
 
     } catch (error) {
       console.error(`Failed to get/create publisher ${prefix}:`, error.response?.data || error.message);
@@ -722,6 +801,14 @@ export class DataverseClient {
       if (schema.relationships && schema.relationships.length > 0) {
         console.log('\n📎 Creating relationships...');
         
+        // ✅ Publish customizations first to ensure entities are fully provisioned
+        console.log('📤 Publishing customizations before creating relationships...');
+        await this.publishCustomizations();
+        
+        // ✅ Wait longer for entities to be fully created and available (increased from 5s to 15s)
+        console.log('⏳ Waiting for entities to be fully provisioned...');
+        await this.sleep(15000);
+        
         for (const relationship of schema.relationships) {
           try {
             const createdRelationship = await this.createRelationship(relationship);
@@ -778,3 +865,5 @@ export class DataverseClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
+
+export default DataverseClient;

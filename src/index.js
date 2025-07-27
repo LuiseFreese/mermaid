@@ -54,6 +54,10 @@ program
   .option('--dry-run', 'Preview the conversion without creating entities')
   .option('--verbose', 'Show detailed output')
   .option('--publisher-prefix <prefix>', 'Custom publisher prefix (default: mmd)', 'mmd')
+  .option('--no-validation', 'Skip relationship validation (not recommended)')
+  .option('--safe-mode', 'Use safe mode: all relationships as lookups, no cascade deletes')
+  .option('--all-referential', 'Make all relationships referential/lookup only (no cascade deletes)')
+  .option('--non-interactive', 'Run without interactive prompts (use automatic conflict resolution)')
   .action(async (erdFile, options) => {
     try {
       // If no erdFile provided, prompt for it
@@ -81,6 +85,9 @@ program
       
       // Set the input file and call the main convert function
       options.input = erdFile;
+      options.enableValidation = !options.noValidation; // Convert --no-validation to enableValidation
+      options.interactive = !options.nonInteractive; // Convert --non-interactive to interactive
+      options.allReferential = options.allReferential || options.safeMode; // Safe mode implies all referential
       await convertMermaidToDataverse(options);
     } catch (error) {
       console.error('❌ Conversion failed:', error.message);
@@ -354,14 +361,21 @@ async function convertMermaidToDataverse(options) {
 
   // Generate Dataverse schema
   console.log('🏗️  Generating Dataverse schema...');
-  const schemaGenerator = new DataverseSchemaGenerator();
   
-  // Set custom publisher prefix if provided
-  if (options.publisherPrefix) {
-    schemaGenerator.publisherPrefix = options.publisherPrefix;
-  }
+  // Configure schema generator with validation options
+  const schemaGeneratorOptions = {
+    enableValidation: options.enableValidation !== false, // Default to true
+    safeMode: options.safeMode || false,
+    allReferential: options.allReferential || false,
+    interactive: options.interactive !== false // Default to true
+  };
   
-  const schema = schemaGenerator.generateSchema(erdData);
+  const schemaGenerator = new DataverseSchemaGenerator(
+    options.publisherPrefix || 'mmd',
+    schemaGeneratorOptions
+  );
+  
+  const schema = await schemaGenerator.generateSchema(erdData);
 
   // Output schema to file if requested
   if (options.output) {
@@ -413,9 +427,91 @@ async function convertMermaidToDataverse(options) {
     }
 
     console.log('\n🔗 Relationships to be created:');
-    schema.relationships.forEach(rel => {
-      console.log(`   - ${rel.SchemaName} (${rel.RelationshipType})`);
+    
+    // Group relationships by type for better display
+    const oneToManyRels = schema.relationships.filter(rel => rel.RelationshipType === 'OneToMany');
+    const manyToManyRels = schema.relationships.filter(rel => rel.RelationshipType === 'ManyToMany');
+    
+    // Detect junction entities (entities that appear in multiple relationships as the "many" side)
+    const junctionEntities = new Set();
+    const entityRelationshipCount = new Map();
+    
+    oneToManyRels.forEach(rel => {
+      const referencingEntity = rel.ReferencingEntity.replace(/^mmd_/, '');
+      entityRelationshipCount.set(referencingEntity, (entityRelationshipCount.get(referencingEntity) || 0) + 1);
     });
+    
+    // Junction entities typically have 2+ incoming relationships AND have junction-like names
+    const junctionPatterns = /supplier|preference|project|assignment|role|mapping|link|item|detail|line/i;
+    
+    entityRelationshipCount.forEach((count, entity) => {
+      if (count >= 2 && junctionPatterns.test(entity)) {
+        junctionEntities.add(entity);
+      }
+    });
+    
+    // Display One-to-Many relationships
+    if (oneToManyRels.length > 0) {
+      console.log('\n   📊 One-to-Many Relationships (Direct):');
+      oneToManyRels.forEach(rel => {
+        const fromEntity = rel.ReferencedEntity.replace(/^mmd_/, '');
+        const toEntity = rel.ReferencingEntity.replace(/^mmd_/, '');
+        const isJunction = junctionEntities.has(toEntity);
+        const relationshipType = rel.CascadeConfiguration?.Delete === 'RemoveLink' ? 'Lookup' : 'Parental';
+        const icon = isJunction ? '🔗' : '📋';
+        
+        console.log(`      ${icon} ${fromEntity} → ${toEntity} (${relationshipType}${isJunction ? ', Junction Entity' : ''})`);
+      });
+    }
+    
+    // Display Many-to-Many patterns detected through junction entities
+    if (junctionEntities.size > 0) {
+      console.log('\n   🔄 Many-to-Many Relationships (via Junction Entities):');
+      
+      // Group relationships by junction entity to show the many-to-many pattern
+      junctionEntities.forEach(junctionEntity => {
+        const incomingRels = oneToManyRels.filter(rel => 
+          rel.ReferencingEntity.replace(/^mmd_/, '') === junctionEntity
+        );
+        
+        if (incomingRels.length >= 2) {
+          const entities = incomingRels.map(rel => rel.ReferencedEntity.replace(/^mmd_/, ''));
+          console.log(`      🔗 ${entities.join(' ↔ ')} (via ${junctionEntity})`);
+          
+          // Show the individual relationships that form the many-to-many
+          incomingRels.forEach(rel => {
+            const fromEntity = rel.ReferencedEntity.replace(/^mmd_/, '');
+            console.log(`         └─ ${fromEntity} → ${junctionEntity}`);
+          });
+        }
+      });
+    }
+    
+    // Display true many-to-many relationships (if any are actually generated)
+    if (manyToManyRels.length > 0) {
+      console.log('\n   🔄 True Many-to-Many Relationships:');
+      manyToManyRels.forEach(rel => {
+        console.log(`      🔗 ${rel.DisplayRelationshipType} (via ${rel.IntersectEntityName})`);
+      });
+    }
+    
+    // Show regular one-to-many relationships separately
+    const regularOneToMany = oneToManyRels.filter(rel => {
+      const toEntity = rel.ReferencingEntity.replace(/^mmd_/, '');
+      return !junctionEntities.has(toEntity);
+    });
+    
+    if (regularOneToMany.length > 0 && junctionEntities.size > 0) {
+      console.log('\n   📋 Regular One-to-Many Relationships:');
+      regularOneToMany.forEach(rel => {
+        const fromEntity = rel.ReferencedEntity.replace(/^mmd_/, '');
+        const toEntity = rel.ReferencingEntity.replace(/^mmd_/, '');
+        const relationshipType = rel.CascadeConfiguration?.Delete === 'RemoveLink' ? 'Lookup' : 'Parental';
+        console.log(`      📋 ${fromEntity} → ${toEntity} (${relationshipType})`);
+      });
+    }
+    
+    console.log(`\n   📊 Total: ${oneToManyRels.length} one-to-many, ${junctionEntities.size} many-to-many patterns detected`);
 
     console.log('\n✅ Dry run completed. Use without --dry-run to create entities in Dataverse.');
     return;

@@ -1,0 +1,49 @@
+erDiagram
+
+  EVENT {
+    string event_id PK "Primary key"
+    string title "Event title"
+    date start_date "Start date"
+    date end_date "End date"
+    string location "Location"
+  }
+
+  VOLUNTEER {
+    string volunteer_id PK "Primary key"
+    string full_name "Full name"
+    string email "Email address"
+    string phone "Phone number"
+  }
+
+  VOLUNTEER_ASSIGNMENT {
+    string assignment_id PK "Primary key"
+    string event_id FK "Linked event"
+    string volunteer_id FK "Assigned volunteer"
+    string role "Assigned role"
+    datetime check_in_time "Check-in timestamp"
+  }
+
+  ORGANIZER {
+    string organizer_id PK "Primary key"
+    string name "Organizer name"
+    string contact_email "Email address"
+  }
+
+  SPONSOR {
+    string sponsor_id PK "Primary key"
+    string name "Sponsor name"
+    decimal contribution_amount "Sponsorship value"
+  }
+
+  EVENT_SPONSOR {
+    string event_sponsor_id PK "Junction table key"
+    string event_id FK "Linked event"
+    string sponsor_id FK "Linked sponsor"
+  }
+
+  ORGANIZER ||--o{ EVENT : organizes
+  EVENT ||--o{ VOLUNTEER_ASSIGNMENT : hosts
+  VOLUNTEER ||--o{ VOLUNTEER_ASSIGNMENT : assigned_to
+
+  EVENT ||--o{ EVENT_SPONSOR : funded_by
+  SPONSOR ||--o{ EVENT_SPONSOR : funds

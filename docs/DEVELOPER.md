@@ -123,7 +123,41 @@ const typeMapping = {
 };
 ```
 
-### 4. Dataverse Client (`src/dataverse-client.js`)
+### 4. Relationship Validator (`src/relationship-validator.js`)
+
+**Purpose**: Validate ERD relationships and detect potential Dataverse conflicts
+
+**Key Features**:
+- Multiple parental relationship detection (validates Dataverse constraint: max 1 parental per entity)
+- Circular cascade delete detection  
+- Self-reference validation
+- Missing primary key validation
+- Naming conflict detection
+
+**Current Behavior**:
+Since the tool defaults to referential relationships, the validator typically finds no parental relationship conflicts. However, it's designed to catch issues if:
+- Future enhancements allow parental relationship specification
+- Configuration changes create parental relationships
+- ERD structure has inherent logical issues
+
+**Validation Rules**:
+```javascript
+const validationRules = {
+  multipleParentalRelationships: true,  // Usually passes (no parental rels created)
+  circularCascadeDeletes: true,         // Usually passes (no cascade deletes)
+  selfReferences: true,                 // Validates ERD structure
+  missingPrimaryKeys: true,            // Validates ERD completeness
+  namingConflicts: true                // Validates unique naming
+};
+```
+
+**Integration**:
+- Called automatically by Schema Generator after relationship generation
+- Returns validation results with warnings and suggestions
+- Supports interactive and non-interactive modes
+- Can be disabled with `--no-validation` flag
+
+### 5. Dataverse Client (`src/dataverse-client.js`)
 
 **Purpose**: Handle all Dataverse Web API interactions
 

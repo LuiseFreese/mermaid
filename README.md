@@ -1,17 +1,53 @@
 # Mermaid to Dataverse Converter
 
-A tool that reads Mermaid ERD diagrams and creates corresponding tables, fields, and relationships in Microsoft Dataverse.
+A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and creates corresponding tables, fields, and relationships in Microsoft Dataverse.
+
+## Table of Contents
+- [Features](#features)
+- [Setup](#setup)
+- [Usage](#usage)  
+- [Relationship Types](#important-relationship-types)
+- [Relationship Validation](#relationship-validation)
+- [Example ERD Files](#example-erd-files)
+- [Developer Documentation](#developer-documentation)
 
 ## Features
 
-- **Solution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
+- **🔧 Solution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
+- **👤 Publisher Management**: List, select, and manage Dataverse publishers for solutions  
+- **🏗️ Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
+- **🔗 Relationship Management**: Create relationships between entities with proper cardinality
+- **🛡️ Relationship Validation**: Detect and warn about conflicting relationships (multiple parental, circular cascades)
+- **⚡ Safe Mode**: All-referential mode to prevent cascade delete conflicts
+- **🔄 Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
+- **🔐 Authentication**: Handle authentication with Microsoft Entra ID (automated setup)
+- **📋 Type Support**: Support for various field types, constraints, and choice fields
+- **🎯 Interactive & Non-Interactive**: CLI supports both guided prompts and automation-friendly modes### CLI Options
+
+```bash
+# Full command syntax
+node src/index.js create [file] [options]
+
+Core Options:
+  -s, --solution <name>           Solution name to create entities in
+  -p, --publisher-prefix <prefix> Publisher prefix (2-8 characters)
+  --dry-run                       Preview without creating entities
+  --verbose                       Show detailed output
+
+Advanced Options:
+  --no-validation                 Skip relationship validation (not recommended)
+  --safe-mode                     Use safe mode: all relationships as lookups
+  --all-referential               Make all relationships referential/lookup only
+  --non-interactive               Run without interactive prompts
+  --list-publishers               List available publishers before creating solution
+  --no-create-publisher           Do not create publisher if it doesn't exist
+```ution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
 - **Publisher Management**: List, select, and manage Dataverse publishers for solutions
 - **Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
 - **Relationship Management**: Create relationships between entities with proper cardinality
 - **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
 - **Authentication**: Handle authentication with Microsoft Entra ID
 - **Type Support**: Support for various field types and constraints
-- **Solution Integration**: All entities and components are created within a named solution for better organization
 
 ## Setup
 
@@ -36,11 +72,10 @@ Before you begin, make sure you have:
 
 ### Quick Setup (Automated)
 
-**NEW**: We now have a fully automated setup script that handles the entire "chicken-and-egg" problem of Dataverse authentication!
+The script automatically
 
-The script automatically:
-- Creates Azure app registration and service principal
-- Generates client secrets and updates your .env file  
+- Creates Entra Id app registration and service principal
+- Generates client secrets and updates your `.env` file  
 - Creates the Dataverse Application User with proper permissions
 - Handles the bootstrap authentication problem seamlessly
 - Tests the complete setup to ensure everything works
@@ -66,15 +101,7 @@ node scripts/setup.cjs
 
 That's it! The script handles everything else automatically.
 
-**What the script does:**
-- Detects if you have existing app registrations or creates new ones
-- Creates Azure service principal with proper Dataverse permissions
-- Solves the "chicken-and-egg" authentication problem using admin fallback
-- Creates Dataverse Application User with System Administrator role
-- Updates your .env file with generated credentials
-- Tests the complete authentication flow
-
-For more details about the authentication setup and troubleshooting, see [scripts/README.md](scripts/README.md).
+💡 For more details about the authentication setup and troubleshooting, see [scripts/README.md](scripts/README.md).
 
 ### Alternative Setup (Manual)
 
@@ -147,25 +174,17 @@ npm run create
 ```
 
 This will:
-1. 📝 **Prompt for solution name** - Enter a descriptive name for your Dataverse solution
-2. 🏷️ **Prompt for publisher prefix** - Enter 2-8 characters unique to your organization  
-3. ✅ **Show configuration summary** - Review your settings before proceeding
-4. 🚀 **Create the solution** - Build entities and relationships in Dataverse
+1. **Prompt for solution name** - Enter a descriptive name for your Dataverse solution
+2. **Prompt for publisher prefix** - Enter 2-8 characters unique to your organization  
+3. **Show configuration summary** - Review your settings before proceeding
+4. **Create the solution** - Build entities and relationships in Dataverse
 
 ### Solution Naming
 
-The tool supports user-friendly solution names with spaces and special characters:
+The tool supports user-friendly solution names with spaces and special characters like `Customer Management System` amd handles the technical requirements:
 
-✅ **Good Solution Names:**
-- "Customer Management System"
-- "Inventory Tracker 2025"  
-- "HR Portal - Employee Data"
-
-The tool automatically handles the technical requirements:
 - **Display Name**: Shown exactly as you enter it in Dataverse (e.g., "Customer Management System")
 - **Technical Name**: Auto-generated API-safe name using PascalCase (e.g., "CustomerManagementSystem")
-
-This gives you the best of both worlds - readable names for users and API-compliant names for the system.
 
 ### Available npm Scripts
 
@@ -250,22 +269,83 @@ This script automatically removes:
 - Temporary .env files (`.env.generated`, `.env.updated`)
 - Keeps only essential examples (`ecommerce-erd.mmd`, `hr-system-erd.mmd`)
 
+## Important: Relationship Types
+
+⚠️ **Default Behavior**: All relationships are created as **referential (lookup)** relationships by default.
+
+Mermaid ERD syntax doesn't distinguish between parental and referential relationships, so this tool defaults to the safer option that prevents cascade delete conflicts. This means:
+
+- ✅ **All ERDs will create successfully** without "multiple parental relationships" errors
+- ✅ **Data references are maintained** but without automatic cascade delete
+- ⚠️ **Manual enhancement needed** if you want parental relationships with cascade delete
+
+**📖 Read the full explanation**: [Relationship Types Documentation](docs/RELATIONSHIP_TYPES.md)
+
+This covers:
+- Why we default to referential relationships
+- How to manually configure parental relationships in Dataverse
+- Best practices for relationship design
+- Migration guide for existing users
+
+## Relationship Validation
+
+The tool includes built-in validation to detect potential ERD structure issues:
+
+### Automatic Detection
+- **Self-References**: Identifies entities that reference themselves
+- **Missing Primary Keys**: Ensures all entities have proper primary key definitions
+- **Orphaned Entities**: Detects entities without any relationships (informational)
+- **ERD Syntax Issues**: Validates proper Mermaid ERD format
+
+### Validation Options
+```bash
+# Run with validation (default)
+node src/index.js create examples/ecommerce-erd.mmd
+
+# Skip validation (not recommended)
+node src/index.js create examples/ecommerce-erd.mmd --no-validation
+
+# Safe mode - explicitly ensures all relationships as lookups
+node src/index.js create examples/ecommerce-erd.mmd --safe-mode
+
+# Non-interactive mode for automation
+node src/index.js create examples/ecommerce-erd.mmd --non-interactive
+```
+
+### Validation Output Example
+```
+🔍 Validating ERD structure...
+✅ All entities have primary keys
+✅ No self-references detected
+ℹ️  All relationships will be created as referential (lookup) by default
+✅ Validation completed successfully
+```
+
+**Note**: Since all relationships are created as referential by default, there are no cascade delete conflicts to detect. The validation focuses on ERD structure and syntax issues.
+
+## Example ERD Files
+
+The `examples/` directory contains ready-to-use Mermaid ERD files:
+
+- **`ecommerce-erd.mmd`** - E-commerce system with customers, orders, and products
+- **`hr-system-erd.mmd`** - HR system with employees, departments, and projects  
+- **`event-erd.mmd`** - Event management with venues, events, and attendees
+- **`choice-field-test.mmd`** - Demonstrates choice fields and global choice sets
+- **`ultimate-datatype-test.mmd`** - Comprehensive field type examples
+
+### Quick Test
+```bash
+# Try the e-commerce example
+node src/index.js create examples/ecommerce-erd.mmd --dry-run
+
+# Test relationship validation with complex example
+node src/index.js create examples/event-erd.mmd --verbose
+```
+
 ## Developer Documentation
 
-For developers who want to understand, maintain, or contribute to this project:
-
-📖 **[Developer Documentation](docs/DEVELOPER.md)** - Comprehensive technical guide covering:
-- Architecture overview and design decisions
-- Component breakdown and data flow
-- Authentication strategy and security considerations  
-- Field type mapping and extension points
-- Testing strategy and contributing guidelines
-- Troubleshooting and performance optimization
+For developers who want to understand, maintain, or contribute to this project: [Developer Documentation](docs/DEVELOPER.md) - Comprehensive technical guide 
 
 ## Contributing
 
-We welcome contributions! Please see the [Developer Documentation](docs/DEVELOPER.md) for:
-- Development setup and coding standards
-- Pull request process and code review guidelines
-- How to add new field types and features
-- Testing requirements and best practices
+Contributions welcome!
