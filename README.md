@@ -15,6 +15,8 @@ A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and crea
 ### CLI Options
 
 Core Options:
+
+```
   -s, --solution <name>           Solution name to create entities in
   -p, --publisher-prefix <prefix> Publisher prefix (2-8 characters)
   --dry-run                       Preview without creating entities
@@ -24,6 +26,8 @@ Core Options:
 - **Relationship Management**: Create relationships between entities with proper cardinality
 - **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
 - **Authentication**: Handle authentication with Microsoft Entra ID
+
+
 ### Prerequisites
 
 Before you begin, make sure you have:
@@ -70,8 +74,6 @@ node scripts/setup.cjs
 That's it! The script handles everything else automatically.
 
 💡 For more details about the authentication setup and troubleshooting, see [scripts/README.md](scripts/README.md).
-
-
 
 ## Supported Mermaid ERD Syntax
 

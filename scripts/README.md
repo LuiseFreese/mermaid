@@ -7,15 +7,15 @@
 This is the main script that handles everything you need for Dataverse authentication and Application User setup.
 
 **What it does:**
-- ✅ **App Registration Management** - Creates or updates Azure app registrations automatically
-- ✅ **Service Principal Creation** - Creates Azure service principal with proper permissions  
-- ✅ **Client Secret Generation** - Generates fresh client secrets automatically
-- ✅ **Application User Setup** - Creates Dataverse Application User with System Administrator role
-- ✅ **Automatic .env Updates** - Updates your `.env` file with new credentials automatically
-- ✅ **Dual Authentication** - Handles both service principal and admin authentication
-- ✅ **Chicken-and-Egg Problem Solving** - Bootstraps authentication from scratch
-- ✅ **Authentication Testing** - Tests the complete setup by calling Dataverse APIs
-- ✅ **Idempotent Operation** - Safe to run multiple times, won't create duplicates
+- **App Registration Management** - Creates or updates Azure app registrations automatically
+- **Service Principal Creation** - Creates Azure service principal with proper permissions  
+- **Client Secret Generation** - Generates fresh client secrets automatically
+- **Application User Setup** - Creates Dataverse Application User with System Administrator role
+- **Automatic .env Updates** - Updates your `.env` file with new credentials automatically
+- **Dual Authentication** - Handles both service principal and admin authentication
+- **Chicken-and-Egg Problem Solving** - Bootstraps authentication from scratch
+- **Authentication Testing** - Tests the complete setup by calling Dataverse APIs
+- **Idempotent Operation** - Safe to run multiple times, won't create duplicates
 
 **Usage:**
 ```bash
@@ -33,9 +33,6 @@ This script solves the classic Dataverse authentication bootstrap problem:
 - **Problem**: You need a Service Principal to authenticate, but you need to authenticate to create the Application User for that Service Principal!
 - **Solution**: The script uses dual authentication - admin fallback (Azure CLI) to bootstrap the first Application User, then service principal authentication for all future operations.
 
-## Archive Folder
-
-The `archive/` folder contains development iterations and alternative approaches. These are preserved for reference but **use `setup.cjs` for all new setups**.
 
 ## Setup Process
 
@@ -45,19 +42,6 @@ The `archive/` folder contains development iterations and alternative approaches
 4. **Creates Application User** - Creates Dataverse Application User with proper permissions
 5. **Tests Everything** - Verifies the complete setup by calling Dataverse publishers endpoint
 
-## Troubleshooting
-
-**"Application not found" errors:**
-- The script automatically handles this by creating new app registrations
-
-**"Invalid client secret" errors:**
-- The script automatically generates fresh secrets to resolve this
-
-**"Service principal authentication failed":**
-- This is expected for first-time setup - the script automatically falls back to admin authentication
-
-**Azure AD propagation delays:**
-- The script includes automatic waiting for new service principals to propagate
 
 ## Security
 

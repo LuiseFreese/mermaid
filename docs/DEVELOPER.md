@@ -311,16 +311,33 @@ const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choic
 
 ### Supported Mermaid Types → Dataverse Types
 
-| Mermaid Type | Dataverse Type | Notes |
-|-------------|----------------|-------|
-| `string` | `StringAttributeMetadata` | Default length: 100 chars |
-| `int` | `IntegerAttributeMetadata` | 32-bit signed integer |
-| `decimal` | `DecimalAttributeMetadata` | Precision: 10, Scale: 2 |
-| `bool` | `BooleanAttributeMetadata` | True/False values |
-| `datetime` | `DateTimeAttributeMetadata` | UTC timezone |
-| `guid` | `UniqueidentifierAttributeMetadata` | UUID format |
-| `money` | `MoneyAttributeMetadata` | Currency with precision |
-| `choice` | `PicklistAttributeMetadata` | Options defined inline |
+> **Note:** The tool supports all Dataverse field types except choice/picklist, because Mermaid syntax does not support specifying choice fields or their options. For all other types, use the Dataverse logical type name as the Mermaid field type.
+
+| Mermaid Type / Alias      | Dataverse Type                | Status      | Notes |
+|--------------------------|-------------------------------|-------------|-------|
+| `string`                 | StringAttributeMetadata       | Supported   | Single line of text (plain text) |
+| `textarea`               | MemoAttributeMetadata         | Supported   | Text area |
+| `richtext`               | MemoAttributeMetadata         | Supported   | Rich text |
+| `email`                  | EmailAttributeMetadata        | Supported   | Email address |
+| `phone`                  | PhoneAttributeMetadata        | Supported   | Phone number |
+| `ticker`                 | TickerSymbolAttributeMetadata | Supported   | Ticker symbol |
+| `url`                    | UrlAttributeMetadata          | Supported   | URL |
+| `multiline`              | MemoAttributeMetadata         | Supported   | Multiple lines of text |
+| `int`, `whole`           | IntegerAttributeMetadata      | Supported   | Whole number |
+| `decimal`                | DecimalAttributeMetadata      | Supported   | Decimal |
+| `float`                  | DoubleAttributeMetadata       | Supported   | Float |
+| `languagecode`           | LanguageCodeAttributeMetadata | Supported   | Language code |
+| `duration`               | DurationAttributeMetadata     | Supported   | Duration |
+| `timezone`               | TimeZoneAttributeMetadata     | Supported   | Time zone |
+| `datetime`               | DateTimeAttributeMetadata     | Supported   | Date and Time |
+| `dateonly`               | DateTimeAttributeMetadata     | Supported   | Date Only |
+| `money`                  | MoneyAttributeMetadata        | Supported   | Currency |
+| `autonumber`             | AutoNumberAttributeMetadata   | Supported   | Autonumber |
+| `file`                   | FileAttributeMetadata         | Supported   | File uploads |
+| `image`                  | ImageAttributeMetadata        | Supported   | Image fields |
+| `lookup`                 | LookupAttributeMetadata       | Supported   | Explicit relationship definition |
+| `choice`                 | PicklistAttributeMetadata     | Not Supported | Mermaid syntax does not support specifying options.
+
 
 ### Constraint Handling
 
@@ -334,9 +351,7 @@ const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choic
 ### Future Type Support
 
 **Planned Additions**:
-- `multiline` → `MemoAttributeMetadata`
-- `file` → `FileAttributeMetadata`
-- `image` → `ImageAttributeMetadata`
+
 - `lookup` → Explicit relationship definition
 
 ## Testing Strategy
@@ -378,17 +393,6 @@ describe('DataverseSchemaGenerator', () => {
 });
 ```
 
-### Test Data Management
-
-**Test Environments**:
-- **Development**: Personal Dataverse environment
-- **CI/CD**: Automated test environment
-- **Staging**: Pre-production validation
-
-**Data Cleanup**:
-- Automated cleanup scripts
-- Test-specific publisher prefixes
-- Solution-based isolation
 
 ## Contributing
 
@@ -416,70 +420,6 @@ describe('DataverseSchemaGenerator', () => {
    npm test
    ```
 
-### Code Style Guidelines
-
-**JavaScript/Node.js Standards**:
-- ES6+ modules (import/export)
-- Async/await for asynchronous operations
-- JSDoc comments for public functions
-- Descriptive variable and function names
-
-**Error Handling**:
-```javascript
-// Good: Specific error handling
-try {
-  const result = await dataverseClient.createEntity(metadata);
-  console.log(`✅ Entity created: ${result.LogicalName}`);
-} catch (error) {
-  console.error(`❌ Failed to create entity: ${error.message}`);
-  if (error.response?.status === 400) {
-    console.error('Check entity metadata format');
-  }
-  throw error;
-}
-```
-
-**Logging Standards**:
-- Use emoji prefixes for visual clarity (✅ ❌ ⚠️ 🔍)
-- Provide actionable error messages
-- Log timing information for performance monitoring
-
-### Pull Request Process
-
-1. **Feature Branch**: Create from `main`
-2. **Tests**: Add/update tests for new functionality
-3. **Documentation**: Update relevant documentation
-4. **Code Review**: Request review from maintainers
-5. **CI/CD**: Ensure all checks pass
-
-### Adding New Field Types
-
-**Steps to Add Support**:
-
-1. **Update Parser** (`src/parser.js`):
-   ```javascript
-   // Add to field type validation
-   const validTypes = [..., 'newtype'];
-   ```
-
-2. **Update Schema Generator** (`src/schema-generator.js`):
-   ```javascript
-   // Add type mapping
-   case 'newtype':
-     return {
-       '@odata.type': 'Microsoft.Dynamics.CRM.NewTypeAttributeMetadata',
-       // ... specific properties
-     };
-   ```
-
-3. **Add Tests**:
-   ```javascript
-   it('should handle newtype fields', () => {
-     // Test implementation
-   });
-   ```
-
-4. **Update Documentation**: Add to type mapping table
 
 ## Troubleshooting
 
@@ -532,55 +472,3 @@ node src/index.js create examples/ecommerce-erd.mmd --verbose
 ```bash
 node src/index.js create examples/ecommerce-erd.mmd --dry-run
 ```
-
-### Performance Monitoring
-
-**Key Metrics**:
-- Authentication time
-- Entity creation duration
-- API response times
-- Error rates
-
-**Optimization Areas**:
-- Batch API operations
-- Connection pooling
-- Caching for repeated operations
-
-## Future Enhancements
-
-### Planned Features
-
-1. **Relationship Fixes**: Resolve API payload format issues
-2. **Batch Operations**: Improve performance with bulk API calls
-3. **Advanced Field Types**: Support for files, images, multi-select
-4. **Visual Editor**: Web-based ERD designer
-5. **Export Capabilities**: Generate documentation from Dataverse
-6. **CI/CD Integration**: GitHub Actions workflows
-7. **Multi-Environment**: Deploy to dev/staging/production
-
-### Architecture Improvements
-
-1. **Plugin System**: Extensible architecture for custom field types
-2. **Configuration Management**: JSON-based configuration files
-3. **Caching Layer**: Reduce API calls for repeated operations
-4. **Event System**: Hooks for custom processing
-5. **Validation Framework**: Enhanced ERD syntax validation
-
-### Technology Considerations
-
-**Potential Upgrades**:
-- TypeScript for better type safety
-- Express.js for web API interface
-- React frontend for visual editing
-- Docker containerization
-- Azure Functions for serverless execution
-
----
-
-## Questions or Need Help?
-
-- **Issues**: [GitHub Issues](https://github.com/LuiseFreese/mermaid/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/LuiseFreese/mermaid/discussions)
-- **Documentation**: [README.md](../README.md)
-
-This tool is actively maintained and we welcome contributions from the community!
