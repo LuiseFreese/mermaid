@@ -36,7 +36,7 @@ This script solves the classic Dataverse authentication bootstrap problem:
 
 ## Setup Process
 
-1. **Creates/Updates App Registration** - Detects existing "Mermaid Luise Auto" app or creates new one
+1. **Creates/Updates App Registration** - Detects existing "Mermaid Auto" app or creates new one
 2. **Generates Fresh Credentials** - Creates new client secrets and updates `.env` automatically  
 3. **Handles Authentication** - Uses service principal auth when possible, falls back to admin auth when needed
 4. **Creates Application User** - Creates Dataverse Application User with proper permissions

@@ -77,12 +77,12 @@ class DataverseApplicationUserSetup {
     async checkExistingAppRegistration() {
         try {
             console.log('Checking for existing app registration...');
-            const result = execSync('az ad sp list --display-name "Mermaid Luise Auto" --query "[].{appId:appId, displayName:displayName}" --output table', { 
+            const result = execSync('az ad sp list --display-name "Mermaid Auto" --query "[].{appId:appId, displayName:displayName}" --output table', { 
                 encoding: 'utf-8',
                 timeout: 30000 
             });
             
-            if (result.includes('Mermaid Luise Auto')) {
+            if (result.includes('Mermaid Auto')) {
                 console.log('Found existing app registration');
                 const appIdMatch = result.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/);
                 if (appIdMatch) {
@@ -101,7 +101,7 @@ class DataverseApplicationUserSetup {
             console.log('Creating new app registration...');
             
             // Create the app registration
-            const createResult = execSync('az ad app create --display-name "Mermaid Luise Auto" --query "appId" --output tsv', { 
+            const createResult = execSync('az ad app create --display-name "Mermaid Auto" --query "appId" --output tsv', { 
                 encoding: 'utf-8',
                 timeout: 30000 
             });
