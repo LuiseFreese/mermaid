@@ -21,10 +21,10 @@ Mermaid ERD syntax uses the same notation (`||--o{`) for all one-to-many relatio
 - **Reference relationships** (parent is referenced by child, should be lookup in Dataverse)
 
 Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
-1. ✅ **Prevents API errors** - Avoids "multiple parental relationships" conflicts
-2. ✅ **Ensures successful creation** - All relationships will be created without conflicts
-3. ✅ **Maintains data integrity** - References are preserved, just without cascade delete
-4. ✅ **Allows manual enhancement** - Users can upgrade to parental relationships later in Dataverse
+1. **Prevents API errors** - Avoids "multiple parental relationships" conflicts
+2. **Ensures successful creation** - All relationships will be created without conflicts
+3. **Maintains data integrity** - References are preserved, just without cascade delete
+4. **Allows manual enhancement** - Users can upgrade to parental relationships later in Dataverse
 
 ## Examples
 
@@ -43,11 +43,11 @@ All relationships are created as **referential (lookup)**:
 - `Order → WorkOrder`: Lookup relationship (WorkOrder can exist without Order)
 
 This means:
-- ✅ No "multiple parental relationships" error for WorkOrder
-- ✅ All relationships created successfully
-- ✅ WorkOrder can reference both Account and Order simultaneously
-- ⚠️ Deleting Account won't automatically delete related Contacts or WorkOrders
-- ⚠️ Manual cleanup may be needed when deleting parent records
+- No "multiple parental relationships" error for WorkOrder
+- All relationships created successfully
+- WorkOrder can reference both Account and Order simultaneously
+- Deleting Account won't automatically delete related Contacts or WorkOrders
+- Manual cleanup may be needed when deleting parent records
 
 ## When You Might Want Parental Relationships
 
@@ -66,9 +66,9 @@ Parental relationships provide stronger data integrity through cascade delete be
 - 🔄 **Automatic cleanup**: No orphaned records when parents are deleted
 
 ### Limitations of Parental Relationships
-- ⚠️ **Only one per entity**: Each entity can have only ONE parental relationship
-- ⚠️ **Cascade conflicts**: Can cause circular delete dependencies
-- ⚠️ **Less flexible**: Harder to change once established
+- **Only one per entity**: Each entity can have only ONE parental relationship
+- **Cascade conflicts**: Can cause circular delete dependencies
+- **Less flexible**: Harder to change once established
 
 ## How to Manually Configure Parental Relationships
 
@@ -82,10 +82,9 @@ After creating your Dataverse solution with this tool, you can manually upgrade 
 5. Configure cascade delete options as needed
 
 ### Key Considerations
-- ✅ Only upgrade relationships where true ownership exists
-- ✅ Ensure no circular cascade delete dependencies
-- ✅ Test thoroughly before deploying to production
-- ⚠️ Remember: Only one parental relationship per entity
+- Only upgrade relationships where true ownership exists
+- Ensure no circular cascade delete dependencies
+- Test thoroughly before deploying to production
 
 ## Command Line Options
 
@@ -116,10 +115,10 @@ node src/index.js create examples/service-core.mmd --safe-mode --verbose
 - ⚡ **Fast iteration**: No need to debug complex relationship hierarchies in ERD
 
 ### For Dataverse
-- ✅ **API compatibility**: No "multiple parental relationships" errors
-- ✅ **Clean creation**: All entities and relationships created without conflicts
-- ✅ **Extensible**: Relationships can be upgraded to parental after creation
-- ✅ **Recoverable**: Mistakes can be easily corrected
+- **API compatibility**: No "multiple parental relationships" errors
+- **Clean creation**: All entities and relationships created without conflicts
+- **Extensible**: Relationships can be upgraded to parental after creation
+- **Recoverable**: Mistakes can be easily corrected
 
 ## Migration from Previous Versions
 
@@ -130,23 +129,23 @@ If you were using an earlier version of this tool that attempted to auto-detect 
 - **After**: All relationships are referential by default for consistency and reliability
 
 ### Migration Steps
-1. ✅ **Re-run the tool** - Your ERD will now create successfully without relationship conflicts
-2. ✅ **Review relationships** - Identify which ones should be parental based on your business logic
-3. ✅ **Manually configure** - Upgrade specific relationships to parental in Dataverse admin
-4. ✅ **Test thoroughly** - Ensure cascade delete behavior matches your expectations
+1. **Re-run the tool** - Your ERD will now create successfully without relationship conflicts
+2. **Review relationships** - Identify which ones should be parental based on your business logic
+3. **Manually configure** - Upgrade specific relationships to parental in Dataverse admin
+4. **Test thoroughly** - Ensure cascade delete behavior matches your expectations
 
 ## Best Practices
 
 ### ERD Design
-- 📝 **Document ownership** - Add comments in your ERD to note intended parental relationships
-- 🔍 **Review relationships** - Consider which relationships represent true ownership
-- 📊 **Plan hierarchy** - Design your entity hierarchy to minimize circular dependencies
+- **Document ownership** - Add comments in your ERD to note intended parental relationships
+- **Review relationships** - Consider which relationships represent true ownership
+- **Plan hierarchy** - Design your entity hierarchy to minimize circular dependencies
 
 ### Post-Creation Configuration
-- ✅ **Start with referential** - Let the tool create all relationships as referential
-- 🔍 **Identify ownership** - Determine which relationships represent true ownership
-- ⚡ **Upgrade selectively** - Convert only the most critical ownership relationships to parental
-- 🧪 **Test cascade behavior** - Verify cascade delete works as expected
+- **Start with referential** - Let the tool create all relationships as referential
+- **Identify ownership** - Determine which relationships represent true ownership
+- **Upgrade selectively** - Convert only the most critical ownership relationships to parental
+- **Test cascade behavior** - Verify cascade delete works as expected
 
 ## Conclusion
 

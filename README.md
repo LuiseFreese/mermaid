@@ -13,16 +13,18 @@ A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and crea
 
 ## Features
 
-- **🔧 Solution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
-- **👤 Publisher Management**: List, select, and manage Dataverse publishers for solutions  
-- **🏗️ Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
-- **🔗 Relationship Management**: Create relationships between entities with proper cardinality
-- **🛡️ Relationship Validation**: Detect and warn about conflicting relationships (multiple parental, circular cascades)
-- **⚡ Safe Mode**: All-referential mode to prevent cascade delete conflicts
-- **🔄 Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
-- **🔐 Authentication**: Handle authentication with Microsoft Entra ID (automated setup)
-- **📋 Type Support**: Support for various field types, constraints, and choice fields
-- **🎯 Interactive & Non-Interactive**: CLI supports both guided prompts and automation-friendly modes### CLI Options
+- **Solution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
+- **Publisher Management**: List, select, and manage Dataverse publishers for solutions  
+- **Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
+- **Relationship Management**: Create relationships between entities with proper cardinality
+- **Relationship Validation**: Detect and warn about conflicting relationships (multiple parental, circular cascades)
+- **Safe Mode**: All-referential mode to prevent cascade delete conflicts
+- **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
+- **Authentication**: Handle authentication with Microsoft Entra ID (automated setup)
+- **Type Support**: Support for various field types, constraints, and choice fields
+- **Interactive & Non-Interactive**: CLI supports both guided prompts and automation-friendly modes
+ 
+### CLI Options
 
 ```bash
 # Full command syntax

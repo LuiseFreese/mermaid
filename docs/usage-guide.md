@@ -68,7 +68,6 @@ erDiagram
 
 | Mermaid Notation | Cardinality | Description |
 |------------------|-------------|-------------|
-| `\|\|--\|\|` | One-to-One | Each record relates to exactly one other |
 | `\|\|--o{` | One-to-Many | One record relates to many others |
 | `}o--\|\|` | Many-to-One | Many records relate to one other |
 | `}o--o{` | Many-to-Many | Many records relate to many others |
@@ -132,6 +131,7 @@ npm start validate -- -i my-erd.mmd
 The tool automatically creates and manages Dataverse solutions for you. Solutions provide organization and deployment benefits:
 
 ### Solution Features
+
 - **Automatic Creation**: Solutions are created if they don't exist
 - **Idempotent Operations**: Safe to run multiple times - existing solutions are reused
 - **Entity Organization**: All entities and relationships are created within the solution
