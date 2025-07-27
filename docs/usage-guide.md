@@ -212,8 +212,7 @@ Shows current configuration status and required environment variables.
 
 See the `examples/` directory for complete ERD examples:
 
-- `ecommerce-erd.mmd` - E-commerce system with customers, orders, and products
-- `hr-system-erd.mmd` - HR system with employees, departments, and projects
+- `event-erd.mmd` - Event management with venues, events, and attendees
 
 ## Advanced Usage
 
@@ -262,10 +261,10 @@ The easiest way to get started is with the interactive `create` command:
 
 ```bash
 # Interactive mode - will prompt for solution name and publisher prefix  
-node src/index.js create examples/ecommerce-erd.mmd
+node src/index.js create examples/event-erd.mmd
 
 # Preview without creating (dry run)
-node src/index.js create examples/ecommerce-erd.mmd --dry-run
+node src/index.js create examples/event-erd.mmd --dry-run
 
 # Quick shortcut for interactive mode
 npm run create
@@ -366,7 +365,7 @@ This script automatically removes:
 - Debug and test scripts (`debug-*.js`, `check-*.js`, etc.)
 - Schema output files (`*-schema.json`)
 - Temporary .env files (`.env.generated`, `.env.updated`)
-- Keeps only essential examples (`ecommerce-erd.mmd`, `hr-system-erd.mmd`)
+- Keeps only essential example (`event-erd.mmd`)
 
 ## Important: Relationship Types
 
@@ -399,16 +398,16 @@ The tool includes built-in validation to detect potential ERD structure issues:
 ### Validation Options
 ```bash
 # Run with validation (default)
-node src/index.js create examples/ecommerce-erd.mmd
+node src/index.js create examples/event-erd.mmd
 
 # Skip validation (not recommended)
-node src/index.js create examples/ecommerce-erd.mmd --no-validation
+node src/index.js create examples/event-erd.mmd --no-validation
 
 # Safe mode - explicitly ensures all relationships as lookups
-node src/index.js create examples/ecommerce-erd.mmd --safe-mode
+node src/index.js create examples/event-erd.mmd --safe-mode
 
 # Non-interactive mode for automation
-node src/index.js create examples/ecommerce-erd.mmd --non-interactive
+node src/index.js create examples/event-erd.mmd --non-interactive
 ```
 
 ### Validation Output Example
@@ -426,8 +425,7 @@ node src/index.js create examples/ecommerce-erd.mmd --non-interactive
 
 The `examples/` directory contains ready-to-use Mermaid ERD files:
 
-- **`ecommerce-erd.mmd`** - E-commerce system with customers, orders, and products
-- **`hr-system-erd.mmd`** - HR system with employees, departments, and projects  
+- **`event-erd.mmd`** - Event management with venues, events, and attendees
 - **`event-erd.mmd`** - Event management with venues, events, and attendees
 - **`choice-field-test.mmd`** - Demonstrates choice fields and global choice sets
 - **`ultimate-datatype-test.mmd`** - Comprehensive field type examples
@@ -435,7 +433,7 @@ The `examples/` directory contains ready-to-use Mermaid ERD files:
 ### Quick Test
 ```bash
 # Try the e-commerce example
-node src/index.js create examples/ecommerce-erd.mmd --dry-run
+node src/index.js create examples/event-erd.mmd --dry-run
 
 # Test relationship validation with complex example
 node src/index.js create examples/event-erd.mmd --verbose

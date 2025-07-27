@@ -466,10 +466,10 @@ describe('DataverseSchemaGenerator', () => {
 
 **Enable Verbose Logging**:
 ```bash
-node src/index.js create examples/ecommerce-erd.mmd --verbose
+node src/index.js create examples/event-erd.mmd --verbose
 ```
 
 **Dry Run for Testing**:
 ```bash
-node src/index.js create examples/ecommerce-erd.mmd --dry-run
+node src/index.js create examples/event-erd.mmd --dry-run
 ```

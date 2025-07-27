@@ -183,7 +183,7 @@ All values should show ✅ status.
 
 ```bash
 # Test with dry run first
-npm start convert -- -i examples/ecommerce-erd.mmd --dry-run
+npm start convert -- -i examples/event-erd.mmd --dry-run
 
 # If dry run works, try actual conversion with a simple example
 npm start convert -- -i examples/simple-test.mmd --verbose
