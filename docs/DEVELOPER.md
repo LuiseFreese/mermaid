@@ -1,5 +1,7 @@
 # Developer Documentation
 
+This is a Node.js-based application that automates Microsoft Dataverse solution, entity, and relationship creation from Mermaid ERD files. It is designed for developers who want to streamline Dataverse schema setup using a simple, scriptable workflow.
+
 ## Mermaid to Dataverse Converter - Technical Architecture
 
 This document provides a comprehensive overview of the tool's architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project.
@@ -67,13 +69,12 @@ For detailed architecture diagrams and component relationships, see [ARCHITECTUR
 **Supported Syntax**:
 ```mermaid
 erDiagram
-    Entity1 ||--o{ Entity2 : relationship_name
     Entity1 {
-        type field_name constraints
         guid id PK
         string name
         int count
     }
+    Entity1 ||--o{ Entity2 : relationship_name
 ```
 
 **Output Structure**:
