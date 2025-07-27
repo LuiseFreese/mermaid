@@ -298,15 +298,7 @@ const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choic
 - Principle of least privilege for permissions
 - Regular secret rotation recommended
 
-### Alternative Approaches Considered
 
-1. **Interactive Authentication (Device Code Flow)**
-   - Pros: No secret management, user permissions
-   - Cons: Requires user interaction, not suitable for automation
-
-2. **Certificate-Based Authentication**
-   - Pros: More secure than secrets, longer validity
-   - Cons: More complex setup, certificate management
 
 ## Field Type Mapping
 

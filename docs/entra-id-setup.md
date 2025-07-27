@@ -13,11 +13,11 @@ Choose one of the following methods:
 ### The Magic Command
 
 This method uses **`pac admin create-service-principal`** which creates EVERYTHING in one command:
-- ✅ Microsoft Entra ID App Registration
-- ✅ Service Principal
-- ✅ Client Secret
-- ✅ Application User in Dataverse
-- ✅ Security Role Assignment
+- Microsoft Entra ID App Registration
+- Service Principal
+- Client Secret
+- Application User in Dataverse
+- Security Role Assignment
 
 ### Prerequisites
 
@@ -51,12 +51,12 @@ pac admin create-service-principal --environment "https://yourorg.crm.dynamics.c
 ```
 
 This single command:
-1. ✅ Creates the Microsoft Entra ID app registration
-2. ✅ Generates a client secret (with proper expiration)
-3. ✅ Creates the service principal
-4. ✅ Creates the Application User in your Dataverse environment
-5. ✅ Assigns the specified security role
-6. ✅ Returns all the values you need (Tenant ID, App ID, Client Secret, Expiration)
+1. Creates the Microsoft Entra ID app registration
+2. Generates a client secret (with proper expiration)
+3. Creates the service principal
+4. Creates the Application User in your Dataverse environment
+5. Assigns the specified security role
+6. Returns all the values you need (Tenant ID, App ID, Client Secret, Expiration)
 
 **Result:** A complete, ready-to-use configuration in seconds!
 
@@ -141,7 +141,6 @@ After creating your Microsoft Entra ID app registration, you need to create an A
    - **System Customizer** (can create/modify entities - minimum required)
    - Or create a custom role with specific privileges
 
-**Important**: The security role assigned to the application user in Dataverse determines what the tool can do - NOT the Microsoft Entra ID app permissions.
 
 ## Step 8: Test Configuration
 

@@ -60,10 +60,10 @@ Parental relationships provide stronger data integrity through cascade delete be
 - **Quote → Order**: Quote generates the order
 
 ### Benefits of Parental Relationships
-- 🔗 **Cascade delete**: Deleting parent automatically deletes children
-- 🔒 **Stronger integrity**: Children cannot exist without their parent
-- 📊 **Better reporting**: Parent-child hierarchies are clearly defined
-- 🔄 **Automatic cleanup**: No orphaned records when parents are deleted
+- **Cascade delete**: Deleting parent automatically deletes children
+- **Stronger integrity**: Children cannot exist without their parent
+- **Better reporting**: Parent-child hierarchies are clearly defined
+- **Automatic cleanup**: No orphaned records when parents are deleted
 
 ### Limitations of Parental Relationships
 - **Only one per entity**: Each entity can have only ONE parental relationship
@@ -109,10 +109,10 @@ node src/index.js create examples/service-core.mmd --safe-mode --verbose
 ## Benefits of This Approach
 
 ### For Users
-- 🚀 **Predictable results**: Always creates successfully without relationship conflicts
-- 🔧 **Flexible starting point**: Can be enhanced manually based on business needs
-- 📚 **Clear expectations**: Users know exactly what type of relationships will be created
-- ⚡ **Fast iteration**: No need to debug complex relationship hierarchies in ERD
+- **Predictable results**: Always creates successfully without relationship conflicts
+- **Flexible starting point**: Can be enhanced manually based on business needs
+- **Clear expectations**: Users know exactly what type of relationships will be created
+- **Fast iteration**: No need to debug complex relationship hierarchies in ERD
 
 ### For Dataverse
 - **API compatibility**: No "multiple parental relationships" errors
