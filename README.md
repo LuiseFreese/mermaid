@@ -3,21 +3,9 @@
 A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and creates corresponding tables, fields, and relationships in Microsoft Dataverse.
 
 ## Table of Contents
-- [Features](#features)
-- [Setup](#setup)
-- [Usage](#usage)  
-- [Relationship Types](#important-relationship-types)
-- [Relationship Validation](#relationship-validation)
-- [Example ERD Files](#example-erd-files)
-- [Developer Documentation](#developer-documentation)
 
 ## Features
 
-- **Solution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
-- **Publisher Management**: List, select, and manage Dataverse publishers for solutions  
-- **Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
-- **Relationship Management**: Create relationships between entities with proper cardinality
-- **Relationship Validation**: Detect and warn about conflicting relationships (multiple parental, circular cascades)
 - **Safe Mode**: All-referential mode to prevent cascade delete conflicts
 - **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
 - **Authentication**: Handle authentication with Microsoft Entra ID (automated setup)
@@ -26,33 +14,16 @@ A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and crea
  
 ### CLI Options
 
-```bash
-# Full command syntax
-node src/index.js create [file] [options]
-
 Core Options:
   -s, --solution <name>           Solution name to create entities in
   -p, --publisher-prefix <prefix> Publisher prefix (2-8 characters)
   --dry-run                       Preview without creating entities
-  --verbose                       Show detailed output
-
-Advanced Options:
-  --no-validation                 Skip relationship validation (not recommended)
-  --safe-mode                     Use safe mode: all relationships as lookups
-  --all-referential               Make all relationships referential/lookup only
-  --non-interactive               Run without interactive prompts
   --list-publishers               List available publishers before creating solution
   --no-create-publisher           Do not create publisher if it doesn't exist
-```ution Management**: Automatically creates or uses existing Dataverse solutions (idempotent)
-- **Publisher Management**: List, select, and manage Dataverse publishers for solutions
-- **Entity Creation**: Parse Mermaid ERD syntax and generate Dataverse entity schemas
+```
 - **Relationship Management**: Create relationships between entities with proper cardinality
 - **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
 - **Authentication**: Handle authentication with Microsoft Entra ID
-- **Type Support**: Support for various field types and constraints
-
-## Setup
-
 ### Prerequisites
 
 Before you begin, make sure you have:
@@ -62,13 +33,8 @@ Before you begin, make sure you have:
    - Test installation: Run `pac` in terminal
 
 2. **Azure CLI** - Required for automated setup
-   - Install from [Azure CLI docs](https://learn.microsoft.com/cli/azure/install-azure-cli)
    - Log in as admin: `az login`
 
-3. **Node.js** - Required to run the tool
-   - Install dependencies: `npm install`
-
-4. **Dataverse Environment Access**
    - Your Dataverse environment URL (find it in [Power Platform Admin Center](https://admin.powerplatform.microsoft.com))
    - Admin permissions in your Dataverse environment
 

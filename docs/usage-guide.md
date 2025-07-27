@@ -44,15 +44,10 @@ erDiagram
 
 ### Supported Data Types
 
-| Mermaid Type | Dataverse Type | Description |
 |--------------|----------------|-------------|
 | `string` | `Edm.String` | Text field (max 100 chars by default) |
 | `int`, `integer` | `Edm.Int32` | 32-bit integer |
 | `decimal` | `Edm.Decimal` | Decimal number with precision |
-| `float`, `double` | `Edm.Double` | Double precision floating point |
-| `boolean`, `bool` | `Edm.Boolean` | True/false value |
-| `datetime`, `date` | `Edm.DateTimeOffset` | Date and time |
-| `guid`, `uuid` | `Edm.Guid` | Globally unique identifier |
 | `text`, `varchar`, `nvarchar` | `Edm.String` | Text field |
 
 ### Field Constraints
@@ -68,7 +63,6 @@ erDiagram
 
 | Mermaid Notation | Cardinality | Description |
 |------------------|-------------|-------------|
-| `\|\|--o{` | One-to-Many | One record relates to many others |
 | `}o--\|\|` | Many-to-One | Many records relate to one other |
 | `}o--o{` | Many-to-Many | Many records relate to many others |
 
@@ -76,34 +70,27 @@ erDiagram
 
 ```mermaid
 erDiagram
-    Customer ||--o{ Order : places
-    Order ||--o{ OrderItem : contains
     Product ||--o{ OrderItem : includes
     Student }o--o{ Course : enrolls_in
 ```
 
 ## Command Line Options
-
 ### Convert Command
 
 ```bash
 npm start convert [options]
 ```
-
 **Options:**
 - `-i, --input <file>` - Input Mermaid ERD file (required)
 - `-o, --output <file>` - Output JSON schema file (optional)
 - `--dry-run` - Preview conversion without creating entities
 - `--verbose` - Show detailed output
-- `--publisher-prefix <prefix>` - Custom publisher prefix (default: "mmd")
 
 **Examples:**
 ```bash
 # Basic conversion with solution
 npm start convert -- -i my-erd.mmd --solution MyProjectSolution
-
 # Dry run with verbose output (no solution needed for preview)
-npm start convert -- -i my-erd.mmd --dry-run --verbose
 
 # Save schema to file (no solution needed for schema export)
 npm start convert -- -i my-erd.mmd -o schema.json
@@ -122,7 +109,6 @@ npm start validate [options]
 - `-i, --input <file>` - Input Mermaid ERD file (required)
 
 **Example:**
-```bash
 npm start validate -- -i my-erd.mmd
 ```
 
@@ -151,7 +137,6 @@ npm start convert -- -i customer-erd.mmd --solution CustomerManagement
 npm start convert -- -i inventory-erd.mmd --solution InventorySystem --publisher-prefix "inv"
 
 # Running again with the same solution name is safe (idempotent)
-npm start convert -- -i updated-customer-erd.mmd --solution CustomerManagement
 ```
 
 ### Config Command
@@ -173,22 +158,12 @@ Shows current configuration status and required environment variables.
 
 ### 2. Field Naming
 
-- **Primary keys**: End with `_id` (e.g., `customer_id`)
 - **Foreign keys**: Reference the related table (e.g., `customer_id` in Order table)
 - **Boolean fields**: Start with `is_` or `has_` (e.g., `is_active`)
 - **Date fields**: End with `_date` or `_time` (e.g., `created_date`)
-
-### 3. Development Workflow
-
-1. **Start with validation**: Always validate your ERD syntax first
 2. **Use dry runs**: Preview changes before applying to Dataverse
-3. **Test incrementally**: Start with simple entities, then add relationships
 4. **Version control**: Keep your Mermaid files in source control
 5. **Document changes**: Use meaningful commit messages for ERD updates
-
-### 4. Production Deployment
-
-- **Use separate environments**: Test in development before production
 - **Backup before changes**: Create solution backups
 - **Monitor creation**: Use verbose mode to track progress
 - **Validate results**: Check created entities in Dataverse maker portal
