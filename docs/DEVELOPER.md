@@ -51,11 +51,6 @@ For detailed architecture diagrams and component relationships, see [ARCHITECTUR
 - Dry-run mode implementation
 - Configuration validation
 
-**Design Patterns**:
-- Command pattern for CLI commands
-- Factory pattern for configuration objects
-- Strategy pattern for interactive vs. non-interactive modes
-
 ### 2. ERD Parser (`src/parser.js`)
 
 **Purpose**: Parse Mermaid ERD syntax into structured JavaScript objects
@@ -134,6 +129,8 @@ const typeMapping = {
 - Self-reference validation
 - Missing primary key validation
 - Naming conflict detection
+
+> **Note:** Currently, the tool only creates referential relationships (not parental/cascade delete). The validation features for parental relationships and cascade delete patterns are included for future extensibility.
 
 **Current Behavior**:
 Since the tool defaults to referential relationships, the validator typically finds no parental relationship conflicts. However, it's designed to catch issues if:
@@ -253,15 +250,30 @@ function generateSolutionUniqueName(displayName) {
 
 **Problem**: Choice fields can use global choice sets or inline options.
 
-**Solution**: Fallback strategy
-1. First, try to create/use global choice set
-2. If that fails, fall back to inline choice field
-3. Provide clear error messages
+**Solution**: Global choice set approach (with known limitations)
+1. The tool attempts to create global choice sets for choice fields
+2. If global choice set creation fails (common in some environments), columns are created without choice options
+3. Error messages indicate when global choice sets cannot be created
+
+**Current Limitations**:
+- Global choice set creation often fails with HTTP 405 errors in many Dataverse environments
+- When this occurs, columns are created but lack the choice options
+- Full choice field support requires manual configuration after entity creation
 
 **Global Choice Set Naming**:
 ```javascript
-const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choices`;
+const globalChoiceSetName = `${publisherPrefix}_${fieldName.toLowerCase()}`;
 ```
+
+**Choice Field Syntax in Mermaid**:
+```
+choice(Option1,Option2,Option3) fieldname
+```
+
+Where:
+- `choice()` is the field type keyword
+- The comma-separated values inside parentheses are the options
+- `fieldname` is the name of your field
 
 ### 5. Error Handling Strategy
 
@@ -304,7 +316,7 @@ const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choic
 
 ### Supported Mermaid Types → Dataverse Types
 
-> **Note:** The tool supports all Dataverse field types except choice/picklist, because Mermaid syntax does not support specifying choice fields or their options. For all other types, use the Dataverse logical type name as the Mermaid field type.
+> **Note:** The tool supports syntax for choice/picklist fields using the `choice(Option1,Option2)` format, but there are limitations with creating global choice sets in some Dataverse environments. For all other types, use the Dataverse logical type name as the Mermaid field type.
 
 | Mermaid Type / Alias      | Dataverse Type                | Status      | Notes |
 |--------------------------|-------------------------------|-------------|-------|
@@ -329,7 +341,7 @@ const globalChoiceSetName = `${publisherPrefix}_${entityName}_${fieldName}_choic
 | `file`                   | FileAttributeMetadata         | Supported   | File uploads |
 | `image`                  | ImageAttributeMetadata        | Supported   | Image fields |
 | `lookup`                 | LookupAttributeMetadata       | Supported   | Explicit relationship definition |
-| `choice`                 | PicklistAttributeMetadata     | Not Supported | Mermaid syntax does not support specifying options.
+| `choice(Option1,Option2)` | PicklistAttributeMetadata    | Partial     | Creates columns but global choice sets may fail (HTTP 405) |
 
 
 ### Constraint Handling

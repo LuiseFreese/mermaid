@@ -1,0 +1,38 @@
+{
+  "globalChoices": [
+    {
+      "Name": "mint_PriorityChoices",
+      "DisplayName": "Priority Choices",
+      "Description": "Common priority values for tasks",
+      "options": [
+        { "value": 1, "label": "Low" },
+        { "value": 2, "label": "Medium" },
+        { "value": 3, "label": "High" },
+        { "value": 4, "label": "Critical" }
+      ]
+    },
+    {
+      "Name": "mint_StatusChoices",
+      "DisplayName": "Status Choices",
+      "Description": "Common status values for items",
+      "options": [
+        "New",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled"
+      ]
+    },
+    {
+      "Name": "mint_ApprovalStatus",
+      "DisplayName": "Approval Status",
+      "Description": "Approval workflow states",
+      "options": [
+        "Pending",
+        "Approved",
+        "Rejected",
+        "Needs Information"
+      ]
+    }
+  ]
+}

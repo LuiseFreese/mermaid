@@ -42,10 +42,20 @@ export class DataverseSchemaGenerator {
    */
   async generateSchema(erdData) {
     console.log('🏗️  Generating Dataverse schema...');
+    
+    // Debug parsed data
+    console.log(`📊 Parsed entities: ${JSON.stringify(erdData.entities.length)} entities found`);
+    if (erdData.entities.length === 0) {
+      console.log('⚠️  No entities found in ERD data! Check if Mermaid file is formatted correctly.');
+    } else {
+      console.log(`Entity names: ${erdData.entities.map(e => e.name).join(', ')}`);
+    }
 
     // Step 1: Generate initial schema components
     const globalChoiceSets = this.generateGlobalChoiceSets(erdData.entities);
     const entities = this.generateEntities(erdData.entities);
+    console.log(`🏗️  Generated ${entities.length} entity definitions from ERD data`);
+    
     const relationships = this.generateRelationships(erdData.relationships, erdData.entities);
     const additionalColumns = this.generateAdditionalColumns(erdData.entities);
 
@@ -100,7 +110,9 @@ export class DataverseSchemaGenerator {
     entities.forEach(entity => {
       entity.attributes.forEach(attr => {
         if (attr.isChoice) {
-          const choiceSetName = `${this.publisherPrefix}_${attr.name.toLowerCase()}`;
+          // Use just the attribute name without adding mmd prefix
+          // The publisher prefix will be added later in applyPublisherPrefix method
+          const choiceSetName = attr.name.toLowerCase();
           
           // Check if we already have this choice set (by name)
           if (!choiceSets.has(choiceSetName)) {

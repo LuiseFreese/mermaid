@@ -430,7 +430,18 @@ The `examples/` directory contains ready-to-use Mermaid ERD files:
 - **`choice-field-test.mmd`** - Demonstrates choice fields and global choice sets
 - **`ultimate-datatype-test.mmd`** - Comprehensive field type examples
 
+  ```
+
+## Define Your Global Choices
+
+Mermaid doesn't support choice columns. But this tool can create global choices for you and associate these with your solution, so that you can manually create your choice-column and sync it with a global choice.
+
+Create a JSON file (e.g., `global-choices.json`) that defines your global choice sets, read more here: [Global Choices Guide](/docs/GLOBAL-CHOICES-GUIDE.md))
+
+
+
 ### Quick Test
+
 ```bash
 # Try the e-commerce example
 node src/index.js create examples/event-erd.mmd --dry-run

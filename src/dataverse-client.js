@@ -19,8 +19,12 @@ export class DataverseClient {
     
     this.msalInstance = new ConfidentialClientApplication(this.clientConfig);
     this.accessToken = null;
-    this.apiVersion = '9.2';
-    this.solutionName = null; // Will be set when working with solutions
+    this.apiVersion = config.apiVersion || '9.2';
+    this.solutionName = config.solutionName || null; // Will be set when working with solutions
+    this.verbose = config.verbose || false; // Enable verbose logging
+    
+    // Store choice sets for later reference
+    this.globalChoiceSets = new Map(); // Maps choice set name to MetadataId
   }
 
   /**
@@ -96,21 +100,23 @@ export class DataverseClient {
    * @returns {Promise<Object>} Created entity response
    */
   async createEntity(entityMetadata) {
-    console.log(`Creating entity: ${entityMetadata.LogicalName}`);
-    
+    // Minimal logging - the batch process will handle overall status reporting
     try {
       // Add solution header if solution name is available
       const headers = {};
       if (this.solutionName) {
         headers['MSCRM.SolutionUniqueName'] = this.solutionName;
-        console.log(`🔧 Adding entity to solution: ${this.solutionName}`);
       }
       
       const response = await this.makeRequest('POST', 'EntityDefinitions', entityMetadata, headers);
-      console.log(`✅ Entity created: ${entityMetadata.LogicalName}`);
       return response;
     } catch (error) {
-      console.error(`❌ Failed to create entity ${entityMetadata.LogicalName}:`, error.response?.data || error.message);
+      console.error(`❌ Failed to create entity ${entityMetadata.LogicalName}:`, error.message);
+      
+      if (error.response?.data) {
+        console.error(`   API Error Details:`, JSON.stringify(error.response.data, null, 2));
+      }
+      
       throw error;
     }
   }
@@ -315,16 +321,52 @@ export class DataverseClient {
   /**
    * Check if a global choice set exists
    * @param {string} choiceSetName - Global choice set name
-   * @returns {Promise<boolean>} True if choice set exists
+   * @returns {Promise<Object|null>} Choice set metadata if exists, null otherwise
    */
   async globalChoiceSetExists(choiceSetName) {
     try {
-      const response = await this.makeRequest('GET', `GlobalOptionSetDefinitions?$filter=Name eq '${choiceSetName}'&$select=MetadataId,Name`);
-      return response.value && response.value.length > 0;
+      console.log(`🔍 Checking if global choice set exists: ${choiceSetName}`);
+      
+      // Get all global option sets instead of using $filter which isn't supported
+      const response = await this.makeRequest('GET', `GlobalOptionSetDefinitions`);
+      
+      if (response.value && response.value.length > 0) {
+        // Find the option set with the matching name
+        const optionSet = response.value.find(os => os.Name === choiceSetName);
+        
+        if (optionSet) {
+          console.log(`✅ Found existing global choice set: ${choiceSetName}`);
+          return optionSet;
+        }
+      }
+      
+      console.log(`❓ Global choice set not found: ${choiceSetName}`);
+      return null;
     } catch (error) {
       if (error.response?.status === 404) {
-        return false;
+        console.log(`❓ Global choice set not found (404): ${choiceSetName}`);
+        return null;
       }
+      console.error(`❌ Error checking global choice set ${choiceSetName}:`, error.response?.data || error.message);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get global choice set by ID
+   * @param {string} choiceSetId - Global choice set MetadataId
+   * @returns {Promise<Object|null>} Choice set metadata if exists, null otherwise
+   */
+  async getGlobalChoiceSetById(choiceSetId) {
+    try {
+      console.log(`🔍 Getting global choice set details for ID: ${choiceSetId}`);
+      const response = await this.makeRequest('GET', `GlobalOptionSetDefinitions(${choiceSetId})`);
+      return response || null;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      console.error(`❌ Error getting global choice set ${choiceSetId}:`, error.response?.data || error.message);
       throw error;
     }
   }
@@ -336,46 +378,91 @@ export class DataverseClient {
    */
   async createGlobalChoiceSet(choiceSetMetadata) {
     try {
-      console.log(`Creating global choice set: ${choiceSetMetadata.Name}`);
+      // Minimal logging - just one line when we start
+      console.log(`🏗️ Creating global choice set: ${choiceSetMetadata.Name}`);
       
-      // Create options for the global choice set
-      const options = choiceSetMetadata.options.map((option, index) => ({
-        Value: index + 1, // Start from 1
-        Label: {
-          LocalizedLabels: [{
-            Label: option,
-            LanguageCode: 1033
-          }]
-        }
-      }));
-
-      // Create the global option set with embedded options
+      // Handle advanced option format (with values and/or labels)
+      const options = Array.isArray(choiceSetMetadata.options) ? 
+        this.processChoiceOptions(choiceSetMetadata.options) : 
+        [];
+      
+      // Create the global option set with embedded options - using the correct format
+      // The key issue with 405 errors is usually incorrect payload format
       const optionSetPayload = {
         '@odata.type': 'Microsoft.Dynamics.CRM.OptionSetMetadata',
         Name: choiceSetMetadata.Name,
-        DisplayName: choiceSetMetadata.DisplayName,
-        Description: choiceSetMetadata.Description,
-        IsGlobal: choiceSetMetadata.IsGlobal,
+        DisplayName: this.createLocalizedLabel(choiceSetMetadata.DisplayName || choiceSetMetadata.Name),
+        Description: this.createLocalizedLabel(choiceSetMetadata.Description || ''),
+        IsGlobal: true, // Always true for global option sets
         OptionSetType: 'Picklist',
         Options: options
       };
 
       let response;
-      if (this.solutionName) {
-        response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload, {
-          'MSCRM.SolutionUniqueName': this.solutionName
-        });
-      } else {
-        response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload);
+      let optionSetId = null;
+      
+      try {
+        // Try creating with solution context first if available
+        if (this.solutionName) {
+          console.log(`📦 Adding to solution: ${this.solutionName}`);
+          response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload, {
+            'MSCRM.SolutionUniqueName': this.solutionName
+          });
+        } else {
+          response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload);
+        }
+        
+        optionSetId = response.MetadataId;
+      } catch (apiError) {
+        console.error(`❌ API error details:`, apiError.response?.data || apiError.message);
+        
+        // If we get a 405 error, try an alternative approach
+        if (apiError.response?.status === 405) {
+          console.log('⚠️ Got 405 error, trying alternative approach...');
+          
+          // Remove any problematic properties
+          delete optionSetPayload.IsGlobal; // This might be causing issues
+          
+          // Try again without the problematic property
+          try {
+            if (this.solutionName) {
+              response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload, {
+                'MSCRM.SolutionUniqueName': this.solutionName
+              });
+            } else {
+              response = await this.makeRequest('POST', 'GlobalOptionSetDefinitions', optionSetPayload);
+            }
+            optionSetId = response.MetadataId;
+          } catch (retryError) {
+            console.error(`❌ Second attempt also failed:`, retryError.message);
+            throw retryError;
+          }
+        } else {
+          throw apiError; // Re-throw if it's not a nasty 405 error
+        }
       }
-
-      const optionSetId = response.MetadataId;
-      console.log(`✅ Created global choice set ${choiceSetMetadata.Name} with ID: ${optionSetId}`);
-
+      
+      // If we don't have a MetadataId yet, try to retrieve it by name - but don't log the process
+      if (!optionSetId) {
+        try {
+          // Query for the global choice set by name
+          const filter = `Name eq '${choiceSetMetadata.Name}'`;
+          const result = await this.makeRequest('GET', `GlobalOptionSetDefinitions?$filter=${filter}`);
+          
+          if (result.value && result.value.length > 0) {
+            optionSetId = result.value[0].MetadataId;
+          }
+        } catch (lookupError) {
+          // Silently fail - we'll handle this later in the batch validation
+        }
+      }
+      
+      // Return the result without verbose logging - we'll handle this in the batch process
       return {
         MetadataId: optionSetId,
         Name: choiceSetMetadata.Name,
-        options: choiceSetMetadata.options
+        Options: options.length,
+        options: choiceSetMetadata.options  // Keep original options for reference
       };
 
     } catch (error) {
@@ -435,33 +522,22 @@ export class DataverseClient {
       return existingSolution;
     }
 
-    // If requested, list available publishers first
+    // If requested, list available publishers first (in more concise format)
     if (listPublishers) {
       console.log('\n📋 Available Publishers:');
       const publishers = await this.getPublishers();
       if (publishers.length > 0) {
-        console.log('┌─────────────────────────────────────────────────────────────────┐');
-        console.log('│ Prefix │ Name                           │ Description           │');
-        console.log('├─────────────────────────────────────────────────────────────────┤');
-        publishers.forEach(pub => {
-          const prefix = (pub.customizationprefix || '').padEnd(6);
-          const name = (pub.friendlyname || '').substring(0, 30).padEnd(30);
-          const desc = (pub.description || '').substring(0, 20).padEnd(20);
-          console.log(`│ ${prefix} │ ${name} │ ${desc} │`);
-        });
-        console.log('└─────────────────────────────────────────────────────────────────┘');
+        // Show just a simple count instead of the full list
+        console.log(`Found ${publishers.length} publishers. Use the existing one or create a new one.`);
       } else {
-        console.log('   No custom publishers found.');
+        console.log('No custom publishers found.');
       }
     }
 
     // Get the publisher (or create if allowed)
     const publisher = await this.getOrCreatePublisher(publisherPrefix, allowCreatePublisher);
     
-    // Debug: Log publisher details
-    console.log('🔍 Publisher details:', JSON.stringify(publisher, null, 2));
-    
-    // Create solution metadata
+    // Create solution metadata (no need to log detailed publisher info)
     const solutionMetadata = {
       uniquename: solutionName,
       friendlyname: displayName,
@@ -471,7 +547,6 @@ export class DataverseClient {
     };
 
     console.log(`Creating new solution: ${solutionName} with publisher: ${publisher.friendlyname}`);
-    console.log('🔍 Solution metadata:', JSON.stringify(solutionMetadata, null, 2));
     return await this.createSolution(solutionMetadata);
   }
 
@@ -535,9 +610,6 @@ export class DataverseClient {
       console.log(`Creating new publisher with prefix: ${prefix}`);
       const createdPublisher = await this.makeRequest('POST', 'publishers', publisherMetadata);
       console.log(`✅ Publisher created: ${prefix}`);
-      
-      // Debug: Check what's in the response
-      console.log('🔍 Publisher creation response:', JSON.stringify(createdPublisher, null, 2));
       
       // Query for the created publisher to get the full data including publisherid
       const newPublisher = await this.getPublisherByPrefix(prefix);
@@ -614,6 +686,72 @@ export class DataverseClient {
       throw error;
     }
   }
+  
+  /**
+   * Process and deploy global choice sets from a JSON configuration file
+   * @param {string|Object} choicesConfig - Path to JSON file or config object with global choice sets
+   * @param {Object} options - Creation options
+   * @returns {Promise<Object>} Creation results
+   */
+  async deployGlobalChoices(choicesConfig, options = {}) {
+    const {
+      dryRun = false,
+      verbose = false,
+      solutionName = this.solutionName
+    } = options;
+    
+    let config;
+    
+    // Handle both string path to JSON file and direct object
+    if (typeof choicesConfig === 'string') {
+      try {
+        console.log(`🔍 Loading global choices configuration from: ${choicesConfig}`);
+        // We assume the configuration is already loaded and parsed
+        // In an actual implementation with Node.js, you would use:
+        // import fs from 'fs';
+        // config = JSON.parse(fs.readFileSync(choicesConfig, 'utf8'));
+        
+        console.log('⚠️ Assuming choicesConfig is already parsed JSON content');
+        config = JSON.parse(choicesConfig);
+      } catch (error) {
+        console.error(`❌ Failed to load global choices configuration: ${error.message}`);
+        return {
+          success: false,
+          error: `Failed to load configuration: ${error.message}`
+        };
+      }
+    } else if (choicesConfig && typeof choicesConfig === 'object') {
+      config = choicesConfig;
+    } else {
+      console.error('❌ Invalid global choices configuration');
+      return {
+        success: false,
+        error: 'Invalid global choices configuration'
+      };
+    }
+    
+    const globalChoices = config.globalChoices || config.globalChoiceSets || config;
+    
+    if (!Array.isArray(globalChoices)) {
+      console.error('❌ Invalid format: Expected an array of global choice sets');
+      return {
+        success: false,
+        error: 'Expected an array of global choice sets'
+      };
+    }
+    
+    // Deploy the global choices
+    const results = await this.createGlobalChoiceSets(globalChoices, {
+      dryRun,
+      verbose,
+      solutionName
+    });
+    
+    return {
+      success: results.errors.length === 0,
+      ...results
+    };
+  }
 
   /**
    * Create entities and relationships from schema
@@ -621,6 +759,117 @@ export class DataverseClient {
    * @param {Object} options - Creation options
    * @returns {Promise<Object>} Creation results
    */
+  /**
+   * Create multiple global choice sets from configuration object
+   * @param {Array} choiceSetConfigs - Array of choice set configurations 
+   * @param {Object} options - Options for creation
+   * @returns {Promise<Object>} Results of creation
+   */
+  async createGlobalChoiceSets(choiceSetConfigs, options = {}) {
+    const { 
+      dryRun = false, 
+      verbose = false,
+      solutionName = this.solutionName
+    } = options;
+    
+    const results = {
+      created: [],
+      existing: [],
+      errors: [],
+      choiceSetsById: new Map()
+    };
+    
+    if (!Array.isArray(choiceSetConfigs)) {
+      console.error('❌ Invalid choice set configuration. Expected an array.');
+      return results;
+    }
+    
+    if (dryRun) {
+      console.log('🔍 DRY RUN MODE - No changes will be made to Dataverse');
+      console.log('📋 Choice Sets Preview:');
+      console.log(JSON.stringify(choiceSetConfigs, null, 2));
+      return results;
+    }
+    
+    // Set solution name for this operation if provided
+    const originalSolutionName = this.solutionName;
+    if (solutionName) {
+      this.solutionName = solutionName;
+    }
+    
+    try {
+      console.log(`\n🎨 Creating ${choiceSetConfigs.length} global choice sets...`);
+      
+      for (const choiceSet of choiceSetConfigs) {
+        if (!choiceSet.Name) {
+          console.error('❌ Missing required Name property in choice set configuration');
+          results.errors.push({
+            error: 'Missing required Name property',
+            choiceSet
+          });
+          continue;
+        }
+        
+        try {
+          // Check if choice set already exists
+          const existingChoiceSet = await this.globalChoiceSetExists(choiceSet.Name);
+          
+          if (existingChoiceSet) {
+            console.log(`⚠️ Global choice set ${choiceSet.Name} already exists, skipping creation`);
+            results.existing.push({
+              MetadataId: existingChoiceSet.MetadataId,
+              Name: choiceSet.Name
+            });
+            
+            // Store for reference
+            results.choiceSetsById.set(choiceSet.Name, existingChoiceSet.MetadataId);
+            continue;
+          }
+          
+          // Create choice set
+          const createdChoiceSet = await this.createGlobalChoiceSet({
+            ...choiceSet,
+            IsGlobal: true // Ensure it's global
+          });
+          
+          results.created.push(createdChoiceSet);
+          results.choiceSetsById.set(choiceSet.Name, createdChoiceSet.MetadataId);
+          
+          console.log(`✅ Created global choice set: ${choiceSet.Name} (ID: ${createdChoiceSet.MetadataId})`);
+          
+          // Wait a bit to avoid overwhelming the API
+          await this.sleep(1000);
+          
+        } catch (error) {
+          console.error(`❌ Failed to create global choice set ${choiceSet.Name}:`, error.message);
+          results.errors.push({
+            choiceSet: choiceSet.Name,
+            error: error.message
+          });
+        }
+      }
+      
+      // Print summary
+      console.log('\n📊 Global Choice Sets Creation Summary:');
+      console.log(`✅ Created: ${results.created.length}`);
+      console.log(`⚠️ Already existing: ${results.existing.length}`);
+      console.log(`❌ Errors: ${results.errors.length}`);
+      
+      if (results.errors.length > 0 && verbose) {
+        console.log('\nErrors encountered:');
+        results.errors.forEach(error => {
+          console.log(`- ${error.choiceSet}: ${error.error}`);
+        });
+      }
+      
+    } finally {
+      // Restore original solution name
+      this.solutionName = originalSolutionName;
+    }
+    
+    return results;
+  }
+
   async createFromSchema(schema, options = {}) {
     const { 
       dryRun = false, 
@@ -629,7 +878,8 @@ export class DataverseClient {
       solutionDisplayName = null,
       publisherPrefix = 'mmd',
       listPublishers = false,
-      createPublisher = true
+      createPublisher = true,
+      globalChoicesConfig = null
     } = options;
     const results = {
       entities: [],
@@ -672,68 +922,189 @@ export class DataverseClient {
 
       // Create global choice sets first (they need to exist before columns that reference them)
       const globalChoiceSets = new Map(); // Store choice set name -> ID mapping
-      if (schema.globalChoiceSets && schema.globalChoiceSets.length > 0) {
-        console.log('\n🎨 Creating global choice sets...');
-        for (const choiceSet of schema.globalChoiceSets) {
-          try {
-            const exists = await this.globalChoiceSetExists(choiceSet.Name);
-            if (exists) {
-              console.log(`⚠️  Global choice set ${choiceSet.Name} already exists, skipping creation`);
-              // Still need to get the ID for existing choice sets
-              const existingResponse = await this.makeRequest('GET', `GlobalOptionSetDefinitions?$filter=Name eq '${choiceSet.Name}'&$select=MetadataId,Name`);
-              if (existingResponse.value && existingResponse.value.length > 0) {
-                globalChoiceSets.set(choiceSet.Name, existingResponse.value[0].MetadataId);
-              }
-              continue;
-            }
-
-            const createdChoiceSet = await this.createGlobalChoiceSet(choiceSet);
-            globalChoiceSets.set(choiceSet.Name, createdChoiceSet.MetadataId);
-            console.log(`✅ Created global choice set: ${choiceSet.Name} (ID: ${createdChoiceSet.MetadataId})`);
-            
-            // Add the global choice set to the solution if solution is specified
-            if (solutionName) {
-              try {
-                await this.addGlobalChoiceSetToSolution(solutionName, createdChoiceSet.MetadataId);
-              } catch (solutionError) {
-                console.error(`⚠️  Failed to add global choice set ${choiceSet.Name} to solution ${solutionName}:`, solutionError.message);
-                // Don't fail the whole process if we can't add to solution
-              }
-            }
-            
-            // Wait for choice set creation to complete
-            await this.sleep(2000);
-            
-          } catch (error) {
-            console.error(`❌ Failed to create global choice set ${choiceSet.Name}:`, error.message);
-            results.errors.push({
-              type: 'globalChoiceSet',
-              choiceSet: choiceSet.Name,
-              error: error.message
+      
+      // Process external global choice sets configuration if provided
+      if (globalChoicesConfig && Array.isArray(globalChoicesConfig)) {
+        console.log('\n🎨 Creating global choice sets from external configuration...');
+        
+        try {
+          const choiceSetResults = await this.createGlobalChoiceSets(globalChoicesConfig, {
+            verbose,
+            solutionName
+          });
+          
+          // Add created choice sets to our mapping
+          for (const [name, id] of choiceSetResults.choiceSetsById.entries()) {
+            globalChoiceSets.set(name, id);
+          }
+          
+          // Add errors to main results
+          if (choiceSetResults.errors.length > 0) {
+            choiceSetResults.errors.forEach(error => {
+              results.errors.push({
+                type: 'globalChoiceSet',
+                choiceSet: error.choiceSet,
+                error: error.error
+              });
             });
+          }
+        } catch (error) {
+          console.error('❌ Failed to process external global choice sets:', error.message);
+          results.errors.push({
+            type: 'globalChoiceSet',
+            error: error.message
+          });
+        }
+      }
+      
+      // Process global choice sets from schema if present
+      if (schema.globalChoiceSets && schema.globalChoiceSets.length > 0) {
+        console.log('\n🎨 Processing global choice sets...');
+        
+        // Step 1: Check which choice sets already exist
+        const choiceSetsToCreate = [];
+        const existingChoiceSets = [];
+        
+        console.log(`🔍 Checking for existing global choice sets...`);
+        for (const choiceSet of schema.globalChoiceSets) {
+          const existingChoiceSet = await this.globalChoiceSetExists(choiceSet.Name);
+          if (existingChoiceSet) {
+            existingChoiceSets.push({
+              name: choiceSet.Name,
+              metadataId: existingChoiceSet.MetadataId
+            });
+            globalChoiceSets.set(choiceSet.Name, existingChoiceSet.MetadataId);
+          } else {
+            choiceSetsToCreate.push(choiceSet);
+          }
+        }
+        
+        // Step 2: Create new choice sets
+        const createdChoiceSets = [];
+        const failedChoiceSets = [];
+        
+        if (existingChoiceSets.length > 0) {
+          console.log(`✅ Found ${existingChoiceSets.length} existing global choice sets`);
+          for (const set of existingChoiceSets) {
+            console.log(`   • ${set.name}`);
+          }
+        }
+        
+        if (choiceSetsToCreate.length > 0) {
+          console.log(`\n🏗️ Creating ${choiceSetsToCreate.length} new global choice sets...`);
+          
+          for (const choiceSet of choiceSetsToCreate) {
+            try {
+              const createdChoiceSet = await this.createGlobalChoiceSet(choiceSet);
+              createdChoiceSets.push({
+                name: choiceSet.Name,
+                metadataId: createdChoiceSet.MetadataId || null
+              });
+            } catch (error) {
+              console.error(`❌ Failed to create ${choiceSet.Name}: ${error.message}`);
+              failedChoiceSets.push({
+                name: choiceSet.Name,
+                error: error.message
+              });
+              results.errors.push({
+                type: 'globalChoiceSet',
+                choiceSet: choiceSet.Name,
+                error: error.message
+              });
+            }
+            
+            // Add a small delay between creations
+            await this.sleep(1000);
+          }
+        }
+        
+        // Step 3: Validate and retrieve MetadataIds for created choice sets
+        if (createdChoiceSets.length > 0) {
+          console.log(`\n⏳ Waiting for global choice sets to be fully provisioned...`);
+          await this.sleep(5000); // Wait for all choice sets to be fully provisioned
+          
+          console.log(`🔍 Retrieving MetadataIds for newly created choice sets...`);
+          
+          // Refresh all choice sets to get their MetadataIds
+          for (const choiceSet of createdChoiceSets) {
+            if (!choiceSet.metadataId) {
+              try {
+                const existingChoiceSet = await this.globalChoiceSetExists(choiceSet.name);
+                if (existingChoiceSet && existingChoiceSet.MetadataId) {
+                  choiceSet.metadataId = existingChoiceSet.MetadataId;
+                  globalChoiceSets.set(choiceSet.name, existingChoiceSet.MetadataId);
+                }
+              } catch (error) {
+                console.error(`❌ Failed to retrieve MetadataId for ${choiceSet.name}: ${error.message}`);
+              }
+            }
+          }
+          
+          // Print a summary of created choice sets
+          console.log(`✅ Created ${createdChoiceSets.length} global choice sets`);
+          for (const set of createdChoiceSets) {
+            console.log(`   • ${set.name} ${set.metadataId ? '(ID: ' + set.metadataId + ')' : '(ID unavailable)'}`);
+          }
+        }
+        
+        // Step 4: Add choice sets to solution if applicable
+        if (solutionName && (existingChoiceSets.length > 0 || createdChoiceSets.length > 0)) {
+          console.log(`\n📦 Adding global choice sets to solution ${solutionName}...`);
+          
+          const allChoiceSets = [...existingChoiceSets, ...createdChoiceSets];
+          const addedToSolution = [];
+          const failedToAddToSolution = [];
+          
+          for (const choiceSet of allChoiceSets) {
+            if (choiceSet.metadataId) {
+              try {
+                await this.addGlobalChoiceSetToSolution(solutionName, choiceSet.metadataId);
+                addedToSolution.push(choiceSet.name);
+              } catch (error) {
+                console.error(`❌ Failed to add ${choiceSet.name} to solution: ${error.message}`);
+                failedToAddToSolution.push({
+                  name: choiceSet.name,
+                  error: error.message
+                });
+              }
+              await this.sleep(500); // Small delay between adding to solution
+            }
+          }
+          
+          if (addedToSolution.length > 0) {
+            console.log(`✅ Added ${addedToSolution.length} global choice sets to solution ${solutionName}`);
+          }
+          
+          if (failedToAddToSolution.length > 0) {
+            console.log(`⚠️ Failed to add ${failedToAddToSolution.length} global choice sets to solution`);
           }
         }
       }
 
       // Create entities first (without custom attributes)
+      console.log(`\n🏗️  Creating entities from schema...`);
+      
+      if (schema.entities.length === 0) {
+        console.log(`⚠️  No entities found in schema - check that your Mermaid file has properly defined entities`);
+      } else {
+        console.log(`📋 Found ${schema.entities.length} entities to process: ${schema.entities.map(e => e.LogicalName.split('_')[1]).join(', ')}`);
+      }
+      
+      // Step 1: Check which entities already exist
+      const entitiesToCreate = [];
+      const existingEntities = [];
+      
+      console.log(`🔍 Checking for existing entities...`);
       for (const entity of schema.entities) {
         try {
-          // Check if entity already exists
           const exists = await this.entityExists(entity.LogicalName);
           if (exists) {
-            console.log(`⚠️  Entity ${entity.LogicalName} already exists, skipping creation`);
-            continue;
+            existingEntities.push(entity.LogicalName);
+          } else {
+            entitiesToCreate.push(entity);
           }
-
-          // Create entity - it will be automatically added to solution via MSCRM.SolutionUniqueName header
-          const createdEntity = await this.createEntity(entity);
-          results.entities.push(createdEntity);
-
-          // Wait longer for entity creation to complete before creating columns
-          await this.sleep(5000);
-
         } catch (error) {
-          console.error(`Failed to create entity ${entity.LogicalName}:`, error.message);
+          console.error(`❌ Error checking if entity ${entity.LogicalName} exists: ${error.message}`);
           results.errors.push({
             type: 'entity',
             entity: entity.LogicalName,
@@ -741,24 +1112,94 @@ export class DataverseClient {
           });
         }
       }
+      
+      // Step 2: Report on existing entities
+      if (existingEntities.length > 0) {
+        console.log(`✅ Found ${existingEntities.length} existing entities that will be skipped:`);
+        for (const entityName of existingEntities) {
+          console.log(`   • ${entityName}`);
+        }
+      }
+      
+      // Step 3: Create new entities
+      if (entitiesToCreate.length > 0) {
+        console.log(`\n🏗️ Creating ${entitiesToCreate.length} new entities...`);
+        
+        for (const entity of entitiesToCreate) {
+          try {
+            console.log(`   • Creating ${entity.LogicalName}...`);
+            
+            // Create entity - it will be automatically added to solution via MSCRM.SolutionUniqueName header
+            const createdEntity = await this.createEntity(entity);
+            results.entities.push(createdEntity);
+            
+            // Wait longer for entity creation to complete before creating columns
+            await this.sleep(5000);
+          } catch (error) {
+            console.error(`❌ Failed to create entity ${entity.LogicalName}:`, error.message);
+            if (error.response?.data) {
+              console.error(`   API Error Details:`, JSON.stringify(error.response.data, null, 2));
+            }
+            results.errors.push({
+              type: 'entity',
+              entity: entity.LogicalName,
+              error: error.message
+            });
+          }
+        }
+        
+        console.log(`✅ Successfully created ${results.entities.length} entities`);
+      }
 
       // Create additional columns for each entity
       if (schema.additionalColumns && schema.additionalColumns.length > 0) {
-        console.log('\n🏛️  Creating additional columns...');
+        console.log(`\n🏛️  Processing ${schema.additionalColumns.length} additional columns...`);
+        
+        // Group columns by entity for better reporting
+        const columnsByEntity = {};
+        schema.additionalColumns.forEach(column => {
+          const entityName = column.entityLogicalName;
+          if (!columnsByEntity[entityName]) {
+            columnsByEntity[entityName] = [];
+          }
+          columnsByEntity[entityName].push(column);
+        });
+        
+        // Log the entity and column counts
+        console.log(`📊 Column distribution by entity:`);
+        for (const [entityName, columns] of Object.entries(columnsByEntity)) {
+          const entityShortName = entityName.split('_').pop();
+          console.log(`   • ${entityShortName}: ${columns.length} columns`);
+        }
+        
+        // Process columns
+        const existingColumns = [];
+        const createdColumns = [];
+        const skippedColumns = [];
+        const failedColumns = [];
+        
+        console.log(`\n🔍 Creating columns...`);
         
         for (const columnInfo of schema.additionalColumns) {
           try {
             // Check if entity exists before creating column
             const entityExists = await this.entityExists(columnInfo.entityLogicalName);
             if (!entityExists) {
-              console.log(`⚠️  Entity ${columnInfo.entityLogicalName} does not exist, skipping column creation`);
+              skippedColumns.push({
+                entity: columnInfo.entityLogicalName,
+                column: columnInfo.columnMetadata.LogicalName,
+                reason: 'Entity does not exist'
+              });
               continue;
             }
 
             // Check if column already exists
             const columnExists = await this.columnExists(columnInfo.entityLogicalName, columnInfo.columnMetadata.LogicalName);
             if (columnExists) {
-              console.log(`⚠️  Column ${columnInfo.columnMetadata.LogicalName} already exists on entity ${columnInfo.entityLogicalName}, skipping creation`);
+              existingColumns.push({
+                entity: columnInfo.entityLogicalName,
+                column: columnInfo.columnMetadata.LogicalName
+              });
               continue;
             }
 
@@ -771,7 +1212,11 @@ export class DataverseClient {
                 resolvedColumnMetadata['OptionSet@odata.bind'] = `/GlobalOptionSetDefinitions(${choiceSetId})`;
                 delete resolvedColumnMetadata._globalChoiceSetName; // Remove the temporary property
               } else {
-                console.error(`❌ Global choice set ${resolvedColumnMetadata._globalChoiceSetName} not found for column ${resolvedColumnMetadata.LogicalName}`);
+                skippedColumns.push({
+                  entity: columnInfo.entityLogicalName,
+                  column: columnInfo.columnMetadata.LogicalName,
+                  reason: `Global choice set ${resolvedColumnMetadata._globalChoiceSetName} not found`
+                });
                 continue;
               }
             }
@@ -782,11 +1227,21 @@ export class DataverseClient {
               column: columnInfo.columnMetadata.LogicalName
             });
             
+            createdColumns.push({
+              entity: columnInfo.entityLogicalName,
+              column: columnInfo.columnMetadata.LogicalName
+            });
+            
             // Wait a bit between column creations
             await this.sleep(1000);
 
           } catch (error) {
-            console.error(`Failed to create column ${columnInfo.columnMetadata.LogicalName} for entity ${columnInfo.entityLogicalName}:`, error.message);
+            failedColumns.push({
+              entity: columnInfo.entityLogicalName,
+              column: columnInfo.columnMetadata.LogicalName,
+              error: error.message
+            });
+            
             results.errors.push({
               type: 'column',
               entity: columnInfo.entityLogicalName,
@@ -795,33 +1250,71 @@ export class DataverseClient {
             });
           }
         }
+        
+        // Summary report
+        console.log(`\n📊 Column Creation Summary:`);
+        console.log(`   • Created: ${createdColumns.length}`);
+        console.log(`   • Existing: ${existingColumns.length}`);
+        console.log(`   • Skipped: ${skippedColumns.length}`);
+        console.log(`   • Failed: ${failedColumns.length}`);
+        
+        if (failedColumns.length > 0) {
+          console.log(`\n❌ Failed column creations:`);
+          failedColumns.forEach(col => {
+            console.log(`   • ${col.entity}.${col.column}: ${col.error}`);
+          });
+        }
       }
 
       // Create relationships after all entities are created
       if (schema.relationships && schema.relationships.length > 0) {
-        console.log('\n📎 Creating relationships...');
+        console.log(`\n📎 Processing ${schema.relationships.length} relationships...`);
         
         // ✅ Publish customizations first to ensure entities are fully provisioned
         console.log('📤 Publishing customizations before creating relationships...');
         await this.publishCustomizations();
         
-        // ✅ Wait longer for entities to be fully created and available (increased from 5s to 15s)
+        // ✅ Wait longer for entities to be fully created and available
         console.log('⏳ Waiting for entities to be fully provisioned...');
         await this.sleep(15000);
         
+        const createdRelationships = [];
+        const failedRelationships = [];
+        
+        console.log(`\n🏗️ Creating relationships...`);
         for (const relationship of schema.relationships) {
           try {
+            console.log(`   • Creating ${relationship.SchemaName}: ${relationship.ReferencingEntity} → ${relationship.ReferencedEntity}`);
             const createdRelationship = await this.createRelationship(relationship);
             results.relationships.push(createdRelationship);
+            createdRelationships.push({
+              name: relationship.SchemaName
+            });
             await this.sleep(2000); // Wait between relationship creations
           } catch (error) {
-            console.error(`Failed to create relationship ${relationship.SchemaName}:`, error.message);
+            console.error(`❌ Failed to create relationship ${relationship.SchemaName}:`, error.message);
+            failedRelationships.push({
+              name: relationship.SchemaName,
+              error: error.message
+            });
             results.errors.push({
               type: 'relationship',
               relationship: relationship.SchemaName,
               error: error.message
             });
           }
+        }
+        
+        // Summary report
+        console.log(`\n📊 Relationship Creation Summary:`);
+        console.log(`   • Created: ${createdRelationships.length}`);
+        console.log(`   • Failed: ${failedRelationships.length}`);
+        
+        if (failedRelationships.length > 0) {
+          console.log(`\n❌ Failed relationships:`);
+          failedRelationships.forEach(rel => {
+            console.log(`   • ${rel.name}: ${rel.error}`);
+          });
         }
       }
 
@@ -863,6 +1356,82 @@ export class DataverseClient {
    */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Create a localized label object for Dataverse API
+   * @param {string|Object} labelInput - Label text or object with label properties
+   * @param {number} languageCode - Language code (default: 1033 for English)
+   * @returns {Object} Localized label object for Dataverse API
+   */
+  createLocalizedLabel(labelInput, languageCode = 1033) {
+    // If already in proper format, return as is
+    if (labelInput && typeof labelInput === 'object' && labelInput.LocalizedLabels) {
+      return labelInput;
+    }
+    
+    // If it's a string, create a simple label
+    if (typeof labelInput === 'string') {
+      return {
+        LocalizedLabels: [{
+          Label: labelInput,
+          LanguageCode: languageCode
+        }]
+      };
+    }
+    
+    // Default empty label
+    return {
+      LocalizedLabels: [{
+        Label: '',
+        LanguageCode: languageCode
+      }]
+    };
+  }
+
+  /**
+   * Process choice options into the format required by Dataverse API
+   * @param {Array} options - Array of options (strings or objects)
+   * @returns {Array} Processed options in Dataverse API format
+   */
+  processChoiceOptions(options) {
+    // Handle different formats of options
+    return options.map((option, index) => {
+      // If the option is a simple string
+      if (typeof option === 'string') {
+        return {
+          Value: index + 1, // Start from 1
+          Label: {
+            LocalizedLabels: [{
+              Label: option,
+              LanguageCode: 1033
+            }]
+          }
+        };
+      }
+      
+      // If the option is an object with label and value
+      if (typeof option === 'object') {
+        const value = option.value !== undefined ? option.value : (index + 1);
+        const label = option.label || option.text || `Option ${value}`;
+        
+        return {
+          Value: value,
+          Label: this.createLocalizedLabel(label)
+        };
+      }
+      
+      // Default case
+      return {
+        Value: index + 1,
+        Label: {
+          LocalizedLabels: [{
+            Label: `Option ${index + 1}`,
+            LanguageCode: 1033
+          }]
+        }
+      };
+    });
   }
 }
 

@@ -1,34 +1,34 @@
 {
-    "name": "mermaid-to-dataverse",
-    "version": "1.0.0",
-    "description": "Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships",
-    "main": "index.js",
-    "type": "module",
-    "scripts": {
-        "start": "node src/index.js",
-        "create": "node src/index.js create",
-        "convert": "node src/index.js convert",
-        "publishers": "node src/index.js publishers",
-        "test": "node --test src/tests/parser.test.js src/tests/schema-generator.test.js",
-        "dev": "node --watch src/index.js",
-        "cleanup": "node scripts/cleanup.js"
-    },
-    "dependencies": {
-        "@azure/msal-node": "^2.6.4",
-        "axios": "^1.6.7",
-        "commander": "^12.0.0",
-        "dotenv": "^16.4.1"
-    },
-    "devDependencies": {
-        "@types/node": "^20.11.16"
-    },
-    "keywords": [
-        "mermaid",
-        "dataverse",
-        "erd",
-        "power-platform",
-        "data-modeling"
-    ],
-    "author": "Your Name",
-    "license": "MIT"
+  "name": "mermaid-to-dataverse",
+  "version": "1.0.0",
+  "description": "Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "create": "node src/index.js create",
+    "convert": "node src/index.js convert",
+    "publishers": "node src/index.js publishers",
+    "test": "node --test src/tests/parser.test.js src/tests/schema-generator.test.js",
+    "dev": "node --watch src/index.js",
+    "cleanup": "node scripts/cleanup.js"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^2.16.2",
+    "axios": "^1.11.0",
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16"
+  },
+  "keywords": [
+    "mermaid",
+    "dataverse",
+    "erd",
+    "power-platform",
+    "data-modeling"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }

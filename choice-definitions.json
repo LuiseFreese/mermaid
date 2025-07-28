@@ -1,0 +1,58 @@
+{
+    "globalChoices": [
+        {
+            "name": "mmd_teamchoice",
+            "displayName": "Team Assignment",
+            "description": "Teams that employees can be assigned to",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Development",
+                    "description": "Software development team"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Testing",
+                    "description": "Quality assurance team"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Design",
+                    "description": "UX/UI design team"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Product",
+                    "description": "Product management team"
+                }
+            ]
+        },
+        {
+            "name": "mmd_levelchoice",
+            "displayName": "Experience Level",
+            "description": "Experience levels for staff members",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Junior",
+                    "description": "Entry-level position"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Mid",
+                    "description": "Mid-level position"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Senior",
+                    "description": "Senior-level position"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Lead",
+                    "description": "Team lead position"
+                }
+            ]
+        }
+    ]
+}
