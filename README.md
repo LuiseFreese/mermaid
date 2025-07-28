@@ -32,7 +32,7 @@ Core Options:
 
 Before you begin, make sure you have:
 
-1. **Power Platform CLI** - [Official Documentation](https://learn.microsoft.com/power-platform/developer/cli/introduction)
+1. **[Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)** - 
    - **Important**: After installation, **restart VS Code** to ensure `pac` command is available
    - Test installation: Run `pac` in terminal
 
@@ -99,7 +99,7 @@ erDiagram
 
 ## Developer Documentation
 
-For developers who want to understand, maintain, or contribute to this project: [Developer Documentation](docs/DEVELOPER.md) - Comprehensive technical guide 
+For developers who want to understand, maintain, or contribute to this project: [Developer Documentation](docs/DEVELOPER.md)
 
 ## Contributing
 

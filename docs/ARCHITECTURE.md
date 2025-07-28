@@ -5,6 +5,7 @@
 ```mermaid
 graph TB
     A[Mermaid ERD File] --> B[CLI Interface]
+    L[Global Choice JSON File] --> B
     B --> C[ERD Parser]
     C --> D[Schema Generator]
     D --> E[Relationship Validator]
@@ -33,6 +34,14 @@ graph TB
     subgraph "Validation Layer"
         E
     end
+    
+    subgraph "Global Choices"
+        L
+        M[Global Choice Processor]
+    end
+    
+    B --> M
+    M --> F
 ```
 
 > **Note:** The Dataverse Client is responsible for both authentication and all API operations. After processing and validation, results and warnings are reported back to the CLI for user feedback.
@@ -57,6 +66,11 @@ sequenceDiagram
     User->>CLI: Provide solution name & publisher
     CLI->>Parser: Parse ERD file
     Parser->>CLI: Return structured data
+    
+    opt Global Choices Configuration
+        CLI->>CLI: Load global choices JSON
+    end
+    
     CLI->>Generator: Generate Dataverse schema
     Generator->>Validator: Validate relationships
     Validator->>Generator: Return validation results
@@ -65,6 +79,12 @@ sequenceDiagram
     Client->>EntraID: Authenticate
     EntraID->>Client: Return access token
     Client->>Dataverse: Create solution
+    
+    opt Global Choices Creation
+        Client->>Dataverse: Create global choice sets
+        Dataverse->>Client: Return choice set IDs
+    end
+    
     Client->>Dataverse: Create entities
     Client->>Dataverse: Create relationships
     Dataverse->>Client: Confirm creation
@@ -83,6 +103,7 @@ classDiagram
         +promptForInput()
         +validateConfig()
         +orchestrateFlow()
+        +loadGlobalChoices()
     }
     
     class ERDParser {
@@ -97,6 +118,7 @@ classDiagram
         +generateColumnMetadata()
         +generateRelationshipMetadata()
         +mapFieldTypes()
+        +processGlobalChoices()
     }
     
     class RelationshipValidator {
@@ -113,14 +135,26 @@ classDiagram
         +createEntity()
         +createColumn()
         +createRelationship()
+        +createGlobalChoiceSet()
+        +createGlobalChoiceSets()
+        +addComponentToSolution()
+    }
+    
+    class GlobalChoiceProcessor {
+        +loadChoicesFromJSON()
+        +processChoiceOptions()
+        +mapChoiceToSchema()
     }
     
     CLIInterface --> ERDParser
     CLIInterface --> SchemaGenerator
     CLIInterface --> DataverseClient
+    CLIInterface --> GlobalChoiceProcessor
     ERDParser --> SchemaGenerator
     SchemaGenerator --> RelationshipValidator
     SchemaGenerator --> DataverseClient
+    GlobalChoiceProcessor --> SchemaGenerator
+    GlobalChoiceProcessor --> DataverseClient
 ```
 
 > **Note:** The CLIInterface surfaces all validation warnings, errors, and results to the user, integrating feedback from every component in the workflow.
