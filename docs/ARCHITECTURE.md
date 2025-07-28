@@ -40,8 +40,14 @@ graph TB
         M[Global Choice Processor]
     end
     
+    subgraph "Publisher Management"
+        N[Publisher Manager]
+    end
+    
     B --> M
     M --> F
+    B --> N
+    N --> F
 ```
 
 > **Note:** The Dataverse Client is responsible for both authentication and all API operations. After processing and validation, results and warnings are reported back to the CLI for user feedback.
@@ -78,6 +84,18 @@ sequenceDiagram
     CLI->>Client: Create entities with schema
     Client->>EntraID: Authenticate
     EntraID->>Client: Return access token
+    
+    opt Publisher Management
+        Client->>Dataverse: List existing publishers
+        Dataverse->>Client: Return publishers
+        alt Publisher exists
+            Client->>Client: Select existing publisher
+        else Publisher doesn't exist
+            Client->>Dataverse: Create new publisher
+            Dataverse->>Client: Return publisher ID
+        end
+    end
+    
     Client->>Dataverse: Create solution
     
     opt Global Choices Creation
@@ -131,6 +149,9 @@ classDiagram
     
     class DataverseClient {
         +authenticate()
+        +listPublishers()
+        +createPublisher()
+        +ensurePublisher()
         +createSolution()
         +createEntity()
         +createColumn()
@@ -146,15 +167,25 @@ classDiagram
         +mapChoiceToSchema()
     }
     
+    class PublisherManager {
+        +listPublishers()
+        +findPublisherByPrefix()
+        +createPublisher()
+        +ensurePublisherExists()
+        +validatePublisherPrefix()
+    }
+    
     CLIInterface --> ERDParser
     CLIInterface --> SchemaGenerator
     CLIInterface --> DataverseClient
     CLIInterface --> GlobalChoiceProcessor
+    CLIInterface --> PublisherManager
     ERDParser --> SchemaGenerator
     SchemaGenerator --> RelationshipValidator
     SchemaGenerator --> DataverseClient
     GlobalChoiceProcessor --> SchemaGenerator
     GlobalChoiceProcessor --> DataverseClient
+    PublisherManager --> DataverseClient
 ```
 
 > **Note:** The CLIInterface surfaces all validation warnings, errors, and results to the user, integrating feedback from every component in the workflow.
