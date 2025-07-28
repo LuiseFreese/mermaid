@@ -38,9 +38,10 @@ export class DataverseSchemaGenerator {
   /**
    * Generate Dataverse entities from parsed ERD data
    * @param {Object} erdData - Parsed ERD data containing entities and relationships
+   * @param {Array} externalGlobalChoices - Optional array of global choice sets from external file
    * @returns {Object} Dataverse schema definitions
    */
-  async generateSchema(erdData) {
+  async generateSchema(erdData, externalGlobalChoices = []) {
     console.log('🏗️  Generating Dataverse schema...');
     
     // Debug parsed data
@@ -52,7 +53,16 @@ export class DataverseSchemaGenerator {
     }
 
     // Step 1: Generate initial schema components
-    const globalChoiceSets = this.generateGlobalChoiceSets(erdData.entities);
+    const schemaChoiceSets = this.generateGlobalChoiceSets(erdData.entities);
+    
+    // Merge external global choice sets with the ones from the schema
+    let globalChoiceSets = schemaChoiceSets;
+    
+    if (externalGlobalChoices && externalGlobalChoices.length > 0) {
+      console.log(`🔤 Adding ${externalGlobalChoices.length} external global choice sets`);
+      globalChoiceSets = this.mergeGlobalChoiceSets(schemaChoiceSets, externalGlobalChoices);
+    }
+    
     const entities = this.generateEntities(erdData.entities);
     console.log(`🏗️  Generated ${entities.length} entity definitions from ERD data`);
     
@@ -95,6 +105,110 @@ export class DataverseSchemaGenerator {
         validationEnabled: this.options.enableValidation,
         safeMode: this.options.safeMode
       }
+    };
+  }
+
+  /**
+   * Merges global choice sets from schema with external ones
+   * @param {Array} schemaChoiceSets - Choice sets derived from schema
+   * @param {Array} externalChoiceSets - Choice sets from external file
+   * @returns {Array} Merged global choice sets
+   */
+  mergeGlobalChoiceSets(schemaChoiceSets, externalChoiceSets) {
+    // Create a map of existing choice sets by name
+    const choiceSetMap = new Map();
+    
+    // Add schema choice sets first
+    schemaChoiceSets.forEach(choiceSet => {
+      choiceSetMap.set(choiceSet.Name.toLowerCase(), choiceSet);
+    });
+    
+    // Add or merge external choice sets
+    externalChoiceSets.forEach(externalSet => {
+      // Remove any existing publisher prefix from name (like "mint_")
+      const rawName = externalSet.Name.replace(/^[a-z]+_/i, '');
+      
+      // Create the correct name with current publisher prefix
+      const normalizedName = rawName.toLowerCase();
+      
+      if (choiceSetMap.has(normalizedName)) {
+        console.log(`⚠️  Global choice set '${normalizedName}' defined in both schema and external file. Using external definition.`);
+      }
+      
+      // Create a copy of the choice set with the publisher prefix removed
+      const choiceSetWithoutPrefix = { ...externalSet, Name: rawName };
+      
+      // Convert external choice set to Dataverse format if needed
+      const choiceSet = this.formatExternalChoiceSet(choiceSetWithoutPrefix);
+      choiceSetMap.set(normalizedName, choiceSet);
+    });
+    
+    // Apply the current publisher prefix to all choice sets
+    const result = Array.from(choiceSetMap.values()).map(choiceSet => {
+      const name = `${this.publisherPrefix}_${choiceSet.Name}`;
+      console.log(`🔤 Applying publisher prefix: ${choiceSet.Name} → ${name}`);
+      return { 
+        ...choiceSet,
+        Name: name
+      };
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Formats an external choice set to match Dataverse requirements
+   * @param {Object} externalSet - External choice set definition
+   * @returns {Object} Formatted choice set
+   */
+  formatExternalChoiceSet(externalSet) {
+    // If already in correct format, return as is
+    if (externalSet.DisplayName && 
+        typeof externalSet.DisplayName === 'object' && 
+        Array.isArray(externalSet.DisplayName.LocalizedLabels)) {
+      return externalSet;
+    }
+    
+    // Format for Dataverse
+    return {
+      Name: externalSet.Name, // Publisher prefix will be applied later
+      DisplayName: {
+        LocalizedLabels: [{
+          Label: externalSet.DisplayName || externalSet.Name,
+          LanguageCode: 1033
+        }]
+      },
+      Description: {
+        LocalizedLabels: [{
+          Label: externalSet.Description || `Global choice set for ${externalSet.DisplayName || externalSet.Name}`,
+          LanguageCode: 1033
+        }]
+      },
+      Options: Array.isArray(externalSet.options) ? 
+        externalSet.options.map((option, index) => {
+          // Handle both string options and object options
+          if (typeof option === 'string') {
+            return {
+              Value: index,
+              Label: {
+                LocalizedLabels: [{
+                  Label: option,
+                  LanguageCode: 1033
+                }]
+              }
+            };
+          } else if (typeof option === 'object') {
+            return {
+              Value: option.value !== undefined ? option.value : index,
+              Label: {
+                LocalizedLabels: [{
+                  Label: option.label || `Option ${index + 1}`,
+                  LanguageCode: 1033
+                }]
+              }
+            };
+          }
+        }) : []
     };
   }
 
@@ -160,7 +274,8 @@ export class DataverseSchemaGenerator {
    */
   generateEntities(entities) {
     return entities.map(entity => {
-      const logicalName = `${this.publisherPrefix}_${entity.name.toLowerCase()}`;
+      // Keep original casing for logical name - only lowercase the prefix
+      const logicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name}`;
       
       // Find the primary key attribute
       const primaryKeyAttr = entity.attributes.find(attr => attr.isPrimaryKey);
@@ -171,7 +286,7 @@ export class DataverseSchemaGenerator {
       const entityMetadata = {
         '@odata.type': 'Microsoft.Dynamics.CRM.EntityMetadata',
         LogicalName: logicalName,
-        SchemaName: `${this.publisherPrefix}_${this.formatSchemaName(entity.name)}`,
+        SchemaName: `${this.publisherPrefix}_${entity.name}`,
         DisplayName: {
           LocalizedLabels: [
             {
@@ -217,7 +332,7 @@ export class DataverseSchemaGenerator {
     const allColumns = [];
     
     entities.forEach(entity => {
-      const entityLogicalName = `${this.publisherPrefix}_${entity.name.toLowerCase()}`;
+      const entityLogicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name}`;
       
       // Get all non-primary key, non-foreign key attributes
       // Foreign key attributes will be created automatically by relationships
@@ -604,8 +719,8 @@ export class DataverseSchemaGenerator {
    */
   generateRelationships(relationships, entities) {
     return relationships.map(rel => {
-      const fromEntityLogicalName = `${this.publisherPrefix}_${rel.fromEntity.toLowerCase()}`;
-      const toEntityLogicalName = `${this.publisherPrefix}_${rel.toEntity.toLowerCase()}`;
+      const fromEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.fromEntity}`;
+      const toEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.toEntity}`;
       
       // Skip self-referencing relationships that are problematic
       if (fromEntityLogicalName === toEntityLogicalName) {
@@ -831,9 +946,9 @@ export class DataverseSchemaGenerator {
    * @returns {string} Formatted schema name
    */
   formatSchemaName(name) {
-    // Remove underscores and capitalize each word
-    return name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-               .replace(/^[a-z]/, letter => letter.toUpperCase());
+    // DEPRECATED - We now preserve original casing
+    // We're keeping this method for backward compatibility
+    return name;
   }
 
   /**

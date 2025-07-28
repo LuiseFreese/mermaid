@@ -72,6 +72,7 @@ erDiagram
     Entity1 ||--o{ Entity2 : relationship_name
 ```
 
+
 **Output Structure**:
 ```javascript
 {
@@ -103,7 +104,7 @@ erDiagram
 - Map Mermaid field types to Dataverse metadata types
 - Generate entity metadata with proper naming conventions
 - Create column definitions with constraints
-- Handle choice fields and global choice sets
+- Handle global choice sets
 - Generate relationship metadata
 
 **Type Mapping Strategy**:
@@ -124,7 +125,7 @@ const typeMapping = {
 **Purpose**: Validate ERD relationships and detect potential Dataverse conflicts
 
 **Key Features**:
-- Multiple parental relationship detection (validates Dataverse constraint: max 1 parental per entity)
+- Multiple parental relationship detection
 - Circular cascade delete detection  
 - Self-reference validation
 - Missing primary key validation
@@ -246,48 +247,53 @@ function generateSolutionUniqueName(displayName) {
 - Auto-create publisher if it doesn't exist
 - Provide option to list existing publishers
 
-### 4. Choice Field Handling
+### 4. Global Choice Set Handling
 
-**Problem**: Choice fields can use global choice sets or inline options.
+**Important Update**: Choice fields are not directly supported in Mermaid diagrams due to syntax limitations. Instead, global choice sets are now defined in a separate JSON configuration file.
 
-**Solution**: Global choice set approach (with known limitations)
-1. The tool attempts to create global choice sets for choice fields
-2. If global choice set creation fails (common in some environments), columns are created without choice options
-3. Error messages indicate when global choice sets cannot be created
+**Current Solution**:
+1. Define global choice sets in a JSON file (e.g., `global-choices.json`)
+2. Reference these global choice sets in your schema
+3. The tool creates global choice sets in Dataverse independently of Mermaid diagram parsing
 
-**Current Limitations**:
-- Global choice set creation often fails with HTTP 405 errors in many Dataverse environments
-- When this occurs, columns are created but lack the choice options
-- Full choice field support requires manual configuration after entity creation
+**Global Choice Set JSON Structure**:
+```json
+{
+  "globalChoices": [
+    {
+      "name": "prefix_choicename",
+      "displayName": "User-friendly name",
+      "description": "Description of this choice set",
+      "options": [
+        {
+          "value": 100000000,
+          "label": "Option One",
+          "description": "Description of this option"
+        },
+        {
+          "value": 100000001,
+          "label": "Option Two",
+          "description": "Description of this option"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Benefits of This Approach**:
+- More robust global choice set creation
+- Detailed control over choice option values and descriptions
+- Clear separation of concerns
+- Avoids syntax limitations in Mermaid
+- Works consistently across all Dataverse environments
 
 **Global Choice Set Naming**:
 ```javascript
-const globalChoiceSetName = `${publisherPrefix}_${fieldName.toLowerCase()}`;
+// The name from JSON is used with publisher prefix applied
+const globalChoiceSetName = `${publisherPrefix}_${choiceSet.name.toLowerCase()}`;
 ```
 
-**Choice Field Syntax in Mermaid**:
-```
-choice(Option1,Option2,Option3) fieldname
-```
-
-Where:
-- `choice()` is the field type keyword
-- The comma-separated values inside parentheses are the options
-- `fieldname` is the name of your field
-
-### 5. Error Handling Strategy
-
-**Principles**:
-- **Fail Fast**: Validate configuration early
-- **Graceful Degradation**: Continue with warnings when possible
-- **Detailed Logging**: Provide actionable error messages
-- **Recovery**: Suggest fixes for common issues
-
-**Error Categories**:
-- **Configuration Errors**: Missing environment variables, invalid credentials
-- **API Errors**: Network issues, permission problems, quota limits
-- **Data Errors**: Invalid ERD syntax, unsupported field types
-- **Business Logic Errors**: Duplicate names, constraint violations
 
 ## Authentication Strategy
 
@@ -300,7 +306,7 @@ Where:
 - Supports long-running operations
 
 **Setup Process**:
-1. Create Azure app registration
+1. Create Entra Id app registration
 2. Generate client secret
 3. Create Dataverse application user
 4. Assign appropriate security roles
@@ -310,14 +316,11 @@ Where:
 - Principle of least privilege for permissions
 - Regular secret rotation recommended
 
-
-
 ## Field Type Mapping
 
 ### Supported Mermaid Types → Dataverse Types
 
-> **Note:** The tool supports syntax for choice/picklist fields using the `choice(Option1,Option2)` format, but there are limitations with creating global choice sets in some Dataverse environments. For all other types, use the Dataverse logical type name as the Mermaid field type.
-
+>
 | Mermaid Type / Alias      | Dataverse Type                | Status      | Notes |
 |--------------------------|-------------------------------|-------------|-------|
 | `string`                 | StringAttributeMetadata       | Supported   | Single line of text (plain text) |
@@ -341,8 +344,7 @@ Where:
 | `file`                   | FileAttributeMetadata         | Supported   | File uploads |
 | `image`                  | ImageAttributeMetadata        | Supported   | Image fields |
 | `lookup`                 | LookupAttributeMetadata       | Supported   | Explicit relationship definition |
-| `choice(Option1,Option2)` | PicklistAttributeMetadata    | Partial     | Creates columns but global choice sets may fail (HTTP 405) |
-
+|
 
 ### Constraint Handling
 
@@ -358,46 +360,6 @@ Where:
 **Planned Additions**:
 
 - `lookup` → Explicit relationship definition
-
-## Testing Strategy
-
-### Current Test Coverage
-
-1. **Unit Tests**: Individual function testing
-2. **Integration Tests**: API interaction testing
-3. **End-to-End Tests**: Complete workflow validation
-4. **Dry Run Tests**: Schema generation without API calls
-
-### Test Categories
-
-**Parser Tests**:
-```javascript
-describe('MermaidERDParser', () => {
-  it('should parse entity with fields', () => {
-    const input = `
-      Entity {
-        string name
-        int count
-      }
-    `;
-    const result = parser.parse(input);
-    expect(result.entities).toHaveLength(1);
-    expect(result.entities[0].fields).toHaveLength(2);
-  });
-});
-```
-
-**Schema Generator Tests**:
-```javascript
-describe('DataverseSchemaGenerator', () => {
-  it('should map string to StringAttributeMetadata', () => {
-    const field = { name: 'test', type: 'string' };
-    const metadata = generator.generateColumnMetadata(field, 'prefix');
-    expect(metadata['@odata.type']).toBe('Microsoft.Dynamics.CRM.StringAttributeMetadata');
-  });
-});
-```
-
 
 ## Contributing
 

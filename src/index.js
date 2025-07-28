@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
 /**
- *   .option('-s, --solution <name>', 'Solution name to create entities in (will prompt if not provided)')ermaid to Dataverse Converter CLI
+ *  .option('-o, --output <file>', 'Output JSON schema file (optional)')
+  .option('-s, --solution <n>', 'Solution name to create entities in (required for Dataverse creation)')
+  .option('--dry-run', 'Preview the conversion without creating entities')
+  .option('--verbose', 'Show detailed output')
+  .option('--publisher-prefix <prefix>', 'Custom publisher prefix (default: mmd)', 'mmd')
+  .option('--global-choices <file>', 'Path to JSON file with global choice sets')
+  .option('--list-publishers', 'List available publishers before creating solution')
+  .option('--no-create-publisher', 'Do not create publisher if it doesn\'t exist (fail instead)')ion('-s, --solution <name>', 'Solution name to create entities in (will prompt if not provided)')ermaid to Dataverse Converter CLI
  * Main entry point for the application
  */
 
@@ -54,6 +61,7 @@ program
   .option('--dry-run', 'Preview the conversion without creating entities')
   .option('--verbose', 'Show detailed output')
   .option('--publisher-prefix <prefix>', 'Custom publisher prefix (default: mmd)', 'mmd')
+  .option('--global-choices <file>', 'Path to JSON file with global choice sets')
   .option('--no-validation', 'Skip relationship validation (not recommended)')
   .option('--safe-mode', 'Use safe mode: all relationships as lookups, no cascade deletes')
   .option('--all-referential', 'Make all relationships referential/lookup only (no cascade deletes)')
@@ -88,6 +96,12 @@ program
       options.enableValidation = !options.noValidation; // Convert --no-validation to enableValidation
       options.interactive = !options.nonInteractive; // Convert --non-interactive to interactive
       options.allReferential = options.allReferential || options.safeMode; // Safe mode implies all referential
+      
+      // Map global choices option
+      if (options.globalChoices) {
+        options.globalChoicesFile = options.globalChoices;
+      }
+      
       await convertMermaidToDataverse(options);
     } catch (error) {
       console.error('❌ Conversion failed:', error.message);
@@ -211,6 +225,27 @@ async function promptWithDefault(rl, question, defaultValue = '') {
 }
 
 /**
+ * Prompt user for yes/no input with a default value
+ * @param {Object} rl - Readline interface
+ * @param {string} question - Question to ask
+ * @param {boolean} defaultValue - Default value if user presses enter
+ * @returns {Promise<boolean>} User input as boolean
+ */
+async function promptWithYesNo(rl, question, defaultValue = false) {
+  const defaultText = defaultValue ? 'Y/n' : 'y/N';
+  const fullQuestion = question.replace(/\(y\/n\)/i, `(${defaultText})`);
+  
+  const answer = await rl.question(fullQuestion);
+  const trimmedAnswer = answer.trim().toLowerCase();
+  
+  if (!trimmedAnswer) {
+    return defaultValue;
+  }
+  
+  return ['y', 'yes', 'true', '1'].includes(trimmedAnswer);
+}
+
+/**
  * Interactive prompts for solution creation
  * @param {Object} options - Current CLI options
  * @returns {Promise<Object>} Updated options with user input
@@ -281,11 +316,39 @@ async function promptForSolutionDetails(options) {
       options.publisherPrefix = sanitizedPrefix;
     }
     
+    // Prompt for global choice definitions
+    console.log('\n💡 Global Choice Sets are defined in JSON files.');
+    console.log('   You can include them in your deployment to create global choice sets in Dataverse.');
+    console.log('   Example file: global-choices.json\n');
+    
+    const includeGlobalChoices = await promptWithYesNo(
+      rl,
+      '🔄 Would you like to include global choice sets in this deployment? (y/N): ',
+      false
+    );
+    
+    if (includeGlobalChoices) {
+      const globalChoicesFile = await promptWithDefault(
+        rl,
+        '📄 Enter path to global choices JSON file (default: src/global-choices.json): ',
+        'src/global-choices.json'
+      );
+      
+      options.globalChoicesFile = globalChoicesFile;
+      console.log(`\n✅ Will include global choices from: ${globalChoicesFile}`);
+    } else {
+      console.log('\n⏭️  Skipping global choice sets for this deployment.');
+    }
+    
     // Show summary
     console.log('\n✅ Configuration Summary:');
     console.log(`   📦 Solution: ${options.solutionDisplayName || options.solution}`);
     console.log(`   🏷️  Publisher Prefix: ${options.publisherPrefix}`);
     console.log(`   📄 Input File: ${options.input}`);
+    
+    if (options.globalChoicesFile) {
+      console.log(`   🔠 Global Choices: ${options.globalChoicesFile}`);
+    }
     
     if (options.dryRun) {
       console.log('   🔍 Mode: Dry Run (preview only)');
@@ -375,7 +438,42 @@ async function convertMermaidToDataverse(options) {
     schemaGeneratorOptions
   );
   
-  const schema = await schemaGenerator.generateSchema(erdData);
+  // Load global choices if specified
+  let globalChoices = [];
+  if (options.globalChoicesFile) {
+    try {
+      console.log(`🔤 Loading global choices from: ${options.globalChoicesFile}`);
+      const { readFileSync, existsSync } = await import('fs');
+      
+      if (!existsSync(options.globalChoicesFile)) {
+        console.warn(`⚠️  Global choices file not found: ${options.globalChoicesFile}`);
+        console.warn('   Will continue without global choices.');
+      } else {
+        const choicesContent = readFileSync(options.globalChoicesFile, 'utf-8');
+        const choicesData = JSON.parse(choicesContent);
+        
+        if (choicesData && choicesData.globalChoices && Array.isArray(choicesData.globalChoices)) {
+          globalChoices = choicesData.globalChoices;
+          console.log(`✅ Loaded ${globalChoices.length} global choice set(s)`);
+          
+          if (options.verbose) {
+            globalChoices.forEach(choice => {
+              console.log(`   - ${choice.Name}: ${choice.options ? choice.options.length : 0} options`);
+            });
+          }
+        } else {
+          console.warn('⚠️  Invalid global choices format. Expected { globalChoices: [] }');
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error loading global choices: ${error.message}`);
+      if (options.verbose) {
+        console.error(error);
+      }
+    }
+  }
+  
+  const schema = await schemaGenerator.generateSchema(erdData, globalChoices);
 
   // Output schema to file if requested
   if (options.output) {
