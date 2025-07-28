@@ -20,7 +20,7 @@ Mermaid ERD syntax uses the same notation (`||--o{`) for all one-to-many relatio
 - **Ownership relationships** (parent owns child, should be parental in Dataverse)
 - **Reference relationships** (parent is referenced by child, should be lookup in Dataverse)
 
-Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
+💡 Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
 1. **Prevents API errors** - Avoids "multiple parental relationships" conflicts
 2. **Ensures successful creation** - All relationships will be created without conflicts
 3. **Maintains data integrity** - References are preserved, just without cascade delete
@@ -86,26 +86,6 @@ After creating your Dataverse solution with this tool, you can manually upgrade 
 - Ensure no circular cascade delete dependencies
 - Test thoroughly before deploying to production
 
-## Command Line Options
-
-### Force All Referential (Default)
-```bash
-node src/index.js create examples/service-core.mmd --verbose
-# All relationships created as referential (default behavior)
-```
-
-### Explicit All Referential Mode
-```bash
-node src/index.js create examples/service-core.mmd --all-referential --verbose
-# Explicitly force all relationships to be referential (same as default)
-```
-
-### Safe Mode (Legacy)
-```bash
-node src/index.js create examples/service-core.mmd --safe-mode --verbose
-# Safe mode also forces all relationships to be referential
-```
-
 ## Benefits of This Approach
 
 ### For Users
@@ -119,36 +99,3 @@ node src/index.js create examples/service-core.mmd --safe-mode --verbose
 - **Clean creation**: All entities and relationships created without conflicts
 - **Extensible**: Relationships can be upgraded to parental after creation
 - **Recoverable**: Mistakes can be easily corrected
-
-## Migration from Previous Versions
-
-If you were using an earlier version of this tool that attempted to auto-detect parental relationships:
-
-### What Changed
-- **Before**: Complex heuristics tried to determine parental vs referential relationships
-- **After**: All relationships are referential by default for consistency and reliability
-
-### Migration Steps
-1. **Re-run the tool** - Your ERD will now create successfully without relationship conflicts
-2. **Review relationships** - Identify which ones should be parental based on your business logic
-3. **Manually configure** - Upgrade specific relationships to parental in Dataverse admin
-4. **Test thoroughly** - Ensure cascade delete behavior matches your expectations
-
-## Best Practices
-
-### ERD Design
-- **Document ownership** - Add comments in your ERD to note intended parental relationships
-- **Review relationships** - Consider which relationships represent true ownership
-- **Plan hierarchy** - Design your entity hierarchy to minimize circular dependencies
-
-### Post-Creation Configuration
-- **Start with referential** - Let the tool create all relationships as referential
-- **Identify ownership** - Determine which relationships represent true ownership
-- **Upgrade selectively** - Convert only the most critical ownership relationships to parental
-- **Test cascade behavior** - Verify cascade delete works as expected
-
-## Conclusion
-
-By defaulting to referential relationships, this tool provides a **reliable foundation** for your Dataverse schema that can be enhanced based on your specific business requirements. This approach eliminates the complexity and unpredictability of trying to auto-detect relationship types from Mermaid ERD syntax, while still providing full flexibility for customization in Dataverse.
-
-The result is a tool that **"just works"** for all ERD designs, letting you focus on your business logic rather than debugging relationship conflicts.
