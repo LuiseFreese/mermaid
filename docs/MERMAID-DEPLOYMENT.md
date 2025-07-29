@@ -87,6 +87,84 @@ This interactive mode will:
 5. Show a configuration summary
 6. Deploy the entire solution to Dataverse
 
+```mermaid
+flowchart TD
+    %% Main user interaction
+    start([User]) --> cmd[Run: npm run create]
+    cmd --> cli[src/index.js CLI Entry Point]
+    
+    %% Interactive prompts section
+    cli --> promptSolution[Prompt for Solution Name]
+    promptSolution --> inputSolution[User provides <br> Solution Name]
+    inputSolution --> promptPublisher[Prompt for Publisher Prefix]
+    promptPublisher --> inputPublisher[User provides <br> Publisher Prefix]
+    inputPublisher --> promptChoices{Include Global Choices?}
+    
+    %% Global choices branch
+    promptChoices -- Yes --> choicesPath[Prompt for Choices File Path]
+    choicesPath --> inputChoicesPath[User provides <br> Choices File Path]
+    promptChoices -- No --> skipChoices[Skip Global Choices]
+    
+    %% Paths join back
+    inputChoicesPath --> confirm[Show Summary & Confirm]
+    skipChoices --> confirm
+    confirm --> inputConfirm[User confirms]
+    
+    %% Processing begins
+    inputConfirm --> process[Begin Processing]
+    
+    %% Core process - file parsing
+    process --> readERD[Read example.mmd]
+    readERD --> parseERD[Parse with src/parser.js]
+    
+    %% Schema generation
+    parseERD --> genSchema[Generate Schema with <br> src/schema-generator.js]
+    
+    %% Global choice handling
+    inputChoicesPath -- If provided --> readChoices[Read example-choices.json]
+    readChoices --> genSchema
+    
+    %% Schema validation
+    genSchema --> validate[Validate with <br> src/relationship-validator.js]
+    validate --> apiSchema[Prepare API Schema]
+    
+    %% Dataverse client operations
+    apiSchema --> client[Pass to <br> src/dataverse-client.js]
+    
+    %% Publisher handling
+    client --> checkPublisher{Publisher Exists?}
+    checkPublisher -- Yes --> usePublisher[Use Existing Publisher]
+    checkPublisher -- No --> createPublisher[Create New Publisher]
+    
+    %% Creation sequence
+    usePublisher --> createSolution[Create Solution]
+    createPublisher --> createSolution
+    createSolution --> createEntities[Create Entities]
+    createEntities --> createRelationships[Create Relationships]
+    
+    %% Global choice creation 
+    inputChoicesPath -- If provided --> createChoices[Create Global Choice Sets]
+    createChoices --> createSolution
+    
+    %% Completion
+    createRelationships --> complete[Deployment Complete]
+    complete --> summary[Display Summary to User]
+    summary --> finish([End])
+    
+    %% Styling
+    classDef userAction fill:#d1eaff,stroke:#0078d7,stroke-width:2px
+    classDef process fill:#d5f5d5,stroke:#107c10,stroke-width:2px
+    classDef file fill:#fff5d5,stroke:#ff8c00,stroke-width:2px
+    classDef api fill:#f5e1ff,stroke:#8661c5,stroke-width:2px
+    classDef decision fill:#ffd5d5,stroke:#d83b01,stroke-width:2px
+    
+    class start,cmd,inputSolution,inputPublisher,inputChoicesPath,inputConfirm userAction
+    class cli,process,parseERD,genSchema,validate,apiSchema,complete,summary process
+    class readERD,readChoices file
+    class client,usePublisher,createPublisher,createSolution,createEntities,createRelationships,createChoices api
+    class promptChoices,checkPublisher decision
+```
+
 ### Option 2: Non-Interactive CLI Deployment
 
 For automation or scripted deployments, use the non-interactive mode with all parameters specified:
