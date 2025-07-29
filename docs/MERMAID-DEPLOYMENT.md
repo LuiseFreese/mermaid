@@ -64,52 +64,60 @@ npm start convert -- -i my-erd.mmd --solution MyProjectSolution
 
 ### Option 1: Interactive Deployment (Recommended)
 
-The easiest way to deploy is using the interactive batch file:
+The easiest way to deploy is using the interactive `create` command:
 
 ```bash
-.\deploy-interactive.bat
+node src/index.js create path/to/your-erd.mmd
 ```
 
-This script will:
-
-1. Prompt for a publisher prefix (default: "mint")
-2. Show available Mermaid files and let you choose one
-3. Deploy the solution to Dataverse
-
-### Option 2: Deployment with Specific Publisher
-
-To quickly deploy with a specific publisher prefix:
+Or using the npm script:
 
 ```bash
-.\deploy-with-publisher.bat myprefix
+npm run create
 ```
 
-This will use the default Mermaid file (`examples/employee-projects.mmd`) with your specified publisher.
+Then provide the path to your Mermaid file when prompted.
 
-### Option 3: Direct Command Line Deployment
+This interactive mode will:
 
-For more control, use the CLI script with specific arguments:
+1. Prompt for a solution name (e.g., "Customer Management")
+2. Prompt for a publisher prefix (default: "mmd")
+3. Ask if you want to include global choice sets
+4. Show a configuration summary
+5. Deploy the solution to Dataverse
+
+### Option 2: Non-Interactive CLI Deployment
+
+For automation or scripted deployments, use the non-interactive mode with all parameters specified:
 
 ```bash
-node bin/deploy-mermaid-cli.js --publisher=myprefix --file=./examples/employee-projects.mmd
+node src/index.js create path/to/your-erd.mmd --non-interactive --publisher-prefix myprefix --global-choices path/to/choices.json
 ```
 
 **Parameters:**
 
-* `--publisher`: Publisher prefix to use for the solution and components (default: 'mint')
-* `--file`: Path to the Mermaid diagram file (default: `./examples/employee-projects.mmd`)
-* `--solution`: Custom solution name (optional)
-* `--verbose`: Enable verbose logging
+* `--publisher-prefix <prefix>`: Publisher prefix to use (default: 'mmd')
+* `--global-choices <file>`: Path to global choices JSON file
+* `--non-interactive`: Run without prompts (required for automation)
+* `--verbose`: Enable detailed logging
+* `--dry-run`: Preview without creating anything in Dataverse
 
-### Option 4: Legacy Script
+### Option 3: Convert Command
 
-The original deployment script is also available:
+For more traditional command-line usage:
 
 ```bash
-node deploy-from-mermaid.js --mermaid <path-to-mermaid-file> --publisher <publisher-prefix>
+node src/index.js convert -i path/to/your-erd.mmd -s "Solution Name" --publisher-prefix myprefix
 ```
 
-### Option 5: Interactive Create Command
+**Parameters:**
+
+* `-i, --input <file>`: Path to the Mermaid diagram file (required)
+* `-s, --solution <name>`: Solution name to create entities in (required)
+* `--publisher-prefix <prefix>`: Custom publisher prefix (default: 'mmd')
+* `--global-choices <file>`: Path to global choices JSON file
+* `--verbose`: Show detailed output
+* `--dry-run`: Preview without creating
 
 ```bash
 # Interactive mode
@@ -142,27 +150,7 @@ This will:
 
 ### Current Format
 
-Global choice sets are now defined in separate JSON files. Mermaid syntax for choice fields is no longer supported.
-
-Example format:
-
-```json
-{
-  "globalChoices": [
-    {
-      "Name": "PriorityChoices",
-      "DisplayName": "Priority Choices",
-      "Description": "Common priority values for tasks",
-      "options": [
-        { "value": 1, "label": "Low" },
-        { "value": 2, "label": "Medium" },
-        { "value": 3, "label": "High" },
-        { "value": 4, "label": "Critical" }
-      ]
-    }
-  ]
-}
-```
+Global choice sets are defined in separate JSON files. Read more in the [GLOBAL CHOICES GUIDE](docs/GLOBAL-CHOICES-GUIDE.md).
 
 ### Publisher Prefix Handling
 
@@ -235,41 +223,61 @@ erDiagram
     Student }o--o{ Course : enrolls_in
 ```
 
-## CLI Commands
+## CLI Commands Reference
 
-### Convert
+### Create Command (Interactive)
 
 ```bash
-npm start convert -- -i file.mmd --solution Name [--publisher-prefix prefix] [--global-choices file.json]
+# Direct command
+node src/index.js create [erdFile]
+
+# Using npm script
+npm run create
 ```
 
-### Validate
+**Options:**
+- `--publisher-prefix <prefix>` - Custom publisher prefix (default: mmd)
+- `--global-choices <file>` - Path to JSON file with global choice sets
+- `--dry-run` - Preview without creating
+- `--non-interactive` - Run without prompts (for automation)
+- `--verbose` - Show detailed output
+
+### Convert Command
 
 ```bash
-npm start validate -- -i file.mmd
+node src/index.js convert -i file.mmd -s "Solution Name" [options]
 ```
 
-### Config
+**Options:**
+- `-i, --input <file>` - Input Mermaid ERD file path (required)
+- `-s, --solution <name>` - Solution name (required)
+- `-o, --output <file>` - Output JSON schema file (optional)
+- `--dry-run` - Preview without creating
+- `--verbose` - Show detailed output
+- `--publisher-prefix <prefix>` - Custom publisher prefix (default: mmd)
+- `--global-choices <file>` - Path to JSON file with global choice sets
+- `--list-publishers` - List available publishers
+- `--no-create-publisher` - Don't create publisher if missing
+
+### Publishers Command
 
 ```bash
-npm start config
+# List publishers in your Dataverse environment
+node src/index.js publishers
+
+# Or using npm script
+npm run publishers
 ```
 
-### Full Convert Options
+### Using npm Scripts
+
+For convenience, you can use the npm scripts with the standard npm run syntax:
 
 ```bash
-npm start convert -- [options]
-
-Options:
-  -i, --input <file>
-  -s, --solution <name>
-  -o, --output <file>
-  --dry-run
-  --verbose
-  --publisher-prefix <prefix>
-  --global-choices <file>
-  --list-publishers
-  --no-create-publisher
+npm run create      # Interactive create command
+npm run convert -- -i file.mmd -s "Solution Name"  # Convert command
+npm run publishers  # List publishers
+npm run cleanup     # Clean temporary files
 ```
 
 ## Best Practices
@@ -331,9 +339,17 @@ By default, relationships are **referential (lookup)**. This prevents cascade de
 
 ## Example Files
 
-The `examples/` folder contains:
+The `examples/` folder contains several ready-to-use samples:
 
-* `event-erd.mmd` – Event management sample
+### Mermaid ERD Examples
+* `event-erd.mmd` - Event management with venues, events, and attendees
+* `crm-solution.mmd` - Customer relationship management with companies, contacts, and activities
+* `department-employee.mmd` - Simple department and employee relationship example
+* `simple-sales.mmd` - Basic sales tracking with customers, orders, and products
+
+### Global Choice Examples
+* `crm-choices.json` - Global choice sets for the CRM solution
+* `global-choices.json` - Example of team assignment and other global choice sets
 
 ## Getting Help
 
@@ -342,14 +358,15 @@ The `examples/` folder contains:
 3. Use `--verbose`
 4. Try a working example first
 
-## Available npm Scripts
+## Running Tests
+
+To validate the codebase functionality:
 
 ```bash
-npm run create      # Interactive
-npm run publishers  # List publishers
-npm run cleanup     # Clean temp
-npm test            # Run tests
+npm test
 ```
+
+This runs the test suite for the parser and schema generator components.
 
 ## Notes
 
