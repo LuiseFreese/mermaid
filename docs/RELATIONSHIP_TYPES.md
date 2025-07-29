@@ -70,32 +70,12 @@ Parental relationships provide stronger data integrity through cascade delete be
 - **Cascade conflicts**: Can cause circular delete dependencies
 - **Less flexible**: Harder to change once established
 
-## How to Manually Configure Parental Relationships
-
-After creating your Dataverse solution with this tool, you can manually upgrade specific relationships to parental:
-
-### In Power Platform Admin Center
-1. Navigate to **Tables** → Select your entity
-2. Go to **Relationships** tab
-3. Select the lookup relationship to modify
-4. Change **Type of Behavior** from "Referential" to "Parental"
-5. Configure cascade delete options as needed
-
-### Key Considerations
-- Only upgrade relationships where true ownership exists
-- Ensure no circular cascade delete dependencies
-- Test thoroughly before deploying to production
 
 ## Benefits of This Approach
 
-### For Users
 - **Predictable results**: Always creates successfully without relationship conflicts
 - **Flexible starting point**: Can be enhanced manually based on business needs
 - **Clear expectations**: Users know exactly what type of relationships will be created
 - **Fast iteration**: No need to debug complex relationship hierarchies in ERD
 
-### For Dataverse
-- **API compatibility**: No "multiple parental relationships" errors
-- **Clean creation**: All entities and relationships created without conflicts
-- **Extensible**: Relationships can be upgraded to parental after creation
-- **Recoverable**: Mistakes can be easily corrected
+
