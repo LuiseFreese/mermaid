@@ -22,7 +22,7 @@ docs/archive/**
 CLEANUP_SUMMARY.md
 AUTH-TROUBLESHOOTING.md
 SOLUTION-*.md
-PUBLISHER-MANAGEMENT.md
+
 
 # Temporary development files
 debug-*.js
