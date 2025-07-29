@@ -423,12 +423,17 @@ node src/index.js create examples/event-erd.mmd --non-interactive
 
 ## Example ERD Files
 
-The `examples/` directory contains ready-to-use Mermaid ERD files:
+The `examples/` directory contains ready-to-use Mermaid ERD files and supporting files:
 
 - **`event-erd.mmd`** - Event management with venues, events, and attendees
-- **`event-erd.mmd`** - Event management with venues, events, and attendees
-- **`choice-field-test.mmd`** - Demonstrates choice fields and global choice sets
-- **`ultimate-datatype-test.mmd`** - Comprehensive field type examples
+- **`crm-solution.mmd`** - Customer relationship management with companies, contacts, and activities
+- **`department-employee.mmd`** - Simple department and employee relationship example
+- **`simple-sales.mmd`** - Basic sales tracking with customers, orders, and products
+
+### Example Global Choice Files
+
+- **`crm-choices.json`** - Global choice sets for the CRM solution
+- **`global-choices.json`** - Example of team assignment and other global choice sets
 
   ```
 
