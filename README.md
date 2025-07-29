@@ -10,20 +10,20 @@ A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and crea
 - **Safe Mode**: All-referential mode to prevent cascade delete conflicts
 - **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
 
-### Prerequisites
+## Prerequisites
 
 Before you begin, make sure you have:
 
-1. **[Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)** - 
+1. [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
    - ⚡ After installation, restart VS Code to ensure `pac` command is available
    - Test installation: Run `pac` in terminal
 
-2. **Azure CLI** - Required for automated setup
+2. [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/?view=azure-cli-latest)
    - Log in as admin: `az login`
 3. **Your Dataverse environment URL** (find it in [Power Platform Admin Center](https://admin.powerplatform.microsoft.com))
 4. **Admin permissions in your Dataverse environment** 
 
-### Quick Setup (Automated)
+## Quick Setup (Automated)
 
 The script automatically
 
@@ -78,7 +78,7 @@ erDiagram
     Customer ||--o{ Order : places
 ```
 
-More info on how to use the tool in the [USAGE-GUIDE](docs/USAGE-GUIDE.md)
+More info on how to use the tool in the [USAGE-GUIDE](docs/USAGE-GUIDE.md).
 
 
 ## Developer Documentation
