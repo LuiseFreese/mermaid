@@ -92,10 +92,27 @@ erDiagram
         string customer_id FK
         decimal total_amount
         datetime order_date
+        lookup(Customer) customer_lookup "Explicit lookup to customer"
     }
     
     Customer ||--o{ Order : places
 ```
+
+### Field Types
+
+- Basic types: `string`, `int`, `decimal`, `bool`, `datetime`, `date`, `money`
+- Complex types:
+  - `choice(option1,option2,option3)` - Creates a choice/option set field
+  - `lookup(EntityName)` - Creates an explicit lookup field to another entity
+  - `lookup(prefix:EntityName)` - Creates an explicit lookup to an entity with a specific publisher prefix
+- Constraints: `PK` (Primary Key), `FK` (Foreign Key), `UK` (Unique Key), `NOT NULL` (Required)
+
+### Working with Existing Entities
+
+When working with existing Dataverse environments, you can:
+
+1. Use explicit publisher prefixes in lookups: `lookup(rose:DEPARTMENT)` 
+2. Run with the `--use-existing-prefix` flag to try multiple common prefixes for lookup targets
 
 ## Developer Documentation
 

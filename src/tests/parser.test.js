@@ -71,7 +71,7 @@ erDiagram
 
     testCases.forEach(testCase => {
       const result = parser.mapMermaidTypeToDataverse(testCase.input);
-      strictEqual(result, testCase.expected, `Failed for type: ${testCase.input}`);
+      strictEqual(result.dataType, testCase.expected, `Failed for type: ${testCase.input}`);
     });
   });
 
@@ -150,5 +150,47 @@ erDiagram
       const result = parser.formatDisplayName(testCase.input);
       strictEqual(result, testCase.expected, `Failed for input: ${testCase.input}`);
     });
+  });
+  
+  test('should parse lookup type fields correctly', () => {
+    const mermaidContent = `
+erDiagram
+    Customer {
+        string customer_id PK
+        string name
+    }
+    
+    Order {
+        string order_id PK
+        lookup(Customer) customer_lookup "Explicit lookup field to Customer"
+    }
+    `;
+
+    const result = parser.parse(mermaidContent);
+    
+    strictEqual(result.entities.length, 2);
+    
+    // Find the Order entity
+    const orderEntity = result.entities.find(e => e.name === 'Order');
+    strictEqual(orderEntity.attributes.length, 2); // Primary key and lookup attribute
+    
+    // Check the lookup attribute
+    const lookupAttr = orderEntity.attributes.find(a => a.name === 'customer_lookup');
+    strictEqual(lookupAttr.isLookup, true);
+    strictEqual(lookupAttr.targetEntity, 'Customer');
+    strictEqual(lookupAttr.type, 'Edm.Guid'); // Lookups are stored as GUIDs
+  });
+  
+  test('should parse different types of lookup fields', () => {
+    const result1 = parser.mapMermaidTypeToDataverse('lookup(Customer)');
+    const result2 = parser.mapMermaidTypeToDataverse('lookup(Product)');
+    
+    strictEqual(result1.isLookup, true);
+    strictEqual(result1.targetEntity, 'Customer');
+    strictEqual(result1.dataType, 'Edm.Guid');
+    
+    strictEqual(result2.isLookup, true);
+    strictEqual(result2.targetEntity, 'Product');
+    strictEqual(result2.dataType, 'Edm.Guid');
   });
 });

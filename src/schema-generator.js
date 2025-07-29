@@ -274,8 +274,8 @@ export class DataverseSchemaGenerator {
    */
   generateEntities(entities) {
     return entities.map(entity => {
-      // Keep original casing for logical name - only lowercase the prefix
-      const logicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name}`;
+      // Use lowercase for both prefix and entity name for consistency
+      const logicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name.toLowerCase()}`;
       
       // Find the primary key attribute
       const primaryKeyAttr = entity.attributes.find(attr => attr.isPrimaryKey);
@@ -286,7 +286,7 @@ export class DataverseSchemaGenerator {
       const entityMetadata = {
         '@odata.type': 'Microsoft.Dynamics.CRM.EntityMetadata',
         LogicalName: logicalName,
-        SchemaName: `${this.publisherPrefix}_${entity.name}`,
+        SchemaName: `${this.publisherPrefix}_${entity.name.toLowerCase()}`,
         DisplayName: {
           LocalizedLabels: [
             {
@@ -332,11 +332,14 @@ export class DataverseSchemaGenerator {
     const allColumns = [];
     
     entities.forEach(entity => {
-      const entityLogicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name}`;
+      const entityLogicalName = `${this.publisherPrefix.toLowerCase()}_${entity.name.toLowerCase()}`;
       
       // Get all non-primary key, non-foreign key attributes
       // Foreign key attributes will be created automatically by relationships
-      const additionalAttributes = entity.attributes.filter(attr => !attr.isPrimaryKey && !attr.isForeignKey);
+      const additionalAttributes = entity.attributes.filter(attr => 
+        !attr.isPrimaryKey && 
+        !attr.isForeignKey
+      );
       
       additionalAttributes.forEach(attr => {
         // Skip attributes that would conflict with the auto-generated primary name column
@@ -357,6 +360,8 @@ export class DataverseSchemaGenerator {
     
     return allColumns;
   }
+
+
 
   /**
    * Generate attribute definitions for an entity
@@ -469,6 +474,66 @@ export class DataverseSchemaGenerator {
       // Reference the global choice set that should be created
       const globalChoiceSetName = `${this.publisherPrefix}_${attr.name.toLowerCase()}`;
       attributeMetadata._globalChoiceSetName = globalChoiceSetName; // Temporary property for resolution later
+      
+      return attributeMetadata;
+    }
+    
+    // Handle explicit lookup fields
+    if (attr.isLookup && attr.targetEntity) {
+      attributeMetadata['@odata.type'] = 'Microsoft.Dynamics.CRM.LookupAttributeMetadata';
+      attributeMetadata.AttributeType = 'Lookup';
+      attributeMetadata.AttributeTypeName = {
+        Value: 'LookupType'
+      };
+      
+      // Add target entity information - support multiple possible prefixes
+      const targetEntityName = attr.targetEntity.toLowerCase();
+      
+      // If the publisher prefix was specified in the lookup, extract it
+      let targetEntityPrefix = this.publisherPrefix.toLowerCase();
+      let targetEntityBaseName = targetEntityName;
+      
+      // Check if the target has an explicit prefix specified in format "prefix:EntityName"
+      if (targetEntityName.includes(':')) {
+        const parts = targetEntityName.split(':');
+        targetEntityPrefix = parts[0].toLowerCase();
+        targetEntityBaseName = parts[1].toLowerCase();
+        console.log(`🔍 Using explicit prefix "${targetEntityPrefix}" for lookup to ${targetEntityBaseName}`);
+      } else if (this.options.useExistingPrefix) {
+        // Add both our prefix and potential existing prefixes as targets
+        // This allows flexibility when the tables might already exist with different prefixes
+        console.log(`🔍 Using flexible prefix matching for lookup to ${targetEntityName}`);
+      }
+      
+      // Default target with our prefix
+      const targetEntityLogicalName = `${targetEntityPrefix}_${targetEntityBaseName}`;
+      
+      // Use array of potential targets to increase chances of success
+      if (this.options.useExistingPrefix) {
+        // Known common prefixes in Dataverse environments
+        const commonPrefixes = ['rose', 'mmd', 'crm', 'new', 'custom'];
+        
+        // Create array of possible target names with different prefixes
+        const targetEntities = Array.from(new Set([
+          targetEntityLogicalName,
+          ...commonPrefixes.map(prefix => `${prefix}_${targetEntityBaseName}`)
+        ]));
+        
+        attributeMetadata.Targets = targetEntities;
+        console.log(`🔗 Lookup will try multiple prefixes for ${targetEntityBaseName}: ${attributeMetadata.Targets.join(', ')}`);
+      } else {
+        attributeMetadata.Targets = [targetEntityLogicalName];
+      }
+      
+      // Update description for clarity
+      attributeMetadata.Description = {
+        LocalizedLabels: [
+          {
+            Label: `Lookup to ${attr.targetEntity}`,
+            LanguageCode: 1033
+          }
+        ]
+      };
       
       return attributeMetadata;
     }
@@ -719,8 +784,8 @@ export class DataverseSchemaGenerator {
    */
   generateRelationships(relationships, entities) {
     return relationships.map(rel => {
-      const fromEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.fromEntity}`;
-      const toEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.toEntity}`;
+      const fromEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.fromEntity.toLowerCase()}`;
+      const toEntityLogicalName = `${this.publisherPrefix.toLowerCase()}_${rel.toEntity.toLowerCase()}`;
       
       // Skip self-referencing relationships that are problematic
       if (fromEntityLogicalName === toEntityLogicalName) {
@@ -754,7 +819,7 @@ export class DataverseSchemaGenerator {
     
     // Find the actual primary key attribute of the referenced entity
     const referencedEntity = entities.find(e => `${this.publisherPrefix}_${e.name.toLowerCase()}` === fromEntity);
-    let referencedAttribute = `${fromEntity}id`; // default fallback
+    let referencedAttribute = `${fromEntity.toLowerCase()}id`; // default fallback
     
     if (referencedEntity) {
       const pkAttr = referencedEntity.attributes.find(attr => attr.isPrimaryKey);

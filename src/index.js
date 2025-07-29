@@ -61,6 +61,7 @@ program
   .option('--dry-run', 'Preview the conversion without creating entities')
   .option('--verbose', 'Show detailed output')
   .option('--publisher-prefix <prefix>', 'Custom publisher prefix (default: mmd)', 'mmd')
+  .option('--use-existing-prefix', 'Use existing publisher prefix for lookup relationships to existing tables')
   .option('--global-choices <file>', 'Path to JSON file with global choice sets')
   .option('--no-validation', 'Skip relationship validation (not recommended)')
   .option('--safe-mode', 'Use safe mode: all relationships as lookups, no cascade deletes')
@@ -79,8 +80,8 @@ program
         console.log('🚀 Mermaid to Dataverse Converter');
         console.log('================================');
         console.log('📁 Available examples:');
-        console.log('   - examples/ecommerce-erd.mmd');
-        console.log('   - examples/hr-system-erd.mmd\n');
+        console.log('   - examples/event-erd.mmd');
+        console.log('   - examples/simple-sales.mmd\n');
         
         erdFile = await rl.question('📄 Enter ERD file path: ');
         rl.close();
@@ -96,10 +97,22 @@ program
       options.enableValidation = !options.noValidation; // Convert --no-validation to enableValidation
       options.interactive = !options.nonInteractive; // Convert --non-interactive to interactive
       options.allReferential = options.allReferential || options.safeMode; // Safe mode implies all referential
+      options.useExistingPrefix = options.useExistingPrefix || false; // Whether to try existing publisher prefixes
+      
+      // Mark publisher prefix as explicitly provided if it was set in command line
+      if (options.publisherPrefix && options.publisherPrefix !== 'mmd') {
+        options.publisherPrefixProvided = true;
+      }
       
       // Map global choices option
       if (options.globalChoices) {
         options.globalChoicesFile = options.globalChoices;
+      }
+      
+      // If non-interactive, make sure we use solution name from .env if not provided
+      if (!options.interactive && !options.solution && process.env.SOLUTION_NAME) {
+        options.solution = process.env.SOLUTION_NAME;
+        console.log(`✅ Using solution name from environment: "${options.solution}"`);
       }
       
       await convertMermaidToDataverse(options);
@@ -285,15 +298,20 @@ async function promptForSolutionDetails(options) {
       // Store both names in options
       options.solution = solutionUniqueName;
       options.solutionDisplayName = solutionDisplayName;
+    } else {
+      // Solution name was already provided
+      console.log(`✅ Using provided solution name: "${options.solution}"`);
     }
     
     // Ensure publisher prefix has a default value
     if (!options.publisherPrefix) {
       options.publisherPrefix = 'mmd';
+    } else {
+      console.log(`✅ Using provided publisher prefix: "${options.publisherPrefix}"`);
     }
     
-    // Prompt for publisher prefix if using default
-    if (options.publisherPrefix === 'mmd') {
+    // Prompt for publisher prefix only if using default and not explicitly provided
+    if (options.publisherPrefix === 'mmd' && !options.publisherPrefixProvided) {
       console.log('\n💡 Publisher prefix should be 2-8 characters, unique to your organization.');
       console.log('   Examples: "contoso", "fabrikam", "acme", "myorg"');
       console.log('   ⚠️  Note: Only lowercase letters allowed, other characters will be removed.');
@@ -316,28 +334,33 @@ async function promptForSolutionDetails(options) {
       options.publisherPrefix = sanitizedPrefix;
     }
     
-    // Prompt for global choice definitions
-    console.log('\n💡 Global Choice Sets are defined in JSON files.');
-    console.log('   You can include them in your deployment to create global choice sets in Dataverse.');
-    console.log('   Example file: global-choices.json\n');
-    
-    const includeGlobalChoices = await promptWithYesNo(
-      rl,
-      '🔄 Would you like to include global choice sets in this deployment? (y/N): ',
-      false
-    );
-    
-    if (includeGlobalChoices) {
-      const globalChoicesFile = await promptWithDefault(
+    // Handle global choice definitions - only prompt if not already provided
+    if (options.globalChoicesFile) {
+      console.log(`✅ Using provided global choices file: "${options.globalChoicesFile}"`);
+    } else {
+      console.log('\n💡 Global Choice Sets are defined in JSON files.');
+      console.log('   You can include them in your deployment to create global choice sets in Dataverse.');
+      console.log('   Example file: global-choices.json\n');
+      
+      const includeGlobalChoices = await promptWithYesNo(
         rl,
-        '📄 Enter path to global choices JSON file (default: src/global-choices.json): ',
-        'src/global-choices.json'
+        '🔄 Would you like to include global choice sets in this deployment? (y/N): ',
+        false
       );
       
-      options.globalChoicesFile = globalChoicesFile;
-      console.log(`\n✅ Will include global choices from: ${globalChoicesFile}`);
-    } else {
-      console.log('\n⏭️  Skipping global choice sets for this deployment.');
+      if (includeGlobalChoices) {
+        const globalChoicesFile = await promptWithDefault(
+          rl,
+          '📄 Enter path to global choices JSON file (default: src/global-choices.json): ',
+          'src/global-choices.json'
+        );
+        
+        options.globalChoicesFile = globalChoicesFile;
+        console.log(`\n✅ Will include global choices from: ${globalChoicesFile}`);
+      } else {
+        console.log('\n⏭️  Skipping global choice sets for this deployment.');
+        options.noGlobalChoices = true; // Mark as explicitly skipped
+      }
     }
     
     // Show summary
@@ -391,9 +414,16 @@ async function convertMermaidToDataverse(options) {
     throw new Error(`Input file not found: ${options.input}`);
   }
 
-  // For non-dry-run operations, prompt for solution details interactively
+  // For non-dry-run operations, prompt for solution details if needed
   if (!options.dryRun && !options.output) {
-    options = await promptForSolutionDetails(options);
+    // Only prompt if interactive mode is enabled AND required parameters are missing
+    const isInteractive = options.interactive !== false; // Default to true
+    const needsSolutionDetails = !options.solution || !options.publisherPrefix;
+    const needsGlobalChoices = !options.globalChoicesFile && !options.noGlobalChoices;
+    
+    if (isInteractive && (needsSolutionDetails || needsGlobalChoices)) {
+      options = await promptForSolutionDetails(options);
+    }
   }
 
   // Validate solution name for actual Dataverse operations (not for dry run or output only)
@@ -430,7 +460,8 @@ async function convertMermaidToDataverse(options) {
     enableValidation: options.enableValidation !== false, // Default to true
     safeMode: options.safeMode || false,
     allReferential: options.allReferential || false,
-    interactive: options.interactive !== false // Default to true
+    interactive: options.interactive !== false, // Default to true
+    useExistingPrefix: options.useExistingPrefix || false // Try to use existing prefixes for lookup columns
   };
   
   const schemaGenerator = new DataverseSchemaGenerator(

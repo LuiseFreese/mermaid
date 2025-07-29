@@ -82,8 +82,8 @@ export class MermaidERDParser {
    */
   parseAttribute(line) {
     // Pattern: type name [constraints]
-    // Handle choice types like: choice(option1,option2) name constraints
-    const attributePattern = /^((?:choice\([^)]+\)|\w+))\s+(\w+)(?:\s+(PK|FK|UK|.*?))?$/;
+    // Handle complex types like: choice(option1,option2) name constraints or lookup(Entity) name
+    const attributePattern = /^((?:choice\([^)]+\)|lookup\([^)]+\)|\w+))\s+(\w+)(?:\s+(PK|FK|UK|.*?))?$/;
     const match = line.match(attributePattern);
 
     if (!match) {
@@ -108,6 +108,12 @@ export class MermaidERDParser {
     if (typeInfo.isChoice) {
       attribute.isChoice = true;
       attribute.choiceOptions = typeInfo.choiceOptions;
+    }
+    
+    // Add lookup-specific properties
+    if (typeInfo.isLookup) {
+      attribute.isLookup = true;
+      attribute.targetEntity = typeInfo.targetEntity;
     }
 
     return attribute;
@@ -193,6 +199,17 @@ export class MermaidERDParser {
         dataType: 'Edm.Int32', // Choice fields are stored as integers
         isChoice: true,
         choiceOptions: options
+      };
+    }
+    
+    // Check for lookup type: lookup(EntityName)
+    const lookupMatch = mermaidType.match(/^lookup\(([^)]+)\)$/i);
+    if (lookupMatch) {
+      const targetEntity = lookupMatch[1].trim();
+      return {
+        dataType: 'Edm.Guid', // Lookup fields are stored as GUIDs
+        isLookup: true,
+        targetEntity: targetEntity
       };
     }
 

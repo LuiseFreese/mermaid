@@ -1,0 +1,14 @@
+erDiagram
+    DEPARTMENT {
+        string id PK
+        string name
+        string description
+    }
+    EMPLOYEE {
+        string id PK
+        string first_name
+        string last_name
+        string email
+        lookup(DEPARTMENT) department_ref
+    }
+    DEPARTMENT ||--o{ EMPLOYEE : employs
