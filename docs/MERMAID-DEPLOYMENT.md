@@ -5,7 +5,7 @@ This guide explains how to use the Mermaid to Dataverse converter and deployment
 ## Prerequisites
 
 * Node.js installed (v14 or later)
-* `.env` file with Dataverse API credentials
+* `.env` file with Dataverse API credentials - automated setup will take of that for you
 * Mermaid diagram file (`.mmd` extension) containing an ER diagram
 
 ### Environment Variables
@@ -83,8 +83,9 @@ This interactive mode will:
 1. Prompt for a solution name (e.g., "Customer Management")
 2. Prompt for a publisher prefix (default: "mmd")
 3. Ask if you want to include global choice sets
-4. Show a configuration summary
-5. Deploy the solution to Dataverse
+4. Prompt for a location of your global choice .json file
+5. Show a configuration summary
+6. Deploy the entire solution to Dataverse
 
 ### Option 2: Non-Interactive CLI Deployment
 
@@ -148,31 +149,8 @@ This will:
 
 ## Global Choice Sets
 
-### Current Format
-
 Global choice sets are defined in separate JSON files. Read more in the [GLOBAL CHOICES GUIDE](docs/GLOBAL-CHOICES-GUIDE.md).
 
-### Publisher Prefix Handling
-
-The tool automatically applies your publisher prefix (e.g., `contoso`) to choice set names. Do **not** include the prefix in your JSON.
-
-Example: `PriorityChoices` becomes `contoso_PriorityChoices`.
-
-### Default Auto-Generated Choices (legacy support)
-
-For legacy Mermaid diagrams with `choice` fields, auto-generated sets follow the pattern:
-
-```
-[publisherPrefix]_[entityName]_[fieldName]choice
-```
-
-With preset values like:
-
-* Status: Active, Pending, Completed, Cancelled
-* Priority: Low, Medium, High, Critical
-* Departments: IT, HR, Finance, etc.
-* Positions: Manager, Developer, etc.
-* Other: Option 1–3
 
 ## Supported Mermaid Syntax
 
@@ -192,28 +170,10 @@ erDiagram
 
 ### Supported Data Types
 
-| Data Type                     | Dataverse Type | Description                |
-| ----------------------------- | -------------- | -------------------------- |
-| `string`                      | `Edm.String`   | Text field (max 100 chars) |
-| `int` / `integer`             | `Edm.Int32`    | 32-bit integer             |
-| `decimal`                     | `Edm.Decimal`  | Decimal with precision     |
-| `text`, `varchar`, `nvarchar` | `Edm.String`   | Text field                 |
+All column types are supported except
 
-### Field Constraints
-
-| Constraint | Description | Example                 |
-| ---------- | ----------- | ----------------------- |
-| `PK`       | Primary Key | `string id PK`          |
-| `FK`       | Foreign Key | `string customer_id FK` |
-| `UK`       | Unique Key  | `string email UK`       |
-| `NOT NULL` | Required    | `string name NOT NULL`  |
-
-### Relationships
-
-| Mermaid Notation | Cardinality  | Description  |             |             |
-| ---------------- | ------------ | ------------ | ----------- | ----------- |
-| \`}o--           |              | \`           | Many-to-One | Many to one |
-| `}o--o{`         | Many-to-Many | Many to many |             |             |
+-  `Choice` (isn't supported by Mermaid). However, you can define the global choices with a json definition, so taht the choice gets created in the environment and associated with yor solution. This allows you to manually create a choice column that can then sync with your already created global choice. 
+-   `Lookup` (also not supported by Mermaid). Your relationship though will be created automatically as defined in the Mermaid diagram abd you can later manually create your Lookup column
 
 ### Examples
 
@@ -290,23 +250,14 @@ npm run cleanup     # Clean temporary files
 * Backup before creating
 * Use `--verbose` to monitor
 
-## Maintenance
-
-### Cleanup
-
-```bash
-npm run cleanup
-```
-
-Removes temp files, `.env.generated`, debug scripts, etc.
 
 ## Relationship Behavior
 
 By default, relationships are **referential (lookup)**. This prevents cascade delete conflicts.
 
-* ✅ Safe by default
-* ⚠️ Manual editing required for cascade delete
-* 📖 [Read more](docs/RELATIONSHIP_TYPES.md)
+* Safe by default
+* Manual editing required for cascade delete
+* [Read more](docs/RELATIONSHIP_TYPES.md)
 
 ## Validation Features
 
@@ -324,18 +275,6 @@ By default, relationships are **referential (lookup)**. This prevents cascade de
 ℹ️ All relationships will be created as referential (lookup) by default
 ✅ Validation completed successfully
 ```
-
-## Limitations
-
-* ❌ No update support (create only)
-* ❌ No calculated/rollup fields
-* ❌ No business rules
-* ❌ No forms/views
-
-### Workarounds
-
-* Add forms manually in Power Apps
-* Use maker portal for calculated fields
 
 ## Example Files
 
@@ -368,10 +307,3 @@ npm test
 
 This runs the test suite for the parser and schema generator components.
 
-## Notes
-
-* Existing components are skipped
-* All components added to solution
-* Publisher prefix applied automatically
-* Publishers created if missing
-* Casing is preserved from Mermaid ERD
