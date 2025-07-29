@@ -103,6 +103,92 @@ node src/index.js create path/to/your-erd.mmd --non-interactive --publisher-pref
 * `--verbose`: Enable detailed logging
 * `--dry-run`: Preview without creating anything in Dataverse
 
+```mermaid
+
+flowchart TD
+    %% Starting point
+    start([User]) --> cmd[Run: <br> node src/index.js <br> create example.mmd <br> --non-interactive <br> --publisher-prefix myprefix <br> --global-choices <br> example-choices.json]
+    cmd --> cli[src/index.js CLI Entry Point]
+    
+    %% Parameter validation - no prompts
+    cli --> validateParams[Validate Parameters]
+    validateParams --> checkERD{ERD File Valid?}
+    checkERD -- No --> errorERD[Error: Invalid ERD File]
+    checkERD -- Yes --> checkPublisherPrefix{Publisher Prefix Valid?}
+    checkPublisherPrefix -- No --> errorPrefix[Error: Invalid Publisher Prefix]
+    checkPublisherPrefix -- Yes --> checkChoices{Global Choices Provided?}
+    
+    %% Processing begins - no user interaction
+    checkChoices -- Yes --> loadChoices[Load Global Choices File]
+    checkChoices -- No --> skipChoices[Skip Global Choices]
+    loadChoices --> checkChoicesValid{Choices File Valid?}
+    checkChoicesValid -- No --> errorChoices[Error: Invalid Choices File]
+    checkChoicesValid -- Yes --> processChoices[Process Global Choices]
+    skipChoices --> process[Begin Processing]
+    processChoices --> process
+    
+    %% Core process - file parsing
+    process --> readERD[Read example.mmd]
+    readERD --> parseERD[Parse with src/parser.js]
+    
+    %% Schema generation
+    parseERD --> genSchema[Generate Schema with <br> src/schema-generator.js]
+    
+    %% Global choice integration (if provided)
+    processChoices --> readChoices[Read example-choices.json]
+    readChoices --> genSchema
+    
+    %% Schema validation
+    genSchema --> validate[Validate with <br> src/relationship-validator.js]
+    validate --> apiSchema[Prepare API Schema]
+    
+    %% Dataverse client operations - no prompts
+    apiSchema --> client[Pass to <br> src/dataverse-client.js]
+    
+    %% Publisher handling - automatic
+    client --> checkPublisher{Publisher Exists?}
+    checkPublisher -- Yes --> usePublisher[Use Existing Publisher]
+    checkPublisher -- No --> checkAllowCreate{--no-create-publisher<br>Flag Set?}
+    checkAllowCreate -- Yes --> errorNoCreate[Error: Publisher <br> Does Not Exist]
+    checkAllowCreate -- No --> createPublisher[Create New Publisher]
+    
+    %% Creation sequence - automatic
+    usePublisher --> createSolution[Create Solution]
+    createPublisher --> createSolution
+    createSolution --> createEntities[Create Entities]
+    createEntities --> createRelationships[Create Relationships]
+    
+    %% Global choice creation (if provided)
+    processChoices --> createChoices[Create Global Choice Sets]
+    createChoices --> createSolution
+    
+    %% Completion - no prompts
+    createRelationships --> complete[Deployment Complete]
+    complete --> log[Log Results to Console]
+    log --> finish([End])
+    
+    %% Error paths
+    errorERD --> finish
+    errorPrefix --> finish
+    errorChoices --> finish
+    errorNoCreate --> finish
+    
+    %% Styling
+    classDef userAction fill:#d1eaff,stroke:#0078d7,stroke-width:2px
+    classDef process fill:#d5f5d5,stroke:#107c10,stroke-width:2px
+    classDef file fill:#fff5d5,stroke:#ff8c00,stroke-width:2px
+    classDef api fill:#f5e1ff,stroke:#8661c5,stroke-width:2px
+    classDef decision fill:#ffd5d5,stroke:#d83b01,stroke-width:2px
+    classDef error fill:#ffbdbd,stroke:#d13438,stroke-width:2px
+    
+    class start,cmd userAction
+    class cli,validateParams,process,parseERD,genSchema,validate,apiSchema,complete,log,processChoices process
+    class readERD,readChoices file
+    class client,usePublisher,createPublisher,createSolution,createEntities,createRelationships,createChoices api
+    class checkERD,checkPublisherPrefix,checkChoices,checkPublisher,checkAllowCreate,checkChoicesValid decision
+    class errorERD,errorPrefix,errorChoices,errorNoCreate error
+```
+
 ### Option 3: Convert Command
 
 For more traditional command-line usage:
