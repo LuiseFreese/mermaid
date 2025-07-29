@@ -28,8 +28,6 @@ Mermaid ERD File → Parser → Schema Generator → Dataverse Client → Datave
 ```
 
 
-## System Architecture
-
 ```mermaid
 graph TB
     A[Mermaid ERD File] --> B[CLI Interface]
@@ -91,8 +89,6 @@ graph TB
 6. **Result Reporting**: Provide detailed feedback on operations
 
 ## Core Components
-
-## Component Relationships
 
 ```mermaid
 classDiagram
@@ -312,8 +308,6 @@ const tokenResponse = await axios.post(tokenEndpoint, {
 
 ## Data Flow
 
-## Data Flow Architecture
-
 ```mermaid
 sequenceDiagram
     participant User
@@ -475,14 +469,12 @@ function generateSolutionUniqueName(displayName) {
 - Detailed control over choice option values and descriptions
 - Clear separation of concerns
 - Avoids syntax limitations in Mermaid
-- Works consistently across all Dataverse environments
 
 **Global Choice Set Naming**:
 ```javascript
 // The name from JSON is used with publisher prefix applied
 const globalChoiceSetName = `${publisherPrefix}_${choiceSet.name.toLowerCase()}`;
 ```
-
 
 ## Authentication Strategy
 
@@ -532,8 +524,7 @@ const globalChoiceSetName = `${publisherPrefix}_${choiceSet.name.toLowerCase()}`
 | `autonumber`             | AutoNumberAttributeMetadata   | Supported   | Autonumber |
 | `file`                   | FileAttributeMetadata         | Supported   | File uploads |
 | `image`                  | ImageAttributeMetadata        | Supported   | Image fields |
-| `lookup`                 | LookupAttributeMetadata       | Supported   | Explicit relationship definition |
-|
+
 
 ### Constraint Handling
 
@@ -544,11 +535,6 @@ const globalChoiceSetName = `${publisherPrefix}_${choiceSet.name.toLowerCase()}`
 | `UK` | Unique key | Not directly supported, documented |
 | `NN` | Not null | Required field |
 
-### Future Type Support
-
-**Planned Additions**:
-
-- `lookup` → Explicit relationship definition
 
 ## Contributing
 
