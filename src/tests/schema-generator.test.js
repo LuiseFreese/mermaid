@@ -239,7 +239,7 @@ describe('DataverseSchemaGenerator', () => {
               isPrimaryKey: false, 
               isForeignKey: false,
               isLookup: true,
-              targetEntity: 'rose:Department'  // Using explicit prefix
+              targetEntity: 'mmd:Department'  // Using explicit prefix
             }
           ] 
         }
@@ -264,7 +264,7 @@ describe('DataverseSchemaGenerator', () => {
     strictEqual(lookupColumn.columnMetadata.AttributeType, 'Lookup');
     
     // First target should use the specified prefix
-    strictEqual(lookupColumn.columnMetadata.Targets[0], 'rose_department');
+    strictEqual(lookupColumn.columnMetadata.Targets[0], 'mmd_department');
     
     // When useExistingPrefix is true, should have multiple target options
     ok(lookupColumn.columnMetadata.Targets.length > 1, 'Should have multiple target options with useExistingPrefix');

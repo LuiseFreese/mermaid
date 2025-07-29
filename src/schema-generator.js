@@ -511,7 +511,7 @@ export class DataverseSchemaGenerator {
       // Use array of potential targets to increase chances of success
       if (this.options.useExistingPrefix) {
         // Known common prefixes in Dataverse environments
-        const commonPrefixes = ['rose', 'mmd', 'crm', 'new', 'custom'];
+        const commonPrefixes = ['mmd', 'crm', 'new', 'custom'];
         
         // Create array of possible target names with different prefixes
         const targetEntities = Array.from(new Set([

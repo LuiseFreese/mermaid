@@ -87,4 +87,14 @@ For developers who want to understand, maintain, or contribute to this project: 
 
 ## Contributing
 
-Contributions welcome!
+Contributions welcome! Fork --> PR --> World Domination! 🐁🐁💖🧠
+
+## Note on AI Usage
+
+GitHub Copilot was helpful during this project, not so much for the entire logic of this project, but for pretty specific tasks, like
+
+- creating tests
+- outlining documentation 
+- drafting the Mermaid diagrams in the documentation
+- commenting the code (yeah I know, some people dislike comments, just hide them with [Hide Comments VS Code extension](https://marketplace.visualstudio.com/items?itemName=eliostruyf.vscode-hide-comments), but you never know who wants to benefit from your code).
+
