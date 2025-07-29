@@ -7,39 +7,8 @@ node_modules/
 .vscode/
 dist/
 coverage/
-*-backup.*
-*-test.*
-
-# Development scripts archive
-scripts/archive/
-scripts/archive/**
-
-# Documentation archive
-docs/archive/
-docs/archive/**
 
 # Development summary files
-CLEANUP_SUMMARY.md
-AUTH-TROUBLESHOOTING.md
+
 SOLUTION-*.md
 
-
-# Temporary development files
-debug-*.js
-debug-*.mjs
-check-*.js
-verify-*.js
-verify-*.cjs
-add-*.js
-test-*.js
-*-schema.json
-schema-*.json
-index-new.js
-
-# Temporary example files
-examples/all-datatypes.mmd
-examples/minimal-erd.mmd
-examples/*-test.mmd
-examples/debug-*.mmd
-examples/simple-*.mmd
-examples/comprehensive-*.mmd
