@@ -36,8 +36,8 @@ erDiagram
 | `boolean` | Two Options (Yes/No) | True/false values |
 | `datetime` | Date and Time | Date and time values |
 | `date` | Date Only | Date without time |
-| `lookup(ENTITY)` | Lookup | Reference to another entity |
-| `choice(opt1,opt2,opt3)` | Choice | Predefined options |
+
+> **Note**: Choice columns (picklists) cannot be defined in Mermaid ERD syntax. They should be added manually after entity creation or configured as global choice sets.
 
 ### Relationships
 
@@ -62,7 +62,7 @@ erDiagram
         string phone "Phone number"
         datetime created_date "Account creation date"
         boolean is_active "Active status"
-        choice(individual,business,partner) customer_type "Type of customer"
+        string notes "Additional customer notes"
     }
     
     ADDRESS {
@@ -81,7 +81,7 @@ erDiagram
         string customer_id FK "Customer reference"
         datetime order_date "Order placement date"
         decimal total_amount "Total order amount"
-        choice(pending,processing,shipped,delivered,cancelled) status "Order status"
+        string notes "Order notes"
         string payment_method "Payment method used"
     }
     
@@ -101,7 +101,7 @@ erDiagram
         text description "Product description"
         decimal price "Product price"
         int stock_quantity "Available stock"
-        choice(electronics,clothing,books,home) category "Product category"
+        string department "Product department"
         boolean is_active "Product availability"
     }
     
@@ -143,7 +143,7 @@ erDiagram
         string student_id FK "Student reference"
         string course_id FK "Course reference"
         datetime enrollment_date "Enrollment date"
-        choice(enrolled,completed,dropped,failed) status "Enrollment status"
+        string notes "Enrollment notes"
         string grade "Final grade"
     }
     
@@ -151,55 +151,34 @@ erDiagram
     COURSE ||--o{ ENROLLMENT : "has_student"
 ```
 
-## Choice Fields
+## Choice Fields (Post-Creation Configuration)
 
-Choice fields provide predefined options for users:
-
-### Simple Choices
-```mermaid
-ENTITY {
-    choice(option1,option2,option3) field_name "Description"
-}
-```
-
-### Real-World Choice Examples
-```mermaid
-CONTACT {
-    choice(mr,mrs,ms,dr,prof) title "Title prefix"
-    choice(email,phone,mail,sms) preferred_contact "Preferred contact method"
-    choice(hot,warm,cold) lead_temperature "Lead temperature"
-    choice(new,qualified,proposal,negotiation,closed_won,closed_lost) opportunity_stage "Sales stage"
-}
-```
+Choice fields provide predefined options for users but **cannot be defined in Mermaid ERD syntax**. They must be configured after entity creation.
 
 ## Lookup Fields
 
-Reference other entities using lookup fields:
+Lookup relationships are created automatically through foreign key (FK) relationships in your ERD:
 
 ```mermaid
 erDiagram
     ACCOUNT {
         string account_id PK "Account identifier"
         string name "Account name"
-        lookup(CONTACT) primary_contact "Primary contact"
+        string primary_contact_id FK "Primary contact reference"
     }
     
     CONTACT {
         string contact_id PK "Contact identifier"
         string name "Contact name"
-        lookup(ACCOUNT) account "Associated account"
+        string account_id FK "Associated account reference"
     }
     
     ACCOUNT ||--o{ CONTACT : "has_contacts"
 ```
 
-## Best Practices
+> **Note**: The application automatically creates lookup relationships based on FK fields and relationship definitions. You don't need special syntax beyond marking fields as FK.
 
-### 1. **Naming Conventions**
-- **Entities**: Use UPPERCASE with descriptive names (CUSTOMER, ORDER, PRODUCT)
-- **Fields**: Use lowercase with underscores (first_name, order_date, total_amount)
-- **Primary Keys**: End with "_id" (customer_id, order_id)
-- **Foreign Keys**: Match the referenced primary key name
+## Best Practices
 
 ### 2. **Field Descriptions**
 - Always include descriptions in quotes
@@ -208,23 +187,10 @@ erDiagram
 - Good: `"Customer's preferred contact method"`
 - Poor: `"Contact method"`
 
-### 3. **Data Types**
-- Choose appropriate data types for your data
-- Use `text` for long descriptions, `string` for short text
-- Use `decimal` for currency and precise numbers
-- Use `choice` fields for predefined options
-- Use `boolean` for yes/no scenarios
-
 ### 4. **Relationships**
 - Keep relationship names descriptive
 - Use present tense verbs ("has", "contains", "manages")
 - Model many-to-many as junction entities with additional attributes
-
-### 5. **Entity Design**
-- Include all necessary fields for your business logic
-- Consider adding audit fields (created_date, modified_date)
-- Add status or flag fields for business processes
-- Plan for extensibility
 
 ## Advanced Features
 
@@ -235,8 +201,8 @@ ENTITY {
     string name "Entity name"
     datetime created_date "Creation timestamp"
     datetime modified_date "Last modification timestamp"
-    lookup(USER) created_by "Created by user"
-    lookup(USER) modified_by "Modified by user"
+    string created_by_id FK "Created by user reference"
+    string modified_by_id FK "Modified by user reference"
     boolean is_active "Active status"
 }
 ```
@@ -251,7 +217,7 @@ ADDRESS {
     string state_province "State or province"
     string postal_code "Postal or ZIP code"
     string country "Country name"
-    choice(billing,shipping,mailing,office) address_type "Address type"
+    string address_label "Address label or description"
     boolean is_primary "Primary address flag"
 }
 ```
@@ -259,43 +225,11 @@ ADDRESS {
 ### Contact Information Pattern
 ```mermaid
 CONTACT_INFO {
-    choice(email,phone,fax,mobile,website) contact_type "Type of contact"
+    string contact_label "Label or description for contact method"
     string value "Contact value"
     boolean is_primary "Primary contact flag"
     boolean is_active "Active status"
 }
-```
-
-## Common Patterns
-
-### 1. **Customer Relationship Management**
-```mermaid
-erDiagram
-    ACCOUNT ||--o{ CONTACT : "has"
-    ACCOUNT ||--o{ OPPORTUNITY : "has"
-    CONTACT ||--o{ ACTIVITY : "participates_in"
-    OPPORTUNITY ||--o{ OPPORTUNITY_PRODUCT : "includes"
-    PRODUCT ||--o{ OPPORTUNITY_PRODUCT : "part_of"
-```
-
-### 2. **Project Management**
-```mermaid
-erDiagram
-    PROJECT ||--o{ PROJECT_TASK : "contains"
-    PROJECT ||--o{ PROJECT_RESOURCE : "uses"
-    RESOURCE ||--o{ PROJECT_RESOURCE : "assigned_to"
-    PROJECT_TASK ||--o{ TASK_DEPENDENCY : "depends_on"
-```
-
-### 3. **Inventory Management**
-```mermaid
-erDiagram
-    PRODUCT ||--o{ INVENTORY_ITEM : "tracked_as"
-    WAREHOUSE ||--o{ INVENTORY_ITEM : "stores"
-    INVENTORY_ITEM ||--o{ STOCK_MOVEMENT : "has"
-    SUPPLIER ||--o{ PURCHASE_ORDER : "receives"
-    PURCHASE_ORDER ||--o{ PURCHASE_ORDER_ITEM : "contains"
-    PRODUCT ||--o{ PURCHASE_ORDER_ITEM : "ordered_as"
 ```
 
 ## Validation and Testing
@@ -307,29 +241,5 @@ Before using your ERD with the web application:
 3. **Review Data Types**: Confirm appropriate types for each field
 4. **Test Relationships**: Ensure relationships make business sense
 5. **Consider Scale**: Think about performance with large datasets
-
-## Troubleshooting
-
-### Common Issues
-
-**Entity not created:**
-- Check entity name format (UPPERCASE, no spaces)
-- Verify all required fields are present
-- Ensure primary key is defined
-
-**Relationship errors:**
-- Confirm both entities exist in the diagram
-- Check foreign key field names match primary keys
-- Verify relationship syntax
-
-**Field creation issues:**
-- Validate data type spelling
-- Check field name format (lowercase, underscores)
-- Ensure choice options are properly formatted
-
-**Choice field problems:**
-- Use parentheses and commas: `choice(opt1,opt2,opt3)`
-- No spaces around commas
-- Keep option names simple
 
 This guide provides the foundation for creating effective Mermaid ERDs that work seamlessly with the Dataverse web application. Start with simple examples and gradually add complexity as you become more comfortable with the syntax and patterns.

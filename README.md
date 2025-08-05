@@ -17,14 +17,16 @@ A production-ready Azure App Service application that converts Mermaid ERD diagr
 
 - **`src/server.js`** - Main production server with web UI and API endpoints
 - **`src/dataverse-client.js`** - Dataverse Web API client with authentication
-- **`src/mermaid-parser.js`** - Mermaid ERD parser with relationship filtering
-- **`src/azure-keyvault.js`** - Azure Key Vault configuration and secret management
-- **`deploy.ps1`** - PowerShell deployment script for Azure App Service
+- **`src/parser.js`** - Mermaid ERD parser with relationship filtering
+- **`src/key-vault-config.js`** - Azure Key Vault configuration and secret management
+- **`deploy/infrastructure.bicep`** - Azure infrastructure as code (Bicep template)
+- **`scripts/setup-entra-app.ps1`** - Automated setup script for complete deployment
 
 ### Directory Structure
 
 ```
 /src/            - Application source code
+/deploy/         - Infrastructure as Code (Bicep templates)
 /docs/           - Documentation and guides
 /examples/       - Sample Mermaid ERD files
 /tests/          - Integration tests
@@ -39,6 +41,26 @@ A production-ready Azure App Service application that converts Mermaid ERD diagr
 4. **Node.js 20+** for local development
 
 ## Quick Start
+
+### Automated Setup (Recommended)
+
+The fastest way to get started is using the automated setup script:
+
+```powershell
+# Clone the repository
+git clone https://github.com/LuiseFreese/mermaid.git
+cd mermaid
+
+# Run automated setup (creates all Azure resources)
+.\scripts\setup-entra-app.ps1
+```
+
+**What this does:**
+- Creates Entra ID app registration with proper permissions
+- Deploys Azure infrastructure using Bicep templates
+- Configures Key Vault with managed identity authentication
+- Creates Dataverse application user with security roles
+- Tests the complete setup end-to-end
 
 ### Local Development Commands
 
@@ -55,51 +77,69 @@ npm run dev
 npm test
 # → Runs the schema generation test
 
-# Deploy to Azure App Service
-npm run deploy
-# → Deploys to Azure App Service using PowerShell
+# Lint code for quality and style
+npm run lint
+# → Runs ESLint to check code quality
 ```
 
 ## Deployment
 
-### 1. Azure Resources Setup
+### Automated Deployment (Recommended)
 
-Create the required Azure resources:
-
-```powershell
-# Create resource group
-az group create --name rg-mermaid-dataverse --location "East US"
-
-# Create App Service plan  
-az appservice plan create --name plan-mermaid --resource-group rg-mermaid-dataverse --sku B1
-
-# Create App Service with managed identity
-az webapp create --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse --plan plan-mermaid --runtime "NODE:20-lts"
-az webapp identity assign --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
-
-# Create Key Vault
-az keyvault create --name kv-mermaid-secrets --resource-group rg-mermaid-dataverse --location "East US"
-```
-
-### 2. Configure Key Vault Secrets
-
-Add your Dataverse credentials to Key Vault:
+Use the PowerShell setup script for complete automation:
 
 ```powershell
-az keyvault secret set --vault-name kv-mermaid-secrets --name "DATAVERSE-URL" --value "https://yourorg.crm.dynamics.com"
-az keyvault secret set --vault-name kv-mermaid-secrets --name "CLIENT-ID" --value "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  
-az keyvault secret set --vault-name kv-mermaid-secrets --name "CLIENT-SECRET" --value "your-client-secret"
-az keyvault secret set --vault-name kv-mermaid-secrets --name "TENANT-ID" --value "your-tenant-id"
-az keyvault secret set --vault-name kv-mermaid-secrets --name "SOLUTION-NAME" --value "MermaidSolution"
+# Interactive mode (prompts for configuration)
+.\scripts\setup-entra-app.ps1
+
+# Dry run mode (test without making changes)
+.\scripts\setup-entra-app.ps1 -DryRun
+
+# Unattended mode (provide all parameters)
+.\scripts\setup-entra-app.ps1 -Unattended `
+  -EnvironmentUrl "https://yourorg.crm.dynamics.com" `
+  -ResourceGroup "rg-mermaid-dataverse" `
+  -Location "East US"
 ```
 
-### 3. Deploy Application
+**What gets deployed:**
+- **Azure Resource Group** - Container for all resources
+- **App Service & App Service Plan** - Web application hosting (B1 tier)
+- **Key Vault** - Secure secret storage with RBAC
+- **User-Assigned Managed Identity** - Secure authentication without passwords
+- **Entra ID App Registration** - Service principal for Dataverse access
+- **Dataverse Application User** - Configured with appropriate security roles
 
-```powershell
-# Update deploy.ps1 with your resource names
-# Then run deployment
-powershell -ExecutionPolicy Bypass -File deploy.ps1
+### Infrastructure as Code
+
+All Azure resources are defined in `deploy/infrastructure.bicep`:
+
+```bicep
+// Key components deployed:
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01'
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31'  
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01'
+resource appService 'Microsoft.Web/sites@2023-01-01'
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01'
 ```
+
+The Bicep template ensures:
+- **Idempotent deployments** - Can be run multiple times safely
+- **Secure configuration** - RBAC-enabled Key Vault with least privilege access
+- **Production-ready settings** - HTTPS-only, TLS 1.2+, Node.js 18 LTS
+- **Managed identity integration** - No passwords or connection strings in code
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup or need to understand the individual steps, see the [Entra ID Setup Guide](docs/ENTRA-ID-SETUP.md) for detailed instructions.
+
+The manual process involves:
+- Creating Entra ID app registration with proper permissions
+- Deploying infrastructure using the Bicep template
+- Configuring Key Vault secrets and permissions
+- Creating Dataverse application user with security roles
+
+> **Recommendation**: Use the automated setup script (`scripts/setup-entra-app.ps1`) as it handles all configuration automatically and includes validation.
 ## Usage
 
 ### Web Interface
@@ -203,11 +243,22 @@ erDiagram
 
 ### Supported Data Types
 
-- **string** - Text field (max 255 characters)
-- **integer** - Whole number field
-- **decimal** - Decimal number field
-- **boolean** - Yes/No field  
-- **datetime** - Date and time field
+The application supports **all standard Dataverse data types**, including:
+
+- **Text fields** (string, text, email, phone, url)
+- **Numeric fields** (integer, decimal, currency, float)
+- **Date/Time fields** (datetime, date, time)
+- **Boolean fields** (boolean, yes/no)
+- **Lookup fields** (via foreign key relationships)
+- **File and image fields**
+- **And many more standard types**
+
+**Exceptions** (not supported via Mermaid ERD):
+- **Choice columns** (picklists) - require predefined option sets
+- **Calculated columns** - require formula expressions
+- **Formula columns** - require Power Fx formulas
+
+> **Note**: Choice columns can be added manually after entity creation, or use global choice sets as documented in the guides.
 
 ### Supported Constraints
 
@@ -280,12 +331,53 @@ The application provides several health check endpoints:
 
 ## Documentation
 
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system architecture
-- **[Developer Guide](docs/DEVELOPER.md)** - Development setup and guidelines  
-- **[Entra ID Setup](docs/ENTRA-ID-SETUP.md)** - Automated setup and authentication
-- **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
-- **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax and modeling guide
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system architecture and design patterns
+- **[Developer Guide](docs/DEVELOPER.md)** - Development setup, testing, and contribution guidelines  
+- **[Entra ID Setup](docs/ENTRA-ID-SETUP.md)** - Automated setup and authentication configuration
+- **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples and API reference
+- **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax and data modeling guide
 - **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Relationship patterns and best practices
+
+## Infrastructure
+
+### Bicep Template (`deploy/infrastructure.bicep`)
+
+The infrastructure is defined as code using Azure Bicep:
+
+```bicep
+// Key components:
+- User-Assigned Managed Identity (for passwordless authentication)
+- Key Vault with RBAC (secure secret storage)
+- App Service Plan (B1 Basic tier for production workloads)  
+- App Service (Node.js 18 LTS with managed identity)
+- Role Assignments (Key Vault Secrets User for runtime access)
+```
+
+**Key features:**
+- **Idempotent**: Safe to run multiple times
+- **Secure**: RBAC-enabled Key Vault, HTTPS-only App Service
+- **Production-ready**: Proper SKUs, TLS 1.2+, always-on settings
+- **Integrated**: Managed identity eliminates password management
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    Dev[Developer] --> Script[setup-entra-app.ps1]
+    Script --> Entra[Entra ID App Registration]
+    Script --> Bicep[Bicep Template]
+    Bicep --> RG[Resource Group]
+    Bicep --> KV[Key Vault]
+    Bicep --> MI[Managed Identity]
+    Bicep --> ASP[App Service Plan]
+    Bicep --> AS[App Service]
+    MI --> KV
+    AS --> MI
+    Script --> Secrets[Store Secrets]
+    Secrets --> KV
+    Script --> AppUser[Dataverse App User]
+    AppUser --> DV[Dataverse Environment]
+```
 
 ## Examples
 

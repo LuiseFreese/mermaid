@@ -49,7 +49,103 @@ In the web application, always enable "Dry Run" first to preview what will be cr
 3. **Review the preview** of entities, columns, and relationships
 4. **Run again without dry run** once you're satisfied
 
+**Dry Run Output Example:**
+```
+🧪 DRY RUN MODE - No changes will be made to Dataverse
+
+✅ File validation passed
+✅ Entity structure valid
+✅ Relationships valid
+✅ Publisher prefix available
+
+📋 Would create:
+   - Solution: "Customer Management" 
+   - Publisher: "cmgt" (Customer Management Publisher)
+   - Entity: Customer (3 columns)
+   - Entity: Order (4 columns)
+   - Entity: Product (5 columns)
+   - Relationship: Customer ||--o{ Order
+   - Relationship: Order ||--o{ Product
+
+🎯 Ready for actual deployment!
+```
+
+## Web Interface Features
+
+### 📊 Status Dashboard
+
+The application shows real-time status of all components:
+
+- ✅ **Application Health**: Server status
+- ✅ **Azure Key Vault**: Secret access  
+- ✅ **Managed Identity**: Authentication status
+- ✅ **Dataverse Connection**: API connectivity
+
+### 🔍 Diagnostic Endpoints
+
+Access additional diagnostic information:
+
+- `/health` - Application health check
+- `/keyvault` - Key Vault connectivity test
+- `/managed-identity` - Authentication status
+- `/api/validate` - Validate Mermaid files
+- `/api/test-dataverse` - Test Dataverse operations
+
+### 📋 Real-Time Logging
+
+The web interface provides live feedback during processing:
+
+- **File upload progress**
+- **Parsing status**
+- **Validation results**  
+- **Entity creation progress**
+- **Relationship establishment**
+- **Final deployment summary**
+
 ## Quick Start
+
+### 1. Access the Web Application
+
+Navigate to your deployed application URL:
+```
+https://your-app-name.azurewebsites.net
+```
+
+### 2. Upload Your Mermaid File
+
+1. **Click "Choose File"** and select your `.mmd` file
+2. **Configure options**:
+   - **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management")
+   - **Publisher Prefix**: 3-8 character prefix (e.g., "cmgt")
+   - **Dry Run**: Enable to preview without creating anything
+3. **Click "Upload and Process"**
+
+### 3. Monitor Real-Time Progress
+
+Watch the live log output as your solution is created:
+
+```
+📁 File uploaded: customer-management.mmd (2.3 KB)
+✅ File contains valid erDiagram syntax
+🔍 Parsing Mermaid ERD structure...
+📊 Found 3 entities: Customer, Order, Product
+🔗 Found 2 relationships
+✅ Validation completed successfully
+
+🔑 Connecting to Dataverse...
+✅ Dataverse connection successful
+📦 Creating solution: Customer Management
+👤 Creating entity: Customer (3 columns)
+📦 Creating entity: Order (4 columns)  
+🛍️ Creating entity: Product (5 columns)
+🔗 Creating relationship: Customer → Order
+🔗 Creating relationship: Order → Product
+
+🎉 Deployment completed successfully!
+✅ Solution 'Customer Management' created in Dataverse
+✅ 3 entities created
+✅ 2 relationships established
+```
 
 ### 1. Access the Web Application
 

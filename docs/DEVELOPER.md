@@ -192,7 +192,7 @@ function sendResult(success, data) {
 - **CommonJS Module**: Compatible with Node.js server environment
 - **Regex-based Parsing**: Robust extraction of entities and relationships
 - **Attribute Processing**: Support for types, constraints (PK, FK)
-- **Relationship Detection**: One-to-many relationship parsing
+- **Relationship Detection**: One-to-many relationship parsing (many-to-many via junction tables)
 - **Error Handling**: Comprehensive validation and error reporting
 
 **Supported Syntax**:
@@ -1155,20 +1155,3 @@ az webapp log download --name mermaid-to-dataverse --resource-group rg-mermaid-d
 - Dependency calls to Dataverse
 - Exception tracking and analysis
 - Custom event logging
-
-### Performance Optimization
-
-**File Upload Optimization**:
-- Increase upload size limits for large ERD files
-- Implement file compression for faster uploads
-- Add progress indicators for user feedback
-
-**API Performance**:
-- Implement connection pooling for Dataverse API
-- Add caching for frequently accessed data
-- Optimize batch operations for large schemas
-
-**Memory Management**:
-- Stream large file uploads to prevent memory issues
-- Clean up temporary files after processing
-- Monitor memory usage in production

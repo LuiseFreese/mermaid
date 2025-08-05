@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the Mermaid to Dataverse Conv
 
 ## System Overview
 
-The Mermaid to Dataverse Converter is a **production-ready Node.js web application** deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+The Mermaid to Dataverse Converter is a **Node.js web application** deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
 
 ### Key Characteristics
 
@@ -50,24 +50,6 @@ graph TB
 ```
 
 ## Application Structure
-
-### Directory Layout
-
-```
-📁 mermaid-to-dataverse/
-├── 📁 src/                    # Core application source code
-│   ├── 📄 server.js           # Main web server and API endpoints
-│   ├── 📄 mermaid-parser.js   # Mermaid ERD parsing logic
-│   ├── 📄 dataverse-client.js # Dataverse Web API integration
-│   └── 📄 azure-keyvault.js   # Azure Key Vault configuration
-├── 📁 docs/                   # Documentation
-├── 📁 examples/               # Sample Mermaid ERD files
-├── 📁 tests/                  # Integration and unit tests
-├── 📁 scripts/                # Setup and utility scripts
-├── 📄 deploy.ps1              # PowerShell deployment script
-├── 📄 package.json            # Node.js project configuration
-└── 📄 README.md               # Project documentation
-```
 
 ## Core Components
 
@@ -277,14 +259,14 @@ graph LR
     
     subgraph "External Services"
         DV[Dataverse Environment<br/>Target System]
-        AAD[Azure Active Directory<br/>Identity Provider]
+        ENTRA[Microsoft Entra ID<br/>Identity Provider]
     end
     
     AS --> MI
     MI --> KV
-    MI --> AAD
+    MI --> ENTRA
     AS --> DV
-    KV --> AAD
+    KV --> ENTRA
 ```
 
 ### Deployment Process
@@ -294,44 +276,6 @@ graph LR
 3. **Secret Configuration**: Store Dataverse credentials in Key Vault
 4. **Application Deployment**: Deploy Node.js application via PowerShell script
 5. **Validation**: Test application connectivity and functionality
-
-## Performance Considerations
-
-### Scalability
-
-- **Horizontal Scaling**: App Service can scale out to multiple instances
-- **Vertical Scaling**: App Service plan can be upgraded for more resources
-- **Caching**: Managed identity tokens are cached automatically
-
-### Optimization
-
-- **Connection Pooling**: HTTP keep-alive for Dataverse API calls
-- **Error Handling**: Comprehensive retry logic for transient failures
-- **Resource Management**: Proper cleanup of uploaded files
-- **Memory Management**: Streaming for large file uploads
-
-## Monitoring & Observability
-
-### Application Insights Integration
-
-- **Request Tracking**: Monitor HTTP requests and response times
-- **Dependency Tracking**: Track Dataverse API calls and Key Vault access
-- **Exception Tracking**: Capture and analyze application errors
-- **Custom Events**: Log business-specific events
-
-### Logging Strategy
-
-- **Console Logging**: Structured logging with timestamps
-- **Real-time Streaming**: Live log streaming to web interface
-- **Azure App Service Logs**: Native platform logging
-- **Health Checks**: Multiple endpoints for system validation
-
-### Key Metrics
-
-- **Upload Success Rate**: Percentage of successful file uploads
-- **Parse Success Rate**: Percentage of successful Mermaid parsing
-- **Dataverse Creation Rate**: Percentage of successful entity creation
-- **Response Times**: API endpoint performance metrics
 
 ## Error Handling
 
@@ -348,29 +292,6 @@ graph LR
 - **Retry Logic**: Automatic retry for transient failures
 - **User Feedback**: Clear error messages with actionable guidance
 - **Fallback Options**: Dry-run mode for validation without creation
-
-## Extension Points
-
-### Adding New Data Types
-
-1. Update parser to recognize new type syntax
-2. Add type mapping in schema generation
-3. Update Dataverse client to handle new metadata
-4. Add validation rules for new types
-
-### Adding New Relationship Types
-
-1. Extend relationship parsing logic
-2. Add new relationship metadata generation
-3. Update Dataverse relationship creation
-4. Add validation for new relationship constraints
-
-### Adding New Output Formats
-
-1. Create new generator class
-2. Implement format-specific metadata transformation
-3. Add new API endpoint for format
-4. Update web interface with new options
 
 ## Best Practices
 
@@ -391,23 +312,6 @@ graph LR
 ### Operations
 
 - **Health Checks**: Multiple endpoints for different system components
-- **Graceful Shutdown**: Handle SIGTERM and SIGINT properly
+- **Graceful Shutdown**: Handle SIGTERM (termination request) and SIGINT (interrupt signal) properly to allow the application to finish current operations before shutting down
 - **Resource Cleanup**: Clean up temporary files and connections
 - **Monitoring**: Track key business and technical metrics
-
-## Future Architecture Considerations
-
-### Potential Enhancements
-
-1. **Message Queue Integration**: For handling large batch operations
-2. **Caching Layer**: Redis for frequently accessed data
-3. **API Rate Limiting**: Protect against abuse
-4. **Multi-tenant Support**: Support for multiple Dataverse environments
-5. **Webhook Integration**: Real-time notifications for entity changes
-
-### Scalability Improvements
-
-1. **Microservices**: Split parsing and deployment into separate services
-2. **Event-Driven Architecture**: Use Azure Service Bus for async processing
-3. **Container Deployment**: Migrate to Azure Container Apps
-4. **CDN Integration**: Cache static assets for better performance
