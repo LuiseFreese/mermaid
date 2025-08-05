@@ -1,60 +1,128 @@
 # Mermaid to Dataverse Converter
 
-A tool that reads [Mermaid](https://www.mermaidchart.com/) ERD diagrams and creates corresponding tables, fields, and relationships in Microsoft Dataverse.
+A production-ready Azure App Service application that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
 
 ## Features
 
-- **Authentication**: Handle authentication with Microsoft Entra ID (automated setup)
-- **Type Support**: Support for various field types, constraints, and choice fields
-- **Interactive & Non-Interactive**: CLI supports both guided prompts and automation-friendly modes
-- **Safe Mode**: All-referential mode to prevent cascade delete conflicts
-- **Idempotent Operations**: Safe to run multiple times - skips existing entities and relationships
+- **🚀 Azure App Service Deployment**: Production-ready web application with managed identity
+- **🔐 Secure Authentication**: Azure Key Vault integration with managed identity for secrets
+- **📊 Real-time Processing**: Upload Mermaid files and see live progress in the web UI
+- **🏗️ Complete Schema Generation**: Creates publishers, solutions, entities, columns, and relationships
+- **✅ Validation & Testing**: Built-in validation and dry-run modes for safe testing
+- **📝 Detailed Logging**: Comprehensive logging with real-time streaming to the UI
+
+## Architecture
+
+### Core Files
+
+- **`src/server.js`** - Main production server with web UI and API endpoints
+- **`src/dataverse-client.js`** - Dataverse Web API client with authentication
+- **`src/mermaid-parser.js`** - Mermaid ERD parser with relationship filtering
+- **`src/azure-keyvault.js`** - Azure Key Vault configuration and secret management
+- **`deploy.ps1`** - PowerShell deployment script for Azure App Service
+
+### Directory Structure
+
+```
+/src/            - Application source code
+/docs/           - Documentation and guides
+/examples/       - Sample Mermaid ERD files
+/tests/          - Integration tests
+/scripts/        - Setup and utility scripts
+```
 
 ## Prerequisites
 
-Before you begin, make sure you have:
+1. **Azure Subscription** with App Service and Key Vault access
+2. **Microsoft Dataverse Environment** with admin permissions  
+3. **PowerShell 7+** for deployment scripts
+4. **Node.js 20+** for local development
 
-1. [Power Platform CLI](https://learn.microsoft.com/power-platform/developer/cli/introduction)
-   - ⚡ After installation, restart VS Code to ensure `pac` command is available
-   - Test installation: Run `pac` in terminal
+## Quick Start
 
-2. [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/?view=azure-cli-latest)
-   - Log in as admin: `az login`
-3. **Your Dataverse environment URL** (find it in [Power Platform Admin Center](https://admin.powerplatform.microsoft.com))
-4. **Admin permissions in your Dataverse environment** 
+### Local Development Commands
 
-## Quick Setup (Automated)
-
-The script automatically
-
-- Creates Entra Id app registration and service principal
-- Generates client secrets and updates your `.env` file  
-- Creates the Dataverse Application User with proper permissions
-- Handles the bootstrap authentication problem seamlessly
-- Tests the complete setup to ensure everything works
-
-**Setup Steps:**
-
-1. Create your `.env` file with basic info:
 ```bash
-cp .env.example .env
+# Start the web server (production mode)
+npm start
+# → Starts the web server at http://localhost:3000
+
+# Start with auto-restart on file changes
+npm run dev  
+# → Starts with auto-restart on file changes for development
+
+# Run integration tests
+npm test
+# → Runs the schema generation test
+
+# Deploy to Azure App Service
+npm run deploy
+# → Deploys to Azure App Service using PowerShell
 ```
 
-2. Edit `.env` and add your environment details:
-```bash
-DATAVERSE_URL=https://yourorg.crm.dynamics.com
-TENANT_ID=your-tenant-id-here
-# CLIENT_ID and CLIENT_SECRET will be auto-generated
+## Deployment
+
+### 1. Azure Resources Setup
+
+Create the required Azure resources:
+
+```powershell
+# Create resource group
+az group create --name rg-mermaid-dataverse --location "East US"
+
+# Create App Service plan  
+az appservice plan create --name plan-mermaid --resource-group rg-mermaid-dataverse --sku B1
+
+# Create App Service with managed identity
+az webapp create --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse --plan plan-mermaid --runtime "NODE:20-lts"
+az webapp identity assign --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
+
+# Create Key Vault
+az keyvault create --name kv-mermaid-secrets --resource-group rg-mermaid-dataverse --location "East US"
 ```
 
-3. Run the automated setup:
-```bash
-node scripts/setup.cjs
+### 2. Configure Key Vault Secrets
+
+Add your Dataverse credentials to Key Vault:
+
+```powershell
+az keyvault secret set --vault-name kv-mermaid-secrets --name "DATAVERSE-URL" --value "https://yourorg.crm.dynamics.com"
+az keyvault secret set --vault-name kv-mermaid-secrets --name "CLIENT-ID" --value "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  
+az keyvault secret set --vault-name kv-mermaid-secrets --name "CLIENT-SECRET" --value "your-client-secret"
+az keyvault secret set --vault-name kv-mermaid-secrets --name "TENANT-ID" --value "your-tenant-id"
+az keyvault secret set --vault-name kv-mermaid-secrets --name "SOLUTION-NAME" --value "MermaidSolution"
 ```
 
-That's it! The script handles everything else automatically.
+### 3. Deploy Application
 
-💡 For more details about the authentication setup and troubleshooting, see [ENTRA-ID-SETUP](docs/ENTRA-ID_SETUP.md).
+```powershell
+# Update deploy.ps1 with your resource names
+# Then run deployment
+powershell -ExecutionPolicy Bypass -File deploy.ps1
+```
+## Usage
+
+### Web Interface
+
+1. **Access the Application**: Navigate to your deployed App Service URL
+2. **Upload Mermaid File**: Select a `.mmd` file containing an ERD diagram
+3. **Configure Options**:
+   - **Solution Name**: Name for the Dataverse solution
+   - **Publisher Prefix**: 3-8 character prefix for custom entities
+   - **Dry Run**: Enable to validate without creating entities
+   - **Create Publisher**: Auto-create publisher if it doesn't exist
+4. **Process**: Click "Convert & Deploy" to start processing
+5. **Monitor Progress**: Watch real-time logs in the web interface
+
+### API Endpoints
+
+- **`GET /`** - Web interface for file upload
+- **`POST /upload`** - File upload and processing with streaming logs
+- **`GET /health`** - Health check endpoint
+- **`GET /keyvault`** - Key Vault connection test
+- **`GET /managed-identity`** - Managed identity test
+- **`POST /api/validate`** - Validate Mermaid entities without creation
+- **`POST /api/test-dataverse`** - Test Dataverse operations
 
 ## Supported Mermaid ERD Syntax
 
@@ -64,37 +132,226 @@ erDiagram
         string customer_id PK
         string first_name
         string last_name
-        string email UK
+        string email
         datetime created_date
     }
     
     Order {
         string order_id PK
         string customer_id FK
-        decimal total_amount
+        decimal amount
         datetime order_date
     }
     
-    Customer ||--o{ Order : places
+    Product {
+        string product_id PK
+        string product_name
+        decimal price
+        string category
+    }
+    
+    OrderItem {
+        string item_id PK  
+        string order_id FK
+        string product_id FK
+        integer quantity
+        decimal unit_price
+    }
+    
+    Customer ||--o{ Order : "places"
+    Order ||--o{ OrderItem : "contains"
+    Product ||--o{ OrderItem : "appears_in"
 ```
 
-More info on how to use the tool in the [USAGE-GUIDE](docs/USAGE-GUIDE.md).
+### Many-to-Many Relationships via Junction Tables
 
+The application supports many-to-many relationships through junction tables (associative entities):
 
-## Developer Documentation
+```mermaid
+erDiagram
+    Student {
+        string student_id PK
+        string first_name
+        string last_name
+        string email
+    }
+    
+    Course {
+        string course_id PK
+        string course_name
+        string description
+        integer credits
+    }
+    
+    StudentCourse {
+        string enrollment_id PK
+        string student_id FK
+        string course_id FK
+        datetime enrollment_date
+        string grade
+    }
+    
+    Student ||--o{ StudentCourse : "enrolls_in"
+    Course ||--o{ StudentCourse : "has_enrollment"
+```
 
-For developers who want to understand, maintain, or contribute to this project: [Developer Documentation](docs/DEVELOPER.md)
+**How it works:**
+- Create a junction table (e.g., `StudentCourse`) with foreign keys to both related entities
+- Each foreign key creates a **lookup relationship** in Dataverse
+- Add additional fields to the junction table as needed (enrollment date, grade, etc.)
+- The result is a proper many-to-many relationship with full relationship metadata
+
+### Supported Data Types
+
+- **string** - Text field (max 255 characters)
+- **integer** - Whole number field
+- **decimal** - Decimal number field
+- **boolean** - Yes/No field  
+- **datetime** - Date and time field
+
+### Supported Constraints
+
+- **PK** - Primary key (automatically creates primary name field)
+- **FK** - Foreign key (creates lookup relationship)
+
+### Relationship Patterns
+
+- **One-to-Many**: Direct foreign key relationships
+- **Many-to-Many**: Junction tables with dual foreign keys (e.g., StudentCourse table linking Student and Course)
+- **Self-Referencing**: Foreign key pointing to the same entity (hierarchical data)
+
+## Features
+
+### Publisher & Solution Management
+
+- Automatically creates publishers based on the specified prefix
+- Creates or uses existing solutions
+- Manages entity prefixes consistently across the solution
+
+### Entity Creation
+
+- Converts Mermaid entities to Dataverse custom entities
+- Creates primary name fields automatically
+- Generates proper display names and descriptions
+
+### Column Generation
+
+- Creates columns for all non-primary key attributes
+- Supports multiple data types with proper metadata
+- Handles required/optional field configurations
+
+### Relationship Creation
+
+- Parses Mermaid relationship syntax
+- Creates one-to-many relationships with lookup fields
+- **Supports many-to-many relationships** via junction tables with dual foreign keys
+- Generates practical lookup column names (e.g., "Customer" instead of "CUSTOMER")
+- Handles complex relationship metadata and referential constraints
+
+### Validation & Testing
+
+- **Dry Run Mode**: Validate ERD structure without creating entities
+- **Local Validation**: Test parsing and schema generation
+- **Dataverse Testing**: Verify connection and permissions
+- **Real-time Feedback**: Stream processing logs to the web interface
+
+## Monitoring & Debugging
+
+### Application Logs
+
+View logs in Azure portal or using Azure CLI:
+
+```powershell
+# Stream live logs
+az webapp log tail --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
+
+# Download log files  
+az webapp log download --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
+```
+
+### Health Checks
+
+The application provides several health check endpoints:
+
+- **`/health`** - Overall application health
+- **`/keyvault`** - Key Vault connectivity  
+- **`/managed-identity`** - Managed identity status
+- **`/api/test-dataverse`** - Dataverse connection test
+
+## Documentation
+
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system architecture
+- **[Developer Guide](docs/DEVELOPER.md)** - Development setup and guidelines  
+- **[Entra ID Setup](docs/ENTRA-ID-SETUP.md)** - Automated setup and authentication
+- **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
+- **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax and modeling guide
+- **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Relationship patterns and best practices
+
+## Examples
+
+See the `examples/` directory for sample Mermaid ERD files:
+
+- **`simple-sales.mmd`** - Basic sales entities with relationships
+- **`department-employee.mmd`** - HR-style hierarchical relationships  
+- **`event-erd.mmd`** - Event management system example
+- **`many-to-many-junction.mmd`** - Many-to-many relationships via junction tables
+
+### Junction Table Pattern Example
+
+For many-to-many relationships, use junction tables like this:
+
+```mermaid
+erDiagram
+    Doctor {
+        string doctor_id PK
+        string first_name
+        string last_name
+        string specialty
+    }
+    
+    Patient {
+        string patient_id PK
+        string first_name
+        string last_name
+        datetime birth_date
+    }
+    
+    Appointment {
+        string appointment_id PK
+        string doctor_id FK
+        string patient_id FK
+        datetime appointment_date
+        string status
+        string notes
+    }
+    
+    Doctor ||--o{ Appointment : "schedules"
+    Patient ||--o{ Appointment : "books"
+```
+
+This creates:
+- Two **lookup relationships** in the Appointment entity
+- Many-to-many relationship between Doctor and Patient
+- Additional fields for appointment-specific data
 
 ## Contributing
 
-Contributions welcome! Fork --> PR --> World Domination! 🐁🐁💖🧠
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly using the validation endpoints
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Note on AI Usage
 
-GitHub Copilot was helpful during this project, not so much for the entire logic of this project, but for pretty specific tasks, like
+GitHub Copilot was helpful during this project, not so much for the entire logic of this project, but for pretty specific tasks, like:
 
-- creating tests
-- outlining documentation 
-- drafting the Mermaid diagrams in the documentation
-- commenting the code (yeah I know, some people dislike comments, just hide them with [Hide Comments VS Code extension](https://marketplace.visualstudio.com/items?itemName=eliostruyf.vscode-hide-comments), but you never know who wants to benefit from your code).
+- Creating tests
+- Outlining documentation 
+- Drafting the Mermaid diagrams in the documentation
+- Commenting the code (yeah I know, some people dislike comments, just hide them with [Hide Comments VS Code extension](https://marketplace.visualstudio.com/items?itemName=eliostruyf.vscode-hide-comments), but you never know who wants to benefit from your code)
 

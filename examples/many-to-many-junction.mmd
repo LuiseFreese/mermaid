@@ -1,0 +1,46 @@
+erDiagram
+    Student {
+        string student_id PK
+        string first_name
+        string last_name
+        string email
+        datetime enrollment_date
+    }
+    
+    Course {
+        string course_id PK
+        string course_name
+        string description
+        integer credits
+        string department
+    }
+    
+    Instructor {
+        string instructor_id PK
+        string first_name
+        string last_name
+        string department
+        string email
+    }
+    
+    StudentCourse {
+        string enrollment_id PK
+        string student_id FK
+        string course_id FK
+        datetime enrollment_date
+        string grade
+        string status
+    }
+    
+    CourseInstructor {
+        string assignment_id PK
+        string course_id FK
+        string instructor_id FK
+        string semester
+        string role
+    }
+    
+    Student ||--o{ StudentCourse : "enrolls_in"
+    Course ||--o{ StudentCourse : "has_enrollment"
+    Course ||--o{ CourseInstructor : "taught_by"
+    Instructor ||--o{ CourseInstructor : "teaches"

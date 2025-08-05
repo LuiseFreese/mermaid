@@ -1,34 +1,297 @@
 # Usage Guide
 
-This guide explains how to use the Mermaid to Dataverse converter effectively.
+This guide explains how to use the Mermaid to Dataverse web application to transform Mermaid entity-relationship diagrams into Microsoft Dataverse solutions, tables, columns, and relationships.
+
+## Overview
+
+The application provides a **web interface** for uploading Mermaid ERD files and automatically creating corresponding Dataverse entities. No local installation or CLI commands required - everything runs in your browser!
+
+## Prerequisites
+
+✅ **Application URL** - Get this from your automated deployment  
+✅ **Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
+✅ **Dataverse environment** - Already configured during setup  
+
+> 📝 **Note**: All authentication and environment setup is handled automatically. You just need your deployed application URL and a Mermaid file.
+
+## Before You Start: Testing with Dry Run
+
+🧪 **Recommended**: Before making actual changes to your Dataverse environment, test your setup and configuration using the dry run feature.
+
+### Running Dry Run for Initial Setup
+
+If you used the automated setup script, you can test the entire infrastructure deployment process:
+
+```powershell
+# Test deployment without making changes
+.\scripts\setup-entra-app.ps1 -DryRun
+
+# Or test with specific configuration
+.\scripts\setup-entra-app.ps1 -DryRun -Unattended `
+  -EnvironmentUrl "https://yourorg.crm.dynamics.com" `
+  -ResourceGroup "rg-mermaid" `
+  -Location "East US"
+```
+
+The dry run will:
+- ✅ Validate all your inputs and configuration
+- ✅ Check Azure CLI access and permissions  
+- ✅ Verify Dataverse environment connectivity
+- ✅ Show exactly what would be created
+- ✅ Provide the exact command to run for actual deployment
+
+### Running Dry Run for Mermaid Processing
+
+In the web application, always enable "Dry Run" first to preview what will be created:
+
+1. **Upload your Mermaid file**
+2. **Enable "Dry Run" checkbox**  
+3. **Review the preview** of entities, columns, and relationships
+4. **Run again without dry run** once you're satisfied
 
 ## Quick Start
 
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+### 1. Access the Web Application
 
-2. **Configure authentication** (see [Entra ID Setup Guide](entra-id-setup.md))
+Navigate to your deployed application URL:
+```
+https://your-app-name.azurewebsites.net
+```
 
-3. **Validate your ERD**:
-   ```bash
-   npm start validate -- -i your-erd-file.mmd
-   ```
+### 2. Upload Your Mermaid File
 
-4. **Preview conversion**:
-   ```bash
-   npm start convert -- -i your-erd-file.mmd --dry-run
-   ```
+1. **Click "Choose File"** and select your `.mmd` file
+2. **Configure options**:
+   - **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management")
+   - **Publisher Prefix**: 3-8 character prefix (e.g., "cmgt")
+   - **Dry Run**: Enable to preview without creating anything
+3. **Click "Upload and Process"**
 
-5. **Create entities in Dataverse** (creates solution and entities):
-   ```bash
-   npm start convert -- -i your-erd-file.mmd --solution MyProjectSolution
-   ```
+### 3. Monitor Real-Time Progress
 
-## Supported Mermaid ERD Syntax
+Watch the live log output as your solution is created:
 
-### Basic Entity Definition
+```
+📁 File uploaded: customer-management.mmd (2.3 KB)
+✅ File contains valid erDiagram syntax
+🔍 Parsing Mermaid ERD structure...
+📊 Found 3 entities: Customer, Order, Product
+🔗 Found 2 relationships
+✅ Validation completed successfully
+
+🔑 Connecting to Dataverse...
+✅ Dataverse connection successful
+📦 Creating solution: Customer Management
+👤 Creating entity: Customer (3 columns)
+📦 Creating entity: Order (4 columns)  
+🛍️ Creating entity: Product (5 columns)
+🔗 Creating relationship: Customer → Order
+🔗 Creating relationship: Order → Product
+
+🎉 Deployment completed successfully!
+✅ Solution 'Customer Management' created in Dataverse
+✅ 3 entities created
+✅ 2 relationships established
+```
+
+## Deployment Options
+
+### 🧪 Dry Run Mode (Recommended First)
+
+Always test with **Dry Run** enabled first:
+
+1. Upload your Mermaid file
+2. ✅ Enable "Dry Run" option
+3. Click "Upload and Process"
+4. Review the validation output
+5. If everything looks good, repeat with Dry Run disabled
+
+**Dry Run Output Example:**
+```
+🧪 DRY RUN MODE - No changes will be made to Dataverse
+
+✅ File validation passed
+✅ Entity structure valid
+✅ Relationships valid
+✅ Publisher prefix available
+
+📋 Would create:
+   - Solution: "Customer Management" 
+   - Publisher: "cmgt" (Customer Management Publisher)
+   - Entity: Customer (3 columns)
+   - Entity: Order (4 columns)
+   - Entity: Product (5 columns)
+   - Relationship: Customer ||--o{ Order
+   - Relationship: Order ||--o{ Product
+
+🎯 Ready for actual deployment!
+```
+
+### 🚀 Live Deployment
+
+When ready to create actual Dataverse entities:
+
+1. Upload your Mermaid file
+2. ❌ Disable "Dry Run" option  
+3. Configure Solution Name and Publisher Prefix
+4. Click "Upload and Process"
+5. Monitor the real-time progress
+6. Verify success in your Dataverse environment
+
+## Web Interface Features
+
+### 📊 Status Dashboard
+
+The application shows real-time status of all components:
+
+- ✅ **Application Health**: Server status
+- ✅ **Azure Key Vault**: Secret access  
+- ✅ **Managed Identity**: Authentication status
+- ✅ **Dataverse Connection**: API connectivity
+
+### 🔍 Diagnostic Endpoints
+
+Access additional diagnostic information:
+
+- `/health` - Application health check
+- `/keyvault` - Key Vault connectivity test
+- `/managed-identity` - Authentication status
+- `/api/validate` - Validate Mermaid files
+- `/api/test-dataverse` - Test Dataverse operations
+
+### 📋 Real-Time Logging
+
+The web interface provides live feedback during processing:
+
+- **File upload progress**
+- **Parsing status**
+- **Validation results**  
+- **Entity creation progress**
+- **Relationship establishment**
+- **Final deployment summary**
+
+```mermaid
+flowchart TD
+    %% Main user interaction
+    start([User]) --> cmd[Run: npm run create]
+    cmd --> cli[src/index.js CLI Entry Point]
+    
+    %% Interactive prompts section
+    cli --> promptSolution[Prompt for Solution Name]
+    promptSolution --> inputSolution[User provides <br> Solution Name]
+    inputSolution --> promptPublisher[Prompt for Publisher Prefix]
+    promptPublisher --> inputPublisher[User provides <br> Publisher Prefix]
+    inputPublisher --> promptChoices{Include Global Choices?}
+    
+    %% Global choices branch
+    promptChoices -- Yes --> choicesPath[Prompt for Choices File Path]
+    choicesPath --> inputChoicesPath[User provides <br> Choices File Path]
+    promptChoices -- No --> skipChoices[Skip Global Choices]
+    
+    %% Paths join back
+    inputChoicesPath --> confirm[Show Summary & Confirm]
+    skipChoices --> confirm
+    confirm --> inputConfirm[User confirms]
+    
+    %% Processing begins
+    inputConfirm --> process[Begin Processing]
+    
+    %% Core process - file parsing
+    process --> readERD[Read example.mmd]
+    readERD --> parseERD[Parse with src/parser.js]
+    
+    %% Schema generation
+    parseERD --> genSchema[Generate Schema with <br> src/schema-generator.js]
+    
+    %% Global choice handling
+    inputChoicesPath -- If provided --> readChoices[Read example-choices.json]
+    readChoices --> genSchema
+    
+    %% Schema validation
+    genSchema --> validate[Validate with <br> src/relationship-validator.js]
+    validate --> apiSchema[Prepare API Schema]
+    
+    %% Dataverse client operations
+    apiSchema --> client[Pass to <br> src/dataverse-client.js]
+    
+    %% Publisher handling
+    client --> checkPublisher{Publisher Exists?}
+    checkPublisher -- Yes --> usePublisher[Use Existing Publisher]
+    checkPublisher -- No --> createPublisher[Create New Publisher]
+    
+    %% Creation sequence
+    usePublisher --> createSolution[Create Solution]
+    createPublisher --> createSolution
+    createSolution --> createEntities[Create Entities]
+    createEntities --> createRelationships[Create Relationships]
+    
+    %% Global choice creation 
+    inputChoicesPath -- If provided --> createChoices[Create Global Choice Sets]
+    createChoices --> createSolution
+    
+    %% Completion
+    createRelationships --> complete[Deployment Complete]
+    complete --> summary[Display Summary to User]
+    summary --> finish([End])
+    
+    %% Styling
+    classDef userAction fill:#d1eaff,stroke:#0078d7,stroke-width:2px
+    classDef process fill:#d5f5d5,stroke:#107c10,stroke-width:2px
+    classDef file fill:#fff5d5,stroke:#ff8c00,stroke-width:2px
+    classDef api fill:#f5e1ff,stroke:#8661c5,stroke-width:2px
+    classDef decision fill:#ffd5d5,stroke:#d83b01,stroke-width:2px
+    
+    class start,cmd,inputSolution,inputPublisher,inputChoicesPath,inputConfirm userAction
+    class cli,process,parseERD,genSchema,validate,apiSchema,complete,summary process
+    class readERD,readChoices file
+    class client,usePublisher,createPublisher,createSolution,createEntities,createRelationships,createChoices api
+    class promptChoices,checkPublisher decision
+## What Happens During Deployment
+
+When you upload a Mermaid file through the web interface:
+
+```mermaid
+flowchart TD
+    %% Web interface flow
+    start([User]) --> upload[Upload .mmd file via web form]
+    upload --> validate[Validate file format]
+    validate --> parse[Parse Mermaid ERD structure]
+    parse --> auth[Authenticate to Dataverse]
+    auth --> create[Create Dataverse components]
+    create --> complete[Display success summary]
+    
+    %% Detailed creation process
+    create --> publisher[Create/Validate Publisher]
+    publisher --> solution[Create Solution]
+    solution --> entities[Create Entities & Columns]
+    entities --> relationships[Create Relationships]
+    relationships --> complete
+    
+    %% Styling
+    classDef userAction fill:#d1eaff,stroke:#0078d7,stroke-width:2px
+    classDef process fill:#d5f5d5,stroke:#107c10,stroke-width:2px
+    classDef dataverse fill:#f5e1ff,stroke:#8661c5,stroke-width:2px
+    
+    class start,upload userAction
+    class validate,parse,complete process
+    class auth,publisher,solution,entities,relationships dataverse
+```
+
+### Processing Steps
+
+1. **File Upload**: Browser uploads your `.mmd` file
+2. **Validation**: Checks for valid Mermaid ERD syntax
+3. **Parsing**: Extracts entities, columns, and relationships
+4. **Authentication**: Connects to Dataverse using managed identity
+5. **Publisher Creation**: Creates or validates publisher prefix
+6. **Solution Creation**: Creates Dataverse solution container
+7. **Entity Creation**: Creates tables with specified columns
+8. **Relationship Creation**: Establishes entity relationships
+9. **Summary**: Displays deployment results
+
+## Supported Mermaid Syntax
+
+### Basic Entity Example
 
 ```mermaid
 erDiagram
@@ -44,413 +307,253 @@ erDiagram
 
 ### Supported Data Types
 
-| Data Type | Dataverse Type | Description |
-|-----------|---------------|-------------|
-| `string` | `Edm.String` | Text field (max 100 chars by default) |
-| `int`, `integer` | `Edm.Int32` | 32-bit integer |
-| `decimal` | `Edm.Decimal` | Decimal number with precision |
-| `text`, `varchar`, `nvarchar` | `Edm.String` | Text field |
+| Mermaid Type | Dataverse Type | Notes |
+|-------------|----------------|-------|
+| `string` | Single Line Text | Max 255 characters |
+| `integer` | Whole Number | Integer values |
+| `decimal` | Decimal Number | Floating point |
+| `boolean` | Yes/No | True/false values |
+| `datetime` | Date and Time | Full timestamp |
 
-### Field Constraints
+### Supported Constraints
 
-| Constraint | Description | Example |
-|------------|-------------|---------|
-| `PK` | Primary Key | `string id PK` |
-| `FK` | Foreign Key | `string customer_id FK` |
-| `UK` | Unique Key | `string email UK` |
-| `NOT NULL` | Required field | `string name NOT NULL` |
-
-### Relationship Types
-
-| Mermaid Notation | Cardinality | Description |
-|------------------|-------------|-------------|
-| `}o--\|\|` | Many-to-One | Many records relate to one other |
-| `}o--o{` | Many-to-Many | Many records relate to many others |
+| Constraint | Meaning | Implementation |
+|-----------|---------|----------------|
+| `PK` | Primary Key | Creates GUID primary key + name field |
+| `FK` | Foreign Key | Will be used for relationship creation |
+| `UK` | Unique Key | Creates unique constraint |
 
 ### Relationship Examples
 
 ```mermaid
 erDiagram
-    Product ||--o{ OrderItem : includes
-    Student }o--o{ Course : enrolls_in
+    Customer ||--o{ Order : "places"
+    Order ||--o{ OrderItem : "contains"
+    Product ||--o{ OrderItem : "included_in"
+    
+    Customer {
+        string customer_id PK
+        string name
+        string email UK
+    }
+    
+    Order {
+        string order_id PK
+        string customer_id FK
+        datetime order_date
+        decimal total_amount
+    }
+    
+    Product {
+        string product_id PK
+        string name
+        decimal price
+        boolean is_active
+    }
+    
+    OrderItem {
+        string item_id PK
+        string order_id FK
+        string product_id FK
+        integer quantity
+        decimal unit_price
+    }
 ```
 
-## Command Line Options
-### Convert Command
+### Relationship Types Supported
 
-```bash
-npm start convert [options]
-```
-**Options:**
-- `-i, --input <file>` - Input Mermaid ERD file (required)
-- `-o, --output <file>` - Output JSON schema file (optional)
-- `--dry-run` - Preview conversion without creating entities
-- `--verbose` - Show detailed output
+- `||--o{` : One-to-many relationship
+- `}o--o{` : Many-to-many relationship (creates junction table)
+- `||--||` : One-to-one relationship
 
-**Examples:**
-```bash
-# Basic conversion with solution
-npm start convert -- -i my-erd.mmd --solution MyProjectSolution
-# Dry run with verbose output (no solution needed for preview)
-
-# Save schema to file (no solution needed for schema export)
-npm start convert -- -i my-erd.mmd -o schema.json
-
-# Custom publisher prefix with solution
-npm start convert -- -i my-erd.mmd --solution MyProjectSolution --publisher-prefix "myorg"
-```
-
-### Validate Command
-
-```bash
-npm start validate [options]
-```
-
-**Options:**
-- `-i, --input <file>` - Input Mermaid ERD file (required)
-
-**Example:**
-npm start validate -- -i my-erd.mmd
-
-## Solution Management
-
-The tool automatically creates and manages Dataverse solutions for you. Solutions provide organization and deployment benefits:
-
-### Solution Features
-
-- **Automatic Creation**: Solutions are created if they don't exist
-- **Idempotent Operations**: Safe to run multiple times - existing solutions are reused
-- **Entity Organization**: All entities and relationships are created within the solution
-- **Publisher Management**: Automatically creates or reuses publishers with your prefix
-
-### Solution Naming
-- Use descriptive names: `MyProjectSolution`, `CustomerManagement`, `InventorySystem`
-- Solution names must be unique within your Dataverse environment
-- Names should be alphanumeric with no spaces (underscores allowed)
-
-### Examples
-```bash
-# Create a solution for a customer management system
-npm start convert -- -i customer-erd.mmd --solution CustomerManagement
-
-# Create a solution for inventory tracking
-npm start convert -- -i inventory-erd.mmd --solution InventorySystem --publisher-prefix "inv"
-
-# Running again with the same solution name is safe (idempotent)
-```
-
-### Config Command
-
-```bash
-npm start config
-```
-
-Shows current configuration status and required environment variables.
+> **Note**: All relationships are created as **referential (lookup)** by default using Dataverse's native lookup relationship type. This prevents cascade delete conflicts and you can manually configure parental relationships in Dataverse if needed.
 
 ## Best Practices
 
-### 1. ERD Design
+### 📝 File Preparation
+- **Use descriptive entity names**: `Customer`, `Order`, `Product`
+- **Use snake_case for columns**: `first_name`, `created_date`, `is_active`
+- **Use boolean prefixes**: `is_active`, `has_discount`, `can_edit`
+- **Use descriptive suffixes**: `_date`, `_time`, `_amount`, `_count`
+- **Keep file size reasonable**: Large ERDs may take longer to process
 
-- **Use descriptive names**: `customer_id` instead of `id`
-- **Follow naming conventions**: Use snake_case for consistency
-- **Specify constraints**: Mark primary keys, foreign keys, and unique fields
-- **Document relationships**: Use meaningful relationship names
+### 🧪 Testing Strategy
+1. **Always start with Dry Run** to validate your ERD
+2. **Test with small examples** before large deployments
+3. **Review generated names** in the preview output
+4. **Backup your Dataverse environment** before major deployments
 
-### 2. Field Naming
+### 🔄 Version Control
+- **Store Mermaid files in source control** (Git, etc.)
+- **Document your entity relationships** with meaningful names
+- **Use consistent naming conventions** across projects
+- **Tag versions** when deploying to production
 
-- **Foreign keys**: Reference the related table (e.g., `customer_id` in Order table)
-- **Boolean fields**: Start with `is_` or `has_` (e.g., `is_active`)
-- **Date fields**: End with `_date` or `_time` (e.g., `created_date`)
-- **Use dry runs**: Preview changes before applying to Datavese.
-- **Version control**: Keep your Mermaid files in source control
-- **Document changes**: Use meaningful commit messages for ERD updates
-- **Backup before changes**: Create solution backups
-- **Monitor creation**: Use verbose mode to track progress
-- **Validate results**: Check created entities in Dataverse maker portal
+### 🛡️ Safety Considerations
+- **Publisher prefixes are permanent** - choose wisely
+- **Entity names cannot be changed** after creation
+- **Relationships default to referential** (safe, using native Dataverse lookup types)
+- **Manual cleanup required** if deployment fails partway
 
-## Limitations
+## Example Files
 
-### Current Limitations
+The application works with any valid Mermaid ERD. Here are some examples:
 
-- **No update support**: The tool only creates new entities (no updates to existing)
-- **Basic field types**: Limited to common Dataverse field types
-- **No calculated fields**: Doesn't support calculated or rollup fields
-- **No business rules**: Doesn't create business rules or workflows
-- **No forms/views**: Only creates entities and fields, not UI components
-
-### Workarounds
-
-- **Manual updates**: Use Dataverse maker portal for entity updates
-- **Custom fields**: Add specialized fields manually after creation
-- **Business logic**: Implement business rules separately
-- **User interface**: Design forms and views in Power Apps
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: "Entity already exists"
-- **Solution**: The tool skips existing entities. Delete manually or use different names.
-
-**Issue**: "Invalid field type"
-- **Solution**: Check that your Mermaid data types are supported (see table above).
-
-**Issue**: "Relationship creation failed"
-- **Solution**: Ensure both entities exist before creating relationships.
-
-**Issue**: "Authentication failed"
-- **Solution**: Check your Azure AD app registration and environment variables.
-
-### Getting Help
-
-1. **Check configuration**: Run `npm start config`
-2. **Validate ERD**: Run validate command first
-3. **Use verbose mode**: Add `--verbose` for detailed error messages
-4. **Test with examples**: Try the provided example files first
-
-## Examples
-
-See the `examples/` directory for complete ERD examples:
-
-- `event-erd.mmd` - Event management with venues, events, and attendees
-
-## Advanced Usage
-
-### Custom Publisher Prefix
-
-```bash
-npm start convert -- -i my-erd.mmd --solution ContosoSolution --publisher-prefix "contoso"
+### Simple CRM Example
+```mermaid
+erDiagram
+    Contact {
+        string contact_id PK
+        string first_name
+        string last_name
+        string email UK
+        string phone
+        datetime created_date
+        boolean is_active
+    }
+    
+    Company {
+        string company_id PK
+        string company_name
+        string website
+        string industry
+        integer employee_count
+    }
+    
+    Contact ||--o{ Company : "works_for"
 ```
 
-This creates entities like `contoso_customer` instead of `mmd_customer`.
-
-### Schema Export
-
-```bash
-npm start convert -- -i my-erd.mmd -o dataverse-schema.json --dry-run
+### E-commerce Example
+```mermaid
+erDiagram
+    Customer ||--o{ Order : "places"
+    Order ||--o{ OrderItem : "contains"
+    Product ||--o{ OrderItem : "appears_in"
+    
+    Customer {
+        string customer_id PK
+        string email UK
+        string first_name
+        string last_name
+        datetime created_date
+        boolean is_premium
+    }
+    
+    Product {
+        string product_id PK
+        string name
+        string description
+        decimal price
+        integer stock_quantity
+        boolean is_available
+    }
+    
+    Order {
+        string order_id PK
+        string customer_id FK
+        datetime order_date
+        decimal total_amount
+        string status
+    }
+    
+    OrderItem {
+        string item_id PK
+        string order_id FK
+        string product_id FK
+        integer quantity
+        decimal unit_price
+    }
 ```
 
-Exports the generated Dataverse schema to a JSON file for review or documentation.
+## Validation & Error Handling
 
-### Environment Variables
+### Built-in Validation
+The application automatically validates:
 
-Create different `.env` files for different environments:
+- ✅ **File format**: Must be valid Mermaid ERD syntax
+- ✅ **Entity structure**: Each entity must have at least one primary key
+- ✅ **Relationship validity**: References must point to existing entities
+- ✅ **Naming conventions**: Publisher prefix format validation
+- ✅ **Dataverse limits**: Column names, solution names, etc.
 
-- `.env.dev` - Development environment
-- `.env.test` - Test environment  
-- `.env.prod` - Production environment
-
-Load specific environment:
-```bash
-cp .env.dev .env
-npm start convert -- -i my-erd.mmd --solution MyProjectSolution
-```
-
-## Environment Variables
-
-- `DATAVERSE_URL` - Your Dataverse environment URL
-- `CLIENT_ID` - Microsoft Entra ID App Registration Client ID
-- `CLIENT_SECRET` - Microsoft Entra ID App Registration Client Secret
-- `TENANT_ID` - Microsoft Entra ID Tenant ID
-
-## Usage
-
-### Quick Start (Interactive)
-
-The easiest way to get started is with the interactive `create` command:
-
-```bash
-# Interactive mode - will prompt for solution name and publisher prefix  
-node src/index.js create examples/event-erd.mmd
-
-# Preview without creating (dry run)
-node src/index.js create examples/event-erd.mmd --dry-run
-
-# Quick shortcut for interactive mode
-npm run create
-# Then provide the file path when prompted
-```
-
-This will:
-1. **Prompt for solution name** - Enter a descriptive name for your Dataverse solution
-2. **Prompt for publisher prefix** - Enter 2-8 characters unique to your organization  
-3. **Show configuration summary** - Review your settings before proceeding
-4. **Create the solution** - Build entities and relationships in Dataverse
-
-### Solution Naming
-
-The tool supports user-friendly solution names with spaces and special characters like `Customer Management System` and handles the technical requirements:
-
-- **Display Name**: Shown exactly as you enter it in Dataverse (e.g., "Customer Management System")
-- **Technical Name**: Auto-generated API-safe name using PascalCase (e.g., "CustomerManagementSystem")
-
-### Available npm Scripts
-
-For convenience, several npm scripts are available:
-
-```bash
-npm run create      # Interactive create (prompts for file path)
-npm run publishers  # List available publishers
-npm run cleanup     # Remove temporary/debug files
-npm test           # Run tests
-```
-
-Note: For commands with arguments, use the direct `node src/index.js` syntax shown above.
-
-### Advanced Commands
-
-```bash
-# Specify all options via command line (non-interactive)
-node src/index.js convert my-erd.mmd MyProjectSolution contoso
-
-# Dry run with specific parameters
-node src/index.js convert my-erd.mmd MyProjectSolution contoso --dry-run
-
-# List available publishers in your environment
-node src/index.js publishers
-# OR use the shortcut
-npm run publishers
-```
-
-# Use a specific publisher prefix
-npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution --publisher-prefix "contoso"
-
-# List publishers before creating solution
-npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution --list-publishers
-
-# Prevent automatic publisher creation (use existing only)
-npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution --no-create-publisher
-
-# Dry run (preview without creating)
-npm start convert -- --input ./my-erd.mmd --dry-run
-
-# Verbose output
-npm start convert -- --input ./my-erd.mmd --solution MyProjectSolution --verbose
-
-# Validate ERD syntax
-npm start validate -- --input ./my-erd.mmd
-
-# Check configuration
-npm start config
-```
-
-### CLI Options
-
-```bash
-# Full command syntax
-npm start convert -- [options]
-
-Options:
-  -i, --input <file>              Input Mermaid ERD file path
-  -s, --solution <name>           Solution name to create entities in (required)
-  -o, --output <file>             Output JSON schema file (optional)
-  --dry-run                       Preview without creating entities  
-  --verbose                       Show detailed output
-  --publisher-prefix <prefix>     Custom publisher prefix (default: mmd)
-  --list-publishers               List available publishers before creating solution
-  --no-create-publisher           Do not create publisher if it doesn't exist
-```
-
-## Maintenance
-
-### Cleanup Repository
-
-To remove temporary files, debug scripts, and test outputs:
-
-```bash
-npm run cleanup
-```
-
-This script automatically removes:
-- Debug and test scripts (`debug-*.js`, `check-*.js`, etc.)
-- Schema output files (`*-schema.json`)
-- Temporary .env files (`.env.generated`, `.env.updated`)
-- Keeps only essential example (`event-erd.mmd`)
-
-## Important: Relationship Types
-
-⚠️ **Default Behavior**: All relationships are created as **referential (lookup)** relationships by default.
-
-Mermaid ERD syntax doesn't distinguish between parental and referential relationships, so this tool defaults to the safer option that prevents cascade delete conflicts. This means:
-
-- ✅ **All ERDs will create successfully** without "multiple parental relationships" errors
-- ✅ **Data references are maintained** but without automatic cascade delete
-- ⚠️ **Manual enhancement needed** if you want parental relationships with cascade delete
-
-**📖 Read the full explanation**: [Relationship Types Documentation](docs/RELATIONSHIP_TYPES.md)
-
-This covers:
-- Why we default to referential relationships
-- How to manually configure parental relationships in Dataverse
-- Best practices for relationship design
-- Migration guide for existing users
-
-## Relationship Validation
-
-The tool includes built-in validation to detect potential ERD structure issues:
-
-### Automatic Detection
-- **Self-References**: Identifies entities that reference themselves
-- **Missing Primary Keys**: Ensures all entities have proper primary key definitions
-- **Orphaned Entities**: Detects entities without any relationships (informational)
-- **ERD Syntax Issues**: Validates proper Mermaid ERD format
-
-### Validation Options
-```bash
-# Run with validation (default)
-node src/index.js create examples/event-erd.mmd
-
-# Skip validation (not recommended)
-node src/index.js create examples/event-erd.mmd --no-validation
-
-# Safe mode - explicitly ensures all relationships as lookups
-node src/index.js create examples/event-erd.mmd --safe-mode
-
-# Non-interactive mode for automation
-node src/index.js create examples/event-erd.mmd --non-interactive
-```
-
-### Validation Output Example
+### Common Validation Messages
 ```
 🔍 Validating ERD structure...
 ✅ All entities have primary keys
 ✅ No self-references detected
-ℹ️  All relationships will be created as referential (lookup) by default
+✅ All relationship targets exist
+ℹ️ All relationships will be created as referential (lookup) using Dataverse's native lookup relationship behavior
 ✅ Validation completed successfully
 ```
 
-**Note**: Since all relationships are created as referential by default, there are no cascade delete conflicts to detect. The validation focuses on ERD structure and syntax issues.
-
-## Example ERD Files
-
-The `examples/` directory contains ready-to-use Mermaid ERD files and supporting files:
-
-- **`event-erd.mmd`** - Event management with venues, events, and attendees
-- **`crm-solution.mmd`** - Customer relationship management with companies, contacts, and activities
-- **`department-employee.mmd`** - Simple department and employee relationship example
-- **`simple-sales.mmd`** - Basic sales tracking with customers, orders, and products
-
-### Example Global Choice Files
-
-- **`crm-choices.json`** - Global choice sets for the CRM solution
-- **`global-choices.json`** - Example of team assignment and other global choice sets
-
-  ```
-
-## Define Your Global Choices
-
-Mermaid doesn't support choice columns. But this tool can create global choices for you and associate these with your solution, so that you can manually create your choice-column and sync it with a global choice.
-
-Create a JSON file (e.g., `global-choices.json`) that defines your global choice sets, read more here: [Global Choices Guide](/docs/GLOBAL-CHOICES-GUIDE.md))
-
-
-
-### Quick Test
-
-```bash
-# Try the e-commerce example
-node src/index.js create examples/event-erd.mmd --dry-run
-
-# Test relationship validation with complex example
-node src/index.js create examples/event-erd.mmd --verbose
+### Error Examples
 ```
+❌ Entity 'Order' references unknown entity 'InvalidEntity'
+❌ Entity 'Customer' has no primary key defined
+❌ Publisher prefix must be 3-8 characters (got: 'ab')
+❌ Solution name cannot contain special characters
+```
+
+## Troubleshooting
+
+### File Upload Issues
+```
+❌ File upload failed: File too large
+```
+**Solutions**: 
+- Check file size (limit: ~10MB)
+- Ensure file has `.mmd` extension
+- Verify file contains valid Mermaid syntax
+
+### Authentication Issues
+```
+❌ Dataverse connection failed: Unauthorized
+```
+**Solutions**:
+- Check application health status on the dashboard
+- Verify Dataverse environment is accessible
+- Contact administrator if managed identity issues persist
+
+### Entity Creation Issues
+```
+❌ Entity creation failed: Publisher prefix invalid
+```
+**Solutions**:
+- Use 3-8 character publisher prefix
+- Only lowercase letters allowed
+- Ensure prefix doesn't conflict with existing publishers
+- Try different solution name if conflicts exist
+
+### Performance Considerations
+- **Large ERDs**: May take several minutes to process
+- **Many relationships**: Processing time increases with complexity
+- **Network latency**: Depends on Dataverse environment location
+- **Browser timeout**: For very large deployments, monitor progress actively
+
+## Getting Help
+
+### 1. Check Application Status
+Visit the status dashboard to verify all components are healthy:
+- Application Health ✅
+- Key Vault Access ✅  
+- Managed Identity ✅
+- Dataverse Connection ✅
+
+### 2. Use Diagnostic Endpoints
+- `/health` - Overall application health
+- `/api/validate` - Test file validation without deployment
+
+### 3. Review Examples
+Start with the provided examples to understand the expected format and behavior.
+
+### 4. Contact Support
+If issues persist, provide:
+- Application URL
+- Error messages from the web interface
+- Sample Mermaid file that's causing issues
+- Browser console errors (F12 Developer Tools)
+
+For detailed technical architecture and developer information, see [DEVELOPER.md](DEVELOPER.md).
+
+For automated deployment setup, see [ENTRA-ID-SETUP.md](ENTRA-ID-SETUP.md).
+

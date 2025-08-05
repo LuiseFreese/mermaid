@@ -1,9 +1,9 @@
 /**
- * Mermaid ERD Parser
+ * Mermaid ERD Parser - CommonJS Version
  * Parses Mermaid ERD syntax and extracts entities, attributes, and relationships
  */
 
-export class MermaidERDParser {
+class MermaidERDParser {
   constructor() {
     this.entities = new Map();
     this.relationships = [];
@@ -81,9 +81,30 @@ export class MermaidERDParser {
    * @returns {Object|null} Parsed attribute or null
    */
   parseAttribute(line) {
-    // Pattern: type name [constraints]
-    // Handle complex types like: choice(option1,option2) name constraints or lookup(Entity) name
-    const attributePattern = /^((?:choice\([^)]+\)|lookup\([^)]+\)|\w+))\s+(\w+)(?:\s+(PK|FK|UK|.*?))?$/;
+    // CRITICAL FIX: First, check if this line looks like a relationship
+    // Relationships have the pattern: ENTITY cardinality ENTITY : "label"
+    const relationshipPattern = /^(\w+)\s+([|}{o-]+)\s+(\w+)(?:\s*:\s*(.+))?$/;
+    if (relationshipPattern.test(line)) {
+      console.log(`🔍 DEBUG: Skipping relationship line in attribute parsing: "${line}"`);
+      return null;
+    }
+    
+    // Also check for any line containing cardinality symbols
+    const relationshipIndicators = /[|}{o-]{2,}/;
+    if (relationshipIndicators.test(line)) {
+      console.log(`🔍 DEBUG: Skipping line with cardinality symbols: "${line}"`);
+      return null;
+    }
+    
+    // Check for any line with colon followed by quoted text (relationship labels)
+    const relationshipLabelPattern = /:\s*["'][^"']*["']$/;
+    if (relationshipLabelPattern.test(line)) {
+      console.log(`🔍 DEBUG: Skipping line with relationship label: "${line}"`);
+      return null;
+    }
+    
+    // Pattern: type name [constraints] - ONLY for entity attributes
+    const attributePattern = /^((?:choice\([^)]+\)|lookup\([^)]+\)|\w+))\s+(\w+)(?:\s+(PK|FK|UK|.*?))?(?:\s+"[^"]*")?$/;
     const match = line.match(attributePattern);
 
     if (!match) {
@@ -91,13 +112,12 @@ export class MermaidERDParser {
     }
 
     const [, type, name, constraints = ''] = match;
-
     const typeInfo = this.mapMermaidTypeToDataverse(type);
 
     const attribute = {
       name: name,
       displayName: this.formatDisplayName(name),
-      type: typeInfo.dataType || typeInfo, // Handle both old and new format
+      type: typeInfo.dataType || typeInfo,
       isPrimaryKey: constraints.includes('PK'),
       isForeignKey: constraints.includes('FK'),
       isUnique: constraints.includes('UK'),
@@ -125,8 +145,6 @@ export class MermaidERDParser {
    * @returns {Object|null} Parsed relationship or null
    */
   parseRelationship(line) {
-    // Simplified pattern: EntityA relationship EntityB : name
-    // Handle various relationship notations like ||--o{, ||--||, }o--o{, etc.
     const relationshipPattern = /^(\w+)\s+([|}{o-]+)\s+(\w+)(?:\s*:\s*(.+))?$/;
     const match = line.match(relationshipPattern);
 
@@ -148,86 +166,86 @@ export class MermaidERDParser {
   /**
    * Parse cardinality notation
    * @param {string} cardinality - The cardinality string
-   * @returns {Object} Cardinality information
+   * @returns {Object} Parsed cardinality
    */
   parseCardinality(cardinality) {
-    const cardinalityMap = {
-      '||--||': { from: 'one', to: 'one', type: 'one-to-one' },
-      '||--o{': { from: 'one', to: 'many', type: 'one-to-many' },
-      '}o--||': { from: 'many', to: 'one', type: 'many-to-one' },
-      '}o--o{': { from: 'many', to: 'many', type: 'many-to-many' },
-      '||--|{': { from: 'one', to: 'many', type: 'one-to-many' },
-      '}|--||': { from: 'many', to: 'one', type: 'many-to-one' }
-    };
-
-    return cardinalityMap[cardinality] || { from: 'one', to: 'many', type: 'one-to-many' };
-  }
-
-  /**
-   * Map Mermaid data types to Dataverse field types
-   * @param {string} mermaidType - The Mermaid type
-   * @returns {Object} Dataverse field type and additional metadata
-   */
-  mapMermaidTypeToDataverse(mermaidType) {
-    const typeMap = {
-      'string': 'Edm.String',
-      'int': 'Edm.Int32',
-      'integer': 'Edm.Int32',
-      'decimal': 'Edm.Decimal',
-      'float': 'Edm.Double',
-      'double': 'Edm.Double',
-      'boolean': 'Edm.Boolean',
-      'bool': 'Edm.Boolean',
-      'datetime': 'Edm.DateTimeOffset',
-      'date': 'Edm.DateTimeOffset',
-      'guid': 'Edm.Guid',
-      'uuid': 'Edm.Guid',
-      'text': 'Edm.String',
-      'varchar': 'Edm.String',
-      'nvarchar': 'Edm.String',
-      'image': 'Edm.Image',
-      'file': 'Edm.File',
-      'autonumber': 'Edm.AutoNumber',
-      'duration': 'Edm.Duration'
-    };
-
-    // Check for choice type with options: choice(option1,option2,option3)
-    const choiceMatch = mermaidType.match(/^choice\(([^)]+)\)$/i);
-    if (choiceMatch) {
-      const options = choiceMatch[1].split(',').map(opt => opt.trim());
-      return {
-        dataType: 'Edm.Int32', // Choice fields are stored as integers
-        isChoice: true,
-        choiceOptions: options
-      };
+    // Handle various Mermaid cardinality notations
+    if (cardinality.includes('||') && cardinality.includes('{')) {
+      return { type: 'one-to-many', from: 'one', to: 'many' };
+    } else if (cardinality.includes('||') && cardinality.includes('||')) {
+      return { type: 'one-to-one', from: 'one', to: 'one' };
+    } else if (cardinality.includes('}') && cardinality.includes('{')) {
+      return { type: 'many-to-many', from: 'many', to: 'many' };
+    } else if (cardinality.includes('o') && cardinality.includes('{')) {
+      return { type: 'zero-to-many', from: 'zero-or-one', to: 'many' };
     }
     
-    // Check for lookup type: lookup(EntityName)
-    const lookupMatch = mermaidType.match(/^lookup\(([^)]+)\)$/i);
-    if (lookupMatch) {
-      const targetEntity = lookupMatch[1].trim();
-      return {
-        dataType: 'Edm.Guid', // Lookup fields are stored as GUIDs
-        isLookup: true,
-        targetEntity: targetEntity
-      };
-    }
-
-    const mappedType = typeMap[mermaidType.toLowerCase()] || 'Edm.String';
-    return {
-      dataType: mappedType,
-      isChoice: false
-    };
+    return { type: 'unknown', from: 'unknown', to: 'unknown' };
   }
 
   /**
-   * Format a name for display (convert snake_case to Title Case)
-   * @param {string} name - The name to format
+   * Map Mermaid data types to Dataverse data types
+   * @param {string} mermaidType - The Mermaid type
+   * @returns {Object} Dataverse type information
+   */
+  mapMermaidTypeToDataverse(mermaidType) {
+    // Handle choice types
+    if (mermaidType.startsWith('choice(')) {
+      const optionsMatch = mermaidType.match(/choice\(([^)]+)\)/);
+      if (optionsMatch) {
+        const options = optionsMatch[1].split(',').map(opt => opt.trim());
+        return {
+          dataType: 'Choice',
+          isChoice: true,
+          choiceOptions: options
+        };
+      }
+    }
+
+    // Handle lookup types
+    if (mermaidType.startsWith('lookup(')) {
+      const targetMatch = mermaidType.match(/lookup\(([^)]+)\)/);
+      if (targetMatch) {
+        return {
+          dataType: 'Lookup',
+          isLookup: true,
+          targetEntity: targetMatch[1].trim()
+        };
+      }
+    }
+
+    // Standard type mappings
+    const typeMap = {
+      'string': 'String',
+      'int': 'Integer',
+      'integer': 'Integer',
+      'decimal': 'Decimal',
+      'money': 'Money',
+      'boolean': 'Boolean',
+      'bool': 'Boolean',
+      'datetime': 'DateTime',
+      'date': 'DateTime',
+      'text': 'Memo',
+      'memo': 'Memo',
+      'guid': 'Uniqueidentifier',
+      'uniqueidentifier': 'Uniqueidentifier'
+    };
+
+    return typeMap[mermaidType.toLowerCase()] || 'String';
+  }
+
+  /**
+   * Format a technical name into a display name
+   * @param {string} name - The technical name
    * @returns {string} Formatted display name
    */
   formatDisplayName(name) {
     return name
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase());
+      .toLowerCase() // Convert to lowercase first
+      .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
+      .replace(/\b\w/g, l => l.toUpperCase()) // Capitalize first letter of each word
+      .trim();
   }
 }
+
+module.exports = { MermaidERDParser };
