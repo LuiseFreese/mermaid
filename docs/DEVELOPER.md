@@ -851,8 +851,6 @@ POST /api/test-dataverse
 
 ## Development Setup
 
-## Development Setup
-
 ### Prerequisites
 
 **For Automated Deployment:**
@@ -1069,89 +1067,3 @@ After deployment, the script automatically tests:
 
 🎉 Deployment successful! Ready for production use.
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-**1. File Upload Failures**
-```
-Error: File upload failed: File too large
-```
-**Solution**: Check file size limit in `formidable` configuration
-
-**2. Authentication Failures**
-```
-❌ Failed to load Azure SDK: Cannot find module '@azure/identity'
-```
-**Solutions**:
-- Verify all Azure SDK packages installed: `npm install`
-- Check package.json dependencies are correct
-- Restart the application after installing packages
-
-**3. Key Vault Access Errors**
-```
-❌ Key Vault access failed: Forbidden
-```
-**Solutions**:
-- Verify managed identity has Key Vault access policy
-- Check Key Vault URI environment variable
-- Ensure managed identity is system-assigned
-- Verify RBAC roles for Key Vault access
-
-**4. Dataverse Connection Failures**
-```
-❌ Dataverse connection failed: Unauthorized
-```
-**Solutions**:
-- Verify Dataverse app registration exists
-- Check client secret hasn't expired
-- Ensure app user exists in Dataverse environment
-- Verify security role assignments
-
-**5. Entity Creation Errors**
-```
-❌ Entity creation failed: Publisher prefix invalid
-```
-**Solutions**:
-- Publisher prefix must be 3-8 characters
-- Only lowercase letters allowed
-- Must not conflict with existing prefixes
-- Check publisher creation permissions
-
-### Debug Mode
-
-**Enable Verbose Logging**:
-```bash
-# Set environment variable
-NODE_ENV=development
-```
-
-**Health Check Endpoints**:
-```bash
-# Application health
-curl http://localhost:8080/health
-
-# Key Vault status
-curl http://localhost:8080/keyvault
-
-# Managed identity status
-curl http://localhost:8080/managed-identity
-```
-
-### Log Analysis
-
-**Azure App Service Logs**:
-```bash
-# Stream live logs
-az webapp log tail --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
-
-# Download log files
-az webapp log download --name mermaid-to-dataverse --resource-group rg-mermaid-dataverse
-```
-
-**Application Insights Integration**:
-- Request tracking and performance
-- Dependency calls to Dataverse
-- Exception tracking and analysis
-- Custom event logging

@@ -195,41 +195,45 @@ erDiagram
 ## Advanced Features
 
 ### Audit Fields Pattern
+
 ```mermaid
-ENTITY {
-    string entity_id PK "Unique identifier"
-    string name "Entity name"
-    datetime created_date "Creation timestamp"
-    datetime modified_date "Last modification timestamp"
-    string created_by_id FK "Created by user reference"
-    string modified_by_id FK "Modified by user reference"
-    boolean is_active "Active status"
-}
+erDiagram
+    ENTITY {
+        string entity_id PK "Unique identifier"
+        string name "Entity name"
+        datetime created_date "Creation timestamp"
+        datetime modified_date "Last modification timestamp"
+        string created_by_id FK "Created by user reference"
+        string modified_by_id FK "Modified by user reference"
+        boolean is_active "Active status"
+    }
 ```
 
 ### Address Pattern
 ```mermaid
-ADDRESS {
-    string address_id PK "Address identifier"
-    string street_1 "Street address line 1"
-    string street_2 "Street address line 2"
-    string city "City name"
-    string state_province "State or province"
-    string postal_code "Postal or ZIP code"
-    string country "Country name"
-    string address_label "Address label or description"
-    boolean is_primary "Primary address flag"
-}
+erDiagram
+    ADDRESS {
+        string address_id PK "Address identifier"
+        string street_1 "Street address line 1"
+        string street_2 "Street address line 2"
+        string city "City name"
+        string state_province "State or province"
+        string postal_code "Postal or ZIP code"
+        string country "Country name"
+        string address_label "Address label or description"
+        boolean is_primary "Primary address flag"
+    }
 ```
 
 ### Contact Information Pattern
 ```mermaid
-CONTACT_INFO {
-    string contact_label "Label or description for contact method"
-    string value "Contact value"
-    boolean is_primary "Primary contact flag"
-    boolean is_active "Active status"
-}
+erDiagram
+    CONTACT_INFO {
+        string contact_label "Label or description for contact method"
+        string value "Contact value"
+        boolean is_primary "Primary contact flag"
+        boolean is_active "Active status"
+    }
 ```
 
 ## Validation and Testing
