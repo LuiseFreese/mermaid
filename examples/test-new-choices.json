@@ -1,0 +1,89 @@
+{
+    "globalChoices": [
+        {
+            "name": "priority_level",
+            "displayName": "Priority Level",
+            "description": "Priority levels for tasks and issues",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Low"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Medium"
+                },
+                {
+                    "value": 100000002,
+                    "label": "High"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Critical"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Urgent"
+                }
+            ]
+        },
+        {
+            "name": "project_status",
+            "displayName": "Project Status",
+            "description": "Status options for projects",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Planning"
+                },
+                {
+                    "value": 100000001,
+                    "label": "In Progress"
+                },
+                {
+                    "value": 100000002,
+                    "label": "On Hold"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Completed"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Cancelled"
+                }
+            ]
+        },
+        {
+            "name": "task_category",
+            "displayName": "Task Category",
+            "description": "Categories for different types of tasks",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Development"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Testing"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Documentation"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Design"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Research"
+                },
+                {
+                    "value": 100000005,
+                    "label": "Support"
+                }
+            ]
+        }
+    ]
+}

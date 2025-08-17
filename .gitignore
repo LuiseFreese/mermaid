@@ -2,11 +2,26 @@ node_modules/
 .env
 .env.generated
 .env.updated
+.env.local
 *.log
+logs/
 .DS_Store
 .vscode/
 dist/
 coverage/
+
+# Backup files
+*.backup
+*.bak
+
+# Debug/temp files
+fix_*.ps1
+server-output.log
+
+# Project management
+TODO.md
+NOTES.md
+*.todo
 
 # ESLint cache
 .eslintcache

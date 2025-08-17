@@ -1,0 +1,22 @@
+erDiagram
+    Author {
+        string name PK "Primary Name column: Author Name"
+        date birthDate "Author's date of birth"
+        string country "Country of origin"
+    }
+
+    Book {
+        string name PK "Primary Name column: Book Title"
+        date publishDate "Date of publication"
+        int pageCount "Number of pages"
+        decimal price "Price in EUR"
+    }
+
+    AuthorBook {
+        string name PK "Primary Name column: Link between Author and Book"
+        string author_id FK "FK to Author.name"
+        string book_id FK "FK to Book.name"
+    }
+
+    Author ||--o{ AuthorBook : "links to"
+    Book   ||--o{ AuthorBook : "links to"

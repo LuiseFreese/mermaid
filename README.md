@@ -8,6 +8,7 @@ A production-ready Azure App Service application that converts Mermaid ERD diagr
 - **🔐 Secure Authentication**: Azure Key Vault integration with managed identity for secrets
 - **📊 Real-time Processing**: Upload Mermaid files and see live progress in the web UI
 - **🏗️ Complete Schema Generation**: Creates publishers, solutions, entities, columns, and relationships
+- **🎯 Global Choices Support**: Create and manage Dataverse global choice sets via JSON files
 - **✅ Validation & Testing**: Built-in validation and dry-run modes for safe testing
 - **📝 Detailed Logging**: Comprehensive logging with real-time streaming to the UI
 
@@ -62,107 +63,23 @@ cd mermaid
 - Creates Dataverse application user with security roles
 - Tests the complete setup end-to-end
 
-### Local Development Commands
-
-```bash
-# Start the web server (production mode)
-npm start
-# → Starts the web server at http://localhost:3000
-
-# Start with auto-restart on file changes
-npm run dev  
-# → Starts with auto-restart on file changes for development
-
-# Run integration tests
-npm test
-# → Runs the schema generation test
-
-# Lint code for quality and style
-npm run lint
-# → Runs ESLint to check code quality
-```
-
-## Deployment
-
-### Automated Deployment (Recommended)
-
-Use the PowerShell setup script for complete automation:
-
-```powershell
-# Interactive mode (prompts for configuration)
-.\scripts\setup-entra-app.ps1
-
-# Dry run mode (test without making changes)
-.\scripts\setup-entra-app.ps1 -DryRun
-
-# Unattended mode (provide all parameters)
-.\scripts\setup-entra-app.ps1 -Unattended `
-  -EnvironmentUrl "https://yourorg.crm.dynamics.com" `
-  -ResourceGroup "rg-mermaid-dataverse" `
-  -Location "East US"
-```
-
-**What gets deployed:**
-- **Azure Resource Group** - Container for all resources
-- **App Service & App Service Plan** - Web application hosting (B1 tier)
-- **Key Vault** - Secure secret storage with RBAC
-- **User-Assigned Managed Identity** - Secure authentication without passwords
-- **Entra ID App Registration** - Service principal for Dataverse access
-- **Dataverse Application User** - Configured with appropriate security roles
-
-### Infrastructure as Code
-
-All Azure resources are defined in `deploy/infrastructure.bicep`:
-
-```bicep
-// Key components deployed:
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01'
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31'  
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01'
-resource appService 'Microsoft.Web/sites@2023-01-01'
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01'
-```
-
-The Bicep template ensures:
-- **Idempotent deployments** - Can be run multiple times safely
-- **Secure configuration** - RBAC-enabled Key Vault with least privilege access
-- **Production-ready settings** - HTTPS-only, TLS 1.2+, Node.js 18 LTS
-- **Managed identity integration** - No passwords or connection strings in code
-
-### Manual Setup (Alternative)
-
-If you prefer manual setup or need to understand the individual steps, see the [Entra ID Setup Guide](docs/ENTRA-ID-SETUP.md) for detailed instructions.
-
-The manual process involves:
-- Creating Entra ID app registration with proper permissions
-- Deploying infrastructure using the Bicep template
-- Configuring Key Vault secrets and permissions
-- Creating Dataverse application user with security roles
-
-> **Recommendation**: Use the automated setup script (`scripts/setup-entra-app.ps1`) as it handles all configuration automatically and includes validation.
 ## Usage
 
 ### Web Interface
 
 1. **Access the Application**: Navigate to your deployed App Service URL
-2. **Upload Mermaid File**: Select a `.mmd` file containing an ERD diagram
+2. **Upload Files**:
+   - **Mermaid File**: Select a `.mmd` file containing an ERD diagram
+   - **Global Choices File** (Optional): Select a `.json` file with global choice definitions
 3. **Configure Options**:
    - **Solution Name**: Name for the Dataverse solution
    - **Publisher Prefix**: 3-8 character prefix for custom entities
    - **Dry Run**: Enable to validate without creating entities
    - **Create Publisher**: Auto-create publisher if it doesn't exist
 4. **Process**: Click "Convert & Deploy" to start processing
-5. **Monitor Progress**: Watch real-time logs in the web interface
+5. **Monitor Progress**: Watch real-time logs and warnings in the web interface
 
-### API Endpoints
-
-- **`GET /`** - Web interface for file upload
-- **`POST /upload`** - File upload and processing with streaming logs
-- **`GET /health`** - Health check endpoint
-- **`GET /keyvault`** - Key Vault connection test
-- **`GET /managed-identity`** - Managed identity test
-- **`POST /api/validate`** - Validate Mermaid entities without creation
-- **`POST /api/test-dataverse`** - Test Dataverse operations
+For detailed information about global choices, see the [Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md).
 
 ## Supported Mermaid ERD Syntax
 
@@ -337,47 +254,6 @@ The application provides several health check endpoints:
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples and API reference
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax and data modeling guide
 - **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Relationship patterns and best practices
-
-## Infrastructure
-
-### Bicep Template (`deploy/infrastructure.bicep`)
-
-The infrastructure is defined as code using Azure Bicep:
-
-```bicep
-// Key components:
-- User-Assigned Managed Identity (for passwordless authentication)
-- Key Vault with RBAC (secure secret storage)
-- App Service Plan (B1 Basic tier for production workloads)  
-- App Service (Node.js 18 LTS with managed identity)
-- Role Assignments (Key Vault Secrets User for runtime access)
-```
-
-**Key features:**
-- **Idempotent**: Safe to run multiple times
-- **Secure**: RBAC-enabled Key Vault, HTTPS-only App Service
-- **Production-ready**: Proper SKUs, TLS 1.2+, always-on settings
-- **Integrated**: Managed identity eliminates password management
-
-### Deployment Architecture
-
-```mermaid
-graph TB
-    Dev[Developer] --> Script[setup-entra-app.ps1]
-    Script --> Entra[Entra ID App Registration]
-    Script --> Bicep[Bicep Template]
-    Bicep --> RG[Resource Group]
-    Bicep --> KV[Key Vault]
-    Bicep --> MI[Managed Identity]
-    Bicep --> ASP[App Service Plan]
-    Bicep --> AS[App Service]
-    MI --> KV
-    AS --> MI
-    Script --> Secrets[Store Secrets]
-    Secrets --> KV
-    Script --> AppUser[Dataverse App User]
-    AppUser --> DV[Dataverse Environment]
-```
 
 ## Examples
 

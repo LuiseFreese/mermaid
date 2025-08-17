@@ -8,15 +8,15 @@ The application provides a **web interface** for uploading Mermaid ERD files and
 
 ## Prerequisites
 
-✅ **Application URL** - Get this from your automated deployment  
-✅ **Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
-✅ **Dataverse environment** - Already configured during setup  
+**Application URL** - Get this from your automated deployment  
+**Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
+**Dataverse environment** - Already configured during setup  
 
-> 📝 **Note**: All authentication and environment setup is handled automatically. You just need your deployed application URL and a Mermaid file.
+> **Note**: All authentication and environment setup is handled automatically. You just need your deployed application URL and a Mermaid file.
 
 ## Before You Start: Testing with Dry Run
 
-🧪 **Recommended**: Before making actual changes to your Dataverse environment, test your setup and configuration using the dry run feature.
+**Recommended**: Before making actual changes to your Dataverse environment, test your setup and configuration using the dry run feature.
 
 ### Running Dry Run for Initial Setup
 
@@ -34,11 +34,11 @@ If you used the automated setup script, you can test the entire infrastructure d
 ```
 
 The dry run will:
-- ✅ Validate all your inputs and configuration
-- ✅ Check Azure CLI access and permissions  
-- ✅ Verify Dataverse environment connectivity
-- ✅ Show exactly what would be created
-- ✅ Provide the exact command to run for actual deployment
+- Validate all your inputs and configuration
+- Check Azure CLI access and permissions  
+- Verify Dataverse environment connectivity
+- Show exactly what would be created
+- Provide the exact command to run for actual deployment
 
 ### Running Dry Run for Mermaid Processing
 
@@ -51,14 +51,14 @@ In the web application, always enable "Dry Run" first to preview what will be cr
 
 **Dry Run Output Example:**
 ```
-🧪 DRY RUN MODE - No changes will be made to Dataverse
+DRY RUN MODE - No changes will be made to Dataverse
 
-✅ File validation passed
-✅ Entity structure valid
-✅ Relationships valid
-✅ Publisher prefix available
+File validation passed
+Entity structure valid
+Relationships valid
+Publisher prefix available
 
-📋 Would create:
+Would create:
    - Solution: "Customer Management" 
    - Publisher: "cmgt" (Customer Management Publisher)
    - Entity: Customer (3 columns)
@@ -67,31 +67,43 @@ In the web application, always enable "Dry Run" first to preview what will be cr
    - Relationship: Customer ||--o{ Order
    - Relationship: Order ||--o{ Product
 
-🎯 Ready for actual deployment!
+Ready for actual deployment!
 ```
 
 ## Web Interface Features
 
-### 📊 Status Dashboard
+### Status Dashboard
 
 The application shows real-time status of all components:
 
-- ✅ **Application Health**: Server status
-- ✅ **Azure Key Vault**: Secret access  
-- ✅ **Managed Identity**: Authentication status
-- ✅ **Dataverse Connection**: API connectivity
+- **Application Health**: Server status
+- **Azure Key Vault**: Secret access  
+- **Managed Identity**: Authentication status
+- **Dataverse Connection**: API connectivity
 
-### 🔍 Diagnostic Endpoints
+### API Endpoints
 
-Access additional diagnostic information:
+The application provides several REST API endpoints for integration and automation:
 
-- `/health` - Application health check
-- `/keyvault` - Key Vault connectivity test
-- `/managed-identity` - Authentication status
-- `/api/validate` - Validate Mermaid files
-- `/api/test-dataverse` - Test Dataverse operations
+#### Web Interface Endpoints
+- **`GET /`** - Web interface for file upload
+- **`POST /upload`** - File upload and processing with streaming logs
 
-### 📋 Real-Time Logging
+#### Health Check Endpoints  
+- **`GET /health`** - Overall application health
+- **`GET /keyvault`** - Key Vault connectivity test
+- **`GET /managed-identity`** - Managed identity authentication status
+
+#### Validation & Testing Endpoints
+- **`POST /api/validate`** - Validate Mermaid entities without creation
+- **`POST /api/test-dataverse`** - Test Dataverse operations and connectivity
+
+#### Global Choices Endpoint
+- **`POST /api/global-choices`** - Create global choice sets from JSON
+
+Access additional diagnostic information through these endpoints for troubleshooting and integration purposes.
+
+### Real-Time Logging
 
 The web interface provides live feedback during processing:
 
@@ -125,50 +137,50 @@ https://your-app-name.azurewebsites.net
 Watch the live log output as your solution is created:
 
 ```
-📁 File uploaded: customer-management.mmd (2.3 KB)
-✅ File contains valid erDiagram syntax
-🔍 Parsing Mermaid ERD structure...
-📊 Found 3 entities: Customer, Order, Product
-🔗 Found 2 relationships
-✅ Validation completed successfully
+File uploaded: customer-management.mmd (2.3 KB)
+File contains valid erDiagram syntax
+Parsing Mermaid ERD structure...
+Found 3 entities: Customer, Order, Product
+Found 2 relationships
+Validation completed successfully
 
-🔑 Connecting to Dataverse...
-✅ Dataverse connection successful
-📦 Creating solution: Customer Management
-👤 Creating entity: Customer (3 columns)
-📦 Creating entity: Order (4 columns)  
-🛍️ Creating entity: Product (5 columns)
-🔗 Creating relationship: Customer → Order
-🔗 Creating relationship: Order → Product
+Connecting to Dataverse...
+Dataverse connection successful
+Creating solution: Customer Management
+Creating entity: Customer (3 columns)
+Creating entity: Order (4 columns)  
+Creating entity: Product (5 columns)
+Creating relationship: Customer → Order
+Creating relationship: Order → Product
 
-🎉 Deployment completed successfully!
-✅ Solution 'Customer Management' created in Dataverse
-✅ 3 entities created
-✅ 2 relationships established
+Deployment completed successfully!
+Solution 'Customer Management' created in Dataverse
+3 entities created
+2 relationships established
 ```
 
 ## Deployment Options
 
-### 🧪 Dry Run Mode (Recommended First)
+### Dry Run Mode (Recommended First)
 
 Always test with **Dry Run** enabled first:
 
 1. Upload your Mermaid file
-2. ✅ Enable "Dry Run" option
+2. Enable "Dry Run" option
 3. Click "Upload and Process"
 4. Review the validation output
 5. If everything looks good, repeat with Dry Run disabled
 
 **Dry Run Output Example:**
 ```
-🧪 DRY RUN MODE - No changes will be made to Dataverse
+DRY RUN MODE - No changes will be made to Dataverse
 
-✅ File validation passed
-✅ Entity structure valid
-✅ Relationships valid
-✅ Publisher prefix available
+File validation passed
+Entity structure valid
+Relationships valid
+Publisher prefix available
 
-📋 Would create:
+Would create:
    - Solution: "Customer Management" 
    - Publisher: "cmgt" (Customer Management Publisher)
    - Entity: Customer (3 columns)
@@ -177,15 +189,15 @@ Always test with **Dry Run** enabled first:
    - Relationship: Customer ||--o{ Order
    - Relationship: Order ||--o{ Product
 
-🎯 Ready for actual deployment!
+Ready for actual deployment!
 ```
 
-### 🚀 Live Deployment
+### Live Deployment
 
 When ready to create actual Dataverse entities:
 
 1. Upload your Mermaid file
-2. ❌ Disable "Dry Run" option  
+2. Disable "Dry Run" option  
 3. Configure Solution Name and Publisher Prefix
 4. Click "Upload and Process"
 5. Monitor the real-time progress
@@ -315,26 +327,26 @@ erDiagram
 
 ## Best Practices
 
-### 📝 File Preparation
+### File Preparation
 - **Use descriptive entity names**: `Customer`, `Order`, `Product`
 - **Use snake_case for columns**: `first_name`, `created_date`, `is_active`
 - **Use boolean prefixes**: `is_active`, `has_discount`, `can_edit`
 - **Use descriptive suffixes**: `_date`, `_time`, `_amount`, `_count`
 - **Keep file size reasonable**: Large ERDs may take longer to process
 
-### 🧪 Testing Strategy
+### Testing Strategy
 1. **Always start with Dry Run** to validate your ERD
 2. **Test with small examples** before large deployments
 3. **Review generated names** in the preview output
 4. **Backup your Dataverse environment** before major deployments
 
-### 🔄 Version Control
+### Version Control
 - **Store Mermaid files in source control** (Git, etc.)
 - **Document your entity relationships** with meaningful names
 - **Use consistent naming conventions** across projects
 - **Tag versions** when deploying to production
 
-### 🛡️ Safety Considerations
+### Safety Considerations
 - **Publisher prefixes are permanent** - choose wisely
 - **Entity names cannot be changed** after creation
 - **Relationships default to referential** (safe, using native Dataverse lookup types)
@@ -415,35 +427,35 @@ erDiagram
 ### Built-in Validation
 The application automatically validates:
 
-- ✅ **File format**: Must be valid Mermaid ERD syntax
-- ✅ **Entity structure**: Each entity must have at least one primary key
-- ✅ **Relationship validity**: References must point to existing entities
-- ✅ **Naming conventions**: Publisher prefix format validation
-- ✅ **Dataverse limits**: Column names, solution names, etc.
+- **File format**: Must be valid Mermaid ERD syntax
+- **Entity structure**: Each entity must have at least one primary key
+- **Relationship validity**: References must point to existing entities
+- **Naming conventions**: Publisher prefix format validation
+- **Dataverse limits**: Column names, solution names, etc.
 
 ### Common Validation Messages
 ```
-🔍 Validating ERD structure...
-✅ All entities have primary keys
-✅ No self-references detected
-✅ All relationship targets exist
-ℹ️ All relationships will be created as referential (lookup) using Dataverse's native lookup relationship behavior
-✅ Validation completed successfully
+Validating ERD structure...
+All entities have primary keys
+No self-references detected
+All relationship targets exist
+All relationships will be created as referential (lookup) using Dataverse's native lookup relationship behavior
+Validation completed successfully
 ```
 
 ### Error Examples
 ```
-❌ Entity 'Order' references unknown entity 'InvalidEntity'
-❌ Entity 'Customer' has no primary key defined
-❌ Publisher prefix must be 3-8 characters (got: 'ab')
-❌ Solution name cannot contain special characters
+Entity 'Order' references unknown entity 'InvalidEntity'
+Entity 'Customer' has no primary key defined
+Publisher prefix must be 3-8 characters (got: 'ab')
+Solution name cannot contain special characters
 ```
 
 ## Troubleshooting
 
 ### File Upload Issues
 ```
-❌ File upload failed: File too large
+File upload failed: File too large
 ```
 **Solutions**: 
 - Check file size (limit: ~10MB)
@@ -452,7 +464,7 @@ The application automatically validates:
 
 ### Authentication Issues
 ```
-❌ Dataverse connection failed: Unauthorized
+Dataverse connection failed: Unauthorized
 ```
 **Solutions**:
 - Check application health status on the dashboard
@@ -461,7 +473,7 @@ The application automatically validates:
 
 ### Entity Creation Issues
 ```
-❌ Entity creation failed: Publisher prefix invalid
+Entity creation failed: Publisher prefix invalid
 ```
 **Solutions**:
 - Use 3-8 character publisher prefix
@@ -479,10 +491,10 @@ The application automatically validates:
 
 ### 1. Check Application Status
 Visit the status dashboard to verify all components are healthy:
-- Application Health ✅
-- Key Vault Access ✅  
-- Managed Identity ✅
-- Dataverse Connection ✅
+- Application Health
+- Key Vault Access
+- Managed Identity
+- Dataverse Connection
 
 ### 2. Use Diagnostic Endpoints
 - `/health` - Overall application health

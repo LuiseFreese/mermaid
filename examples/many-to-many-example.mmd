@@ -1,0 +1,14 @@
+erDiagram
+    Student {
+        string id PK
+        string name
+        string email
+    }
+    
+    Course {
+        string id PK
+        string name
+        string description
+    }
+    
+    Student }o--o{ Course : enrolled_in

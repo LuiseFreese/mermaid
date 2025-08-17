@@ -251,7 +251,7 @@ function Get-OrCreateAppRegistration {
         
         # Create new app registration
         Write-Info "Creating new App Registration: $AppRegistrationName"
-        $app = az ad app create --display-name $AppRegistrationName --available-to-other-tenants false | ConvertFrom-Json
+        $app = az ad app create --display-name $AppRegistrationName --sign-in-audience AzureADMyOrg | ConvertFrom-Json
         Write-Success "App Registration created: $($app.appId)"
         
         return @{
@@ -284,8 +284,8 @@ function Get-OrCreateClientSecret {
         # For existing apps, we need to generate a new secret as we can't retrieve existing ones
         # Only generate if forced or if this is a new app registration
         if ($ForceNew -or -not $existingApp) {
-            $credential = az ad app credential reset --id $AppId --display-name "Mermaid Converter Secret $(Get-Date -Format 'yyyy-MM-dd')" | ConvertFrom-Json
-            Write-Success "Client secret generated (expires: $($credential.endDate))"
+            $credential = az ad app credential reset --id $AppId --years 2 | ConvertFrom-Json
+            Write-Success "Client secret generated (expires: 2 years)"
             return $credential.password
         } else {
             Write-Warning "Using existing App Registration. If you need a new secret, run with -ForceNew"
@@ -448,6 +448,89 @@ function Set-KeyVaultSecrets {
     catch {
         Write-Error "Failed to store secrets in Key Vault: $_"
         Write-Warning "You may need to manually grant yourself 'Key Vault Administrator' role temporarily"
+        throw
+    }
+}
+
+function Update-EnvFile {
+    param($AppId, $ClientSecret, $EnvironmentUrl, $KeyVaultName)
+    
+    Write-Info "Updating .env file with configuration..."
+    
+    if ($DryRun) {
+        Write-Warning "[DRY RUN] Would update .env file with new credentials"
+        return
+    }
+    
+    try {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $envFile = Join-Path $projectRoot ".env"
+        $tenant = az account show --query "tenantId" -o tsv
+        
+        # Create .env content
+        $envContent = @"
+# Mermaid to Dataverse Converter Configuration
+# Generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+
+# Replace YOUR-ORG with your actual Dataverse organization name
+DATAVERSE_URL=$EnvironmentUrl
+
+# Microsoft Entra ID App Registration Details
+CLIENT_ID=$AppId
+CLIENT_SECRET=$ClientSecret
+TENANT_ID=$tenant
+
+# Optional: Custom solution name
+SOLUTION_NAME=MermaidSolution
+
+# Azure Key Vault Configuration
+USE_KEY_VAULT=true
+KEY_VAULT_NAME=$KeyVaultName
+"@
+        
+        # Write to .env file
+        $envContent | Out-File -FilePath $envFile -Encoding UTF8 -Force
+        Write-Success "Configuration saved to .env file"
+        
+        # Also create .env.example for reference
+        $envExampleContent = $envContent -replace '=.*', '=YOUR_VALUE_HERE'
+        $envExampleFile = Join-Path $projectRoot ".env.example"
+        $envExampleContent | Out-File -FilePath $envExampleFile -Encoding UTF8 -Force
+        Write-Info "Example configuration saved to .env.example"
+        
+    }
+    catch {
+        Write-Error "Failed to update .env file: $_"
+        throw
+    }
+}
+
+function Deploy-Application {
+    param($AppServiceName, $ResourceGroup)
+    
+    Write-Info "Deploying application to Azure App Service..."
+    
+    if ($DryRun) {
+        Write-Warning "[DRY RUN] Would deploy application to App Service: $AppServiceName"
+        return
+    }
+    
+    try {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $deployScript = Join-Path $projectRoot "scripts\deploy.ps1"
+        
+        if (Test-Path $deployScript) {
+            Write-Info "Running deployment script..."
+            & $deployScript
+            Write-Success "Application deployed successfully"
+        } else {
+            Write-Warning "Deploy script not found at $deployScript"
+            Write-Info "You can deploy manually using: az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path deployment.zip"
+        }
+        
+    }
+    catch {
+        Write-Error "Failed to deploy application: $_"
         throw
     }
 }
@@ -688,6 +771,12 @@ function Start-Setup {
         
         # Store secrets in Key Vault
         Set-KeyVaultSecrets -KeyVaultName $infrastructure.keyVaultName -AppId $app.appId -ClientSecret $clientSecret -EnvironmentUrl $config.EnvironmentUrl -ResourceGroup $config.ResourceGroup
+        
+        # Update .env file with new configuration
+        Update-EnvFile -AppId $app.appId -ClientSecret $clientSecret -EnvironmentUrl $config.EnvironmentUrl -KeyVaultName $infrastructure.keyVaultName
+        
+        # Deploy application to Azure App Service
+        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup
         
         # Create Dataverse Application User
         New-DataverseApplicationUser -AppId $app.appId -EnvironmentUrl $config.EnvironmentUrl -SecurityRole $config.SecurityRole

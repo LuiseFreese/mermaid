@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid to Dataverse Converter - Modern Wizard</title>
+    <!-- Fluent UI 2 Web Components -->
+    <script type="module" src="https://unpkg.com/@fluentui/web-components/dist/web-components.js"></script>
+    <style>
+        :root {
+            --neutral-foreground-rest: #323130;
+            --neutral-foreground-hover: #201f1e;
+            --neutral-fill-rest: #faf9f8;
+            --neutral-fill-hover: #f3f2f1;
+            --accent-fill-rest: #0078d4;
+            --accent-fill-hover: #106ebe;
+            --neutral-stroke-rest: #e1dfdd;
+            --success-fill: #107c10;
+            --warning-fill: #ff8c00;
+            --error-fill: #d13438;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+            color: var(--neutral-foreground-rest);
+            line-height: 1.4;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--accent-fill-rest);
+            color: white;
+            padding: 20px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .wizard-container {
+            flex: 1;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #fafafa;
+            border-right: 1px solid var(--neutral-stroke-rest);
+            padding: 24px 0;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .step-nav {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .step-nav li {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .step-nav a {
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            text-decoration: none;
+            color: var(--neutral-foreground-rest);
+            border-radius: 4px;
+            margin: 0 16px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .step-nav a:hover {
+            background: var(--neutral-fill-hover);
+        }
+
+        .step-nav a.active {
+            background: var(--accent-fill-rest);
+            color: white;
+        }
+
+        .step-nav a.completed {
+            background: var(--success-fill);
+            color: white;
+        }
+
+        .step-nav a.error {
+            background: var(--error-fill);
+            color: white;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+
+        .step-nav a:not(.active):not(.completed):not(.error) .step-number {
+            background: var(--neutral-fill-rest);
+            color: var(--neutral-foreground-rest);
+        }
+
+        .step-title {
+            font-weight: 500;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--neutral-stroke-rest);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: var(--neutral-foreground-rest);
+        }
+
+        .page-description {
+            font-size: 16px;
+            color: #666;
+            margin: 0;
+        }
+
+        .section {
+            background: white;
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload-area {
+            border: 2px dashed var(--neutral-stroke-rest);
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--accent-fill-rest);
+            background: #f0f8ff;
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--accent-fill-rest);
+            background: #e6f3ff;
+        }
+
+        .validation-results {
+            margin-top: 24px;
+        }
+
+        /* Schema Display Styles */
+        .schema-entity {
+            margin-bottom: 16px;
+            border: 1px solid #e1dfdd;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .schema-entity-header {
+            background: #f3f2f1;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e1dfdd;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .schema-entity-content {
+            padding: 16px;
+        }
+
+        .schema-attributes {
+            margin-bottom: 16px;
+        }
+
+        .schema-attribute {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f3f2f1;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .schema-attribute:last-child {
+            border-bottom: none;
+        }
+
+        .attribute-name {
+            font-weight: 600;
+            color: #0078d4;
+            min-width: 120px;
+        }
+
+        .attribute-type {
+            color: #8b5cf6;
+            min-width: 80px;
+        }
+
+        .attribute-constraints {
+            color: #d97706;
+            min-width: 60px;
+            font-size: 11px;
+        }
+
+        .attribute-description {
+            color: #6b7280;
+            font-style: italic;
+            margin-left: 8px;
+        }
+
+        .schema-relationships {
+            margin-top: 12px;
+        }
+
+        .schema-relationship {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #059669;
+        }
+
+        .relationship-arrow {
+            margin: 0 8px;
+            color: #6b7280;
+        }
+
+        .message-card {
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message-card.success {
+            background: #f3fdf3;
+            border-left-color: var(--success-fill);
+            color: #0e4b0e;
+        }
+
+        .message-card.warning {
+            background: #fff8f0;
+            border-left-color: var(--warning-fill);
+            color: #8a4500;
+        }
+
+        .message-card.error {
+            background: #fdf3f4;
+            border-left-color: var(--error-fill);
+            color: #8e1618;
+        }
+
+        .message-card.info {
+            background: #f0f8ff;
+            border-left-color: var(--accent-fill-rest);
+            color: #003d75;
+        }
+
+        .message-icon {
+            margin-top: 2px;
+            font-size: 16px;
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .message-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .message-description {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .message-suggestion {
+            font-size: 13px;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        .actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 32px;
+            border-top: 1px solid var(--neutral-stroke-rest);
+            background: #fafafa;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent-fill-rest);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-fill-hover);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--neutral-foreground-rest);
+            border: 1px solid var(--neutral-stroke-rest);
+        }
+
+        .btn-secondary:hover {
+            background: var(--neutral-fill-hover);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--neutral-foreground-rest);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-fill-rest);
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 4px;
+            padding: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .checkbox-item:hover {
+            background: var(--neutral-fill-hover);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--neutral-fill-rest);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-fill-rest);
+            transition: width 0.3s ease;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .summary-card {
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 6px;
+            padding: 16px;
+            background: white;
+        }
+
+        .summary-card-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--accent-fill-rest);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-2 {
+            margin-top: 16px;
+        }
+
+        .mb-2 {
+            margin-bottom: 16px;
+        }
+
+        .text-muted {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-success {
+            background: #f3fdf3;
+            color: var(--success-fill);
+        }
+
+        .status-warning {
+            background: #fff8f0;
+            color: var(--warning-fill);
+        }
+
+        .status-error {
+            background: #fdf3f4;
+            color: var(--error-fill);
+        }
+
+        @media (max-width: 768px) {
+            .wizard-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+
+            .main-content {
+                order: 1;
+            }
+
+            .step-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 0 16px;
+            }
+
+            .step-nav li {
+                margin-bottom: 0;
+                margin-right: 8px;
+                min-width: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <span class="icon">🔄</span>
+            <div>
+                <h1>Mermaid to Dataverse Converter</h1>
+                <div class="subtitle">Enterprise ERD to Microsoft Dataverse Transformation</div>
+            </div>
+        </header>
+
+        <div class="wizard-container">
+            <nav class="sidebar">
+                <ul class="step-nav">
+                    <li>
+                        <a href="#" data-step="validation" class="active">
+                            <span class="step-number">1</span>
+                            <span class="step-title">ERD Validation</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-step="publisher">
+                            <span class="step-number">2</span>
+                            <span class="step-title">Publisher Setup</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-step="cdm">
+                            <span class="step-number">3</span>
+                            <span class="step-title">CDM Integration</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-step="choices">
+                            <span class="step-number">4</span>
+                            <span class="step-title">Global Choices</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-step="summary">
+                            <span class="step-number">5</span>
+                            <span class="step-title">Final Review</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <main class="main-content">
+                <!-- Step 1: ERD Validation -->
+                <div id="page-validation" class="page active">
+                    <div class="page-header">
+                        <h2 class="page-title">ERD Validation & Upload</h2>
+                        <p class="page-description">Upload your Mermaid ERD file and validate its structure for Dataverse compatibility.</p>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">📄</span>
+                            Upload Mermaid ERD File
+                        </h3>
+                        
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="icon" style="font-size: 48px; color: #666; margin-bottom: 16px;">📁</div>
+                            <h4>Drag & drop your .mmd file here</h4>
+                            <p class="text-muted">or click to browse files</p>
+                            <input type="file" id="fileInput" accept=".mmd,.txt" style="display: none;">
+                        </div>
+
+                        <div id="fileInfo" class="hidden mt-2">
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="icon">📄</span>
+                                <div>
+                                    <div id="fileName" style="font-weight: 500;"></div>
+                                    <div id="fileSize" class="text-muted"></div>
+                                </div>
+                                <button id="removeFile" class="btn btn-secondary" style="margin-left: auto;">Remove</button>
+                            </div>
+                        </div>
+
+                        <div id="validationResults" class="validation-results hidden">
+                            <h4>Validation Results</h4>
+                            <div id="validationMessages"></div>
+                            
+                            <!-- Corrected ERD Display -->
+                            <div id="correctedERDSection" class="hidden" style="margin-top: 20px;">
+                                <h4 style="color: #0078d4; margin-bottom: 12px;">
+                                    Suggested Corrections
+                                </h4>
+                                <p style="margin-bottom: 12px; color: #605e5c;">
+                                    Based on the validation warnings, here's a comparison showing your original ERD and the corrected version that follows Dataverse best practices:
+                                </p>
+                                
+                                <!-- Side-by-side comparison -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                    <!-- Original ERD -->
+                                    <div>
+                                        <h5 style="margin: 0 0 8px 0; color: #d13438; font-weight: 600;">
+                                            📄 Original ERD (Issues Found)
+                                        </h5>
+                                        <div style="position: relative;">
+                                            <button id="copyOriginalERD" class="btn btn-secondary" 
+                                                    style="position: absolute; top: 8px; right: 8px; z-index: 10; font-size: 11px; padding: 3px 6px;">
+                                                Copy
+                                            </button>
+                                            <pre id="originalERDContent" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 12px; margin: 0; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto;"></pre>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Corrected ERD -->
+                                    <div>
+                                        <h5 style="margin: 0 0 8px 0; color: #107c10; font-weight: 600;">
+                                            Corrected ERD (Best Practices)
+                                        </h5>
+                                        <div style="position: relative;">
+                                            <div style="position: absolute; top: 8px; right: 8px; z-index: 10; display: flex; gap: 6px;">
+                                                <button id="copyCorrectedERD" class="btn btn-secondary" 
+                                                        style="font-size: 11px; padding: 3px 6px;">
+                                                    Copy
+                                                </button>
+                                                <button id="useCorrectedERD" class="btn btn-primary" 
+                                                        style="font-size: 11px; padding: 3px 6px;">
+                                                    Use This
+                                                </button>
+                                            </div>
+                                            <pre id="correctedERDContent" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin: 0; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto;"></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action buttons and instructions -->
+                                <div style="padding: 12px; background: #f3f2f1; border-radius: 4px; border-left: 4px solid #0078d4;">
+                                    <strong>Compare & Choose:</strong>
+                                    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                                        <li><strong style="color: #d13438;">Red box (Original)</strong> - Shows your current ERD with validation issues highlighted</li>
+                                        <li><strong style="color: #107c10;">Green box (Corrected)</strong> - Shows the recommended ERD following Dataverse best practices</li>
+                                        <li><strong>Use This</strong> - Automatically replace your current ERD with the corrected version</li>
+                                        <li><strong>Copy</strong> - Copy either version to your clipboard for manual editing</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Schema Display Section -->
+                            <div id="schemaDisplaySection" class="hidden" style="margin-top: 20px;">
+                                <h4 style="color: #0078d4; margin-bottom: 12px;">
+                                    Parsed Schema Overview
+                                </h4>
+                                <p style="margin-bottom: 12px; color: #605e5c;">
+                                    Here's what the parser understood from your ERD. Review this to ensure all entities, attributes, and relationships are correctly interpreted:
+                                </p>
+                                
+                                <div id="schemaContent" style="background: #f8f9fa; border: 1px solid #e1dfdd; border-radius: 4px; padding: 16px;">
+                                    <!-- Schema content will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Publisher Setup -->
+                <div id="page-publisher" class="page">
+                    <div class="page-header">
+                        <h2 class="page-title">Publisher Management</h2>
+                        <p class="page-description">Choose an existing publisher or create a new one for your Dataverse solution.</p>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">🏢</span>
+                            Publisher Selection
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="radio" name="publisherOption" value="existing" checked>
+                                Use Existing Publisher
+                            </label>
+                            <select id="existingPublishers" class="form-control">
+                                <option value="">Loading publishers...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="radio" name="publisherOption" value="new">
+                                Create New Publisher
+                            </label>
+                            <div id="newPublisherFields" class="hidden" style="margin-top: 12px; padding-left: 24px;">
+                                <div class="form-group">
+                                    <label class="form-label" for="publisherName">Publisher Name</label>
+                                    <input type="text" id="publisherName" class="form-control" placeholder="e.g., MyCompany Publisher">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="publisherPrefix">Prefix (3-8 characters)</label>
+                                    <input type="text" id="publisherPrefix" class="form-control" placeholder="e.g., myco" maxlength="8">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="solutionName">Solution Name</label>
+                            <input type="text" id="solutionName" class="form-control" placeholder="e.g., Customer Management Solution">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: CDM Integration -->
+                <div id="page-cdm" class="page">
+                    <div class="page-header">
+                        <h2 class="page-title">Common Data Model Integration</h2>
+                        <p class="page-description">Integrate with existing CDM entities and manage entity relationships.</p>
+                    </div>
+
+                    <div id="cdmDetectedSection" class="section hidden">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            CDM Entities Detected
+                        </h3>
+                        <div id="cdmDetectedEntities"></div>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Add Existing CDM Entities
+                        </h3>
+                        <p class="text-muted mb-2">Select existing CDM entities to include in your solution and create relationships with your custom entities.</p>
+                        
+                        <div id="cdmEntitiesCheckbox" class="checkbox-group">
+                            <div class="text-center">
+                                <div class="loading-spinner"></div>
+                                <p class="text-muted">Loading CDM entities...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Global Choices -->
+                <div id="page-choices" class="page">
+                    <div class="page-header">
+                        <h2 class="page-title">Global Choice Management</h2>
+                        <p class="page-description">Add existing global choice sets or create new ones for your entities.</p>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Existing Global Choices
+                        </h3>
+                        <p class="text-muted mb-2">Select existing global choice sets to include in your solution.</p>
+                        
+                        <div id="globalChoicesCheckbox" class="checkbox-group">
+                            <div class="text-center">
+                                <div class="loading-spinner"></div>
+                                <p class="text-muted">Loading global choice sets...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Upload Custom Choices
+                        </h3>
+                        <p class="text-muted mb-2">Upload a JSON file with custom global choice definitions.</p>
+                        
+                        <div class="file-upload-area" id="choicesUploadArea">
+                            <div class="icon" style="font-size: 32px; color: #666; margin-bottom: 12px;">•</div>
+                            <h4>Upload Global Choices JSON</h4>
+                            <p class="text-muted">Drag & drop or click to browse</p>
+                            <input type="file" id="choicesFileInput" accept=".json" style="display: none;">
+                        </div>
+
+                        <div id="choicesFileInfo" class="hidden mt-2">
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                <span class="icon">📄</span>
+                                <div>
+                                    <div id="choicesFileName" style="font-weight: 500;"></div>
+                                    <div id="choicesFileSize" class="text-muted"></div>
+                                </div>
+                                <button id="removeChoicesFile" class="btn btn-secondary" style="margin-left: auto;">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Final Review -->
+                <div id="page-summary" class="page">
+                    <div class="page-header">
+                        <h2 class="page-title">Final Review & Deployment</h2>
+                        <p class="page-description">Review your configuration and deploy to Dataverse.</p>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Deployment Summary
+                        </h3>
+                        
+                        <div class="summary-grid" id="deploymentSummary">
+                            <!-- Summary cards will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Deployment Options
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="dryRunMode" checked>
+                                Dry Run Mode (Preview only, don't create entities)
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="createPublisherFlag" checked>
+                                Create publisher if it doesn't exist
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="deploymentResults" class="section hidden">
+                        <h3 class="section-title">
+                            <span class="icon">•</span>
+                            Deployment Results
+                        </h3>
+                        <div id="deploymentOutput"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <div class="actions-bar">
+            <button id="prevBtn" class="btn btn-secondary" disabled>
+                <span>←</span> Previous
+            </button>
+            
+            <div class="progress-bar" style="flex: 1; margin: 0 24px;">
+                <div class="progress-fill" id="progressFill" style="width: 20%;"></div>
+            </div>
+            
+            <button id="nextBtn" class="btn btn-primary" disabled>
+                Next <span>→</span>
+            </button>
+            
+            <button id="deployBtn" class="btn btn-primary hidden">
+                <span></span> Deploy to Dataverse
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Wizard state management
+        class WizardState {
+            constructor() {
+                this.currentStep = 'validation';
+                this.steps = ['validation', 'publisher', 'cdm', 'choices', 'summary'];
+                this.stepData = {
+                    validation: { valid: false, entities: [], relationships: [], warnings: [] },
+                    publisher: { type: 'existing', selectedPublisher: null, newPublisher: {} },
+                    cdm: { detectedEntities: [], selectedEntities: [] },
+                    choices: { existingChoices: [], selectedChoices: [], customChoices: null },
+                    summary: { ready: false }
+                };
+                this.fileContent = null;
+            }
+
+            getCurrentStepIndex() {
+                return this.steps.indexOf(this.currentStep);
+            }
+
+            canProceedToStep(step) {
+                const stepIndex = this.steps.indexOf(step);
+                const currentIndex = this.getCurrentStepIndex();
+                
+                switch(step) {
+                    case 'validation':
+                        return true;
+                    case 'publisher':
+                        return this.stepData.validation.valid;
+                    case 'cdm':
+                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
+                    case 'choices':
+                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
+                    case 'summary':
+                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
+                    default:
+                        return false;
+                }
+            }
+
+            updateProgress() {
+                const progress = ((this.getCurrentStepIndex() + 1) / this.steps.length) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+            }
+        }
+
+        // Initialize wizard
+        const wizard = new WizardState();
+
+        // DOM elements
+        const stepNavs = document.querySelectorAll('.step-nav a');
+        const pages = document.querySelectorAll('.page');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const deployBtn = document.getElementById('deployBtn');
+
+        // File upload handlers
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const validationResults = document.getElementById('validationResults');
+
+        const choicesUploadArea = document.getElementById('choicesUploadArea');
+        const choicesFileInput = document.getElementById('choicesFileInput');
+        const choicesFileInfo = document.getElementById('choicesFileInfo');
+
+        // Global variables for file content
+        let uploadedFile = null;
+        let currentERDContent = null;
+
+        // Navigation functions
+        function showStep(step) {
+            // Update active page
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(`page-${step}`).classList.add('active');
+
+            // Update navigation
+            stepNavs.forEach(nav => {
+                nav.classList.remove('active');
+                if (nav.dataset.step === step) {
+                    nav.classList.add('active');
+                }
+            });
+
+            wizard.currentStep = step;
+            wizard.updateProgress();
+            updateNavigationButtons();
+
+            // Load step-specific data
+            switch(step) {
+                case 'publisher':
+                    loadPublishers();
+                    break;
+                case 'cdm':
+                    checkCDMEntities();
+                    break;
+                case 'choices':
+                    loadGlobalChoices();
+                    break;
+                case 'summary':
+                    generateSummary();
+                    break;
+            }
+        }
+
+        function updateNavigationButtons() {
+            const currentIndex = wizard.getCurrentStepIndex();
+            
+            prevBtn.disabled = currentIndex === 0;
+            
+            if (currentIndex === wizard.steps.length - 1) {
+                nextBtn.classList.add('hidden');
+                deployBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                deployBtn.classList.add('hidden');
+                nextBtn.disabled = !wizard.canProceedToStep(wizard.steps[currentIndex + 1]);
+            }
+        }
+
+        // File upload functionality
+        function setupFileUpload() {
+            fileUploadArea.addEventListener('click', () => fileInput.click());
+            fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+            fileUploadArea.addEventListener('dragleave', () => {
+                fileUploadArea.classList.remove('dragover');
+            });
+            fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelection(files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+
+            document.getElementById('removeFile').addEventListener('click', () => {
+                fileInput.value = '';
+                fileInfo.classList.add('hidden');
+                validationResults.classList.add('hidden');
+                wizard.stepData.validation.valid = false;
+                updateNavigationButtons();
+                updateStepStatus('validation', 'error');
+            });
+        }
+
+        function handleFileSelection(file) {
+            uploadedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            fileInfo.classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentERDContent = e.target.result;
+                wizard.fileContent = e.target.result;
+                validateERD(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function formatFileSize(bytes) {
+            const sizes = ['Bytes', 'KB', 'MB'];
+            if (bytes === 0) return '0 Bytes';
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // ERD Validation
+        async function validateERD(content) {
+            try {
+                const response = await fetch('/api/validate-erd', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mermaidContent: content })
+                });
+
+                const result = await response.json();
+                displayValidationResults(result);
+                
+                if (result.success) {
+                    wizard.stepData.validation = {
+                        valid: result.validation.isValid,
+                        entities: result.entities,
+                        relationships: result.relationships,
+                        warnings: result.warnings || [],
+                        validation: result.validation
+                    };
+                    
+                    if (result.validation.isValid) {
+                        updateStepStatus('validation', 'completed');
+                    } else {
+                        updateStepStatus('validation', 'error');
+                    }
+                } else {
+                    wizard.stepData.validation.valid = false;
+                    updateStepStatus('validation', 'error');
+                }
+                
+                updateNavigationButtons();
+            } catch (error) {
+                console.error('Validation error:', error);
+                displayValidationResults({ success: false, error: error.message });
+                updateStepStatus('validation', 'error');
+            }
+        }
+
+        function displayValidationResults(result) {
+            const resultsDiv = document.getElementById('validationMessages');
+            const validationResultsDiv = document.getElementById('validationResults');
+            resultsDiv.innerHTML = '';
+            
+            validationResultsDiv.classList.remove('hidden');
+
+            if (!result.success) {
+                resultsDiv.innerHTML = `
+                    <div class="message-card error">
+                        <div class="message-content">
+                            <div class="message-title">Validation Failed</div>
+                            <div class="message-description">${result.error}</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const validation = result.validation;
+            
+            // Overall status
+            if (validation.isValid) {
+                resultsDiv.innerHTML += `
+                    <div class="message-card success">
+                        <div class="message-content">
+                            <div class="message-title">ERD Structure Valid</div>
+                            <div class="message-description">Your ERD has been validated successfully and is ready for Dataverse deployment.</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Display all messages by severity
+            const allMessages = [
+                ...(validation.errors || []),
+                ...(validation.warnings || []),
+                ...(validation.info || [])
+            ];
+
+            allMessages.forEach(msg => {
+                const messageClass = msg.severity === 'error' ? 'error' : 
+                                   msg.severity === 'warning' ? 'warning' : 
+                                   msg.severity === 'info' ? 'info' : 'success';
+                
+                const icon = '';
+
+                let suggestionHtml = '';
+                if (msg.suggestion) {
+                    suggestionHtml = `<div class="message-suggestion">Suggestion: ${msg.suggestion}</div>`;
+                }
+
+                let documentationLink = '';
+                if (msg.documentationLink) {
+                    documentationLink = `<div class="message-suggestion"><a href="${msg.documentationLink}" target="_blank">Learn more</a></div>`;
+                }
+
+                resultsDiv.innerHTML += `
+                    <div class="message-card ${messageClass}">
+                        <div class="message-content">
+                            <div class="message-title">${msg.message}</div>
+                            ${msg.entity ? `<div class="message-description">Entity: ${msg.entity}</div>` : ''}
+                            ${msg.relationship ? `<div class="message-description">Relationship: ${msg.relationship}</div>` : ''}
+                            ${suggestionHtml}
+                            ${documentationLink}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Summary
+            if (result.entities && result.entities.length > 0) {
+                resultsDiv.innerHTML += `
+                    <div class="message-card info">
+                        <div class="message-content">
+                            <div class="message-title">ERD Summary</div>
+                            <div class="message-description">
+                                ${result.entities.length} entities, ${result.relationships.length} relationships detected
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show corrected ERD if available
+            const correctedERDSection = document.getElementById('correctedERDSection');
+            if (result.correctedERD && (validation.warnings && validation.warnings.length > 0)) {
+                // Populate original ERD content
+                const originalERDContent = document.getElementById('originalERDContent');
+                originalERDContent.textContent = currentERDContent || 'Original ERD content not available';
+                
+                // Populate corrected ERD content
+                const correctedERDContent = document.getElementById('correctedERDContent');
+                correctedERDContent.textContent = result.correctedERD;
+                correctedERDSection.classList.remove('hidden');
+                
+                // Add copy original ERD functionality
+                const copyOriginalButton = document.getElementById('copyOriginalERD');
+                copyOriginalButton.onclick = function() {
+                    navigator.clipboard.writeText(currentERDContent || '').then(function() {
+                        copyOriginalButton.innerHTML = '✅ Copied';
+                        setTimeout(() => {
+                            copyOriginalButton.innerHTML = '📋 Copy';
+                        }, 2000);
+                    }).catch(function(err) {
+                        console.error('Could not copy text: ', err);
+                        copyOriginalButton.innerHTML = '❌ Failed';
+                        setTimeout(() => {
+                            copyOriginalButton.innerHTML = '📋 Copy';
+                        }, 2000);
+                    });
+                };
+                
+                // Add copy corrected ERD functionality
+                const copyButton = document.getElementById('copyCorrectedERD');
+                copyButton.onclick = function() {
+                    navigator.clipboard.writeText(result.correctedERD).then(function() {
+                        copyButton.innerHTML = '✅ Copied';
+                        setTimeout(() => {
+                            copyButton.innerHTML = '📋 Copy';
+                        }, 2000);
+                    }).catch(function(err) {
+                        console.error('Could not copy text: ', err);
+                        copyButton.innerHTML = '❌ Failed';
+                        setTimeout(() => {
+                            copyButton.innerHTML = '📋 Copy';
+                        }, 2000);
+                    });
+                };
+
+                // Add "Use This ERD" functionality
+                const useButton = document.getElementById('useCorrectedERD');
+                useButton.onclick = function() {
+                    // Create a new File object with the corrected ERD content
+                    const correctedContent = result.correctedERD;
+                    const blob = new Blob([correctedContent], { type: 'text/plain' });
+                    const correctedFile = new File([blob], 'corrected-erd.mmd', { type: 'text/plain' });
+                    
+                    // Update the file input and UI
+                    uploadedFile = correctedFile;
+                    currentERDContent = correctedContent;
+                    
+                    // Update the file display
+                    const fileInfo = document.getElementById('fileInfo');
+                    const fileName = document.getElementById('fileName');
+                    const fileSize = document.getElementById('fileSize');
+                    
+                    fileName.textContent = 'corrected-erd.mmd (Corrected Version)';
+                    fileSize.textContent = `${(correctedFile.size / 1024).toFixed(1)} KB`;
+                    fileInfo.style.display = 'flex';
+                    
+                    // Hide the upload area and show success message
+                    document.getElementById('uploadArea').style.display = 'none';
+                    
+                    // Show success message
+                    useButton.innerHTML = '✅ ERD Updated';
+                    useButton.style.backgroundColor = '#107c10';
+                    useButton.style.borderColor = '#107c10';
+                    
+                    setTimeout(() => {
+                        useButton.innerHTML = '✅ Use This';
+                        useButton.style.backgroundColor = '';
+                        useButton.style.borderColor = '';
+                    }, 3000);
+                    
+                    // Re-validate the corrected ERD to show updated results
+                    setTimeout(() => {
+                        validateERD();
+                    }, 1000);
+                };
+            } else {
+                correctedERDSection.classList.add('hidden');
+            }
+            
+            // Display schema overview
+            displaySchemaOverview(result);
+        }
+
+        function displaySchemaOverview(result) {
+            const schemaSection = document.getElementById('schemaDisplaySection');
+            const schemaContent = document.getElementById('schemaContent');
+            
+            // TEMPORARY: Always show the section for debugging
+            schemaSection.classList.remove('hidden');
+            
+            if (!result.success || !result.entities || result.entities.length === 0) {
+                schemaContent.innerHTML = '<p style="color: red;">DEBUG: No entities found or result not successful</p>';
+                return;
+            }
+            
+            schemaContent.innerHTML = '<p style="color: green;">DEBUG: Schema function called with ' + result.entities.length + ' entities</p>';
+            
+            let schemaHtml = '';
+            
+            // Display entities
+            result.entities.forEach(entity => {
+                schemaHtml += `
+                    <div class="schema-entity">
+                        <div class="schema-entity-header">
+                            🏗️ ${entity.name}
+                            <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                (${entity.attributes.length} attributes)
+                            </span>
+                        </div>
+                        <div class="schema-entity-content">
+                            <div class="schema-attributes">
+                `;
+                
+                // Display attributes
+                entity.attributes.forEach(attr => {
+                    const constraints = [];
+                    if (attr.isPrimaryKey) constraints.push('PK');
+                    if (attr.isForeignKey) constraints.push('FK');
+                    if (attr.isUnique) constraints.push('UK');
+                    if (attr.isRequired && !attr.isPrimaryKey) constraints.push('Required');
+                    
+                    const constraintText = constraints.length > 0 ? constraints.join(', ') : '';
+                    
+                    schemaHtml += `
+                        <div class="schema-attribute">
+                            <span class="attribute-name">${attr.name}</span>
+                            <span class="attribute-type">${attr.originalType || attr.type}</span>
+                            <span class="attribute-constraints">${constraintText}</span>
+                            ${attr.description ? `<span class="attribute-description">"${attr.description}"</span>` : ''}
+                        </div>
+                    `;
+                });
+                
+                schemaHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Display relationships
+            if (result.relationships && result.relationships.length > 0) {
+                schemaHtml += `
+                    <div class="schema-entity">
+                        <div class="schema-entity-header">
+                            🔗 Relationships
+                            <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                (${result.relationships.length} relationships)
+                            </span>
+                        </div>
+                        <div class="schema-entity-content">
+                            <div class="schema-relationships">
+                `;
+                
+                result.relationships.forEach(rel => {
+                    const cardinalityDisplay = rel.cardinality ? 
+                        `${rel.cardinality.from} → ${rel.cardinality.to}` : 
+                        'Unknown';
+                    
+                    schemaHtml += `
+                        <div class="schema-relationship">
+                            <strong>${rel.fromEntity}</strong>
+                            <span class="relationship-arrow">${cardinalityDisplay}</span>
+                            <strong>${rel.toEntity}</strong>
+                            ${rel.name ? `<span style="margin-left: 8px; color: #6b7280;">${rel.name}</span>` : ''}
+                        </div>
+                    `;
+                });
+                
+                schemaHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            schemaContent.innerHTML = schemaHtml;
+            schemaSection.classList.remove('hidden');
+        }
+
+        function updateStepStatus(step, status) {
+            const stepNav = document.querySelector(`[data-step="${step}"]`);
+            stepNav.classList.remove('completed', 'error');
+            if (status !== 'active') {
+                stepNav.classList.add(status);
+            }
+        }
+
+        // Publisher management
+        async function loadPublishers() {
+            console.log('wizard-ui.html: loadPublishers function called');
+            
+            try {
+                console.log('wizard-ui.html: Making API request to /api/publishers');
+                const response = await fetch('/api/publishers');
+                const result = await response.json();
+                
+                console.log('wizard-ui.html: API response received:', result);
+                
+                const select = document.getElementById('existingPublishers');
+                console.log('wizard-ui.html: Select element found:', select);
+                console.log('wizard-ui.html: Select element visible:', select ? getComputedStyle(select).display : 'element not found');
+                select.innerHTML = '<option value="">Select a publisher...</option>';
+                
+                if (result.success && result.publishers) {
+                    console.log('wizard-ui.html: Processing', result.publishers.length, 'publishers');
+                    result.publishers.forEach(pub => {
+                        console.log('wizard-ui.html: Adding publisher:', pub.friendlyName, 'with prefix:', pub.prefix);
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({
+                            id: pub.id,
+                            uniqueName: pub.uniqueName,
+                            friendlyName: pub.friendlyName,
+                            prefix: pub.prefix
+                        });
+                        option.textContent = `${pub.friendlyName} (${pub.prefix})`;
+                        if (pub.isDefault) {
+                            option.textContent += ' [Default]';
+                        }
+                        select.appendChild(option);
+                    });
+                    console.log('wizard-ui.html: Finished adding all publishers. Total options:', select.options.length);
+                } else {
+                    console.log('wizard-ui.html: API returned success=false or no publishers:', result);
+                }
+            } catch (error) {
+                console.error('wizard-ui.html: Error loading publishers:', error);
+            }
+        }
+
+        // CDM Entity management
+        async function checkCDMEntities() {
+            // Check for detected CDM entities from validation
+            const detectedEntities = wizard.stepData.validation.warnings
+                .filter(w => w.category === 'cdm')
+                .map(w => w.entity);
+
+            if (detectedEntities.length > 0) {
+                const section = document.getElementById('cdmDetectedSection');
+                const container = document.getElementById('cdmDetectedEntities');
+                
+                container.innerHTML = detectedEntities.map(entity => `
+                    <div class="message-card info">
+                        <span class="message-icon">🏗️</span>
+                        <div class="message-content">
+                            <div class="message-title">CDM Entity: ${entity}</div>
+                            <div class="message-description">
+                                This entity matches a Common Data Model entity. You can choose to use the existing CDM entity or create your own custom version.
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                section.classList.remove('hidden');
+            }
+
+            // Load available CDM entities
+            try {
+                const response = await fetch('/api/cdm-entities', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entityNames: [] })
+                });
+                
+                const result = await response.json();
+                
+                const container = document.getElementById('cdmEntitiesCheckbox');
+                if (result.success && result.entities) {
+                    container.innerHTML = '';
+                    
+                    Object.entries(result.entities).forEach(([entityName, entityInfo]) => {
+                        if (entityInfo.exists) {
+                            const item = document.createElement('div');
+                            item.className = 'checkbox-item';
+                            item.innerHTML = `
+                                <input type="checkbox" id="cdm_${entityName}" value="${entityName}">
+                                <label for="cdm_${entityName}" style="flex: 1; cursor: pointer;">
+                                    <strong>${entityInfo.displayName}</strong>
+                                    <div class="text-muted">${entityName} - Primary: ${entityInfo.primaryNameAttribute}</div>
+                                </label>
+                            `;
+                            container.appendChild(item);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading CDM entities:', error);
+            }
+        }
+
+        // Global Choices management
+        async function loadGlobalChoices() {
+            try {
+                const response = await fetch('/api/global-choices-list');
+                const result = await response.json();
+                
+                const container = document.getElementById('globalChoicesCheckbox');
+                if (result.success && result.choiceSets) {
+                    container.innerHTML = '';
+                    
+                    result.choiceSets.forEach(choice => {
+                        const item = document.createElement('div');
+                        item.className = 'checkbox-item';
+                        item.innerHTML = `
+                            <input type="checkbox" id="choice_${choice.id}" value="${choice.id}">
+                            <label for="choice_${choice.id}" style="flex: 1; cursor: pointer;">
+                                <strong>${choice.displayName}</strong>
+                                <div class="text-muted">${choice.name} - ${choice.options.length} options</div>
+                            </label>
+                        `;
+                        container.appendChild(item);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading global choices:', error);
+            }
+        }
+
+        // Summary generation
+        function generateSummary() {
+            const container = document.getElementById('deploymentSummary');
+            
+            const summaryCards = [
+                {
+                    title: 'Entities',
+                    icon: '📋',
+                    value: wizard.stepData.validation.entities.length,
+                    description: 'Custom entities to create'
+                },
+                {
+                    title: 'Relationships',
+                    icon: '🔗',
+                    value: wizard.stepData.validation.relationships.length,
+                    description: 'Entity relationships'
+                },
+                {
+                    title: 'Publisher',
+                    icon: '🏢',
+                    value: wizard.stepData.publisher.selectedPublisher ? 
+                           JSON.parse(wizard.stepData.publisher.selectedPublisher).friendlyName : 
+                           'Not selected',
+                    description: 'Solution publisher'
+                },
+                {
+                    title: 'CDM Entities',
+                    icon: '🏗️',
+                    value: document.querySelectorAll('#cdmEntitiesCheckbox input:checked').length,
+                    description: 'CDM entities to include'
+                },
+                {
+                    title: 'Global Choices',
+                    icon: '📋',
+                    value: document.querySelectorAll('#globalChoicesCheckbox input:checked').length,
+                    description: 'Choice sets to include'
+                }
+            ];
+
+            container.innerHTML = summaryCards.map(card => `
+                <div class="summary-card">
+                    <div class="summary-card-title">
+                        <span class="icon">${card.icon}</span>
+                        ${card.title}
+                    </div>
+                    <div style="font-size: 24px; font-weight: 600; margin: 8px 0;">${card.value}</div>
+                    <div class="text-muted">${card.description}</div>
+                </div>
+            `).join('');
+        }
+
+        // Setup choices file upload
+        function setupChoicesFileUpload() {
+            choicesUploadArea.addEventListener('click', () => choicesFileInput.click());
+            
+            choicesFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    document.getElementById('choicesFileName').textContent = file.name;
+                    document.getElementById('choicesFileSize').textContent = formatFileSize(file.size);
+                    choicesFileInfo.classList.remove('hidden');
+                    
+                    // Read and validate JSON
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const json = JSON.parse(e.target.result);
+                            wizard.stepData.choices.customChoices = json;
+                        } catch (error) {
+                            alert('Invalid JSON file: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            document.getElementById('removeChoicesFile').addEventListener('click', () => {
+                choicesFileInput.value = '';
+                choicesFileInfo.classList.add('hidden');
+                wizard.stepData.choices.customChoices = null;
+            });
+        }
+
+        // Publisher option handling
+        function setupPublisherOptions() {
+            const radioButtons = document.querySelectorAll('input[name="publisherOption"]');
+            const newPublisherFields = document.getElementById('newPublisherFields');
+            const existingPublishers = document.getElementById('existingPublishers');
+
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'new') {
+                        newPublisherFields.classList.remove('hidden');
+                        existingPublishers.disabled = true;
+                        wizard.stepData.publisher.type = 'new';
+                    } else {
+                        newPublisherFields.classList.add('hidden');
+                        existingPublishers.disabled = false;
+                        wizard.stepData.publisher.type = 'existing';
+                    }
+                    validatePublisherStep();
+                });
+            });
+
+            existingPublishers.addEventListener('change', (e) => {
+                wizard.stepData.publisher.selectedPublisher = e.target.value;
+                validatePublisherStep();
+            });
+
+            ['publisherName', 'publisherPrefix', 'solutionName'].forEach(id => {
+                document.getElementById(id).addEventListener('input', validatePublisherStep);
+            });
+        }
+
+        function validatePublisherStep() {
+            const type = wizard.stepData.publisher.type;
+            let valid = false;
+
+            if (type === 'existing') {
+                valid = wizard.stepData.publisher.selectedPublisher && 
+                       document.getElementById('solutionName').value.trim();
+            } else {
+                valid = document.getElementById('publisherName').value.trim() &&
+                       document.getElementById('publisherPrefix').value.trim() &&
+                       document.getElementById('solutionName').value.trim();
+            }
+
+            if (valid) {
+                updateStepStatus('publisher', 'completed');
+            } else {
+                updateStepStatus('publisher', 'error');
+            }
+
+            updateNavigationButtons();
+        }
+
+        // Event listeners
+        stepNavs.forEach(nav => {
+            nav.addEventListener('click', (e) => {
+                e.preventDefault();
+                const step = nav.dataset.step;
+                if (wizard.canProceedToStep(step)) {
+                    showStep(step);
+                }
+            });
+        });
+
+        prevBtn.addEventListener('click', () => {
+            const currentIndex = wizard.getCurrentStepIndex();
+            if (currentIndex > 0) {
+                showStep(wizard.steps[currentIndex - 1]);
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            const currentIndex = wizard.getCurrentStepIndex();
+            if (currentIndex < wizard.steps.length - 1) {
+                showStep(wizard.steps[currentIndex + 1]);
+            }
+        });
+
+        deployBtn.addEventListener('click', async () => {
+            await deployToDataverse();
+        });
+
+        // Deployment function
+        async function deployToDataverse() {
+            const deploymentResults = document.getElementById('deploymentResults');
+            const deploymentOutput = document.getElementById('deploymentOutput');
+            
+            deploymentResults.classList.remove('hidden');
+            deploymentOutput.innerHTML = '<div class="text-center"><div class="loading-spinner"></div><p>Deploying to Dataverse...</p></div>';
+            
+            try {
+                // Prepare deployment data
+                const deploymentData = {
+                    mermaidContent: wizard.fileContent,
+                    solutionName: document.getElementById('solutionName').value,
+                    dryRun: document.getElementById('dryRunMode').checked,
+                    publisherData: wizard.stepData.publisher,
+                    selectedCDMEntities: Array.from(document.querySelectorAll('#cdmEntitiesCheckbox input:checked')).map(cb => cb.value),
+                    selectedChoices: Array.from(document.querySelectorAll('#globalChoicesCheckbox input:checked')).map(cb => cb.value),
+                    customChoices: wizard.stepData.choices.customChoices
+                };
+
+                const response = await fetch('/api/deploy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(deploymentData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    deploymentOutput.innerHTML = `
+                        <div class="message-card success">
+                            <span class="message-icon">✅</span>
+                            <div class="message-content">
+                                <div class="message-title">Deployment Successful</div>
+                                <div class="message-description">Your entities have been created in Dataverse successfully.</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    deploymentOutput.innerHTML = `
+                        <div class="message-card error">
+                            <span class="message-icon">❌</span>
+                            <div class="message-content">
+                                <div class="message-title">Deployment Failed</div>
+                                <div class="message-description">${result.error}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                deploymentOutput.innerHTML = `
+                    <div class="message-card error">
+                        <span class="message-icon">❌</span>
+                        <div class="message-content">
+                            <div class="message-title">Deployment Error</div>
+                            <div class="message-description">${error.message}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize the application
+        function init() {
+            setupFileUpload();
+            setupChoicesFileUpload();
+            setupPublisherOptions();
+            updateNavigationButtons();
+            wizard.updateProgress();
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>

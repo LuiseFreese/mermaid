@@ -1,0 +1,31 @@
+erDiagram
+    Customer ||--o{ Order : places
+    Customer {
+        string customer_id PK
+        string name
+        string email
+        string phone
+    }
+    Order ||--|{ OrderItem : contains
+    Order {
+        string order_id PK
+        string customer_id FK
+        datetime order_date
+        decimal total_amount
+        string status
+    }
+    Product ||--o{ OrderItem : "ordered in"
+    Product {
+        string product_id PK
+        string name
+        string description
+        decimal price
+        integer stock_quantity
+    }
+    OrderItem {
+        string order_item_id PK
+        string order_id FK
+        string product_id FK
+        integer quantity
+        decimal unit_price
+    }

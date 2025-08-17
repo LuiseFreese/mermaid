@@ -22,7 +22,7 @@ Mermaid ERD syntax uses the same notation (`||--o{`) for all one-to-many relatio
 - **Ownership relationships** (parent owns child, should be parental in Dataverse)
 - **Reference relationships** (parent is referenced by child, should be lookup in Dataverse)
 
-💡 Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
+Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
 1. **Prevents API errors** - Avoids "multiple parental relationships" conflicts
 2. **Ensures successful creation** - All relationships will be created without conflicts
 3. **Maintains data integrity** - References are preserved, just without cascade delete

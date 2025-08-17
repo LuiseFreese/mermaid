@@ -22,6 +22,7 @@ graph TB
     subgraph "Azure Cloud"
         subgraph "Azure App Service"
             WEB[Web Server<br/>src/server.js]
+            WIZARD[Wizard UI<br/>src/wizard-ui.html]
             PARSER[Mermaid Parser<br/>src/mermaid-parser.js]
             CLIENT[Dataverse Client<br/>src/dataverse-client.js]
             VAULT[Key Vault Config<br/>src/azure-keyvault.js]
@@ -40,7 +41,9 @@ graph TB
     end
     
     USER --> WEB
-    MERMAID --> WEB
+    USER --> WIZARD
+    MERMAID --> WIZARD
+    WIZARD --> WEB
     WEB --> PARSER
     PARSER --> CLIENT
     CLIENT --> DV
@@ -55,24 +58,51 @@ graph TB
 
 ### 1. Web Server (`src/server.js`)
 
-**Purpose**: Main application entry point providing web UI and API endpoints.
+**Purpose**: Main application entry point providing web UI, wizard interface, and comprehensive API endpoints.
 
 **Key Features**:
-- HTTP server with file upload capabilities
+- HTTP server with both upload and wizard interfaces
 - Real-time log streaming to frontend
 - Health check and diagnostic endpoints
 - CORS-enabled API for cross-origin requests
+- Publisher and solution management
+- Global choices integration
+- CDM entity detection
 
 **Main Endpoints**:
-- `GET /` - Web interface for file upload
+
+**UI Endpoints**:
+- `GET /` - Legacy web interface for file upload
+- `GET /wizard` - **Primary wizard interface** for guided deployment
+
+**Core API Endpoints**:
 - `POST /upload` - File upload and processing with streaming logs
+- `POST /api/deploy` - **Main deployment endpoint** from wizard
+- `POST /api/validate-erd` - Enhanced ERD validation with corrections
+- `POST /api/validate` - Validate Mermaid entities without creation
+
+**Dataverse Integration**:
+- `GET /api/dataverse-config` - Get Dataverse configuration
+- `POST /api/test-dataverse` - Test Dataverse operations
+- `GET /api/publishers` - Get available publishers from Dataverse
+- `POST /api/cdm-entities` - Check CDM entity availability
+
+**Global Choices Management**:
+- `POST /api/global-choices` - Create global choices from JSON
+- `GET /api/global-choices-list` - List existing global choice sets
+
+**System & Diagnostics**:
 - `GET /health` - Application health status
 - `GET /keyvault` - Key Vault connectivity test
 - `GET /managed-identity` - Managed identity status
-- `POST /api/validate` - Validate Mermaid entities without creation
-- `POST /api/test-dataverse` - Test Dataverse operations
+- `POST /api/cache/clear` - Clear system caches
 
-**Architecture Pattern**: Event-driven with streaming responses
+**Test Endpoints** (Development):
+- `POST /api/test-publisher-creation` - Test publisher creation
+- `POST /api/test-fetch-uni-publisher` - Test publisher fetching
+- `POST /api/test-config` - Test configuration
+
+**Architecture Pattern**: RESTful API with wizard-driven user experience
 
 ### 2. Mermaid Parser (`src/mermaid-parser.js`)
 
@@ -80,24 +110,48 @@ graph TB
 
 **Key Features**:
 - Regex-based parsing of Mermaid ERD syntax
-- Entity extraction with attribute metadata
-- Relationship parsing with cardinality detection
-- Validation of ERD structure
-- Support for primary keys (PK) and foreign keys (FK)
+- Entity extraction with attribute metadata and validation
+- Relationship parsing with cardinality detection and validation
+- Comprehensive ERD structure validation with auto-correction
+- Support for primary keys (PK), foreign keys (FK), and constraints
+- CDM entity detection and validation
+- Warning system with categorized feedback
+- Auto-correction capabilities for common issues
 
 **Supported Syntax**:
 ```mermaid
 erDiagram
-    Entity {
-        string attribute_name PK
-        integer count FK
-        decimal price
-        boolean is_active
-        datetime created_date
+    %% Entity definition with attributes
+    Customer {
+        uuid customer_id PK "Unique identifier"
+        string first_name "Customer first name"
+        string last_name "Customer last name"
+        string email "Email address"
+        datetime created_date "Date created"
+        boolean is_active "Active status"
     }
     
-    EntityA ||--o{ EntityB : "relationship"
+    Order {
+        uuid order_id PK
+        uuid customer_id FK
+        decimal total_amount
+        datetime order_date
+        string status
+    }
+    
+    %% Relationships with cardinality
+    Customer ||--o{ Order : "places"
+    Customer ||--o{ Contact : "has"
+    
+    %% Many-to-many via junction table
+    Student }o--o{ Course : "enrolled_in"
 ```
+
+**Validation & Auto-Correction**:
+- Automatically adds missing primary keys
+- Validates relationship consistency
+- Suggests proper naming conventions
+- Detects CDM entities and provides integration guidance
 
 **Output Format**:
 ```javascript
@@ -140,11 +194,14 @@ erDiagram
 
 **Main Operations**:
 - **Connection Testing**: Validates Dataverse connectivity
-- **Publisher Management**: Creates or uses existing publishers
-- **Solution Management**: Creates or uses existing solutions
-- **Entity Creation**: Creates custom entities with proper metadata
-- **Column Creation**: Adds custom columns to entities
-- **Relationship Creation**: Establishes one-to-many relationships
+- **Publisher Management**: Creates or uses existing publishers with custom prefixes
+- **Solution Management**: Creates or uses existing solutions with proper metadata
+- **Entity Creation**: Creates custom entities with proper metadata and naming
+- **Column Creation**: Adds custom columns to entities with full attribute support
+- **Relationship Creation**: Establishes one-to-many and many-to-many relationships
+- **Global Choice Management**: Creates and manages global choice sets
+- **CDM Entity Detection**: Identifies and validates Common Data Model entities
+- **Solution Component Management**: Adds entities and global choices to solutions
 
 **Authentication Flow**:
 ```javascript
@@ -153,7 +210,7 @@ const credential = new ManagedIdentityCredential(clientId);
 const token = await credential.getToken("https://yourorg.crm.dynamics.com/.default");
 ```
 
-### 4. Key Vault Configuration (`src/azure-keyvault.js`)
+### 4. Azure Key Vault Configuration (`src/azure-keyvault.js`)
 
 **Purpose**: Manages secure access to Azure Key Vault secrets.
 
@@ -170,45 +227,143 @@ const token = await credential.getToken("https://yourorg.crm.dynamics.com/.defau
 - `TENANT-ID` - Azure AD tenant ID
 - `SOLUTION-NAME` - Default solution name
 
+### 5. Wizard User Interface (`src/wizard-ui.html`)
+
+**Purpose**: Modern web interface for guided Dataverse deployment.
+
+**Key Features**:
+- **Step-by-step wizard** for deployment configuration
+- **Real-time ERD validation** with syntax checking
+- **Publisher management** - select existing or create new
+- **Global choices integration** - upload and manage global choice sets
+- **CDM entity detection** - identify Common Data Model entities
+- **Dry-run capabilities** - validate before actual deployment
+- **Real-time progress tracking** with detailed logging
+
+**Wizard Steps**:
+1. **ERD Input** - Paste or validate Mermaid ERD syntax
+2. **Publisher Selection** - Choose existing publisher or create new
+3. **Solution Configuration** - Set solution name and details
+4. **Global Choices** (Optional) - Upload global choice definitions
+5. **CDM Integration** (Optional) - Select CDM entities to include
+6. **Deployment** - Execute with real-time progress feedback
+
+## Advanced Features
+
+### Global Choices Integration
+
+**Purpose**: Manage Dataverse global choice sets (option sets) alongside entity creation.
+
+**Capabilities**:
+- **Upload JSON definitions** of global choice sets
+- **Automatic validation** of choice set structure
+- **Dry-run preview** before creation
+- **Solution integration** - automatically add created choices to solution
+- **Conflict detection** - identify existing choices to avoid duplicates
+
+**JSON Format**:
+```json
+{
+  "globalChoices": [
+    {
+      "name": "priority_level",
+      "displayName": "Priority Level",
+      "description": "Priority levels for tasks",
+      "options": [
+        { "value": 1, "label": "High", "description": "High priority" },
+        { "value": 2, "label": "Medium", "description": "Medium priority" },
+        { "value": 3, "label": "Low", "description": "Low priority" }
+      ]
+    }
+  ]
+}
+```
+
+### Common Data Model (CDM) Entity Detection
+
+**Purpose**: Automatically identify and integrate with Microsoft's Common Data Model entities.
+
+**Features**:
+- **Automatic detection** of CDM entity names in ERD
+- **Entity validation** against Dataverse CDM catalog
+- **Relationship mapping** between custom and CDM entities
+- **Best practices guidance** for CDM integration
+
+**Supported CDM Entities**:
+- Standard entities like `Account`, `Contact`, `User`
+- Activity entities like `Task`, `Email`, `Appointment`
+- Business process entities specific to various domains
+
+### Enhanced ERD Validation
+
+**Purpose**: Provide comprehensive validation with auto-correction capabilities.
+
+**Validation Features**:
+- **Syntax checking** with specific error locations
+- **Relationship validation** with cardinality verification
+- **Naming convention enforcement** 
+- **Auto-correction suggestions** for common issues
+- **Warning categorization** (errors vs. warnings vs. info)
+
+**Auto-Corrections**:
+- Missing primary keys → Automatic ID field generation
+- Invalid naming → Proper naming convention suggestions
+- Relationship inconsistencies → Corrected relationship definitions
+
 ## Data Flow
 
-### 1. File Upload and Processing
+### 1. Modern Wizard-Based Processing
 
 ```mermaid
 sequenceDiagram
     participant User
+    participant Wizard
     participant WebServer
     participant Parser
     participant Client
     participant Dataverse
     participant KeyVault
 
-    User->>WebServer: Upload Mermaid file
-    WebServer->>WebServer: Validate file format
-    WebServer->>Parser: Parse Mermaid content
-    Parser->>Parser: Extract entities & relationships
-    Parser->>WebServer: Return parsed structure
-    WebServer->>KeyVault: Retrieve Dataverse credentials
-    KeyVault->>WebServer: Return secrets
-    WebServer->>Client: Initialize with credentials
-    Client->>Dataverse: Test connection
-    Dataverse->>Client: Confirm connectivity
+    User->>Wizard: Access /wizard interface
+    Wizard->>User: Display ERD input step
+    User->>Wizard: Enter Mermaid ERD
+    Wizard->>WebServer: POST /api/validate-erd
+    WebServer->>Parser: Parse & validate ERD
+    Parser->>WebServer: Return validation + corrections
+    WebServer->>Wizard: Return validation results
+    Wizard->>User: Show validation feedback
+    
+    User->>Wizard: Configure publisher & solution
+    Wizard->>WebServer: GET /api/publishers
+    WebServer->>KeyVault: Retrieve credentials
+    WebServer->>Client: Get publishers from Dataverse
+    Client->>Dataverse: Query publishers
+    Dataverse->>Client: Return publisher list
+    Client->>WebServer: Return publishers
+    WebServer->>Wizard: Return publisher options
+    
+    User->>Wizard: Submit deployment
+    Wizard->>WebServer: POST /api/deploy
+    WebServer->>Client: Execute deployment
     Client->>Dataverse: Create entities & relationships
     Dataverse->>Client: Confirm creation
     Client->>WebServer: Return results
-    WebServer->>User: Stream success logs
+    WebServer->>Wizard: Stream real-time progress
+    Wizard->>User: Display success results
 ```
 
-### 2. Schema Generation Process
+### 2. Enhanced Schema Generation Process
 
-1. **Parsing**: Extract entities and relationships from Mermaid ERD
-2. **Validation**: Ensure all entities have primary keys
-3. **Transformation**: Convert to Dataverse metadata format
-4. **Publisher Creation**: Create or validate publisher
-5. **Solution Creation**: Create or validate solution
-6. **Entity Creation**: Create custom entities with primary name fields
-7. **Column Creation**: Add custom columns for each attribute
-8. **Relationship Creation**: Establish lookup relationships
+1. **ERD Validation**: Real-time syntax checking with auto-corrections
+2. **Parsing**: Extract entities, relationships, and attributes from Mermaid ERD
+3. **CDM Detection**: Identify Common Data Model entities automatically
+4. **Global Choices**: Process custom global choice definitions
+5. **Publisher Management**: Create or validate publisher with custom prefix
+6. **Solution Management**: Create or validate solution container
+7. **Entity Creation**: Create custom entities with proper naming conventions
+8. **Column Creation**: Add custom columns for each attribute with metadata
+9. **Relationship Creation**: Establish lookup relationships between entities
+10. **Global Choice Integration**: Add global choices to solution if specified
 
 ## Security Architecture
 
@@ -309,9 +464,18 @@ graph LR
 - **Input Validation**: Validate all user inputs
 - **Output Encoding**: Prevent injection attacks
 
-### Operations
+### Performance & Caching
 
-- **Health Checks**: Multiple endpoints for different system components
+**Caching Strategy**:
+- **Publisher Cache**: 10-minute cache for Dataverse publishers
+- **Global Choices Cache**: 5-minute cache for global choice sets
+- **Cache Invalidation**: Manual cache clearing via `/api/cache/clear`
+- **Development Optimization**: Reduces repeated Dataverse API calls
+
+**Memory Management**:
+- In-memory caching for frequently accessed data
+- Automatic cache expiration with configurable duration
+- Cache hit/miss logging for performance monitoring
 - **Graceful Shutdown**: Handle SIGTERM (termination request) and SIGINT (interrupt signal) properly to allow the application to finish current operations before shutting down
 - **Resource Cleanup**: Clean up temporary files and connections
 - **Monitoring**: Track key business and technical metrics

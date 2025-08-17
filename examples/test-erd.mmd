@@ -1,0 +1,17 @@
+erDiagram
+    Task {
+        int id PK
+        string title
+        string description
+        int priority FK
+        int status FK
+    }
+    
+    Project {
+        int id PK
+        string name
+        string description
+        int status FK
+    }
+    
+    Task ||--o{ Project : belongs_to

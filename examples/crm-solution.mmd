@@ -1,83 +1,30 @@
 erDiagram
     COMPANY {
-        string company_id PK "Primary key"
-        string name "Company name"
-        string industry "Industry type"
-        string website "Company website"
-        string headquarters "Headquarters location"
-        int founded_year "Year founded"
-        int employee_count "Number of employees"
-        decimal annual_revenue "Annual revenue"
-        string company_status "Active status" 
-        string account_type "Account type"
-    }
-    
-    CONTACT {
-        string contact_id PK "Primary key"
-        string company_id FK "Associated company"
-        string first_name "First name"
-        string last_name "Last name"
-        string email "Email address"
-        string phone "Phone number"
-        string job_title "Job title"
-        string department "Department"
-        boolean is_decision_maker "Decision maker flag"
-        string lead_source "Lead source"
-        string contact_status "Contact status"
-    }
-    
-    ACTIVITY {
-        string activity_id PK "Primary key"
-        string contact_id FK "Associated contact"
-        string company_id FK "Associated company"
-        string subject "Activity subject"
-        datetime activity_date "Activity date"
-        string activity_type "Type of activity"
-        string description "Activity description"
-        string outcome "Activity outcome"
-        string priority "Priority level"
-        datetime due_date "Due date"
-        boolean completed "Completion status"
-    }
-    
-    OPPORTUNITY {
-        string opportunity_id PK "Primary key"
-        string company_id FK "Associated company"
-        string contact_id FK "Primary contact"
-        string name "Opportunity name"
-        decimal estimated_value "Estimated value"
-        decimal probability "Probability percentage"
-        string stage "Sales stage"
-        datetime expected_close_date "Expected close date"
-        string opportunity_source "Opportunity source"
-        string opportunity_type "Opportunity type"
-        string reason_lost "Reason if lost"
-    }
-    
-    PRODUCT {
-        string product_id PK "Primary key"
-        string name "Product name"
-        string code "Product code"
-        string category "Product category"
-        decimal price "Price"
-        string description "Product description"
-        boolean is_active "Product active status"
-    }
-    
-    OPPORTUNITY_PRODUCT {
-        string op_id PK "Primary key"
-        string opportunity_id FK "Associated opportunity"
-        string product_id FK "Associated product"
-        int quantity "Quantity"
-        decimal unit_price "Unit price"
-        decimal line_total "Line total"
-        decimal discount_percentage "Discount percentage"
+        string name PK "Primary Name column: Company"
+        string city
+        string country
     }
 
-    COMPANY ||--o{ CONTACT : "has"
-    COMPANY ||--o{ ACTIVITY : "related to"
-    COMPANY ||--o{ OPPORTUNITY : "has"
-    CONTACT ||--o{ ACTIVITY : "participates in"
-    CONTACT ||--o{ OPPORTUNITY : "involved in"
-    OPPORTUNITY ||--o{ OPPORTUNITY_PRODUCT : "includes"
-    PRODUCT ||--o{ OPPORTUNITY_PRODUCT : "part of"
+    OPPORTUNITY {
+        string name PK "Primary Name column: Opportunity"
+        string company_id FK "FK to COMPANY.name"
+        date closeDate
+        decimal estimatedValue
+    }
+
+    PRODUCT {
+        string name PK "Primary Name column: Product"
+        string sku
+        decimal unitPrice
+    }
+
+    OPPORTUNITY_PRODUCT {
+        string name PK "Primary Name column: Opportunity Product link"
+        string opportunity_id FK "FK to OPPORTUNITY.name"
+        string product_id FK "FK to PRODUCT.name"
+        int quantity
+    }
+
+    COMPANY ||--o{ OPPORTUNITY : has
+    OPPORTUNITY ||--o{ OPPORTUNITY_PRODUCT : contains
+    PRODUCT ||--o{ OPPORTUNITY_PRODUCT : included_in

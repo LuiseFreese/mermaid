@@ -40,15 +40,79 @@ Before running the setup:
 
 The setup script (`scripts/setup-entra-app.ps1`) performs these tasks automatically:
 
-1. ✅ **Creates App Registration** with proper configuration
-2. ✅ **Generates Client Secret** with 12-month expiration
+1. ✅ **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
+2. ✅ **Generates Client Secret** with 2-year expiration (securely, without console exposure)
 3. ✅ **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
 4. ✅ **Configures RBAC permissions** for Key Vault access
 5. ✅ **Stores all secrets** securely in Key Vault
-6. ✅ **Creates Application User** in Dataverse via REST API
-7. ✅ **Assigns Security Roles** (System Administrator by default)
-8. ✅ **Tests the complete setup** end-to-end
-9. ✅ **Provides ready-to-use App Service URL**
+6. ✅ **Updates .env file** automatically with new credentials
+7. ✅ **Deploys application code** to Azure App Service
+8. ✅ **Creates Application User** in Dataverse via REST API
+9. ✅ **Assigns Security Roles** (System Administrator by default)
+10. ✅ **Tests the complete setup** end-to-end
+
+### Deployment Options
+
+```powershell
+# Interactive mode (prompts for configuration)
+.\scripts\setup-entra-app.ps1
+
+# Dry run mode (test without making changes)
+.\scripts\setup-entra-app.ps1 -DryRun
+
+# Unattended mode (provide all parameters)
+.\scripts\setup-entra-app.ps1 -Unattended `
+  -EnvironmentUrl "https://yourorg.crm.dynamics.com" `
+  -ResourceGroup "rg-mermaid-dataverse" `
+  -Location "East US"
+```
+
+**What gets deployed:**
+- **Azure Resource Group** - Container for all resources
+- **App Service & App Service Plan** - Web application hosting (B1 tier)
+- **Key Vault** - Secure secret storage with RBAC
+- **User-Assigned Managed Identity** - Secure authentication without passwords
+- **Entra ID App Registration** - Service principal for Dataverse access
+- **Dataverse Application User** - Configured with appropriate security roles
+
+## Infrastructure as Code
+
+All Azure resources are defined in `deploy/infrastructure.bicep`:
+
+```bicep
+// Key components deployed:
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01'
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31'  
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01'
+resource appService 'Microsoft.Web/sites@2023-01-01'
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01'
+```
+
+The Bicep template ensures:
+- **Idempotent deployments** - Can be run multiple times safely
+- **Secure configuration** - RBAC-enabled Key Vault with least privilege access
+- **Production-ready settings** - HTTPS-only, TLS 1.2+, Node.js 18.17.0 LTS
+- **Managed identity integration** - No passwords or connection strings in code
+
+### Deployment Architecture
+
+```mermaid
+graph TB
+    Dev[Developer] --> Script[setup-entra-app.ps1]
+    Script --> Entra[Entra ID App Registration]
+    Script --> Bicep[Bicep Template]
+    Bicep --> RG[Resource Group]
+    Bicep --> KV[Key Vault]
+    Bicep --> MI[Managed Identity]
+    Bicep --> ASP[App Service Plan]
+    Bicep --> AS[App Service]
+    MI --> KV
+    AS --> MI
+    Script --> Secrets[Store Secrets]
+    Secrets --> KV
+    Script --> AppUser[Dataverse App User]
+    AppUser --> DV[Dataverse Environment]
+```
 
 ## Interactive Setup Example
 
@@ -85,11 +149,15 @@ Step 4: Storing secrets securely in Key Vault...
 ✅ Secrets stored in Key Vault:
    - DATAVERSE-URL, CLIENT-ID, CLIENT-SECRET, TENANT-ID, SOLUTION-NAME
 
-Step 5: Creating Dataverse application user...
+Step 5: Updating local .env file...
+✅ Configuration saved to .env file (secrets not exposed in console)
+✅ Example configuration saved to .env.example
+
+Step 6: Creating Dataverse application user...
 ✅ Application User created in Dataverse
    Security Role: System Administrator
 
-Step 6: Testing end-to-end functionality...
+Step 7: Testing end-to-end functionality...
 ✅ End-to-End Test: Upload → Parse → Validate ✅
 
 🎉 Setup Complete! Application ready at: 
@@ -119,14 +187,17 @@ Step 6: Testing end-to-end functionality...
 
 ### Zero-Downtime Updates
 
-For updates to existing deployments:
+For updates to existing deployments, the script is **idempotent** - it can be run multiple times safely:
 
 ```powershell
-# Update application code only
-./scripts/setup-entra-app.ps1 -UpdateCodeOnly
+# Re-run setup to update existing deployment
+./scripts/setup-entra-app.ps1
 
-# Full infrastructure update (idempotent)
-./scripts/setup-entra-app.ps1 -Force
+# The script will:
+# - Detect existing resources and reuse them
+# - Update application code if needed
+# - Only create missing components
+# - Preserve existing configuration
 ```
 
 ---
@@ -140,6 +211,12 @@ Visit the URL provided by the setup script:
 ```
 https://your-app-name.azurewebsites.net
 ```
+
+**Interface Options:**
+- **Root Interface** (`/`) - Direct file upload with real-time processing logs
+- **Wizard Interface** (`/wizard`) - Step-by-step guided setup process
+
+Both interfaces provide the same functionality with different user experiences.
 
 ### 2. Upload Mermaid Files
 - Use the web interface to upload `.mmd` files
@@ -185,7 +262,7 @@ https://your-app-name.azurewebsites.net
 
 ### Getting Help
 
-1. **Run with verbose output**: `./scripts/setup-entra-app.ps1 -Verbose`
+1. **Run in dry-run mode first**: `./scripts/setup-entra-app.ps1 -DryRun` to see what would be created
 2. **Check diagnostic endpoints** on your deployed app
 3. **Review Azure Activity Logs** for permission errors
 4. **Use the web interface diagnostics** to test individual components

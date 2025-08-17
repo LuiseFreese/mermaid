@@ -1,10 +1,18 @@
 # Developer Documentation
 
-This is a **production-ready Node.js web application** deployed on Azure App Service that automates Microsoft Dataverse solution, entity, and relationship creation from Mermaid ERD files. It provides a web interface for uploading Mermaid files and real-time processing with comprehensive logging.
+This is a **production-ready Node.js web application** deployed on Azure App Service that automates Microsoft Dataverse solution, entity, and relationship creation from Mermaid ERD files. It provides a **modern wizard-based interface** for guided deployment with real-time processing and comprehensive logging.
 
 ## Mermaid to Dataverse Converter - Technical Architecture
 
 This document provides a comprehensive overview of the web application's architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project.
+
+**Key Features:**
+- **🧙‍♂️ Modern Wizard Interface** - Step-by-step guided deployment
+- **🔄 Real-time ERD Validation** - Auto-correction and syntax checking  
+- **🎯 Global Choices Integration** - Upload and manage option sets
+- **🧠 CDM Entity Detection** - Automatic Common Data Model integration
+- **📊 Publisher Management** - Create or select existing publishers
+- **🔐 Enterprise Security** - Azure Key Vault + Managed Identity
 
 ## Table of Contents
 
@@ -38,6 +46,7 @@ graph TB
     subgraph "Azure App Service"
         subgraph "Node.js Application"
             SERVER[Web Server<br/>src/server.js]
+            WIZARD[Wizard UI<br/>src/wizard-ui.html]
             PARSER[Mermaid Parser<br/>src/mermaid-parser.js]
             CLIENT[Dataverse Client<br/>src/dataverse-client.js]
             VAULT[Key Vault Config<br/>src/azure-keyvault.js]
@@ -58,7 +67,9 @@ graph TB
     end
     
     USER --> UPLOAD
+    USER --> WIZARD
     UPLOAD --> SERVER
+    WIZARD --> SERVER
     SERVER --> PARSER
     PARSER --> CLIENT
     SERVER --> LOGS
@@ -77,12 +88,14 @@ graph TB
 ```
 
 ### High-Level Flow
-1. **Web Interface**: User uploads Mermaid ERD file via web browser
-2. **File Processing**: Server validates and parses the uploaded file
-3. **Real-time Feedback**: Live log streaming to the web interface
-4. **Authentication**: Managed identity for secure Azure service access
-5. **Entity Creation**: Automated Dataverse schema creation
-6. **Result Display**: Success/failure feedback with detailed logs
+1. **Modern Wizard Interface**: User accesses step-by-step wizard at `/wizard`
+2. **ERD Input & Validation**: Real-time syntax checking with auto-corrections
+3. **Publisher Configuration**: Select existing or create new publisher with custom prefix
+4. **Global Choices Integration**: Optional upload of global choice definitions
+5. **CDM Entity Detection**: Automatic identification of Common Data Model entities
+6. **Real-time Deployment**: Live progress tracking with detailed logging
+7. **Authentication**: Managed identity for secure Azure service access
+8. **Result Dashboard**: Success/failure feedback with comprehensive details
 
 ## Core Components
 
@@ -90,12 +103,17 @@ graph TB
 classDiagram
     class WebServer {
         +serveUploadForm()
+        +serveWizardUI()
         +handleFileUpload()
+        +handleDeployment()
         +streamLogs()
         +healthCheck()
         +testManagedIdentity()
         +validateEntities()
         +testDataverse()
+        +getPublishers()
+        +getGlobalChoices()
+        +deployFromWizard()
     }
     
     class MermaidParser {
@@ -153,20 +171,39 @@ classDiagram
 
 **Main Endpoints**:
 ```javascript
-// Web Interface
-GET  /                     // Upload form and status dashboard
-POST /upload               // File upload with streaming logs
+// Primary Interfaces
+GET  /                          // Legacy upload form (kept for compatibility)
+GET  /wizard                    // 🧙‍♂️ MAIN WIZARD INTERFACE (primary UI)
+POST /upload                    // Legacy file upload with streaming logs
 
-// Health & Diagnostics
-GET  /health               // Application health status
-GET  /keyvault             // Key Vault connectivity test
-GET  /managed-identity     // Managed identity status
+// Core Deployment API
+POST /api/deploy                // 🚀 Primary deployment endpoint (from wizard)
+POST /api/validate-erd          // 🔍 Enhanced ERD validation with auto-correction
+POST /api/validate              // Basic Mermaid entity validation
 
-// API Endpoints
-POST /api/validate         // Validate Mermaid entities
-POST /api/test-dataverse   // Test Dataverse operations
-GET  /api/dataverse-config // Get Dataverse configuration
+// Dataverse Integration
+GET  /api/dataverse-config      // Get Dataverse configuration
+POST /api/test-dataverse        // Test Dataverse operations
+GET  /api/publishers            // Get available publishers from Dataverse
+POST /api/cdm-entities          // Check CDM entity availability
+
+// Global Choices Management  
+POST /api/global-choices        // Create global choices from JSON
+GET  /api/global-choices-list   // List existing global choice sets
+
+// System & Diagnostics
+GET  /health                    // Application health status
+GET  /keyvault                  // Key Vault connectivity test
+GET  /managed-identity          // Managed identity status
+POST /api/cache/clear           // Clear system caches
+
+// Development/Testing (may be consolidated)
+POST /api/test-publisher-creation    // Test publisher creation
+POST /api/test-fetch-uni-publisher   // Test publisher fetching  
+POST /api/test-config               // Test configuration
 ```
+
+> 📋 **Note**: The application currently has 19+ endpoints. See [TODO.md](../TODO.md) for planned endpoint consolidation to improve maintainability.
 
 **Real-time Logging Implementation**:
 ```javascript
@@ -245,17 +282,107 @@ erDiagram
 }
 ```
 
-### 3. Dataverse Client (`src/dataverse-client.js`)
+### 3. Modern Wizard Interface (`src/wizard-ui.html`)
+
+**Purpose**: Primary user interface providing step-by-step guided deployment experience.
+
+**Key Features**:
+- **📝 Step-by-step Wizard**: Guided deployment process with 6 main steps
+- **🔍 Real-time ERD Validation**: Live syntax checking with auto-corrections
+- **🎨 Modern Responsive UI**: Clean, intuitive interface for all devices
+- **📊 Publisher Management**: Visual selection of existing or creation of new publishers
+- **🎯 Global Choices Integration**: Upload and preview global choice definitions
+- **🧠 CDM Entity Detection**: Automatic identification and integration suggestions
+- **📈 Real-time Progress**: Live deployment feedback with detailed logging
+- **💫 Interactive Elements**: Dynamic form validation and user guidance
+
+**Wizard Steps Flow**:
+```javascript
+// Step 1: ERD Input & Validation
+- Paste Mermaid ERD content
+- Real-time syntax validation
+- Auto-correction suggestions
+- Entity/relationship preview
+
+// Step 2: Publisher Configuration  
+- Select existing publisher OR
+- Create new publisher with custom prefix
+- Validation of publisher requirements
+
+// Step 3: Solution Configuration
+- Solution name (required field)
+- Description and metadata
+- Integration with selected publisher
+
+// Step 4: Global Choices (Optional)
+- Upload JSON file with global choice definitions
+- Preview choice sets and options
+- Dry-run validation
+
+// Step 5: CDM Integration (Optional)
+- Automatic CDM entity detection
+- Selection of CDM entities to include
+- Relationship mapping guidance
+
+// Step 6: Deployment & Results
+- Dry-run option for validation-only
+- Real-time deployment progress
+- Detailed success/failure reporting
+- Download deployment logs
+```
+
+**Technical Architecture**:
+```javascript
+// Modern vanilla JavaScript with modular design
+class MermaidWizard {
+  constructor() {
+    this.currentStep = 1;
+    this.maxSteps = 6;
+    this.data = {
+      erdContent: '',
+      publisherData: {},
+      solutionName: '',
+      globalChoices: null,
+      selectedCDMEntities: [],
+      deploymentOptions: {}
+    };
+  }
+
+  // Step navigation with validation
+  async nextStep() {
+    if (await this.validateCurrentStep()) {
+      this.currentStep++;
+      this.updateUI();
+    }
+  }
+
+  // Real-time API integration
+  async validateERD(content) {
+    const response = await fetch('/api/validate-erd', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mermaidContent: content })
+    });
+    return response.json();
+  }
+}
+```
+
+### 4. Dataverse Client (`src/dataverse-client.js`)
 
 **Purpose**: Handle all Microsoft Dataverse Web API interactions
 
 **Key Features**:
 - **Managed Identity Authentication**: Secure Azure service-to-service auth
 - **Complete CRUD Operations**: Entities, columns, relationships, solutions
-- **Publisher Management**: Automatic publisher creation and validation
-- **Idempotent Operations**: Safe to run multiple times
-- **Comprehensive Logging**: Detailed operation feedback
-- **Error Recovery**: Retry logic and graceful error handling
+- **Publisher Management**: Automatic publisher creation and validation with custom prefixes
+- **Global Choices Management**: Create and manage global choice sets (option sets)
+- **CDM Entity Integration**: Common Data Model entity detection and validation
+- **Solution Component Management**: Add entities and global choices to solutions
+- **Intelligent Caching**: Performance optimization with configurable cache duration
+- **Idempotent Operations**: Safe to run multiple times without side effects
+- **Comprehensive Logging**: Detailed operation feedback and error reporting
+- **Error Recovery**: Retry logic and graceful error handling with fallback strategies
 
 **Authentication with Managed Identity**:
 ```javascript
@@ -678,7 +805,7 @@ The automated setup script (`scripts/setup-entra-app.ps1`) handles the complete 
 # 1. Interactive prompts for all configuration
 $config = Get-Configuration
 
-# 2. Create App Registration and generate secret
+# 2. Create App Registration and generate secret (securely, no console exposure)
 $app = Get-OrCreateAppRegistration -AppRegistrationName $config.AppRegistrationName
 $clientSecret = Get-OrCreateClientSecret -AppId $app.appId
 
@@ -688,7 +815,13 @@ $infrastructure = Invoke-InfrastructureDeployment -Config $config
 # 4. Temporarily elevate permissions and store secrets
 Set-KeyVaultSecrets -KeyVaultName $infrastructure.keyVaultName -AppId $app.appId -ClientSecret $clientSecret
 
-# 5. Create Dataverse Application User
+# 5. Update local .env file with new credentials
+Update-EnvFile -AppId $app.appId -ClientSecret $clientSecret -KeyVaultName $infrastructure.keyVaultName
+
+# 6. Deploy application code to Azure App Service
+Deploy-Application -AppServiceName $config.AppServiceName
+
+# 7. Create Dataverse Application User
 New-DataverseApplicationUser -AppId $app.appId -SecurityRole $config.SecurityRole
 
 # 6. Test end-to-end functionality
@@ -726,6 +859,166 @@ else {
   const secretClient = new SecretClient(process.env.KEY_VAULT_URI, credential);
   config = await getSecretsFromKeyVault(secretClient);
 }
+```
+
+## Advanced Features
+
+### Global Choices Management
+
+The wizard supports automatic creation and management of global choices (optionsets) that can be shared across multiple entities:
+
+#### Global Choice Detection
+- Automatically detects choice fields with `{enum:` syntax in Mermaid ERDs
+- Creates global choices for reusable optionsets like Status, Priority, Region
+- Prevents duplicate choice creation across deployments
+
+#### Global Choice Creation Process
+1. **Parse ERD**: Extract all choice field definitions
+2. **Validate**: Check if global choice already exists
+3. **Create**: Generate new global choice with proper metadata
+4. **Link**: Associate choice with entity fields during table creation
+
+#### Example Usage
+```mermaid
+erDiagram
+    LEAD {
+        string name
+        string email
+        string status {enum: Draft, Qualified, Converted, Disqualified}
+        string priority {enum: High, Medium, Low}
+    }
+    OPPORTUNITY {
+        string name
+        decimal value
+        string status {enum: Draft, Qualified, Converted, Disqualified}
+        string priority {enum: High, Medium, Low}
+    }
+```
+
+The `status` and `priority` fields will automatically create shared global choices.
+
+### CDM (Common Data Model) Detection
+
+The parser includes intelligent CDM detection to identify standard Dataverse tables:
+
+#### Supported CDM Tables
+- **Contact**: Automatically maps to `contact` table
+- **Account**: Automatically maps to `account` table  
+- **Lead**: Automatically maps to `lead` table
+- **Opportunity**: Automatically maps to `opportunity` table
+- **Case/Incident**: Automatically maps to `incident` table
+
+#### CDM Features
+- **Skip Creation**: CDM tables are not created (they already exist)
+- **Relationship Validation**: Ensures relationships to CDM tables are valid
+- **Field Mapping**: Maps custom fields to existing CDM table structure
+- **Namespace Handling**: Respects CDM table schemas and constraints
+
+#### Example CDM Usage
+```mermaid
+erDiagram
+    Contact {
+        string firstname
+        string lastname
+        string custom_field
+    }
+    Account {
+        string name
+        string website
+        string custom_category
+    }
+    Contact ||--o{ Account : "primary_contact"
+```
+
+Contact and Account tables won't be created, but custom fields and relationships will be processed.
+
+### Intelligent Caching System
+
+The Dataverse client implements sophisticated caching to improve performance:
+
+#### Cache Types
+1. **Publisher Cache**: Stores publisher information for quick lookup
+2. **Solution Cache**: Caches solution metadata and components
+3. **Global Choice Cache**: Prevents duplicate choice queries
+4. **Table Metadata Cache**: Stores table definitions for validation
+
+#### Cache Management
+- **TTL (Time To Live)**: Automatic cache expiration
+- **Invalidation**: Smart cache clearing on updates
+- **Memory Efficient**: Optimized storage with cleanup routines
+- **Error Recovery**: Fallback to API calls if cache fails
+
+#### Cache Configuration
+```javascript
+const cacheConfig = {
+    publishers: { ttl: 3600000, maxSize: 100 },      // 1 hour
+    solutions: { ttl: 1800000, maxSize: 50 },        // 30 minutes
+    globalChoices: { ttl: 7200000, maxSize: 200 },   // 2 hours
+    tableMetadata: { ttl: 3600000, maxSize: 150 }    // 1 hour
+};
+```
+
+### Error Recovery and Resilience
+
+The system includes comprehensive error handling and recovery mechanisms:
+
+#### Retry Logic
+- **Exponential Backoff**: Automatic retry with increasing delays
+- **Circuit Breaker**: Prevents cascade failures
+- **Rate Limiting**: Respects Dataverse API limits
+- **Timeout Handling**: Graceful timeout management
+
+#### Error Categories
+1. **Transient Errors**: Network timeouts, temporary API issues
+2. **Authentication Errors**: Token expiration, permission issues  
+3. **Validation Errors**: Schema conflicts, constraint violations
+4. **Business Logic Errors**: Relationship conflicts, duplicate names
+
+#### Recovery Strategies
+- **Automatic Retry**: For transient network issues
+- **Graceful Degradation**: Continue with partial success
+- **Detailed Logging**: Comprehensive error tracking
+- **User Feedback**: Clear error messages in wizard UI
+
+### Advanced Relationship Handling
+
+The parser supports complex relationship scenarios:
+
+#### Relationship Types
+- **One-to-Many (1:M)**: `||--o{` syntax
+- **Many-to-One (M:1)**: `}o--||` syntax  
+- **Many-to-Many (M:M)**: `}o--o{` syntax (creates junction table)
+- **Self-Referencing**: Tables with relationships to themselves
+
+#### Relationship Validation
+- **Circular Reference Detection**: Prevents infinite loops
+- **Cascade Rules**: Configurable delete/update behaviors
+- **Lookup Configuration**: Automatic lookup field creation
+- **Navigation Properties**: Bi-directional relationship setup
+
+#### Advanced Relationship Features
+```mermaid
+erDiagram
+    PARENT {
+        string name
+        string parent_id {self_reference}
+    }
+    EMPLOYEE {
+        string name
+        string department_id
+    }
+    DEPARTMENT {
+        string name
+        string manager_id
+    }
+    PROJECT {
+        string name
+    }
+    
+    PARENT ||--o{ PARENT : "child_of"
+    DEPARTMENT ||--o{ EMPLOYEE : "works_in"
+    EMPLOYEE ||--o{ DEPARTMENT : "manages"
+    EMPLOYEE }o--o{ PROJECT : "assigned_to"
 ```
 
 ## Field Type Mapping
@@ -878,6 +1171,25 @@ POST /api/test-dataverse
    npm install
    ```
 
+3. **Development Commands**:
+   ```bash
+   # Start the web server (production mode)
+   npm start
+   # → Starts the web server at http://localhost:8082
+
+   # Start with auto-restart on file changes
+   npm run dev  
+   # → Starts with auto-restart on file changes for development
+
+   # Run integration tests
+   npm test
+   # → Runs the schema generation test
+
+   # Lint code for quality and style
+   npm run lint
+   # → Runs ESLint to check code quality
+   ```
+
 3. **Setup Environment**:
    ```bash
    cp .env.example .env
@@ -892,7 +1204,7 @@ POST /api/test-dataverse
 
 5. **Access Application**:
    ```
-   http://localhost:8080
+   http://localhost:8082
    ```
 
 ### Development Commands

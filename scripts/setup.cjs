@@ -567,7 +567,7 @@ class DataverseApplicationUserSetup {
 
     async testAuthentication() {
         try {
-            const result = execSync('node src/index.js publishers', { encoding: 'utf-8' });
+            const result = execSync('node src/server.js', { encoding: 'utf-8' });
             console.log('Authentication test successful');
             console.log(result);
         } catch (error) {

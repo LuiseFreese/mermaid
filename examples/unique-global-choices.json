@@ -1,0 +1,89 @@
+{
+    "globalChoices": [
+        {
+            "name": "south_deployment_stage",
+            "displayName": "Deployment Stage",
+            "description": "Stages in the deployment lifecycle",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Development"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Testing"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Staging"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Production"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Maintenance"
+                }
+            ]
+        },
+        {
+            "name": "south_customer_tier",
+            "displayName": "Customer Tier",
+            "description": "Customer classification tiers",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Bronze"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Silver"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Gold"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Platinum"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Diamond"
+                }
+            ]
+        },
+        {
+            "name": "south_approval_status",
+            "displayName": "Approval Status",
+            "description": "Status for approval workflows",
+            "options": [
+                {
+                    "value": 100000000,
+                    "label": "Draft"
+                },
+                {
+                    "value": 100000001,
+                    "label": "Submitted"
+                },
+                {
+                    "value": 100000002,
+                    "label": "Under Review"
+                },
+                {
+                    "value": 100000003,
+                    "label": "Approved"
+                },
+                {
+                    "value": 100000004,
+                    "label": "Rejected"
+                },
+                {
+                    "value": 100000005,
+                    "label": "Cancelled"
+                }
+            ]
+        }
+    ]
+}

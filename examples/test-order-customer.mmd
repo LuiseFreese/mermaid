@@ -1,0 +1,14 @@
+erDiagram
+    Order {
+        string id PK
+        string customerName
+        string status "Uses order_status global choice"
+    }
+    
+    Customer {
+        string id PK
+        string name
+        string email
+    }
+    
+    Order ||--o{ Customer : "belongs to"

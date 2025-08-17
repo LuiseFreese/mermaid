@@ -151,9 +151,30 @@ erDiagram
     COURSE ||--o{ ENROLLMENT : "has_student"
 ```
 
-## Choice Fields (Post-Creation Configuration)
+## Choice Fields
 
-Choice fields provide predefined options for users but **cannot be defined in Mermaid ERD syntax**. They must be configured after entity creation.
+Choice fields provide predefined options for users and can be defined using the `choice()` syntax:
+
+```mermaid
+erDiagram
+    CONTACT {
+        string contact_id PK "Contact identifier"
+        string name "Contact name"
+        choice(Active,Inactive,Pending) status "Contact status"
+    }
+```
+
+### Global Choices
+You can also reference global choice sets by using a string field with a comment indicating the global choice:
+```mermaid
+erDiagram
+    ORDER {
+        string order_id PK "Order identifier"
+        string status "Uses mmd_order_status global choice"
+    }
+```
+
+Note: Global choice names must include a publisher prefix (e.g., `mmd_` or `south_`) as required by Dataverse.
 
 ## Lookup Fields
 
@@ -180,14 +201,19 @@ erDiagram
 
 ## Best Practices
 
-### 2. **Field Descriptions**
+### 1. **Field Descriptions**
 - Always include descriptions in quotes
 - Be clear and concise
 - Explain the purpose, not just repeat the field name
 - Good: `"Customer's preferred contact method"`
 - Poor: `"Contact method"`
 
-### 4. **Relationships**
+### 2. **Field Naming**
+- Use clear, descriptive names
+- Avoid abbreviations unless they're widely understood
+- Be consistent with naming conventions across entities
+
+### 3. **Relationships**
 - Keep relationship names descriptive
 - Use present tense verbs ("has", "contains", "manages")
 - Model many-to-many as junction entities with additional attributes

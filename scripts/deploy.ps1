@@ -3,13 +3,17 @@
 
 Write-Host "Starting deployment process for mermaid-to-dataverse app..." -ForegroundColor Green
 
+# Get the script directory and project root
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
+
 # 1. Skip npm install - Azure will handle dependencies
 Write-Host "Skipping local npm install (Azure will handle dependencies)..." -ForegroundColor Cyan
 
 # 2. Create deployment package
 Write-Host "Creating deployment package..." -ForegroundColor Cyan
-$deploymentFolder = ".\deployment"
-$deploymentZip = ".\deployment.zip"
+$deploymentFolder = "$projectRoot\deployment"
+$deploymentZip = "$projectRoot\deployment.zip"
 
 # Clean up any previous deployment files
 if (Test-Path $deploymentFolder) {
@@ -19,19 +23,23 @@ if (Test-Path $deploymentZip) {
     Remove-Item -Path $deploymentZip -Force
 }
 
+# Get the script directory and project root
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
+
 # Create deployment folder and copy files
 New-Item -ItemType Directory -Path $deploymentFolder -Force | Out-Null
 
 # Copy production server (full Mermaid + Azure SDK integration)
-Copy-Item "src\server.js" -Destination "$deploymentFolder\server.js"
+Copy-Item "$projectRoot\src\server.js" -Destination "$deploymentFolder\server.js"
 
 # Copy CommonJS modules
-Copy-Item "src\azure-keyvault.js" -Destination "$deploymentFolder\azure-keyvault.js"
-Copy-Item "src\mermaid-parser.js" -Destination "$deploymentFolder\mermaid-parser.js"
-Copy-Item "src\dataverse-client.js" -Destination "$deploymentFolder\dataverse-client.js"
+Copy-Item "$projectRoot\src\azure-keyvault.js" -Destination "$deploymentFolder\azure-keyvault.js"
+Copy-Item "$projectRoot\src\mermaid-parser.js" -Destination "$deploymentFolder\mermaid-parser.js"
+Copy-Item "$projectRoot\src\dataverse-client.js" -Destination "$deploymentFolder\dataverse-client.js"
 
 # Copy package.json (with Azure SDK dependencies)
-Copy-Item "package.json" -Destination "$deploymentFolder\package.json"
+Copy-Item "$projectRoot\package.json" -Destination "$deploymentFolder\package.json"
 
 # Create a web.config file for Azure App Service
 $webConfigContent = @"

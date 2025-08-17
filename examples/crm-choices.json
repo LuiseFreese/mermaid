@@ -1,9 +1,9 @@
 {
-    "choices": [
+    "globalChoices": [
         {
-            "Name": "CompanyStatus",
-            "DisplayName": "Company Status",
-            "Description": "Status of a company account",
+            "name": "CompanyStatus",
+            "displayName": "Company Status",
+            "description": "Status of a company account",
             "options": [
                 {
                     "value": 1,
@@ -28,9 +28,9 @@
             ]
         },
         {
-            "Name": "AccountType",
-            "DisplayName": "Account Type",
-            "Description": "Type of company account",
+            "name": "AccountType",
+            "displayName": "Account Type",
+            "description": "Type of company account",
             "options": [
                 {
                     "value": 1,
@@ -59,9 +59,9 @@
             ]
         },
         {
-            "Name": "ContactStatus",
-            "DisplayName": "Contact Status",
-            "Description": "Status of a contact",
+            "name": "ContactStatus",
+            "displayName": "Contact Status",
+            "description": "Status of a contact",
             "options": [
                 {
                     "value": 1,
@@ -86,9 +86,9 @@
             ]
         },
         {
-            "Name": "LeadSource",
-            "DisplayName": "Lead Source",
-            "Description": "Source of a lead or contact",
+            "name": "LeadSource",
+            "displayName": "Lead Source",
+            "description": "Source of a lead or contact",
             "options": [
                 {
                     "value": 1,
@@ -129,9 +129,9 @@
             ]
         },
         {
-            "Name": "ActivityType",
-            "DisplayName": "Activity Type",
-            "Description": "Type of activity",
+            "name": "ActivityType",
+            "displayName": "Activity Type",
+            "description": "Type of activity",
             "options": [
                 {
                     "value": 1,
@@ -168,9 +168,9 @@
             ]
         },
         {
-            "Name": "Priority",
-            "DisplayName": "Priority Level",
-            "Description": "Priority level for tasks and activities",
+            "name": "Priority",
+            "displayName": "Priority Level",
+            "description": "Priority level for tasks and activities",
             "options": [
                 {
                     "value": 1,
@@ -191,9 +191,9 @@
             ]
         },
         {
-            "Name": "SalesStage",
-            "DisplayName": "Sales Stage",
-            "Description": "Stage in the sales process",
+            "name": "SalesStage",
+            "displayName": "Sales Stage",
+            "description": "Stage in the sales process",
             "options": [
                 {
                     "value": 1,
@@ -230,9 +230,9 @@
             ]
         },
         {
-            "Name": "OpportunityType",
-            "DisplayName": "Opportunity Type",
-            "Description": "Type of sales opportunity",
+            "name": "OpportunityType",
+            "displayName": "Opportunity Type",
+            "description": "Type of sales opportunity",
             "options": [
                 {
                     "value": 1,
@@ -257,9 +257,9 @@
             ]
         },
         {
-            "Name": "ReasonLost",
-            "DisplayName": "Reason Lost",
-            "Description": "Reason why an opportunity was lost",
+            "name": "ReasonLost",
+            "displayName": "Reason Lost",
+            "description": "Reason why an opportunity was lost",
             "options": [
                 {
                     "value": 1,
@@ -296,9 +296,9 @@
             ]
         },
         {
-            "Name": "ProductCategory",
-            "DisplayName": "Product Category",
-            "Description": "Category of product",
+            "name": "ProductCategory",
+            "displayName": "Product Category",
+            "description": "Category of product",
             "options": [
                 {
                     "value": 1,
