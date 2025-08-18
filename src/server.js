@@ -642,7 +642,16 @@ async function createDataverseEntitiesWithLogging(parsedMermaid, config, logFunc
       throw new Error(dataverseConfigResult.error);
     }
 
-    const dvConfig = dataverseConfigResult.config;
+    // Extract config directly from the result
+    const dvConfig = {
+      dataverseUrl: dataverseConfigResult.dataverseUrl,
+      clientId: dataverseConfigResult.clientId,
+      clientSecret: dataverseConfigResult.clientSecret,
+      tenantId: dataverseConfigResult.tenantId,
+      apiVersion: dataverseConfigResult.apiVersion || '9.2',
+      verbose: dataverseConfigResult.verbose || true,
+      authMethod: dataverseConfigResult.authMethod
+    };
 
     // Override solution name with the one from form options
     dvConfig.solutionName = config.solutionName || 'MermaidSolution';
@@ -784,7 +793,16 @@ async function createDataverseEntities(parsedMermaid, config) {
       throw new Error(dataverseConfigResult.error);
     }
 
-    const dvConfig = dataverseConfigResult.config;
+    // Extract config directly from the result
+    const dvConfig = {
+      dataverseUrl: dataverseConfigResult.dataverseUrl,
+      clientId: dataverseConfigResult.clientId,
+      clientSecret: dataverseConfigResult.clientSecret,
+      tenantId: dataverseConfigResult.tenantId,
+      apiVersion: dataverseConfigResult.apiVersion || '9.2',
+      verbose: dataverseConfigResult.verbose || true,
+      authMethod: dataverseConfigResult.authMethod
+    };
 
     // Override solution name with the one from form options
     dvConfig.solutionName = config.solutionName || 'MermaidSolution';
@@ -885,6 +903,7 @@ function handleDeployment(req, res) {
         console.log(' handleDeployment: JSON parsed successfully');
         console.log(' handleDeployment: Deployment data keys:', Object.keys(deploymentData));
         console.log(' handleDeployment: dryRun flag:', deploymentData.dryRun);
+        console.log(' handleDeployment: RAW selectedChoices on arrival:', JSON.stringify(deploymentData.selectedChoices));
       } catch (parseError) {
         console.error(' handleDeployment: JSON parse failed:', parseError.message);
         throw new Error(`Invalid JSON: ${parseError.message}`);
@@ -949,14 +968,32 @@ function handleDeployment(req, res) {
 
       // Determine publisher info
       let publisherInfo;
-      if (deploymentData.publisher && deploymentData.publisher.id) {
+      console.log(' handleDeployment: Publisher data received:', {
+        hasPublisher: !!deploymentData.publisher,
+        createPublisher: deploymentData.createPublisher,
+        publisherName: deploymentData.publisherName,
+        publisherPrefix: deploymentData.publisherPrefix
+      });
+      
+      if (deploymentData.publisher && (deploymentData.publisher.id || deploymentData.publisher.publisherid)) {
         // Using existing publisher
         publisherInfo = deploymentData.publisher;
         sendSimpleLog(`Using existing publisher: ${publisherInfo.friendlyName} (${publisherInfo.prefix})`);
+        console.log(' handleDeployment: Using existing publisher:', publisherInfo);
+      } else if (deploymentData.createPublisher && deploymentData.publisherPrefix) {
+        // Creating new publisher (wizard format)
+        publisherInfo = {
+          name: deploymentData.publisherName,
+          uniqueName: deploymentData.publisherUniqueName,
+          prefix: deploymentData.publisherPrefix
+        };
+        sendSimpleLog(`Creating new publisher: ${publisherInfo.name} (${publisherInfo.prefix})`);
+        console.log(' handleDeployment: Creating new publisher:', publisherInfo);
       } else if (deploymentData.publisher && deploymentData.publisher.prefix) {
-        // Creating new publisher
+        // Creating new publisher (legacy format)
         publisherInfo = deploymentData.publisher;
         sendSimpleLog(`Creating new publisher: ${publisherInfo.name} (${publisherInfo.prefix})`);
+        console.log(' handleDeployment: Using legacy publisher format:', publisherInfo);
       } else {
         throw new Error('Publisher information is required');
       }
@@ -1034,16 +1071,27 @@ function handleDeployment(req, res) {
               
               // Prepare deployment options
               const deploymentOptions = {
-                publisherPrefix: deploymentData.publisher?.prefix || 'eco2',
-                publisherId: deploymentData.publisher?.id || null, // Pass the existing publisher ID if available
-                publisherName: deploymentData.publisher?.uniqueName || deploymentData.publisher?.friendlyName || deploymentData.publisher?.name,
-                publisherFriendlyName: deploymentData.publisher?.friendlyName,
-                publisherUniqueName: deploymentData.publisher?.uniqueName,
-                solutionName: deploymentData.solutionName || 'AzureTest35',
+                publisherPrefix: publisherInfo.prefix,
+                publisherId: deploymentData.publisher?.id || deploymentData.publisher?.publisherid || null,
+                publisherName: publisherInfo.uniqueName || publisherInfo.name,
+                publisherFriendlyName: publisherInfo.friendlyName || publisherInfo.name,
+                publisherUniqueName: publisherInfo.uniqueName,
+                solutionName: deploymentData.solutionName,
                 dryRun: false, // This is a real deployment
-                selectedChoices: deploymentData.selectedChoices || [],
-                createPublisher: !deploymentData.publisher?.id && (!!deploymentData.publisher?.uniqueName || !!deploymentData.publisher?.friendlyName) // Only create new if no ID but has name data
+                selectedChoices: deploymentData.selectedChoices && deploymentData.selectedChoices.length > 0 ? 
+                  deploymentData.selectedChoices.filter(choice => choice && choice.trim() !== '') : [],
+                createPublisher: deploymentData.createPublisher || (!deploymentData.publisher?.id && !deploymentData.publisher?.publisherid)
               };
+              
+              console.log(' handleDeployment: Raw selectedChoices:', deploymentData.selectedChoices);
+              console.log(' handleDeployment: Filtered selectedChoices:', deploymentOptions.selectedChoices);
+              console.log(' handleDeployment: selectedChoices length:', deploymentOptions.selectedChoices.length);
+              
+              console.log(' handleDeployment: Deployment options created:');
+              console.log(' - publisherPrefix:', deploymentOptions.publisherPrefix);
+              console.log(' - selectedChoices:', deploymentOptions.selectedChoices);
+              console.log(' - selectedChoices count:', deploymentOptions.selectedChoices.length);
+              console.log(' - selectedChoices details:', JSON.stringify(deploymentOptions.selectedChoices, null, 2));
               
               // Generate Dataverse schema from entities
               sendSimpleLog('Generating Dataverse schema...');
@@ -1181,15 +1229,254 @@ function handleDeployment(req, res) {
     } catch (error) {
       console.error('Deployment error:', error);
       
-      // Send error response
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        type: 'result',
-        success: false,
-        message: `Deployment failed: ${error.message}`
-      }));
+      // Send error via streaming format (headers already sent)
+      try {
+        const errorData = JSON.stringify({
+          type: 'result',
+          success: false,
+          message: `Deployment failed: ${error.message}`
+        }) + '\n';
+        res.write(errorData);
+        res.end();
+      } catch (streamError) {
+        console.error('Error sending error response:', streamError);
+        // If streaming fails, just end the response
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            type: 'result',
+            success: false,
+            message: `Deployment failed: ${error.message}`
+          }));
+        } else {
+          res.end();
+        }
+      }
     }
   });
+}
+
+// Serve interface selector
+function serveInterfaceSelector(res) {
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid to Dataverse Converter</title>
+    <style>
+        :root {
+            --color-primary: #0078d4;
+            --color-primary-dark: #106ebe;
+            --color-success: #107c10;
+            --color-neutral: #8a8886;
+            --border-radius: 8px;
+            --spacing-xl: 32px;
+            --spacing-l: 24px;
+            --spacing-m: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #323130;
+            line-height: 1.4;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--spacing-xl);
+        }
+
+        .header {
+            background: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: var(--spacing-l);
+        }
+
+        .header h1 {
+            margin: 0 0 var(--spacing-m) 0;
+            color: var(--color-primary);
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .header .icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-m);
+        }
+
+        .header p {
+            margin: 0;
+            color: #605e5c;
+            font-size: 18px;
+        }
+
+        .interface-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-l);
+            margin-top: var(--spacing-l);
+        }
+
+        .interface-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: var(--spacing-xl);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .interface-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            border-color: var(--color-primary);
+        }
+
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-m);
+            display: block;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-m);
+            color: var(--color-primary);
+        }
+
+        .card-description {
+            color: #605e5c;
+            margin-bottom: var(--spacing-m);
+            line-height: 1.5;
+        }
+
+        .card-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .card-features li {
+            padding: 4px 0;
+            color: #605e5c;
+            font-size: 14px;
+        }
+
+        .card-features li:before {
+            content: "✓";
+            color: var(--color-success);
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .recommended {
+            position: relative;
+        }
+
+        .recommended:before {
+            content: "RECOMMENDED";
+            position: absolute;
+            top: -12px;
+            right: 16px;
+            background: var(--color-success);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: var(--spacing-xl);
+            color: white;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .interface-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: var(--spacing-m);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🔄</div>
+            <h1>Mermaid to Dataverse Converter</h1>
+            <p>Transform your Entity Relationship Diagrams into Microsoft Dataverse solutions</p>
+        </div>
+
+        <div class="interface-options">
+            <a href="/wizard" class="interface-card recommended">
+                <span class="card-icon">🧙‍♂️</span>
+                <h2 class="card-title">Wizard Interface</h2>
+                <p class="card-description">
+                    Modern, step-by-step guided experience with advanced features for enterprise deployments.
+                </p>
+                <ul class="card-features">
+                    <li>5-step guided workflow</li>
+                    <li>CDM integration support</li>
+                    <li>Automatic ERD correction</li>
+                    <li>Side-by-side comparison</li>
+                    <li>Advanced validation</li>
+                    <li>Modern UI with Fluent Design</li>
+                </ul>
+            </a>
+
+            <a href="/basic" class="interface-card">
+                <span class="card-icon">📝</span>
+                <h2 class="card-title">Basic Interface</h2>
+                <p class="card-description">
+                    Simple, direct form interface for quick deployments and familiar users.
+                </p>
+                <ul class="card-features">
+                    <li>Single-page workflow</li>
+                    <li>Quick setup</li>
+                    <li>Basic validation</li>
+                    <li>Lightweight interface</li>
+                    <li>Fast processing</li>
+                    <li>Minimal learning curve</li>
+                </ul>
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Choose the interface that best fits your needs • Both support full Dataverse deployment</p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+  
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end(html);
 }
 
 // Serve static HTML upload form
@@ -1200,7 +1487,7 @@ function serveUploadForm(res) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mermaid to Dataverse Converter</title>
+    <title>Mermaid to Dataverse Converter - Basic Interface</title>
     <link href="https://cdn.jsdelivr.net/npm/@fluentui/web-components@2.0.0/dist/web-components.min.css" rel="stylesheet">
     <script type="module" src="https://cdn.jsdelivr.net/npm/@fluentui/web-components@2.0.0/dist/web-components.min.js"></script>
     <style>
@@ -2051,8 +2338,9 @@ function serveUploadForm(res) {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Mermaid to Dataverse Converter</h1>
+            <h1>Mermaid to Dataverse Converter - Basic Interface</h1>
             <p>Transform your Entity Relationship Diagrams into Microsoft Dataverse solutions with automated validation and best practices.</p>
+            <p><small><a href="/" style="color: #0078d4;">← Back to interface selection</a> | <a href="/wizard" style="color: #0078d4;">Try the Wizard Interface →</a></small></p>
         </div>
 
         <!-- Progress Indicator -->
@@ -3331,14 +3619,45 @@ function serveUploadForm(res) {
 // Serve wizard UI
 function serveWizardUI(res) {
   try {
-    const wizardPath = require('path').join(__dirname, 'wizard-ui.html');
-    const html = require('fs').readFileSync(wizardPath, 'utf8');
+    const path = require('path');
+    const fs = require('fs');
+    const wizardPath = path.join(__dirname, 'wizard-ui.html');
+    
+    if (!fs.existsSync(wizardPath)) {
+      console.error(`Wizard UI file not found at: ${wizardPath}`);
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Wizard UI Not Available</title></head>
+        <body style="font-family: 'Segoe UI', sans-serif; padding: 40px; text-align: center;">
+          <h1>Wizard UI Temporarily Unavailable</h1>
+          <p>The wizard interface is currently not available.</p>
+          <p><a href="/" style="color: #0078d4;">Use the basic interface instead</a></p>
+        </body>
+        </html>
+      `);
+      return;
+    }
+    
+    const html = fs.readFileSync(wizardPath, 'utf8');
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
   } catch (error) {
     console.error('Error serving wizard UI:', error);
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end('Error loading wizard UI');
+    res.writeHead(500, { 'Content-Type': 'text/html' });
+    res.end(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Error Loading Wizard</title></head>
+      <body style="font-family: 'Segoe UI', sans-serif; padding: 40px; text-align: center;">
+        <h1>Error Loading Wizard UI</h1>
+        <p>There was an error loading the wizard interface.</p>
+        <p><a href="/" style="color: #0078d4;">Use the basic interface instead</a></p>
+        <p><small>Error: ${error.message}</small></p>
+      </body>
+      </html>
+    `);
   }
 }
 
@@ -3360,7 +3679,11 @@ const server = http.createServer(async (req, res) => {
   
   try {
     if (pathname === '/') {
-      // Serve the upload form
+      // Serve interface selection page
+      serveInterfaceSelector(res);
+      
+    } else if (pathname === '/basic') {
+      // Serve the basic upload form
       serveUploadForm(res);
       
     } else if (pathname === '/wizard') {
@@ -3475,9 +3798,18 @@ const server = http.createServer(async (req, res) => {
             throw new Error(dataverseConfigResult.error);
           }
           
-          const dvConfig = dataverseConfigResult.config;
+          // Extract config directly from the result
+          const dvConfig = {
+            dataverseUrl: dataverseConfigResult.dataverseUrl,
+            clientId: dataverseConfigResult.clientId,
+            clientSecret: dataverseConfigResult.clientSecret,
+            tenantId: dataverseConfigResult.tenantId,
+            apiVersion: dataverseConfigResult.apiVersion || '9.2',
+            verbose: true,
+            authMethod: dataverseConfigResult.authMethod
+          };
+          
           dvConfig.solutionName = data.solutionName || 'TestSolution';
-          dvConfig.verbose = true; // Enable verbose logging for debugging
           
           const client = new DataverseClient(dvConfig);
           let result = {};
@@ -3632,9 +3964,18 @@ const server = http.createServer(async (req, res) => {
             throw new Error(dataverseConfigResult.error);
           }
           
-          const dvConfig = dataverseConfigResult.config;
+          // Extract config directly from the result
+          const dvConfig = {
+            dataverseUrl: dataverseConfigResult.dataverseUrl,
+            clientId: dataverseConfigResult.clientId,
+            clientSecret: dataverseConfigResult.clientSecret,
+            tenantId: dataverseConfigResult.tenantId,
+            apiVersion: dataverseConfigResult.apiVersion || '9.2',
+            verbose: true,
+            authMethod: dataverseConfigResult.authMethod
+          };
+          
           dvConfig.solutionName = solutionName;
-          dvConfig.verbose = true;
           
           const client = new DataverseClient(dvConfig);
           
@@ -4268,7 +4609,17 @@ const server = http.createServer(async (req, res) => {
             throw new Error(dataverseConfigResult.error);
           }
           
-          const dvConfig = dataverseConfigResult.config;
+          // Extract config directly from the result
+          const dvConfig = {
+            dataverseUrl: dataverseConfigResult.dataverseUrl,
+            clientId: dataverseConfigResult.clientId,
+            clientSecret: dataverseConfigResult.clientSecret,
+            tenantId: dataverseConfigResult.tenantId,
+            apiVersion: dataverseConfigResult.apiVersion || '9.2',
+            verbose: dataverseConfigResult.verbose || true,
+            authMethod: dataverseConfigResult.authMethod
+          };
+          
           const client = new DataverseClient(dvConfig);
           
           // Validate each generated Dataverse entity
@@ -4542,11 +4893,11 @@ const server = http.createServer(async (req, res) => {
           }
           
           // Parse Mermaid content
-          const parser = new MermaidERDParser(data.mermaidContent);
-          const parseResult = parser.parseERD();
+          const parser = new MermaidERDParser();
+          const parseResult = parser.parse(data.mermaidContent);
           
-          if (!parseResult.success) {
-            throw new Error(parseResult.error);
+          if (!parseResult.validation.isValid) {
+            throw new Error(`Schema validation failed: ${parseResult.validation.errors.map(e => e.message).join(', ')}`);
           }
           
           // Prepare deployment options
@@ -4561,13 +4912,27 @@ const server = http.createServer(async (req, res) => {
             customChoices: data.customChoices
           };
           
+          console.log(' Publisher data received:', JSON.stringify(data.publisherData, null, 2));
+          console.log(' Extracted publisher prefix:', options.publisherPrefix);
+          console.log(' Publisher type:', data.publisherData?.type);
+          
           // Get Dataverse config
           const dataverseConfigResult = await getDataverseConfig();
           if (!dataverseConfigResult.success) {
             throw new Error(dataverseConfigResult.error);
           }
           
-          const dvConfig = dataverseConfigResult.config;
+          // Extract config directly from the result (not from a nested config property)
+          const dvConfig = {
+            dataverseUrl: dataverseConfigResult.dataverseUrl,
+            clientId: dataverseConfigResult.clientId,
+            clientSecret: dataverseConfigResult.clientSecret,
+            tenantId: dataverseConfigResult.tenantId,
+            apiVersion: dataverseConfigResult.apiVersion || '9.2',
+            verbose: dataverseConfigResult.verbose || true,
+            authMethod: dataverseConfigResult.authMethod
+          };
+          
           const client = new DataverseClient(dvConfig);
           
           // Generate schema
@@ -4598,10 +4963,15 @@ const server = http.createServer(async (req, res) => {
           } else {
             // Actual deployment
             const results = [];
+            let successCount = 0;
+            let skipCount = 0;
             
             for (const entity of schema.entities) {
               try {
                 const result = await client.createEntity(entity);
+                if (result.success) {
+                  successCount++;
+                }
                 results.push({
                   entityName: entity.LogicalName,
                   success: result.success,
@@ -4609,19 +4979,45 @@ const server = http.createServer(async (req, res) => {
                   entityId: result.entityId
                 });
               } catch (error) {
-                results.push({
-                  entityName: entity.LogicalName,
-                  success: false,
-                  message: error.message
-                });
+                // Check if it's a "already exists" error
+                const isExistsError = error.message && (
+                  error.message.includes('is not unique') || 
+                  error.message.includes('already exists') ||
+                  error.message.includes('0x80044363')
+                );
+                
+                if (isExistsError) {
+                  skipCount++;
+                  results.push({
+                    entityName: entity.LogicalName,
+                    success: false,
+                    skipped: true,
+                    message: `Entity already exists: ${entity.LogicalName}`
+                  });
+                  console.log(` Skipped existing entity: ${entity.LogicalName}`);
+                } else {
+                  results.push({
+                    entityName: entity.LogicalName,
+                    success: false,
+                    message: error.message
+                  });
+                  console.error(` Failed to create entity ${entity.LogicalName}:`, error.message);
+                }
               }
             }
             
+            const hasActualFailures = results.some(r => !r.success && !r.skipped);
+            
             deploymentResult = {
-              success: results.every(r => r.success),
-              message: `Deployed ${results.filter(r => r.success).length}/${results.length} entities successfully`,
+              success: !hasActualFailures, // Success if no real failures (skipped entities are OK)
+              message: `Deployment completed: ${successCount} created, ${skipCount} already existed, ${results.filter(r => !r.success && !r.skipped).length} failed`,
               results,
-              dryRun: false
+              dryRun: false,
+              summary: {
+                created: successCount,
+                skipped: skipCount,
+                failed: results.filter(r => !r.success && !r.skipped).length
+              }
             };
           }
           

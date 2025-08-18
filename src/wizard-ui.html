@@ -188,6 +188,7 @@
             gap: 8px;
         }
 
+        /* File Upload Styles */
         .file-upload-area {
             border: 2px dashed var(--neutral-stroke-rest);
             border-radius: 8px;
@@ -206,6 +207,106 @@
         .file-upload-area.dragover {
             border-color: var(--accent-fill-rest);
             background: #e6f3ff;
+        }
+
+        .file-upload-simple {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-upload-simple button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .file-upload-simple button:hover {
+            background: #e9ecef;
+        }
+
+        .file-name-display {
+            font-size: 0.875rem;
+            color: #666;
+            padding: 4px 8px;
+        }
+
+        /* Search Bar Styles */
+        .search-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Accordion Styles - Aligned with Summary Page */
+        .accordion-button {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 16px;
+            background: white;
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 6px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .accordion-button:hover {
+            background: var(--neutral-fill-input-alt);
+            border-color: var(--accent-fill-rest);
+        }
+
+        .accordion-button.collapsed::after {
+            content: "▼";
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--accent-fill-rest);
+            margin-left: auto;
+        }
+
+        .accordion-button:not(.collapsed)::after {
+            content: "▲";
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--accent-fill-rest);
+            margin-left: auto;
+        }
+
+        .accordion-collapse {
+            border: 1px solid var(--neutral-stroke-rest);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: height 0.3s ease;
+        }
+
+        .accordion-collapse:not(.show) {
+            height: 0;
+        }
+
+        .accordion-collapse.show {
+            height: auto;
+        }
+
+        .accordion-body {
+            padding: 16px;
+            background: white;
+        }
+
+        .choices-count {
+            font-size: 0.875rem;
+            color: #666;
+            font-weight: normal;
+            margin-left: 8px;
         }
 
         .validation-results {
@@ -449,6 +550,13 @@
             background: var(--neutral-fill-hover);
         }
 
+        .choice-section-header {
+            padding: 8px 0;
+            color: var(--neutral-foreground-rest);
+            border-bottom: 1px solid var(--neutral-stroke-rest);
+            margin-bottom: 8px;
+        }
+
         .progress-bar {
             height: 4px;
             background: var(--neutral-fill-rest);
@@ -463,25 +571,88 @@
             transition: width 0.3s ease;
         }
 
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 16px;
+        .summary-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .summary-card {
+        .summary-item {
             border: 1px solid var(--neutral-stroke-rest);
             border-radius: 6px;
-            padding: 16px;
             background: white;
+            overflow: hidden;
         }
 
-        .summary-card-title {
-            font-weight: 600;
-            margin-bottom: 8px;
+        .summary-header {
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--neutral-fill-hover);
+            user-select: none;
+            transition: background 0.2s ease;
+        }
+
+        .summary-header:hover {
+            background: var(--neutral-fill-rest);
+        }
+
+        .summary-title {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        .summary-count {
+            color: var(--accent-fill-rest);
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .summary-toggle {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--accent-fill-rest);
+        }
+
+        .summary-details {
+            padding: 0 16px 16px 16px;
+            display: none;
+        }
+
+        .summary-details ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .summary-details li {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .choice-list {
+            margin: 0;
+            padding: 0;
+        }
+
+        .choice-item {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            padding-left: 0;
+        }
+
+        .no-items {
+            color: var(--neutral-foreground-hint);
+            font-style: italic;
+            margin: 0;
         }
 
         .loading-spinner {
@@ -581,7 +752,6 @@
 <body>
     <div class="app-container">
         <header class="header">
-            <span class="icon">🔄</span>
             <div>
                 <h1>Mermaid to Dataverse Converter</h1>
                 <div class="subtitle">Enterprise ERD to Microsoft Dataverse Transformation</div>
@@ -600,24 +770,18 @@
                     <li>
                         <a href="#" data-step="publisher">
                             <span class="step-number">2</span>
-                            <span class="step-title">Publisher Setup</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" data-step="cdm">
-                            <span class="step-number">3</span>
-                            <span class="step-title">CDM Integration</span>
+                            <span class="step-title">Solution & Publisher</span>
                         </a>
                     </li>
                     <li>
                         <a href="#" data-step="choices">
-                            <span class="step-number">4</span>
+                            <span class="step-number">3</span>
                             <span class="step-title">Global Choices</span>
                         </a>
                     </li>
                     <li>
                         <a href="#" data-step="summary">
-                            <span class="step-number">5</span>
+                            <span class="step-number">4</span>
                             <span class="step-title">Final Review</span>
                         </a>
                     </li>
@@ -632,27 +796,20 @@
                         <p class="page-description">Upload your Mermaid ERD file and validate its structure for Dataverse compatibility.</p>
                     </div>
 
-                    <div class="section">
-                        <h3 class="section-title">
-                            <span class="icon">📄</span>
-                            Upload Mermaid ERD File
-                        </h3>
-                        
-                        <div class="file-upload-area" id="fileUploadArea">
-                            <div class="icon" style="font-size: 48px; color: #666; margin-bottom: 16px;">📁</div>
-                            <h4>Drag & drop your .mmd file here</h4>
-                            <p class="text-muted">or click to browse files</p>
-                            <input type="file" id="fileInput" accept=".mmd,.txt" style="display: none;">
-                        </div>
+                    <!-- ERD Status Indicator -->
+                    <div id="erdStatusIndicator" class="hidden" style="background: #107c10; color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; text-align: center; font-weight: bold;">
+                        Currently using the corrected ERD version
+                    </div>
 
-                        <div id="fileInfo" class="hidden mt-2">
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
-                                <span class="icon">📄</span>
-                                <div>
-                                    <div id="fileName" style="font-weight: 500;"></div>
-                                    <div id="fileSize" class="text-muted"></div>
-                                </div>
-                                <button id="removeFile" class="btn btn-secondary" style="margin-left: auto;">Remove</button>
+                    <div class="section">
+                        <div class="form-group">
+                            <label class="form-label">Upload Mermaid ERD File (.mmd)</label>
+                            <div class="file-upload-simple" id="fileUploadArea">
+                                <input type="file" id="fileInput" accept=".mmd,.txt" style="display: none;">
+                                <button type="button" class="btn btn-secondary" style="width: 100%;">
+                                    Choose File
+                                </button>
+                                <span class="file-name-display" id="fileNameDisplay">No file selected</span>
                             </div>
                         </div>
 
@@ -662,7 +819,7 @@
                             
                             <!-- Corrected ERD Display -->
                             <div id="correctedERDSection" class="hidden" style="margin-top: 20px;">
-                                <h4 style="color: #0078d4; margin-bottom: 12px;">
+                                <h4 style="color: #000; margin-bottom: 12px;">
                                     Suggested Corrections
                                 </h4>
                                 <p style="margin-bottom: 12px; color: #605e5c;">
@@ -674,7 +831,7 @@
                                     <!-- Original ERD -->
                                     <div>
                                         <h5 style="margin: 0 0 8px 0; color: #d13438; font-weight: 600;">
-                                            📄 Original ERD (Issues Found)
+                                            Original ERD (Issues Found)
                                         </h5>
                                         <div style="position: relative;">
                                             <button id="copyOriginalERD" class="btn btn-secondary" 
@@ -720,14 +877,14 @@
                             
                             <!-- Schema Display Section -->
                             <div id="schemaDisplaySection" class="hidden" style="margin-top: 20px;">
-                                <h4 style="color: #0078d4; margin-bottom: 12px;">
+                                <h4 style="color: #000; margin-bottom: 12px;">
                                     Parsed Schema Overview
                                 </h4>
                                 <p style="margin-bottom: 12px; color: #605e5c;">
                                     Here's what the parser understood from your ERD. Review this to ensure all entities, attributes, and relationships are correctly interpreted:
                                 </p>
                                 
-                                <div id="schemaContent" style="background: #f8f9fa; border: 1px solid #e1dfdd; border-radius: 4px; padding: 16px;">
+                                <div id="schemaContent" style="background: transparent; border: none; padding: 0;">
                                     <!-- Schema content will be populated by JavaScript -->
                                 </div>
                             </div>
@@ -735,18 +892,19 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Publisher Setup -->
+                <!-- Step 2: Solution & Publisher Setup -->
                 <div id="page-publisher" class="page">
                     <div class="page-header">
-                        <h2 class="page-title">Publisher Management</h2>
-                        <p class="page-description">Choose an existing publisher or create a new one for your Dataverse solution.</p>
+                        <h2 class="page-title">Solution & Publisher Setup</h2>
+                        <p class="page-description">Define your solution name and choose or create a publisher for your Dataverse solution.</p>
                     </div>
 
                     <div class="section">
-                        <h3 class="section-title">
-                            <span class="icon">🏢</span>
-                            Publisher Selection
-                        </h3>
+                        <div class="form-group">
+                            <label class="form-label" for="solutionName">Solution Name *</label>
+                            <input type="text" id="solutionName" class="form-control" placeholder="e.g., Customer Management Solution" required>
+                            <div class="text-muted mt-2">Name of the Dataverse solution to create or update</div>
+                        </div>
 
                         <div class="form-group">
                             <label class="form-label">
@@ -765,55 +923,26 @@
                             </label>
                             <div id="newPublisherFields" class="hidden" style="margin-top: 12px; padding-left: 24px;">
                                 <div class="form-group">
-                                    <label class="form-label" for="publisherName">Publisher Name</label>
-                                    <input type="text" id="publisherName" class="form-control" placeholder="e.g., MyCompany Publisher">
+                                    <label class="form-label" for="publisherName">Publisher Display Name</label>
+                                    <input type="text" id="publisherName" class="form-control" placeholder="e.g., Fancy New Publisher" pattern="[a-zA-Z0-9\s]+">
+                                    <div class="text-muted mt-2">Display name for the publisher (letters, numbers and spaces only)</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="publisherUniqueName">Publisher Unique Name (Internal)</label>
+                                    <input type="text" id="publisherUniqueName" class="form-control" placeholder="FancyNewPublisher" pattern="[a-zA-Z][a-zA-Z0-9]*" readonly>
+                                    <div class="text-muted mt-2">Auto-generated internal unique name for Dataverse (no spaces, letters and numbers only)</div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label" for="publisherPrefix">Prefix (3-8 characters)</label>
-                                    <input type="text" id="publisherPrefix" class="form-control" placeholder="e.g., myco" maxlength="8">
+                                    <input type="text" id="publisherPrefix" class="form-control" placeholder="myco" maxlength="8" pattern="[a-zA-Z]{3,8}">
+                                    <div class="text-muted mt-2">Auto-generated prefix for all custom entities and fields (letters only, 3-8 characters). You can edit this if needed.</div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="solutionName">Solution Name</label>
-                            <input type="text" id="solutionName" class="form-control" placeholder="e.g., Customer Management Solution">
-                        </div>
                     </div>
                 </div>
 
-                <!-- Step 3: CDM Integration -->
-                <div id="page-cdm" class="page">
-                    <div class="page-header">
-                        <h2 class="page-title">Common Data Model Integration</h2>
-                        <p class="page-description">Integrate with existing CDM entities and manage entity relationships.</p>
-                    </div>
-
-                    <div id="cdmDetectedSection" class="section hidden">
-                        <h3 class="section-title">
-                            <span class="icon">•</span>
-                            CDM Entities Detected
-                        </h3>
-                        <div id="cdmDetectedEntities"></div>
-                    </div>
-
-                    <div class="section">
-                        <h3 class="section-title">
-                            <span class="icon">•</span>
-                            Add Existing CDM Entities
-                        </h3>
-                        <p class="text-muted mb-2">Select existing CDM entities to include in your solution and create relationships with your custom entities.</p>
-                        
-                        <div id="cdmEntitiesCheckbox" class="checkbox-group">
-                            <div class="text-center">
-                                <div class="loading-spinner"></div>
-                                <p class="text-muted">Loading CDM entities...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Step 4: Global Choices -->
+                <!-- Step 3: Global Choices -->
                 <div id="page-choices" class="page">
                     <div class="page-header">
                         <h2 class="page-title">Global Choice Management</h2>
@@ -822,47 +951,75 @@
 
                     <div class="section">
                         <h3 class="section-title">
-                            <span class="icon">•</span>
-                            Existing Global Choices
+                            Global Choice Sets
                         </h3>
-                        <p class="text-muted mb-2">Select existing global choice sets to include in your solution.</p>
+                        <p class="text-muted mb-2">Select existing global choice sets or upload custom choices.</p>
                         
-                        <div id="globalChoicesCheckbox" class="checkbox-group">
-                            <div class="text-center">
-                                <div class="loading-spinner"></div>
-                                <p class="text-muted">Loading global choice sets...</p>
+                        <!-- Search/Filter Bar -->
+                        <div class="form-group mb-3">
+                            <div class="search-bar">
+                                <input type="text" id="globalChoicesSearch" class="form-control" placeholder="Search by name, logical name, or prefix...">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="section">
-                        <h3 class="section-title">
-                            <span class="icon">•</span>
-                            Upload Custom Choices
-                        </h3>
-                        <p class="text-muted mb-2">Upload a JSON file with custom global choice definitions.</p>
                         
-                        <div class="file-upload-area" id="choicesUploadArea">
-                            <div class="icon" style="font-size: 32px; color: #666; margin-bottom: 12px;">•</div>
-                            <h4>Upload Global Choices JSON</h4>
-                            <p class="text-muted">Drag & drop or click to browse</p>
-                            <input type="file" id="choicesFileInput" accept=".json" style="display: none;">
-                        </div>
-
-                        <div id="choicesFileInfo" class="hidden mt-2">
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
-                                <span class="icon">📄</span>
-                                <div>
-                                    <div id="choicesFileName" style="font-weight: 500;"></div>
-                                    <div id="choicesFileSize" class="text-muted"></div>
+                        <!-- Accordion for Built-in and Custom Choices -->
+                        <div class="accordion" id="globalChoicesAccordion">
+                            <!-- Built-in Choices Section -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#builtinChoicesCollapse">
+                                        Built-in Global Choices
+                                        <span class="choices-count" id="builtinChoicesCount">(0)</span>
+                                    </button>
+                                </h2>
+                                <div id="builtinChoicesCollapse" class="accordion-collapse collapse">
+                                    <div class="accordion-body">
+                                        <div id="builtinChoicesContainer" class="checkbox-group">
+                                            <div class="text-center">
+                                                <div class="loading-spinner"></div>
+                                                <p class="text-muted">Loading built-in choice sets...</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button id="removeChoicesFile" class="btn btn-secondary" style="margin-left: auto;">Remove</button>
+                            </div>
+                            
+                            <!-- Custom Choices Section -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#customChoicesCollapse">
+                                        Custom Global Choices
+                                        <span class="choices-count" id="customChoicesCount">(0)</span>
+                                    </button>
+                                </h2>
+                                <div id="customChoicesCollapse" class="accordion-collapse collapse">
+                                    <div class="accordion-body">
+                                        <div id="customChoicesContainer" class="checkbox-group">
+                                            <p class="text-muted">Upload a JSON file to see custom choices here.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                        
+                        <!-- Upload Custom Choices Section -->
+                        <div class="form-group mt-3">
+                            <label class="form-label">Upload Global Choices JSON</label>
+                            <div class="file-upload-simple" id="choicesUploadArea">
+                                <input type="file" id="choicesFileInput" accept=".json" style="display: none;">
+                                <button type="button" class="btn btn-secondary" style="width: 100%;">
+                                    Choose File
+                                </button>
+                                <span class="file-name-display" id="choicesNameDisplay">No file selected</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Legacy container for backward compatibility -->
+                        <div id="globalChoicesCheckbox" style="display: none;"></div>
                     </div>
                 </div>
 
-                <!-- Step 5: Final Review -->
+                <!-- Step 4: Final Review -->
                 <div id="page-summary" class="page">
                     <div class="page-header">
                         <h2 class="page-title">Final Review & Deployment</h2>
@@ -871,32 +1028,17 @@
 
                     <div class="section">
                         <h3 class="section-title">
-                            <span class="icon">•</span>
-                            Deployment Summary
+                            Deployment Summary & Options
                         </h3>
                         
                         <div class="summary-grid" id="deploymentSummary">
                             <!-- Summary cards will be populated by JavaScript -->
                         </div>
-                    </div>
-
-                    <div class="section">
-                        <h3 class="section-title">
-                            <span class="icon">•</span>
-                            Deployment Options
-                        </h3>
                         
-                        <div class="form-group">
+                        <div class="form-group" style="margin-top: 24px;">
                             <label class="form-label">
                                 <input type="checkbox" id="dryRunMode" checked>
                                 Dry Run Mode (Preview only, don't create entities)
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <input type="checkbox" id="createPublisherFlag" checked>
-                                Create publisher if it doesn't exist
                             </label>
                         </div>
                     </div>
@@ -936,7 +1078,7 @@
         class WizardState {
             constructor() {
                 this.currentStep = 'validation';
-                this.steps = ['validation', 'publisher', 'cdm', 'choices', 'summary'];
+                this.steps = ['validation', 'publisher', 'choices', 'summary'];
                 this.stepData = {
                     validation: { valid: false, entities: [], relationships: [], warnings: [] },
                     publisher: { type: 'existing', selectedPublisher: null, newPublisher: {} },
@@ -960,14 +1102,31 @@
                         return true;
                     case 'publisher':
                         return this.stepData.validation.valid;
-                    case 'cdm':
-                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
                     case 'choices':
-                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
+                        return this.stepData.validation.valid && this.isPublisherStepComplete();
                     case 'summary':
-                        return this.stepData.validation.valid && this.stepData.publisher.selectedPublisher;
+                        return this.stepData.validation.valid && this.isPublisherStepComplete();
                     default:
                         return false;
+                }
+            }
+
+            isPublisherStepComplete() {
+                if (this.stepData.publisher.type === 'existing') {
+                    return this.stepData.publisher.selectedPublisher && 
+                           document.getElementById('solutionName') && 
+                           document.getElementById('solutionName').value.trim();
+                } else {
+                    // For new publisher, check that all required fields are filled
+                    const nameField = document.getElementById('publisherName');
+                    const uniqueNameField = document.getElementById('publisherUniqueName');
+                    const prefixField = document.getElementById('publisherPrefix');
+                    const solutionField = document.getElementById('solutionName');
+                    
+                    return nameField && nameField.value.trim() &&
+                           uniqueNameField && uniqueNameField.value.trim() &&
+                           prefixField && prefixField.value.trim() &&
+                           solutionField && solutionField.value.trim();
                 }
             }
 
@@ -1000,6 +1159,8 @@
         // Global variables for file content
         let uploadedFile = null;
         let currentERDContent = null;
+        let isUsingCorrectedERD = false;
+        let originalERDContent = null;
 
         // Navigation functions
         function showStep(step) {
@@ -1024,13 +1185,12 @@
                 case 'publisher':
                     loadPublishers();
                     break;
-                case 'cdm':
-                    checkCDMEntities();
-                    break;
                 case 'choices':
                     loadGlobalChoices();
                     break;
                 case 'summary':
+                    updateChoicesStepStatus(); // Update choices status when going to summary
+                    generateSummary();
                     generateSummary();
                     break;
             }
@@ -1053,52 +1213,182 @@
 
         // File upload functionality
         function setupFileUpload() {
-            fileUploadArea.addEventListener('click', () => fileInput.click());
-            fileUploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                fileUploadArea.classList.add('dragover');
-            });
-            fileUploadArea.addEventListener('dragleave', () => {
-                fileUploadArea.classList.remove('dragover');
-            });
-            fileUploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                fileUploadArea.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    handleFileSelection(files[0]);
-                }
-            });
+            console.log('setupFileUpload: Starting setup...');
+            
+            // Main ERD file upload
+            const fileUploadArea = document.getElementById('fileUploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const fileNameDisplay = document.getElementById('fileNameDisplay');
+            
+            if (fileUploadArea && fileInput) {
+                const uploadButton = fileUploadArea.querySelector('button');
+                uploadButton.addEventListener('click', () => {
+                    fileInput.click();
+                });
 
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFileSelection(e.target.files[0]);
-                }
-            });
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        const file = e.target.files[0];
+                        handleFileSelection(file);
+                        fileNameDisplay.textContent = file.name;
+                    }
+                });
+            }
 
-            document.getElementById('removeFile').addEventListener('click', () => {
-                fileInput.value = '';
-                fileInfo.classList.add('hidden');
-                validationResults.classList.add('hidden');
-                wizard.stepData.validation.valid = false;
-                updateNavigationButtons();
-                updateStepStatus('validation', 'error');
+            // Global choices file upload
+            const choicesUploadArea = document.getElementById('choicesUploadArea');
+            const choicesFileInput = document.getElementById('choicesFileInput');
+            const choicesNameDisplay = document.getElementById('choicesNameDisplay');
+            
+            if (choicesUploadArea && choicesFileInput) {
+                const choicesButton = choicesUploadArea.querySelector('button');
+                choicesButton.addEventListener('click', () => {
+                    choicesFileInput.click();
+                });
+
+                choicesFileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        const file = e.target.files[0];
+                        handleChoicesFileSelection(file);
+                        choicesNameDisplay.textContent = file.name;
+                    }
+                });
+            }
+
+            // Search functionality
+            const searchInput = document.getElementById('globalChoicesSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    filterGlobalChoices(e.target.value);
+                });
+            }
+
+            // Accordion functionality
+            setupAccordions();
+        }
+
+        function setupAccordions() {
+            const accordionButtons = document.querySelectorAll('.accordion-button');
+            console.log('Setting up accordions, found buttons:', accordionButtons.length);
+            
+            accordionButtons.forEach((button, index) => {
+                console.log(`Setting up accordion button ${index}:`, button.textContent.trim());
+                
+                // Remove any existing listeners to prevent duplicates
+                button.replaceWith(button.cloneNode(true));
+                const newButton = document.querySelectorAll('.accordion-button')[index];
+                
+                newButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Accordion button clicked:', newButton.textContent.trim());
+                    
+                    const targetId = newButton.getAttribute('data-bs-target');
+                    const targetCollapse = document.querySelector(targetId);
+                    
+                    console.log('Target ID:', targetId, 'Target element:', targetCollapse);
+                    
+                    if (targetCollapse) {
+                        const isCollapsed = newButton.classList.contains('collapsed');
+                        console.log('Is collapsed:', isCollapsed);
+                        
+                        if (isCollapsed) {
+                            // Expand
+                            newButton.classList.remove('collapsed');
+                            targetCollapse.classList.add('show');
+                            targetCollapse.style.height = 'auto';
+                            console.log('Expanded accordion');
+                        } else {
+                            // Collapse
+                            newButton.classList.add('collapsed');
+                            targetCollapse.classList.remove('show');
+                            targetCollapse.style.height = '0';
+                            console.log('Collapsed accordion');
+                        }
+                    } else {
+                        console.error('Target collapse element not found:', targetId);
+                    }
+                });
             });
         }
 
         function handleFileSelection(file) {
             uploadedFile = file;
-            document.getElementById('fileName').textContent = file.name;
-            document.getElementById('fileSize').textContent = formatFileSize(file.size);
-            fileInfo.classList.remove('hidden');
-
+            
             const reader = new FileReader();
             reader.onload = (e) => {
                 currentERDContent = e.target.result;
+                originalERDContent = e.target.result; // Store original content
+                isUsingCorrectedERD = false; // Reset correction flag
                 wizard.fileContent = e.target.result;
+                
+                // Hide ERD status indicator since we're back to original
+                const erdStatusIndicator = document.getElementById('erdStatusIndicator');
+                if (erdStatusIndicator) erdStatusIndicator.classList.add('hidden');
+                
+                // Reset step navigation title
+                const validationStep = document.querySelector('[data-step="validation"] .step-title');
+                if (validationStep) {
+                    validationStep.innerHTML = 'ERD Validation';
+                }
+                
                 validateERD(e.target.result);
             };
             reader.readAsText(file);
+        }
+
+        function handleChoicesFileSelection(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const choicesData = JSON.parse(e.target.result);
+                    
+                    // Handle different JSON formats
+                    let choicesArray;
+                    if (Array.isArray(choicesData)) {
+                        // Direct array format: [...]
+                        choicesArray = choicesData;
+                    } else if (choicesData.globalChoices && Array.isArray(choicesData.globalChoices)) {
+                        // Wrapped format: {"globalChoices": [...]}
+                        choicesArray = choicesData.globalChoices;
+                    } else if (choicesData.choices && Array.isArray(choicesData.choices)) {
+                        // Alternative wrapped format: {"choices": [...]}
+                        choicesArray = choicesData.choices;
+                    } else {
+                        console.error('Invalid choices file format. Expected array or object with "globalChoices" or "choices" property.');
+                        alert('Invalid choices file format. The file should contain an array of choices or an object with a "globalChoices" property.');
+                        return;
+                    }
+                    
+                    processCustomChoices(choicesArray);
+                } catch (error) {
+                    console.error('Error parsing choices file:', error);
+                    alert('Error parsing choices file. Please check that it contains valid JSON.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function processCustomChoices(choicesArray) {
+            console.log('Processing custom choices:', choicesArray);
+            
+            // Add the custom choices to our filtered choices
+            filteredChoices.custom = filteredChoices.custom.concat(choicesArray);
+            
+            // Store custom choices in wizard data for summary
+            if (!wizard.stepData) {
+                wizard.stepData = {};
+            }
+            if (!wizard.stepData.choices) {
+                wizard.stepData.choices = {};
+            }
+            wizard.stepData.choices.customChoices = choicesArray;
+            
+            console.log('Stored in wizard.stepData.choices.customChoices:', wizard.stepData.choices.customChoices);
+            
+            populateCustomChoices();
+            updateChoicesCounts();
         }
 
         function formatFileSize(bytes) {
@@ -1235,8 +1525,8 @@
             const correctedERDSection = document.getElementById('correctedERDSection');
             if (result.correctedERD && (validation.warnings && validation.warnings.length > 0)) {
                 // Populate original ERD content
-                const originalERDContent = document.getElementById('originalERDContent');
-                originalERDContent.textContent = currentERDContent || 'Original ERD content not available';
+                const originalERDContentElement = document.getElementById('originalERDContent');
+                originalERDContentElement.textContent = isUsingCorrectedERD ? originalERDContent : (currentERDContent || 'Original ERD content not available');
                 
                 // Populate corrected ERD content
                 const correctedERDContent = document.getElementById('correctedERDContent');
@@ -1246,16 +1536,17 @@
                 // Add copy original ERD functionality
                 const copyOriginalButton = document.getElementById('copyOriginalERD');
                 copyOriginalButton.onclick = function() {
-                    navigator.clipboard.writeText(currentERDContent || '').then(function() {
-                        copyOriginalButton.innerHTML = '✅ Copied';
+                    const contentToCopy = isUsingCorrectedERD ? originalERDContent : currentERDContent;
+                    navigator.clipboard.writeText(contentToCopy || '').then(function() {
+                        copyOriginalButton.innerHTML = 'Copied';
                         setTimeout(() => {
-                            copyOriginalButton.innerHTML = '📋 Copy';
+                            copyOriginalButton.innerHTML = 'Copy';
                         }, 2000);
                     }).catch(function(err) {
                         console.error('Could not copy text: ', err);
-                        copyOriginalButton.innerHTML = '❌ Failed';
+                        copyOriginalButton.innerHTML = 'Failed';
                         setTimeout(() => {
-                            copyOriginalButton.innerHTML = '📋 Copy';
+                            copyOriginalButton.innerHTML = 'Copy';
                         }, 2000);
                     });
                 };
@@ -1264,59 +1555,141 @@
                 const copyButton = document.getElementById('copyCorrectedERD');
                 copyButton.onclick = function() {
                     navigator.clipboard.writeText(result.correctedERD).then(function() {
-                        copyButton.innerHTML = '✅ Copied';
+                        copyButton.innerHTML = 'Copied';
                         setTimeout(() => {
-                            copyButton.innerHTML = '📋 Copy';
+                            copyButton.innerHTML = 'Copy';
                         }, 2000);
                     }).catch(function(err) {
                         console.error('Could not copy text: ', err);
-                        copyButton.innerHTML = '❌ Failed';
+                        copyButton.innerHTML = 'Failed';
                         setTimeout(() => {
-                            copyButton.innerHTML = '📋 Copy';
+                            copyButton.innerHTML = 'Copy';
                         }, 2000);
                     });
                 };
 
                 // Add "Use This ERD" functionality
                 const useButton = document.getElementById('useCorrectedERD');
-                useButton.onclick = function() {
-                    // Create a new File object with the corrected ERD content
-                    const correctedContent = result.correctedERD;
-                    const blob = new Blob([correctedContent], { type: 'text/plain' });
-                    const correctedFile = new File([blob], 'corrected-erd.mmd', { type: 'text/plain' });
-                    
-                    // Update the file input and UI
-                    uploadedFile = correctedFile;
-                    currentERDContent = correctedContent;
-                    
-                    // Update the file display
-                    const fileInfo = document.getElementById('fileInfo');
-                    const fileName = document.getElementById('fileName');
-                    const fileSize = document.getElementById('fileSize');
-                    
-                    fileName.textContent = 'corrected-erd.mmd (Corrected Version)';
-                    fileSize.textContent = `${(correctedFile.size / 1024).toFixed(1)} KB`;
-                    fileInfo.style.display = 'flex';
-                    
-                    // Hide the upload area and show success message
-                    document.getElementById('uploadArea').style.display = 'none';
-                    
-                    // Show success message
-                    useButton.innerHTML = '✅ ERD Updated';
-                    useButton.style.backgroundColor = '#107c10';
-                    useButton.style.borderColor = '#107c10';
-                    
-                    setTimeout(() => {
-                        useButton.innerHTML = '✅ Use This';
-                        useButton.style.backgroundColor = '';
-                        useButton.style.borderColor = '';
-                    }, 3000);
-                    
-                    // Re-validate the corrected ERD to show updated results
-                    setTimeout(() => {
-                        validateERD();
-                    }, 1000);
-                };
+                if (useButton) {
+                    useButton.onclick = async function() {
+                        console.log('USE THIS button clicked');
+                        
+                        try {
+                            // Create a new File object with the corrected ERD content
+                            const correctedContent = result.correctedERD;
+                            const blob = new Blob([correctedContent], { type: 'text/plain' });
+                            const correctedFile = new File([blob], 'corrected-erd.mmd', { type: 'text/plain' });
+                            
+                            // Update the file input and UI
+                            uploadedFile = correctedFile;
+                            currentERDContent = correctedContent;
+                            isUsingCorrectedERD = true; // Set correction flag
+                            wizard.fileContent = correctedContent; // Update wizard state
+                            
+                            console.log('Updated file content and state');
+                            
+                            // Update the file display with visual indicator
+                            const fileInfo = document.getElementById('fileInfo');
+                            const fileName = document.getElementById('fileName');
+                            const fileSize = document.getElementById('fileSize');
+                            
+                            if (fileName && fileSize && fileInfo) {
+                                fileName.innerHTML = 'corrected-erd.mmd <span style="color: #107c10; font-weight: bold;">(Using Corrected Version)</span>';
+                                fileSize.textContent = `${(correctedFile.size / 1024).toFixed(1)} KB`;
+                                fileInfo.style.display = 'flex';
+                                fileInfo.style.backgroundColor = '#f6ffed';
+                                fileInfo.style.border = '2px solid #b7eb8f';
+                                fileInfo.style.borderRadius = '6px';
+                            }
+                            
+                            // Hide the upload area and show success message
+                            const uploadArea = document.getElementById('fileUploadArea');
+                            if (uploadArea) {
+                                uploadArea.style.display = 'none';
+                            }
+                            
+                            // Show success message on button
+                            useButton.innerHTML = '✓ ERD Updated';
+                            useButton.style.backgroundColor = '#107c10';
+                            useButton.style.borderColor = '#107c10';
+                            useButton.disabled = true;
+                            
+                            console.log('Updated UI elements');
+                            
+                            // Add green success banner at the top of validation results
+                            const validationResults = document.getElementById('validationResults');
+                            if (validationResults) {
+                                // Remove any existing success banner
+                                const existingBanner = document.getElementById('correctedERDSuccessBanner');
+                                if (existingBanner) {
+                                    existingBanner.remove();
+                                }
+                                
+                                // Create success banner
+                                const successBanner = document.createElement('div');
+                                successBanner.id = 'correctedERDSuccessBanner';
+                                successBanner.style.cssText = `
+                                    background: #f6ffed;
+                                    border: 2px solid #b7eb8f;
+                                    border-radius: 6px;
+                                    padding: 16px;
+                                    margin-bottom: 20px;
+                                    text-align: center;
+                                    color: #107c10;
+                                    font-weight: bold;
+                                    font-size: 16px;
+                                `;
+                                successBanner.innerHTML = '✓ Now using corrected ERD version - Re-validating...';
+                                
+                                // Insert at the beginning of validation results
+                                validationResults.insertBefore(successBanner, validationResults.firstChild);
+                            }
+                            
+                            // Add indicator to step navigation
+                            const validationStep = document.querySelector('[data-step="validation"] .step-title');
+                            if (validationStep && !validationStep.innerHTML.includes('(Corrected)')) {
+                                validationStep.innerHTML = 'ERD Validation (Corrected)';
+                            }
+                            
+                            console.log('Starting re-validation...');
+                            
+                            // Re-validate the corrected ERD to show updated results
+                            await validateERD(correctedContent);
+                            
+                            // Update success banner after validation
+                            const banner = document.getElementById('correctedERDSuccessBanner');
+                            if (banner) {
+                                banner.innerHTML = '✓ Successfully loaded and validated corrected ERD version!';
+                            }
+                            
+                            console.log('Re-validation completed');
+                            
+                        } catch (error) {
+                            console.error('Error using corrected ERD:', error);
+                            
+                            // Show error message
+                            const errorBanner = document.createElement('div');
+                            errorBanner.style.cssText = `
+                                background: #fff2f0;
+                                border: 2px solid #ffccc7;
+                                border-radius: 6px;
+                                padding: 16px;
+                                margin-bottom: 20px;
+                                text-align: center;
+                                color: #d4380d;
+                                font-weight: bold;
+                            `;
+                            errorBanner.innerHTML = '❌ Error applying corrected ERD: ' + error.message;
+                            
+                            const validationResults = document.getElementById('validationResults');
+                            if (validationResults) {
+                                validationResults.insertBefore(errorBanner, validationResults.firstChild);
+                            }
+                        }
+                    };
+                } else {
+                    console.error('USE THIS button not found');
+                }
             } else {
                 correctedERDSection.classList.add('hidden');
             }
@@ -1346,7 +1719,7 @@
                 schemaHtml += `
                     <div class="schema-entity">
                         <div class="schema-entity-header">
-                            🏗️ ${entity.name}
+                            ${entity.name}
                             <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
                                 (${entity.attributes.length} attributes)
                             </span>
@@ -1387,7 +1760,7 @@
                 schemaHtml += `
                     <div class="schema-entity">
                         <div class="schema-entity-header">
-                            🔗 Relationships
+                            Relationships
                             <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
                                 (${result.relationships.length} relationships)
                             </span>
@@ -1485,7 +1858,7 @@
                 
                 container.innerHTML = detectedEntities.map(entity => `
                     <div class="message-card info">
-                        <span class="message-icon">🏗️</span>
+                        <span class="message-icon">•</span>
                         <div class="message-content">
                             <div class="message-title">CDM Entity: ${entity}</div>
                             <div class="message-description">
@@ -1533,115 +1906,283 @@
         }
 
         // Global Choices management
+        let allGlobalChoices = [];
+        let filteredChoices = { custom: [], builtIn: [] };
+
         async function loadGlobalChoices() {
+            console.log('loadGlobalChoices: Starting to load global choices...');
             try {
                 const response = await fetch('/api/global-choices-list');
+                console.log('loadGlobalChoices: Response status:', response.status);
                 const result = await response.json();
+                console.log('loadGlobalChoices: API result:', result);
                 
-                const container = document.getElementById('globalChoicesCheckbox');
-                if (result.success && result.choiceSets) {
-                    container.innerHTML = '';
+                if (result.success && result.all && result.all.length > 0) {
+                    console.log('loadGlobalChoices: Found', result.all.length, 'choice sets');
+                    allGlobalChoices = result.all;
+                    filteredChoices = result.grouped;
                     
-                    result.choiceSets.forEach(choice => {
-                        const item = document.createElement('div');
-                        item.className = 'checkbox-item';
-                        item.innerHTML = `
-                            <input type="checkbox" id="choice_${choice.id}" value="${choice.id}">
-                            <label for="choice_${choice.id}" style="flex: 1; cursor: pointer;">
-                                <strong>${choice.displayName}</strong>
-                                <div class="text-muted">${choice.name} - ${choice.options.length} options</div>
-                            </label>
-                        `;
-                        container.appendChild(item);
-                    });
+                    populateGlobalChoices();
+                    updateChoicesCounts();
+                } else {
+                    console.error('loadGlobalChoices: No choice sets found or API failed:', result);
+                    populateEmptyChoices();
                 }
             } catch (error) {
                 console.error('Error loading global choices:', error);
+                populateEmptyChoices();
             }
+        }
+
+        function populateGlobalChoices() {
+            populateBuiltinChoices();
+            populateCustomChoices();
+        }
+
+        function populateBuiltinChoices() {
+            const container = document.getElementById('builtinChoicesContainer');
+            if (filteredChoices.builtIn.length > 0) {
+                container.innerHTML = '';
+                filteredChoices.builtIn.forEach(choice => {
+                    const item = document.createElement('div');
+                    item.className = 'checkbox-item';
+                    item.setAttribute('data-choice-name', choice.displayName.toLowerCase());
+                    item.setAttribute('data-choice-logical', choice.name.toLowerCase());
+                    item.setAttribute('data-choice-prefix', (choice.prefix || '').toLowerCase());
+                    item.innerHTML = `
+                        <input type="checkbox" id="choice_${choice.id}" value="${choice.name}">
+                        <label for="choice_${choice.id}" style="flex: 1; cursor: pointer;">
+                            <strong>${choice.displayName}</strong>
+                            <div class="text-muted">${choice.name}${choice.prefix ? ` • Prefix: ${choice.prefix}` : ''}</div>
+                        </label>
+                    `;
+                    container.appendChild(item);
+                    
+                    // Add event listener to checkbox for real-time status updates
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', updateChoicesStepStatus);
+                });
+            } else {
+                container.innerHTML = '<p class="text-muted">No built-in choice sets available</p>';
+            }
+        }
+
+        function populateCustomChoices() {
+            const container = document.getElementById('customChoicesContainer');
+            if (filteredChoices.custom.length > 0) {
+                let html = '';
+                filteredChoices.custom.forEach(choice => {
+                    html += `
+                        <div class="checkbox-item" data-choice-name="${choice.displayName.toLowerCase()}" 
+                             data-choice-logical="${choice.name.toLowerCase()}" 
+                             data-choice-prefix="${(choice.prefix || '').toLowerCase()}">
+                            <input type="checkbox" id="choice_${choice.id}" value="${choice.name}">
+                            <label for="choice_${choice.id}" style="flex: 1; cursor: pointer;">
+                                <strong>${choice.displayName}</strong>
+                                <div class="text-muted">${choice.name}${choice.prefix ? ` • Prefix: ${choice.prefix}` : ''}</div>
+                            </label>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+                
+                // Add event listeners to checkboxes for real-time status updates
+                container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateChoicesStepStatus);
+                });
+            }
+            // If no custom choices loaded, keep the upload message
+        }
+
+        function populateEmptyChoices() {
+            document.getElementById('builtinChoicesContainer').innerHTML = '<p class="text-muted">Error loading global choice sets</p>';
+            // Keep the custom choices upload message
+        }
+
+        function updateChoicesCounts() {
+            document.getElementById('builtinChoicesCount').textContent = `(${filteredChoices.builtIn.length})`;
+            document.getElementById('customChoicesCount').textContent = `(${filteredChoices.custom.length})`;
+        }
+
+        function filterGlobalChoices(searchTerm) {
+            const term = searchTerm.toLowerCase().trim();
+            const builtinItems = document.querySelectorAll('#builtinChoicesContainer .checkbox-item');
+            const customItems = document.querySelectorAll('#customChoicesContainer .checkbox-item');
+            
+            let builtinVisible = 0;
+            let customVisible = 0;
+
+            // Filter built-in choices
+            builtinItems.forEach(item => {
+                const name = item.getAttribute('data-choice-name') || '';
+                const logical = item.getAttribute('data-choice-logical') || '';
+                const prefix = item.getAttribute('data-choice-prefix') || '';
+                
+                const isVisible = !term || name.includes(term) || logical.includes(term) || prefix.includes(term);
+                item.style.display = isVisible ? 'flex' : 'none';
+                if (isVisible) builtinVisible++;
+            });
+
+            // Filter custom choices
+            customItems.forEach(item => {
+                const name = item.getAttribute('data-choice-name') || '';
+                const logical = item.getAttribute('data-choice-logical') || '';
+                const prefix = item.getAttribute('data-choice-prefix') || '';
+                
+                const isVisible = !term || name.includes(term) || logical.includes(term) || prefix.includes(term);
+                item.style.display = isVisible ? 'flex' : 'none';
+                if (isVisible) customVisible++;
+            });
+
+            // Update counts
+            document.getElementById('builtinChoicesCount').textContent = `(${builtinVisible}/${filteredChoices.builtIn.length})`;
+            document.getElementById('customChoicesCount').textContent = `(${customVisible}/${filteredChoices.custom.length})`;
         }
 
         // Summary generation
         function generateSummary() {
+            console.log('Generating summary, wizard.stepData:', wizard.stepData);
             const container = document.getElementById('deploymentSummary');
             
-            const summaryCards = [
+            // Determine publisher information
+            let publisherInfo = 'Not configured';
+            if (wizard.stepData.publisher.type === 'existing' && wizard.stepData.publisher.selectedPublisher) {
+                try {
+                    const publisherData = JSON.parse(wizard.stepData.publisher.selectedPublisher);
+                    publisherInfo = publisherData.friendlyName;
+                } catch (e) {
+                    publisherInfo = 'Selected existing publisher';
+                }
+            } else if (wizard.stepData.publisher.type === 'new') {
+                const publisherName = document.getElementById('publisherName')?.value;
+                if (publisherName && publisherName.trim()) {
+                    publisherInfo = `${publisherName.trim()} (New)`;
+                } else {
+                    publisherInfo = 'Creating new publisher';
+                }
+            }
+            
+            const summaryItems = [
                 {
                     title: 'Entities',
-                    icon: '📋',
-                    value: wizard.stepData.validation.entities.length,
-                    description: 'Custom entities to create'
+                    count: wizard.stepData.validation.entities.length,
+                    details: wizard.stepData.validation.entities.map(entity => 
+                        `${entity.name || entity.logicalName || 'Unknown'} - ${entity.displayName || entity.name || 'No display name'}`
+                    )
                 },
                 {
                     title: 'Relationships',
-                    icon: '🔗',
-                    value: wizard.stepData.validation.relationships.length,
-                    description: 'Entity relationships'
+                    count: wizard.stepData.validation.relationships.length,
+                    details: wizard.stepData.validation.relationships.map(rel => {
+                        const relationshipType = rel.cardinality?.type || rel.type || 'one-to-many';
+                        const relationshipName = rel.name || rel.displayName || '';
+                        const nameDisplay = relationshipName ? ` "${relationshipName}"` : '';
+                        return `${rel.fromEntity} → ${rel.toEntity} (${relationshipType})${nameDisplay}`;
+                    })
                 },
                 {
                     title: 'Publisher',
-                    icon: '🏢',
-                    value: wizard.stepData.publisher.selectedPublisher ? 
-                           JSON.parse(wizard.stepData.publisher.selectedPublisher).friendlyName : 
-                           'Not selected',
-                    description: 'Solution publisher'
+
+                    count: 1,
+                    details: [publisherInfo]
                 },
                 {
-                    title: 'CDM Entities',
-                    icon: '🏗️',
-                    value: document.querySelectorAll('#cdmEntitiesCheckbox input:checked').length,
-                    description: 'CDM entities to include'
+                    title: 'Solution',
+
+                    count: 1,
+                    details: [document.getElementById('solutionName')?.value || 'Not specified']
                 },
                 {
                     title: 'Global Choices',
-                    icon: '📋',
-                    value: document.querySelectorAll('#globalChoicesCheckbox input:checked').length,
-                    description: 'Choice sets to include'
+                    count: (() => {
+                        const selectedBuiltIn = [];
+                        const selectedCustom = [];
+                        const uploadedCustom = [];
+                        
+                        // Check selected built-in and custom choices from UI
+                        document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked').forEach(input => {
+                            const label = input.nextElementSibling;
+                            if (label) {
+                                const choiceName = label.querySelector('strong')?.textContent || 'Unknown';
+                                if (input.closest('#builtinChoicesContainer')) {
+                                    selectedBuiltIn.push(choiceName);
+                                } else {
+                                    selectedCustom.push(choiceName);
+                                }
+                            }
+                        });
+                        
+                        // Add uploaded custom choices
+                        if (wizard.stepData && wizard.stepData.choices && wizard.stepData.choices.customChoices && Array.isArray(wizard.stepData.choices.customChoices)) {
+                            wizard.stepData.choices.customChoices.forEach(choice => {
+                                if (choice.Name || choice.name) {
+                                    uploadedCustom.push(choice.Name || choice.name);
+                                }
+                            });
+                        }
+                        
+                        return selectedBuiltIn.length + selectedCustom.length + uploadedCustom.length;
+                    })(),
+                    details: (() => {
+                        const selectedBuiltIn = [];
+                        const selectedCustom = [];
+                        const uploadedCustom = [];
+                        
+                        // Check selected built-in and custom choices from UI
+                        document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked').forEach(input => {
+                            const label = input.nextElementSibling;
+                            if (label) {
+                                const choiceName = label.querySelector('strong')?.textContent || 'Unknown';
+                                if (input.closest('#builtinChoicesContainer')) {
+                                    selectedBuiltIn.push(`${choiceName} (Built-in)`);
+                                } else {
+                                    selectedCustom.push(`${choiceName} (Custom)`);
+                                }
+                            }
+                        });
+                        
+                        // Add uploaded custom choices
+                        if (wizard.stepData && wizard.stepData.choices && wizard.stepData.choices.customChoices && Array.isArray(wizard.stepData.choices.customChoices)) {
+                            wizard.stepData.choices.customChoices.forEach(choice => {
+                                if (choice.Name || choice.name) {
+                                    uploadedCustom.push(`${choice.Name || choice.name} (Uploaded JSON)`);
+                                }
+                            });
+                        }
+                        
+                        const allChoices = [...selectedBuiltIn, ...selectedCustom, ...uploadedCustom];
+                        return allChoices.length > 0 ? allChoices : ['None selected'];
+                    })()
                 }
             ];
 
-            container.innerHTML = summaryCards.map(card => `
-                <div class="summary-card">
-                    <div class="summary-card-title">
-                        <span class="icon">${card.icon}</span>
-                        ${card.title}
-                    </div>
-                    <div style="font-size: 24px; font-weight: 600; margin: 8px 0;">${card.value}</div>
-                    <div class="text-muted">${card.description}</div>
+            container.innerHTML = `
+                <div class="summary-list">
+                    ${summaryItems.map((item, index) => `
+                        <div class="summary-item">
+                            <div class="summary-header" onclick="toggleSummaryItem(${index})">
+                                <div class="summary-title">
+                                    <span class="summary-count">${item.count}</span>
+                                    <span class="summary-label">${item.title}</span>
+                                </div>
+                                <span class="summary-toggle">▼</span>
+                            </div>
+                            <div class="summary-details" id="summary-details-${index}">
+                                ${item.details.length > 0 ? 
+                                    (index === 4 ? // Global choices section (no bullets)
+                                        `<div class="choice-list">${item.details.map(detail => `<div class="choice-item">${detail}</div>`).join('')}</div>` :
+                                        `<ul>${item.details.map(detail => `<li>${detail}</li>`).join('')}</ul>`
+                                    ) : 
+                                    '<p class="no-items">None configured</p>'
+                                }
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
-            `).join('');
+            `;
         }
 
-        // Setup choices file upload
-        function setupChoicesFileUpload() {
-            choicesUploadArea.addEventListener('click', () => choicesFileInput.click());
-            
-            choicesFileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    const file = e.target.files[0];
-                    document.getElementById('choicesFileName').textContent = file.name;
-                    document.getElementById('choicesFileSize').textContent = formatFileSize(file.size);
-                    choicesFileInfo.classList.remove('hidden');
-                    
-                    // Read and validate JSON
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const json = JSON.parse(e.target.result);
-                            wizard.stepData.choices.customChoices = json;
-                        } catch (error) {
-                            alert('Invalid JSON file: ' + error.message);
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            });
-
-            document.getElementById('removeChoicesFile').addEventListener('click', () => {
-                choicesFileInput.value = '';
-                choicesFileInfo.classList.add('hidden');
-                wizard.stepData.choices.customChoices = null;
-            });
-        }
+        // (Removed setupChoicesFileUpload function - now handled in setupFileUpload)
 
         // Publisher option handling
         function setupPublisherOptions() {
@@ -1655,10 +2196,19 @@
                         newPublisherFields.classList.remove('hidden');
                         existingPublishers.disabled = true;
                         wizard.stepData.publisher.type = 'new';
+                        wizard.stepData.publisher.selectedPublisher = null;
+                        
+                        // Initialize newPublisher object and capture current form values
+                        wizard.stepData.publisher.newPublisher = {
+                            name: document.getElementById('publisherName')?.value || '',
+                            uniqueName: document.getElementById('publisherUniqueName')?.value || '',
+                            prefix: document.getElementById('publisherPrefix')?.value || ''
+                        };
                     } else {
                         newPublisherFields.classList.add('hidden');
                         existingPublishers.disabled = false;
                         wizard.stepData.publisher.type = 'existing';
+                        wizard.stepData.publisher.newPublisher = {};
                     }
                     validatePublisherStep();
                 });
@@ -1669,23 +2219,83 @@
                 validatePublisherStep();
             });
 
-            ['publisherName', 'publisherPrefix', 'solutionName'].forEach(id => {
-                document.getElementById(id).addEventListener('input', validatePublisherStep);
+            ['publisherName', 'publisherUniqueName', 'publisherPrefix', 'solutionName'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', (e) => {
+                        if (id === 'publisherName') {
+                            generatePublisherUniqueName();
+                        }
+                        
+                        // Store new publisher data in wizard stepData
+                        if (wizard.stepData.publisher.type === 'new') {
+                            if (!wizard.stepData.publisher.newPublisher) {
+                                wizard.stepData.publisher.newPublisher = {};
+                            }
+                            
+                            wizard.stepData.publisher.newPublisher = {
+                                name: document.getElementById('publisherName')?.value || '',
+                                uniqueName: document.getElementById('publisherUniqueName')?.value || '',
+                                prefix: document.getElementById('publisherPrefix')?.value || ''
+                            };
+                            
+                            console.log('Updated newPublisher data:', wizard.stepData.publisher.newPublisher);
+                        }
+                        
+                        validatePublisherStep();
+                    });
+                }
             });
         }
 
-        function validatePublisherStep() {
-            const type = wizard.stepData.publisher.type;
-            let valid = false;
-
-            if (type === 'existing') {
-                valid = wizard.stepData.publisher.selectedPublisher && 
-                       document.getElementById('solutionName').value.trim();
-            } else {
-                valid = document.getElementById('publisherName').value.trim() &&
-                       document.getElementById('publisherPrefix').value.trim() &&
-                       document.getElementById('solutionName').value.trim();
+        function generatePublisherUniqueName() {
+            const friendlyName = document.getElementById('publisherName').value;
+            const uniqueNameField = document.getElementById('publisherUniqueName');
+            const prefixField = document.getElementById('publisherPrefix');
+            
+            if (!friendlyName) {
+                uniqueNameField.value = '';
+                prefixField.value = '';
+                return;
             }
+            
+            // Auto-generate unique name by removing spaces and special chars, keeping only letters and numbers
+            let uniqueName = friendlyName
+                .replace(/[^a-zA-Z0-9]/g, '') // Remove all non-alphanumeric characters including spaces
+                .replace(/^\d+/, ''); // Remove leading numbers
+            
+            // Ensure it starts with a letter
+            if (uniqueName && !/^[a-zA-Z]/.test(uniqueName)) {
+                uniqueName = 'Publisher' + uniqueName;
+            }
+            
+            // Set the unique name field
+            uniqueNameField.value = uniqueName;
+            uniqueNameField.readOnly = false; // Allow manual editing after auto-generation
+            
+            // Auto-generate prefix from first 3-8 characters of unique name
+            if (uniqueName) {
+                let prefix = uniqueName.substring(0, 8).toLowerCase();
+                // Ensure minimum 3 characters
+                if (prefix.length < 3) {
+                    prefix = (prefix + 'pub').substring(0, 8);
+                }
+                prefixField.value = prefix;
+            } else {
+                prefixField.value = '';
+            }
+        }
+
+        function validatePublisherStep() {
+            const valid = wizard.isPublisherStepComplete();
+            console.log('Publisher step validation:', {
+                type: wizard.stepData.publisher.type,
+                valid: valid,
+                publisherName: document.getElementById('publisherName')?.value,
+                publisherUniqueName: document.getElementById('publisherUniqueName')?.value,
+                publisherPrefix: document.getElementById('publisherPrefix')?.value,
+                solutionName: document.getElementById('solutionName')?.value
+            });
 
             if (valid) {
                 updateStepStatus('publisher', 'completed');
@@ -1694,6 +2304,22 @@
             }
 
             updateNavigationButtons();
+        }
+
+        function updateChoicesStepStatus() {
+            // Check if any choices are selected (either built-in or custom)
+            const builtinSelected = document.querySelectorAll('#builtinChoicesContainer input:checked').length;
+            const customSelected = document.querySelectorAll('#customChoicesContainer input:checked').length;
+            const hasSelectedChoices = builtinSelected > 0 || customSelected > 0;
+            
+            if (hasSelectedChoices) {
+                updateStepStatus('choices', 'completed');
+            } else {
+                // Choices step is optional, so we don't mark it as error
+                // Just remove any existing status
+                const stepNav = document.querySelector('[data-step="choices"]');
+                stepNav.classList.remove('completed', 'error');
+            }
         }
 
         // Event listeners
@@ -1734,42 +2360,103 @@
             deploymentOutput.innerHTML = '<div class="text-center"><div class="loading-spinner"></div><p>Deploying to Dataverse...</p></div>';
             
             try {
-                // Prepare deployment data
+                // Prepare deployment data in the format expected by handleDeployment
                 const deploymentData = {
-                    mermaidContent: wizard.fileContent,
+                    entities: wizard.stepData.validation.entities,
+                    relationships: wizard.stepData.validation.relationships,
                     solutionName: document.getElementById('solutionName').value,
                     dryRun: document.getElementById('dryRunMode').checked,
-                    publisherData: wizard.stepData.publisher,
-                    selectedCDMEntities: Array.from(document.querySelectorAll('#cdmEntitiesCheckbox input:checked')).map(cb => cb.value),
-                    selectedChoices: Array.from(document.querySelectorAll('#globalChoicesCheckbox input:checked')).map(cb => cb.value),
-                    customChoices: wizard.stepData.choices.customChoices
+                    publisher: wizard.stepData.publisher.type === 'existing' && wizard.stepData.publisher.selectedPublisher ? 
+                        JSON.parse(wizard.stepData.publisher.selectedPublisher) : null,
+                    createPublisher: wizard.stepData.publisher.type === 'new',
+                    publisherName: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.name : null,
+                    publisherUniqueName: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.uniqueName : null,
+                    publisherPrefix: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.prefix : null,
+                    selectedChoices: Array.from(document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked'))
+                        .map(cb => cb.value)
+                        .filter(value => value && value.trim() !== '' && value !== 'undefined'),
+                    uploadedGlobalChoices: wizard.stepData.choices.customChoices && wizard.stepData.choices.customChoices.length > 0 ? {
+                        count: wizard.stepData.choices.customChoices.length,
+                        data: wizard.stepData.choices.customChoices,
+                        filename: 'uploaded-choices.json'
+                    } : null
                 };
 
-                const response = await fetch('/api/deploy', {
+                console.log('Deployment data being sent:', JSON.stringify(deploymentData, null, 2));
+                console.log('Publisher data details:', wizard.stepData.publisher);
+
+                const response = await fetch('/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(deploymentData)
                 });
 
-                const result = await response.json();
-                
-                if (result.success) {
+                // Handle streaming response from handleDeployment
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let logs = [];
+                let finalResult = null;
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n').filter(line => line.trim());
+
+                        for (const line of lines) {
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.type === 'log') {
+                                    logs.push(data.message);
+                                    // Show live logs in deployment output
+                                    deploymentOutput.innerHTML = `
+                                        <div class="message-card info">
+                                            <span class="message-icon">•</span>
+                                            <div class="message-content">
+                                                <div class="message-title">Deploying...</div>
+                                                <div class="message-description">
+                                                    ${logs.slice(-5).map(log => `<div>${log}</div>`).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (data.type === 'result') {
+                                    finalResult = data;
+                                }
+                            } catch (parseError) {
+                                console.log('Non-JSON line:', line);
+                            }
+                        }
+                    }
+                } finally {
+                    reader.releaseLock();
+                }
+
+                // Handle final result
+                if (finalResult && finalResult.success) {
                     deploymentOutput.innerHTML = `
                         <div class="message-card success">
-                            <span class="message-icon">✅</span>
+                            <span class="message-icon">•</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Successful</div>
-                                <div class="message-description">Your entities have been created in Dataverse successfully.</div>
+                                <div class="message-description">${finalResult.message || 'Your deployment completed successfully.'}</div>
+                                ${finalResult.entities ? `<div style="margin-top: 8px; font-size: 14px; color: #666;">Created ${finalResult.entities.length} entities</div>` : ''}
                             </div>
                         </div>
                     `;
                 } else {
                     deploymentOutput.innerHTML = `
                         <div class="message-card error">
-                            <span class="message-icon">❌</span>
+                            <span class="message-icon">•</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Failed</div>
-                                <div class="message-description">${result.error}</div>
+                                <div class="message-description">${finalResult?.error || finalResult?.message || 'An unknown error occurred.'}</div>
                             </div>
                         </div>
                     `;
@@ -1777,7 +2464,7 @@
             } catch (error) {
                 deploymentOutput.innerHTML = `
                     <div class="message-card error">
-                        <span class="message-icon">❌</span>
+                        <span class="message-icon">•</span>
                         <div class="message-content">
                             <div class="message-title">Deployment Error</div>
                             <div class="message-description">${error.message}</div>
@@ -1789,15 +2476,35 @@
 
         // Initialize the application
         function init() {
+            console.log('Initializing application...');
             setupFileUpload();
-            setupChoicesFileUpload();
+            // setupChoicesFileUpload(); // Now handled in setupFileUpload
             setupPublisherOptions();
+            loadPublishers();
+            setupAccordions(); // Ensure accordions work on page load
             updateNavigationButtons();
             wizard.updateProgress();
         }
 
+        // Toggle summary item accordion
+        function toggleSummaryItem(index) {
+            const details = document.getElementById(`summary-details-${index}`);
+            const toggle = document.querySelector(`[onclick="toggleSummaryItem(${index})"] .summary-toggle`);
+            
+            if (details.style.display === 'none' || !details.style.display) {
+                details.style.display = 'block';
+                toggle.textContent = '▲';
+            } else {
+                details.style.display = 'none';
+                toggle.textContent = '▼';
+            }
+        }
+
         // Start the application
-        init();
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded, initializing...');
+            init();
+        });
     </script>
 </body>
 </html>

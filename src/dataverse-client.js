@@ -530,18 +530,39 @@ class DataverseClient {
 
       // Handle global choices
       if (options.selectedChoices && options.selectedChoices.length > 0 && this.solutionName) {
-        console.log(` Adding ${options.selectedChoices.length} global choices to solution...`);
+        // Filter out undefined, null, and empty values
+        const validChoices = options.selectedChoices.filter(choice => {
+          if (!choice) return false;
+          if (typeof choice === 'string' && choice.trim() === '') return false;
+          if (typeof choice === 'object' && !choice.LogicalName && !choice.Name) return false;
+          return true;
+        });
+        
+        console.log(` Adding ${validChoices.length} global choices to solution (filtered from ${options.selectedChoices.length})...`);
+        console.log(` DEBUG: selectedChoices array:`, JSON.stringify(options.selectedChoices, null, 2));
+        console.log(` DEBUG: validChoices array:`, JSON.stringify(validChoices, null, 2));
+        
+        if (validChoices.length === 0) {
+          console.log(' No valid global choices to add to solution');
+          return results;
+        }
         
         try {
-          for (let i = 0; i < options.selectedChoices.length; i++) {
-            const choice = options.selectedChoices[i];
-            console.log(` Adding global choice ${i + 1}/${options.selectedChoices.length}: ${choice.LogicalName || choice.Name}`);
+          for (let i = 0; i < validChoices.length; i++) {
+            const choice = validChoices[i];
+            console.log(` DEBUG: Processing choice ${i}:`, choice);
+            console.log(` DEBUG: Choice type:`, typeof choice);
+            console.log(` DEBUG: Choice LogicalName:`, choice?.LogicalName);
+            console.log(` DEBUG: Choice Name:`, choice?.Name);
+            
+            const choiceName = choice?.LogicalName || choice?.Name || choice;
+            console.log(` Adding global choice ${i + 1}/${validChoices.length}: ${choiceName}`);
             
             try {
-              await this.addGlobalChoiceToSolution(choice.LogicalName || choice.Name, this.solutionName);
-              console.log(`   ✓ Global choice ${choice.LogicalName || choice.Name} added to solution`);
+              await this.addGlobalChoiceToSolution(choiceName, this.solutionName);
+              console.log(`   ✓ Global choice ${choiceName} added to solution`);
             } catch (error) {
-              console.error(`   ✗ Failed to add global choice ${choice.LogicalName || choice.Name}: ${error.message}`);
+              console.error(`   ✗ Failed to add global choice ${choiceName}: ${error.message}`);
               // Continue with other choices even if one fails
             }
           }
@@ -1655,11 +1676,21 @@ class DataverseClient {
     try {
       logToFile('🔥 createGlobalChoicesFromJson: Starting', choicesJson);
       
-      if (!choicesJson.globalChoices || !Array.isArray(choicesJson.globalChoices)) {
-        throw new Error('Invalid JSON format: missing globalChoices array');
+      // Handle both formats: direct array or wrapped in globalChoices property
+      let choicesToProcess;
+      if (Array.isArray(choicesJson)) {
+        // Direct array format
+        choicesToProcess = choicesJson;
+        logToFile('🔥 createGlobalChoicesFromJson: Using direct array format');
+      } else if (choicesJson.globalChoices && Array.isArray(choicesJson.globalChoices)) {
+        // Wrapped format
+        choicesToProcess = choicesJson.globalChoices;
+        logToFile('🔥 createGlobalChoicesFromJson: Using wrapped format');
+      } else {
+        throw new Error('Invalid JSON format: expected array or object with globalChoices array');
       }
       
-      logToFile(`🔥 createGlobalChoicesFromJson: Found ${choicesJson.globalChoices.length} choices to process`);
+      logToFile(`🔥 createGlobalChoicesFromJson: Found ${choicesToProcess.length} choices to process`);
 
       const results = {
         success: true,
@@ -1669,7 +1700,7 @@ class DataverseClient {
         choiceSets: []
       };
 
-      for (const choiceDefinition of choicesJson.globalChoices) {
+      for (const choiceDefinition of choicesToProcess) {
         try {
           logToFile(`🔥 createGlobalChoicesFromJson: Processing choice`, {
             name: choiceDefinition.name,
