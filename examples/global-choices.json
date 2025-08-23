@@ -1,7 +1,7 @@
 {
     "globalChoices": [
         {
-            "name": "mmd_teamchoice",
+            "name": "teamchoice",
             "displayName": "Team Assignment",
             "description": "Teams that employees can be assigned to",
             "options": [
@@ -28,7 +28,7 @@
             ]
         },
         {
-            "name": "mmd_levelchoice",
+            "name": "levelchoice",
             "displayName": "Experience Level",
             "description": "Experience levels for staff members",
             "options": [

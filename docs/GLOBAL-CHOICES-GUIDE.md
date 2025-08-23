@@ -31,7 +31,7 @@ Global choices are defined in JSON files with the following structure:
 {
   "globalChoices": [
     {
-      "name": "yourprefix_choice_internal_name",
+      "name": "choice_internal_name",
       "displayName": "Human Readable Name",
       "description": "Optional description of the choice set",
       "options": [
@@ -44,14 +44,14 @@ Global choices are defined in JSON files with the following structure:
 }
 ```
 
-**⚠️ Important**: The `name` field **must include your publisher prefix** (e.g., `south_deployment_stage`, `mmd_priority_level`). This prevents naming conflicts and ensures consistency with your solution's naming convention.
+**⚠️ Important**: The `name` field should NOT include your publisher prefix. The publisher prefix will be automatically applied during creation based on the publisher selected in the deployment wizard. This ensures consistent naming conventions and prevents conflicts.
 
-**Example with tested prefix:**
+**Example:**
 ```json
 {
   "globalChoices": [
     {
-      "name": "south_deployment_stage",
+      "name": "deployment_stage",
       "displayName": "Deployment Stage",
       "description": "Stages in the deployment lifecycle",
       "options": [
@@ -64,11 +64,13 @@ Global choices are defined in JSON files with the following structure:
 }
 ```
 
+When this is deployed with a publisher prefix "south", it will be created in Dataverse as "south_deployment_stage".
+
 ### 🔧 Field Descriptions
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | ✅ Yes | **Must include publisher prefix** - Internal name for the choice set (e.g., `yourprefix_choice_name`) |
+| `name` | ✅ Yes | Internal name for the choice set (e.g., `choice_name`) - The publisher prefix will be automatically added during creation |
 | `displayName` | ✅ Yes | Human-readable name shown in Dataverse UI |
 | `description` | ❌ No | Optional description explaining the purpose |
 | `options` | ✅ Yes | Array of choice options with values and labels |
@@ -109,7 +111,7 @@ Create a JSON file containing your global choice definitions. Example `my-choice
 {
   "globalChoices": [
     {
-      "name": "south_priority_level",
+      "name": "priority_level",
       "displayName": "Priority Level",
       "description": "Priority levels for tasks and issues",
       "options": [
@@ -121,7 +123,7 @@ Create a JSON file containing your global choice definitions. Example `my-choice
       ]
     },
     {
-      "name": "south_project_status",
+      "name": "project_status",
       "displayName": "Project Status", 
       "description": "Status options for projects",
       "options": [
@@ -142,7 +144,8 @@ Create a JSON file containing your global choice definitions. Example `my-choice
 2. **Upload your JSON file** - Use the "Global Choices File" section
 3. **Configure solution settings**:
    - **Solution Name**: Name of the Dataverse solution
-   - **Publisher Prefix**: 3-8 character prefix for your organization
+   - **Publisher**: Select an existing publisher or create a new one
+   - **Publisher Prefix**: 3-8 character prefix for your organization (automatically applied to choice names)
    - **Dry Run**: Enable to preview without creating choices
 4. **Process** - Click "Convert & Deploy" to create the global choices
 5. **Monitor progress** - Watch real-time logs showing creation status
@@ -165,67 +168,32 @@ You can use both approaches in a single deployment:
 
 This hybrid approach lets you leverage existing organizational standards while adding custom choices specific to your project.
 
-## Integration with Mermaid Files
-
-Global choices can be referenced in your Mermaid ERD files using enum syntax:
-
-```mermaid
-erDiagram
-    Task {
-        string task_id PK
-        string title
-        string priority {enum: Low, Medium, High, Critical, Urgent}
-        string status {enum: Planning, In Progress, On Hold, Completed, Cancelled}
-        datetime created_date
-    }
-    
-    Project {
-        string project_id PK
-        string name
-        string status {enum: Planning, In Progress, On Hold, Completed, Cancelled}
-    }
-    
-    Task ||--o{ Project : "belongs_to"
-```
-
-**Current Behavior**: 
-- The parser detects enum fields in Mermaid ERDs
-- Fields with enum syntax are created as choice fields in Dataverse
-- Global choices (selected or uploaded) are added to the solution
-- **Note**: Automatic linking of Mermaid enum fields to specific global choices is in development
-
-**Best Practice**: 
-- Use consistent naming between your Mermaid enum values and global choice options
-- Document which global choices correspond to which Mermaid fields
-- Consider creating global choices first, then referencing them in your Mermaid files
+As Mermaid doe not support choice fields, you can ater on enhance your tables with choice columns and pull the values from the global choices that we already added to the solution.
 
 ## Best Practices
 
-### 🎯 Naming Conventions
-- **Choice set names**: **MUST include publisher prefix** + snake_case (e.g., `south_order_status`, `mmd_customer_type`)
-- **Publisher prefix**: Use your solution's prefix consistently (e.g., `south_`, `mmd_`, `yourorg_`)
+### Naming Conventions
+
 - **Display names**: Use Title Case (e.g., "Order Status", "Customer Type")
 - **Option labels**: Use clear, concise text (e.g., "In Progress", not "in_progress")
-
-**⚠️ Critical**: Based on production testing, the `name` field in JSON **must include the publisher prefix**. Without the prefix, global choices may conflict with existing choices or fail to deploy properly.
 
 ### 🔢 Value Ranges
 - **Start at 100000000** - Dataverse standard for custom option values
 - **Sequential values** - Increment by 1 for each option
 - **Consistent numbering** - Don't skip numbers within a choice set
 
-### 📁 File Organization
+### File Organization
 - **Group related choices** - Put related choice sets in the same JSON file
 - **Logical file names** - Use descriptive names like `sales-choices.json`
 - **Version control** - Store JSON files in source control with your Mermaid files
 
-### 🎯 Wizard Interface Integration
+### Wizard Interface Integration
 - **Step-by-step guidance** - The wizard interface walks you through global choice selection
 - **Visual choice browser** - Browse existing choices with search and filtering
 - **Real-time validation** - Immediate feedback on JSON file format and content
 - **Combined deployment** - Include global choices as part of your complete solution deployment
 
-### 🏗️ Solution Management
+### Solution Management
 - **Use consistent solution names** - Same solution for related entities and choices
 - **Publisher prefixes** - Use your organization's standard prefix
 - **Environment strategy** - Test in development before production deployment

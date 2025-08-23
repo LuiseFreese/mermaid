@@ -38,6 +38,9 @@ Copy-Item "$projectRoot\src\azure-keyvault.js" -Destination "$deploymentFolder\a
 Copy-Item "$projectRoot\src\mermaid-parser.js" -Destination "$deploymentFolder\mermaid-parser.js"
 Copy-Item "$projectRoot\src\dataverse-client.js" -Destination "$deploymentFolder\dataverse-client.js"
 
+# Copy UI files
+Copy-Item "$projectRoot\src\wizard-ui.html" -Destination "$deploymentFolder\wizard-ui.html"
+
 # Copy package.json (with Azure SDK dependencies)
 Copy-Item "$projectRoot\package.json" -Destination "$deploymentFolder\package.json"
 

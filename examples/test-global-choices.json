@@ -1,7 +1,7 @@
 {
     "globalChoices": [
         {
-            "name": "day_priority_level",
+            "name": "priority_level",
             "displayName": "Priority Level",
             "description": "Priority levels for tasks and projects",
             "options": [
@@ -24,7 +24,7 @@
             ]
         },
         {
-            "name": "day_status_code",
+            "name": "status_code",
             "displayName": "Status Code",
             "description": "General status codes for various entities",
             "options": [

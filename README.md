@@ -4,13 +4,13 @@ A production-ready Azure App Service application that converts Mermaid ERD diagr
 
 ## Features
 
-- **🚀 Azure App Service Deployment**: Production-ready web application with managed identity
-- **🔐 Secure Authentication**: Azure Key Vault integration with managed identity for secrets
-- **📊 Real-time Processing**: Upload Mermaid files and see live progress in the web UI
-- **🏗️ Complete Schema Generation**: Creates publishers, solutions, entities, columns, and relationships
-- **🎯 Global Choices Support**: Create and manage Dataverse global choice sets via JSON files
-- **✅ Validation & Testing**: Built-in validation and dry-run modes for safe testing
-- **📝 Detailed Logging**: Comprehensive logging with real-time streaming to the UI
+- **Azure App Service Deployment**: Production-ready web application with managed identity
+- **Secure Authentication**: Azure Key Vault integration with managed identity for secrets
+- **Real-time Processing**: Upload Mermaid files and see live progress in the web UI
+- **Complete Schema Generation**: Creates publishers, solutions, entities, columns, and relationships
+- **Global Choices Support**: Create and manage Dataverse global choice sets via JSON files
+- **Validation & Testing**: Built-in validation and dry-run modes for safe testing
+- **Detailed Logging**: Comprehensive logging with real-time streaming to the UI
 
 ## Architecture
 
@@ -248,8 +248,7 @@ The application provides several health check endpoints:
 
 ## Documentation
 
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system architecture and design patterns
-- **[Developer Guide](docs/DEVELOPER.md)** - Development setup, testing, and contribution guidelines  
+- **[Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md)** - Detailed system architecture, development setup, and contribution guidelines
 - **[Entra ID Setup](docs/ENTRA-ID-SETUP.md)** - Automated setup and authentication configuration
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples and API reference
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax and data modeling guide
@@ -309,6 +308,26 @@ This creates:
 3. Make your changes
 4. Test thoroughly using the validation endpoints
 5. Submit a pull request
+
+## Repository Maintenance
+
+The repository includes cleanup scripts to keep the codebase clean and free from unused files.
+
+### Running Cleanup
+
+```powershell
+# Run cleanup script (with backup)
+npm run cleanup
+
+# Dry run (shows what would be cleaned without making changes)
+npm run cleanup:dry
+```
+
+The cleanup process:
+- Removes unused server variants and temporary files
+- Cleans up empty directories
+- Archives old log files (>7 days old)
+- Creates backups of all removed files
 
 ## License
 

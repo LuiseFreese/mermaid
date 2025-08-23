@@ -510,7 +510,7 @@ If issues persist, provide:
 - Sample Mermaid file that's causing issues
 - Browser console errors (F12 Developer Tools)
 
-For detailed technical architecture and developer information, see [DEVELOPER.md](DEVELOPER.md).
+For detailed technical architecture and developer information, see [DEVELOPER_ARCHITECTURE.md](DEVELOPER_ARCHITECTURE.md).
 
 For automated deployment setup, see [ENTRA-ID-SETUP.md](ENTRA-ID-SETUP.md).
 

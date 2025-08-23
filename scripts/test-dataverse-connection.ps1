@@ -33,7 +33,7 @@ param(
 )
 
 # Color functions for output
-function Write-Success { param($Message) Write-Host "✅ $Message" -ForegroundColor Green }
+function Write-Success { param($Message) Write-Host " $Message" -ForegroundColor Green }
 function Write-Info { param($Message) Write-Host "ℹ️  $Message" -ForegroundColor Cyan }
 function Write-Warning { param($Message) Write-Host "⚠️  $Message" -ForegroundColor Yellow }
 function Write-Error { param($Message) Write-Host "❌ $Message" -ForegroundColor Red }
@@ -206,9 +206,9 @@ function Show-TestResults {
     if ($AllTestsPassed) {
         Write-Host "🎉 All Tests Passed!" -ForegroundColor Green
         Write-Host ""
-        Write-Host "✅ Configuration is ready for deployment" -ForegroundColor Green
-        Write-Host "✅ Dataverse connection is working" -ForegroundColor Green
-        Write-Host "✅ Application User has sufficient permissions" -ForegroundColor Green
+        Write-Host " Configuration is ready for deployment" -ForegroundColor Green
+        Write-Host " Dataverse connection is working" -ForegroundColor Green
+        Write-Host " Application User has sufficient permissions" -ForegroundColor Green
     } else {
         Write-Host "❌ Some Tests Failed" -ForegroundColor Red
         Write-Host ""

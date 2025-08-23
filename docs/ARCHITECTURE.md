@@ -12,8 +12,9 @@ The Mermaid to Dataverse Converter is a **Node.js web application** deployed on 
 - **Deployment**: Azure App Service with managed identity
 - **Authentication**: Azure Key Vault with managed identity
 - **Security**: No secrets in code, all credentials in Key Vault
-- **UI**: Web-based with real-time streaming logs
+- **UI**: Web-based wizard with real-time streaming logs
 - **API**: RESTful endpoints for validation and testing
+- **Logging**: Comprehensive logging to files and UI
 
 ## High-Level Architecture
 
@@ -72,12 +73,10 @@ graph TB
 **Main Endpoints**:
 
 **UI Endpoints**:
-- `GET /` - Legacy web interface for file upload
 - `GET /wizard` - **Primary wizard interface** for guided deployment
 
 **Core API Endpoints**:
-- `POST /upload` - File upload and processing with streaming logs
-- `POST /api/deploy` - **Main deployment endpoint** from wizard
+- `POST /upload` - **Primary deployment endpoint** from wizard with streaming logs
 - `POST /api/validate-erd` - Enhanced ERD validation with corrections
 - `POST /api/validate` - Validate Mermaid entities without creation
 
@@ -85,7 +84,6 @@ graph TB
 - `GET /api/dataverse-config` - Get Dataverse configuration
 - `POST /api/test-dataverse` - Test Dataverse operations
 - `GET /api/publishers` - Get available publishers from Dataverse
-- `POST /api/cdm-entities` - Check CDM entity availability
 
 **Global Choices Management**:
 - `POST /api/global-choices` - Create global choices from JSON
@@ -123,7 +121,7 @@ graph TB
 erDiagram
     %% Entity definition with attributes
     Customer {
-        uuid customer_id PK "Unique identifier"
+        string customer_id PK "Unique identifier"
         string first_name "Customer first name"
         string last_name "Customer last name"
         string email "Email address"
@@ -132,8 +130,8 @@ erDiagram
     }
     
     Order {
-        uuid order_id PK
-        uuid customer_id FK
+        string order_id PK
+        string customer_id FK
         decimal total_amount
         datetime order_date
         string status
@@ -151,7 +149,6 @@ erDiagram
 - Automatically adds missing primary keys
 - Validates relationship consistency
 - Suggests proper naming conventions
-- Detects CDM entities and provides integration guidance
 
 **Output Format**:
 ```javascript
@@ -200,8 +197,7 @@ erDiagram
 - **Column Creation**: Adds custom columns to entities with full attribute support
 - **Relationship Creation**: Establishes one-to-many and many-to-many relationships
 - **Global Choice Management**: Creates and manages global choice sets
-- **CDM Entity Detection**: Identifies and validates Common Data Model entities
-- **Solution Component Management**: Adds entities and global choices to solutions
+- **Logging**: Creates detailed logs in the file system and streams to UI
 
 **Authentication Flow**:
 ```javascript
@@ -245,8 +241,7 @@ const token = await credential.getToken("https://yourorg.crm.dynamics.com/.defau
 2. **Publisher Selection** - Choose existing publisher or create new
 3. **Solution Configuration** - Set solution name and details
 4. **Global Choices** (Optional) - Upload global choice definitions
-5. **CDM Integration** (Optional) - Select CDM entities to include
-6. **Deployment** - Execute with real-time progress feedback
+5. **Deployment** - Execute with real-time progress feedback
 
 ## Advanced Features
 
@@ -279,21 +274,6 @@ const token = await credential.getToken("https://yourorg.crm.dynamics.com/.defau
 }
 ```
 
-### Common Data Model (CDM) Entity Detection
-
-**Purpose**: Automatically identify and integrate with Microsoft's Common Data Model entities.
-
-**Features**:
-- **Automatic detection** of CDM entity names in ERD
-- **Entity validation** against Dataverse CDM catalog
-- **Relationship mapping** between custom and CDM entities
-- **Best practices guidance** for CDM integration
-
-**Supported CDM Entities**:
-- Standard entities like `Account`, `Contact`, `User`
-- Activity entities like `Task`, `Email`, `Appointment`
-- Business process entities specific to various domains
-
 ### Enhanced ERD Validation
 
 **Purpose**: Provide comprehensive validation with auto-correction capabilities.
@@ -309,6 +289,17 @@ const token = await credential.getToken("https://yourorg.crm.dynamics.com/.defau
 - Missing primary keys → Automatic ID field generation
 - Invalid naming → Proper naming convention suggestions
 - Relationship inconsistencies → Corrected relationship definitions
+
+### Logging
+
+**Purpose**: Provide detailed logging for debugging and auditing.
+
+**Features**:
+- **File-based logging** - Writes logs to files in `/logs` and `/src/logs` directories
+- **Real-time streaming** - Sends log events to the wizard UI
+- **Log levels** - ERROR, WARN, INFO, DEBUG levels for appropriate filtering
+- **Log rotation** - Automatically manages log file sizes and archives old logs
+- **IP and timestamp** - Records client IP and precise timestamps for audit trails
 
 ## Data Flow
 
@@ -343,7 +334,7 @@ sequenceDiagram
     WebServer->>Wizard: Return publisher options
     
     User->>Wizard: Submit deployment
-    Wizard->>WebServer: POST /api/deploy
+    Wizard->>WebServer: POST /upload
     WebServer->>Client: Execute deployment
     Client->>Dataverse: Create entities & relationships
     Dataverse->>Client: Confirm creation
@@ -356,14 +347,14 @@ sequenceDiagram
 
 1. **ERD Validation**: Real-time syntax checking with auto-corrections
 2. **Parsing**: Extract entities, relationships, and attributes from Mermaid ERD
-3. **CDM Detection**: Identify Common Data Model entities automatically
-4. **Global Choices**: Process custom global choice definitions
-5. **Publisher Management**: Create or validate publisher with custom prefix
-6. **Solution Management**: Create or validate solution container
-7. **Entity Creation**: Create custom entities with proper naming conventions
-8. **Column Creation**: Add custom columns for each attribute with metadata
-9. **Relationship Creation**: Establish lookup relationships between entities
-10. **Global Choice Integration**: Add global choices to solution if specified
+3. **Global Choices**: Process custom global choice definitions
+4. **Publisher Management**: Create or validate publisher with custom prefix
+5. **Solution Management**: Create or validate solution container
+6. **Entity Creation**: Create custom entities with proper naming conventions
+7. **Column Creation**: Add custom columns for each attribute with metadata
+8. **Relationship Creation**: Establish lookup relationships between entities
+9. **Global Choice Integration**: Add global choices to solution if specified
+10. **Logging**: Record detailed logs of all operations
 
 ## Security Architecture
 

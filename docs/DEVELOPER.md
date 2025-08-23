@@ -12,7 +12,7 @@ This document provides a comprehensive overview of the web application's archite
 - **🎯 Global Choices Integration** - Upload and manage option sets
 - **🧠 CDM Entity Detection** - Automatic Common Data Model integration
 - **📊 Publisher Management** - Create or select existing publishers
-- **🔐 Enterprise Security** - Azure Key Vault + Managed Identity
+- **Enterprise Security** - Azure Key Vault + Managed Identity
 
 ## Table of Contents
 
@@ -178,7 +178,7 @@ POST /upload                    // Legacy file upload with streaming logs
 
 // Core Deployment API
 POST /api/deploy                // 🚀 Primary deployment endpoint (from wizard)
-POST /api/validate-erd          // 🔍 Enhanced ERD validation with auto-correction
+POST /api/validate-erd          // Enhanced ERD validation with auto-correction
 POST /api/validate              // Basic Mermaid entity validation
 
 // Dataverse Integration
@@ -287,8 +287,8 @@ erDiagram
 **Purpose**: Primary user interface providing step-by-step guided deployment experience.
 
 **Key Features**:
-- **📝 Step-by-step Wizard**: Guided deployment process with 6 main steps
-- **🔍 Real-time ERD Validation**: Live syntax checking with auto-corrections
+- **Step-by-step Wizard**: Guided deployment process with 6 main steps
+- **Real-time ERD Validation**: Live syntax checking with auto-corrections
 - **🎨 Modern Responsive UI**: Clean, intuitive interface for all devices
 - **📊 Publisher Management**: Visual selection of existing or creation of new publishers
 - **🎯 Global Choices Integration**: Upload and preview global choice definitions
@@ -639,7 +639,7 @@ The application implements a **multi-layered security model** with distinct perm
 
 ### Permission Model
 
-#### 🔐 Setup Time Permissions (Temporary)
+#### Setup Time Permissions (Temporary)
 
 **Who**: PowerShell script user (DevOps/Admin)  
 **When**: During initial setup and configuration  
@@ -656,7 +656,7 @@ az keyvault secret set --vault-name $KeyVaultName --name "CLIENT-SECRET" --value
 az role assignment delete --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope
 ```
 
-#### 🔑 Runtime Permissions (Permanent)
+#### Runtime Permissions (Permanent)
 
 **Who**: Managed Identity (App Service)  
 **When**: Application runtime  
@@ -778,24 +778,24 @@ resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignme
 ### Security Benefits
 
 #### 1. **Separation of Concerns**
-- ✅ **Infrastructure**: Managed by Bicep (declarative)
-- ✅ **Identity Management**: Handled by PowerShell (imperative)
-- ✅ **Secret Storage**: Automated with proper permissions
+- **Infrastructure**: Managed by Bicep (declarative)
+- **Identity Management**: Handled by PowerShell (imperative)
+- **Secret Storage**: Automated with proper permissions
 
 #### 2. **Time-Bound Access**
-- ✅ **Setup permissions**: Granted → Used → Removed automatically
-- ✅ **Runtime permissions**: Minimal and permanent
-- ✅ **Audit trail**: All operations logged
+- **Setup permissions**: Granted → Used → Removed automatically
+- **Runtime permissions**: Minimal and permanent
+- **Audit trail**: All operations logged
 
 #### 3. **Principle of Least Privilege**
-- ✅ **Admin access**: Only during setup
-- ✅ **Read access**: Only for application runtime
-- ✅ **No secrets in code**: All credentials in Key Vault
+- **Admin access**: Only during setup
+- **Read access**: Only for application runtime
+- **No secrets in code**: All credentials in Key Vault
 
 #### 4. **Compliance & Governance**
-- ✅ **Azure Activity Log**: All role assignments tracked
-- ✅ **Key Vault Diagnostics**: Secret access logged
-- ✅ **Managed Identity**: No credential management needed
+- **Azure Activity Log**: All role assignments tracked
+- **Key Vault Diagnostics**: Secret access logged
+- **Managed Identity**: No credential management needed
 
 ### Interactive Setup Process
 
@@ -832,11 +832,11 @@ Test-Setup -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId
 
 All setup operations are **idempotent** - safe to run multiple times:
 
-- ✅ **Resource Group**: Uses existing or creates new
-- ✅ **App Registration**: Finds existing by name or creates new
-- ✅ **Azure Resources**: Bicep handles idempotent deployment
-- ✅ **Application User**: Checks existence before creating
-- ✅ **Role Assignments**: Azure prevents duplicates
+- **Resource Group**: Uses existing or creates new
+- **App Registration**: Finds existing by name or creates new
+- **Azure Resources**: Bicep handles idempotent deployment
+- **Application User**: Checks existence before creating
+- **Role Assignments**: Azure prevents duplicates
 
 ### Local Development Security
 
@@ -1156,7 +1156,7 @@ POST /api/test-dataverse
 - **Node.js 20+** (for running locally)
 - **.env file** with development credentials
 
-> 📝 **Note**: The automated setup script handles all Azure resource creation, so you don't need to create anything manually in the Azure portal.
+> **Note**: The automated setup script handles all Azure resource creation, so you don't need to create anything manually in the Azure portal.
 
 ### Local Development
 
@@ -1241,13 +1241,13 @@ cd mermaid
 ```
 
 **What it does automatically**:
-- ✅ Creates App Registration with secret
-- ✅ **Calls Bicep template** (`deploy/infrastructure.bicep`) to deploy Azure resources
-- ✅ **Deploys complete Node.js application** (not just empty webapp)
-- ✅ Configures managed identity & RBAC
-- ✅ Stores secrets in Key Vault
-- ✅ Creates Dataverse application user
-- ✅ Tests end-to-end functionality
+- Creates App Registration with secret
+- **Calls Bicep template** (`deploy/infrastructure.bicep`) to deploy Azure resources
+- **Deploys complete Node.js application** (not just empty webapp)
+- Configures managed identity & RBAC
+- Stores secrets in Key Vault
+- Creates Dataverse application user
+- Tests end-to-end functionality
 
 > 🎯 **Complete Application Deployment**: This deploys the **full Mermaid-to-Dataverse application** with all source code, not just infrastructure. The deployed app is ready to transform Mermaid ERD files into Dataverse tables immediately.
 
@@ -1276,7 +1276,7 @@ Step 4: Storing secrets securely in Key Vault...
 Step 5: Creating Dataverse application user...
 Step 6: Testing end-to-end functionality...
 
-✅ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsites.net
+Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsites.net
 ```
 
 **Deployment Architecture**:
@@ -1310,20 +1310,20 @@ graph TB
 - **Azure Key Vault** (RBAC-enabled)
 - **RBAC Role Assignments** (Key Vault Secrets User)
 
-#### 🔐 Identity & Security (via PowerShell automation)
+#### Identity & Security (via PowerShell automation)
 - **App Registration** (Azure AD application)
 - **Client Secret** (stored securely in Key Vault)
 - **Managed Identity RBAC** (read-only Key Vault access)
 - **Application User** (in Dataverse environment)
 
-#### 📋 Application Deployment & Configuration
+#### Application Deployment & Configuration
 - **Complete Node.js Application** (all source code deployed to App Service)
 - **Environment Variables** (set in App Service)
 - **Secret Storage** (all credentials in Key Vault)
 - **Connection Testing** (end-to-end validation)
 - **Health Monitoring** (diagnostic endpoints enabled)
 
-> 💡 **Key Point**: The Bicep template (`deploy/infrastructure.bicep`) deploys the **complete working application**, not just empty Azure resources. After deployment, you can immediately upload Mermaid files and create Dataverse entities.
+> **Key Point**: The Bicep template (`deploy/infrastructure.bicep`) deploys the **complete working application**, not just empty Azure resources. After deployment, you can immediately upload Mermaid files and create Dataverse entities.
 
 ### Advanced Configuration
 
@@ -1368,14 +1368,14 @@ For updates to existing deployments:
 After deployment, the script automatically tests:
 
 ```powershell
-✅ Resource Group: rg-mermaid-prod
-✅ App Service: mermaid-dataverse-prod (running)
-✅ Key Vault: kv-mermaid-prod-001 (accessible)
-✅ Managed Identity: mi-mermaid-prod (assigned)
-✅ App Registration: MermaidToDataverse-Prod (active)
-✅ Dataverse User: MermaidToDataverse-Prod (system admin)
-✅ Application Health: https://mermaid-dataverse-prod.azurewebsites.net/health
-✅ End-to-End Test: Upload → Parse → Validate ✅
+Resource Group: rg-mermaid-prod
+App Service: mermaid-dataverse-prod (running)
+Key Vault: kv-mermaid-prod-001 (accessible)
+Managed Identity: mi-mermaid-prod (assigned)
+App Registration: MermaidToDataverse-Prod (active)
+Dataverse User: MermaidToDataverse-Prod (system admin)
+Application Health: https://mermaid-dataverse-prod.azurewebsites.net/health
+End-to-End Test: Upload → Parse → Validate 
 
 🎉 Deployment successful! Ready for production use.
 ```

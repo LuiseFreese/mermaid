@@ -17,11 +17,11 @@ The script will prompt you for configuration and handle all setup automatically.
 ## What You Get
 
 After setup, you'll have a **complete working application** that:
-- ✅ Converts Mermaid ERD files to Dataverse entities
-- ✅ Provides a web interface for file uploads
-- ✅ Shows real-time processing logs
-- ✅ Supports dry-run mode for validation
-- ✅ Uses enterprise-grade security (Managed Identity + Key Vault)
+-  Converts Mermaid ERD files to Dataverse entities
+-  Provides a web interface for file uploads
+-  Shows real-time processing logs
+-  Supports dry-run mode for validation
+-  Uses enterprise-grade security (Managed Identity + Key Vault)
 
 ## Prerequisites
 
@@ -40,16 +40,16 @@ Before running the setup:
 
 The setup script (`scripts/setup-entra-app.ps1`) performs these tasks automatically:
 
-1. ✅ **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
-2. ✅ **Generates Client Secret** with 2-year expiration (securely, without console exposure)
-3. ✅ **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
-4. ✅ **Configures RBAC permissions** for Key Vault access
-5. ✅ **Stores all secrets** securely in Key Vault
-6. ✅ **Updates .env file** automatically with new credentials
-7. ✅ **Deploys application code** to Azure App Service
-8. ✅ **Creates Application User** in Dataverse via REST API
-9. ✅ **Assigns Security Roles** (System Administrator by default)
-10. ✅ **Tests the complete setup** end-to-end
+1.  **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
+2.  **Generates Client Secret** with 2-year expiration (securely, without console exposure)
+3.  **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
+4.  **Configures RBAC permissions** for Key Vault access
+5.  **Stores all secrets** securely in Key Vault
+6.  **Updates .env file** automatically with new credentials
+7.  **Deploys application code** to Azure App Service
+8.  **Creates Application User** in Dataverse via REST API
+9.  **Assigns Security Roles** (System Administrator by default)
+10.  **Tests the complete setup** end-to-end
 
 ### Deployment Options
 
@@ -133,32 +133,32 @@ Publisher Prefix (3-8 chars): mmrd
 Security Role Name: System Administrator
 
 Step 1: Creating App Registration and secret...
-✅ App Registration created: MermaidToDataverse-Prod
+ App Registration created: MermaidToDataverse-Prod
    Application ID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 Step 2: Deploying infrastructure via Bicep template...
-✅ Infrastructure deployed successfully:
+ Infrastructure deployed successfully:
    - Key Vault: https://kv-mermaid-prod-001.vault.azure.net/
    - Managed Identity: mi-mermaid-prod
    - App Service: https://mermaid-dataverse-prod.azurewebsites.net/
 
 Step 3: Deploying application source code to App Service...
-✅ Application code deployed successfully
+ Application code deployed successfully
 
 Step 4: Storing secrets securely in Key Vault...
-✅ Secrets stored in Key Vault:
+ Secrets stored in Key Vault:
    - DATAVERSE-URL, CLIENT-ID, CLIENT-SECRET, TENANT-ID, SOLUTION-NAME
 
 Step 5: Updating local .env file...
-✅ Configuration saved to .env file (secrets not exposed in console)
-✅ Example configuration saved to .env.example
+ Configuration saved to .env file (secrets not exposed in console)
+ Example configuration saved to .env.example
 
 Step 6: Creating Dataverse application user...
-✅ Application User created in Dataverse
+ Application User created in Dataverse
    Security Role: System Administrator
 
 Step 7: Testing end-to-end functionality...
-✅ End-to-End Test: Upload → Parse → Validate ✅
+ End-to-End Test: Upload → Parse → Validate 
 
 🎉 Setup Complete! Application ready at: 
    https://mermaid-dataverse-prod.azurewebsites.net/
@@ -276,4 +276,4 @@ After successful deployment:
 3. **Understand Mermaid Syntax**: Review [MERMAID-GUIDE.md](MERMAID-GUIDE.md) for supported ERD syntax
 4. **Learn About Relationships**: See [RELATIONSHIP_TYPES.md](RELATIONSHIP_TYPES.md) for relationship modeling
 
-For technical details about the application architecture, see [DEVELOPER.md](DEVELOPER.md).
+For technical details about the application architecture, see [DEVELOPER_ARCHITECTURE.md](DEVELOPER_ARCHITECTURE.md).

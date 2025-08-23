@@ -1089,6 +1089,19 @@
                 this.fileContent = null;
             }
 
+            // Reset the wizard to its initial state
+            reset() {
+                this.currentStep = 'validation';
+                this.stepData = {
+                    validation: { valid: false, entities: [], relationships: [], warnings: [] },
+                    publisher: { type: 'existing', selectedPublisher: null, newPublisher: {} },
+                    cdm: { detectedEntities: [], selectedEntities: [] },
+                    choices: { existingChoices: [], selectedChoices: [], customChoices: null },
+                    summary: { ready: false }
+                };
+                this.fileContent = null;
+            }
+
             getCurrentStepIndex() {
                 return this.steps.indexOf(this.currentStep);
             }
@@ -1136,8 +1149,108 @@
             }
         }
 
-        // Initialize wizard
-        const wizard = new WizardState();
+        // Function to completely reset the wizard UI
+        function resetWizardUI() {
+            console.log('Resetting wizard UI for a new deployment');
+            
+            // Reset wizard state
+            wizard.reset();
+            
+            // Reset all navigation steps (remove completed/error states)
+            stepNavs.forEach(nav => {
+                nav.classList.remove('completed', 'error');
+                if (nav.dataset.step === 'validation') {
+                    nav.classList.add('active');
+                } else {
+                    nav.classList.remove('active');
+                }
+            });
+            
+            // Reset file upload area
+            const fileUploadArea = document.getElementById('fileUploadArea');
+            const fileUploadText = document.getElementById('fileUploadText');
+            if (fileUploadArea) {
+                fileUploadArea.classList.remove('has-file');
+                fileUploadArea.classList.remove('drag-over');
+            }
+            if (fileUploadText) {
+                fileUploadText.innerHTML = 'Drag your Mermaid file here, or click to browse';
+            }
+            
+            // Clear file input
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            
+            // Reset content areas
+            const validationResults = document.getElementById('validationResults');
+            if (validationResults) {
+                validationResults.innerHTML = '';
+                validationResults.classList.add('hidden');
+            }
+            
+            const entityList = document.getElementById('entityList');
+            if (entityList) {
+                entityList.innerHTML = '';
+            }
+            
+            const relationshipsTable = document.getElementById('relationshipsTable');
+            if (relationshipsTable) {
+                relationshipsTable.innerHTML = '';
+            }
+            
+            const deploymentOutput = document.getElementById('deploymentOutput');
+            if (deploymentOutput) {
+                deploymentOutput.innerHTML = '';
+            }
+            
+            // Reset publisher form fields
+            const publisherForm = document.getElementById('publisherForm');
+            if (publisherForm) {
+                publisherForm.reset();
+            }
+            
+            // Reset solution name field
+            const solutionName = document.getElementById('solutionName');
+            if (solutionName) {
+                solutionName.value = '';
+            }
+            
+            // Reset choices selections
+            const builtinChoicesContainer = document.getElementById('builtinChoicesContainer');
+            if (builtinChoicesContainer) {
+                const checkboxes = builtinChoicesContainer.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+            
+            const customChoicesContainer = document.getElementById('customChoicesContainer');
+            if (customChoicesContainer) {
+                const checkboxes = customChoicesContainer.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                customChoicesContainer.innerHTML = ''; // Clear any custom choices
+            }
+            
+            // Reset summary content
+            const summaryContent = document.getElementById('summaryContent');
+            if (summaryContent) {
+                summaryContent.innerHTML = '';
+            }
+            
+            // Show the first page and update navigation
+            showStep('validation');
+            updateNavigationButtons();
+            
+            // Reset deploy button
+            deployBtn.innerHTML = 'Deploy to Dataverse';
+            deployBtn.classList.remove('btn-success');
+            deployBtn.classList.add('btn-primary');
+            deployBtn.onclick = null;
+        }
 
         // DOM elements
         const stepNavs = document.querySelectorAll('.step-nav a');
@@ -1373,6 +1486,22 @@
         function processCustomChoices(choicesArray) {
             console.log('Processing custom choices:', choicesArray);
             
+            // Preserve currently selected choice states before rebuilding
+            const currentlySelectedBuiltIn = [];
+            const currentlySelectedCustom = [];
+            
+            // Capture built-in selections
+            document.querySelectorAll('#builtinChoicesContainer input:checked').forEach(checkbox => {
+                currentlySelectedBuiltIn.push(checkbox.value);
+            });
+            
+            // Capture custom selections (in case we're adding more)
+            document.querySelectorAll('#customChoicesContainer input:checked').forEach(checkbox => {
+                currentlySelectedCustom.push(checkbox.value);
+            });
+            
+            console.log('Preserving selections - Built-in:', currentlySelectedBuiltIn, 'Custom:', currentlySelectedCustom);
+            
             // Add the custom choices to our filtered choices
             filteredChoices.custom = filteredChoices.custom.concat(choicesArray);
             
@@ -1387,7 +1516,33 @@
             
             console.log('Stored in wizard.stepData.choices.customChoices:', wizard.stepData.choices.customChoices);
             
+            // Rebuild the custom choices
             populateCustomChoices();
+            
+            // Restore selections after rebuilding
+            setTimeout(() => {
+                // Restore built-in selections
+                currentlySelectedBuiltIn.forEach(value => {
+                    const checkbox = document.querySelector(`#builtinChoicesContainer input[value="${value}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log('Restored built-in selection:', value);
+                    }
+                });
+                
+                // Restore custom selections
+                currentlySelectedCustom.forEach(value => {
+                    const checkbox = document.querySelector(`#customChoicesContainer input[value="${value}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        console.log('Restored custom selection:', value);
+                    }
+                });
+                
+                // Update status after restoring selections
+                updateChoicesStepStatus();
+            }, 10); // Small delay to ensure DOM is updated
+            
             updateChoicesCounts();
         }
 
@@ -2347,7 +2502,13 @@
             }
         });
 
+        // Original deploy button click handler
         deployBtn.addEventListener('click', async () => {
+            if (deployBtn.innerHTML === 'Done') {
+                // If the button is already in the "Done" state, let the custom onclick handler take care of it
+                // The custom handler is set after successful deployment
+                return;
+            }
             await deployToDataverse();
         });
 
@@ -2440,16 +2601,61 @@
 
                 // Handle final result
                 if (finalResult && finalResult.success) {
+                    console.log('Deployment successful with data:', finalResult);
+                    
+                    // Update choices step status to show global choices were processed successfully
+                    const globalChoicesProcessed = (finalResult.globalChoices > 0 || 
+                                                  finalResult.selectedGlobalChoices > 0 || 
+                                                  finalResult.globalChoicesAddedToSolution > 0 || 
+                                                  finalResult.selectedGlobalChoicesAdded > 0);
+                                                  
+                    if (globalChoicesProcessed) {
+                        console.log('Global choices were processed, updating navigation status');
+                        updateStepStatus('choices', 'completed');
+                    }
+                    
+                    // Mark final review step as complete on successful deployment
+                    updateStepStatus('summary', 'completed');
+                    
+                    // Format entity and relationship counts for display
+                    const entityCount = Array.isArray(finalResult.entities) ? finalResult.entities.length : 
+                                      (typeof finalResult.entities === 'number' ? finalResult.entities : 
+                                       (typeof finalResult.entitiesCreated === 'number' ? finalResult.entitiesCreated : 0));
+                                      
+                    const relationshipCount = Array.isArray(finalResult.relationships) ? finalResult.relationships.length : 
+                                            (typeof finalResult.relationships === 'number' ? finalResult.relationships : 
+                                             (typeof finalResult.relationshipsCreated === 'number' ? finalResult.relationshipsCreated : 0));
+                    
+                    const globalChoiceCount = finalResult.globalChoices || 
+                                             finalResult.globalChoicesAddedToSolution || 
+                                             finalResult.selectedGlobalChoices || 
+                                             finalResult.selectedGlobalChoicesAdded || 0;
+                    
                     deploymentOutput.innerHTML = `
                         <div class="message-card success">
                             <span class="message-icon">•</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Successful</div>
-                                <div class="message-description">${finalResult.message || 'Your deployment completed successfully.'}</div>
-                                ${finalResult.entities ? `<div style="margin-top: 8px; font-size: 14px; color: #666;">Created ${finalResult.entities.length} entities</div>` : ''}
+                                <div class="message-description">
+                                    ${finalResult.summary || finalResult.message || `Created ${entityCount} entities, ${relationshipCount} relationships, and added ${globalChoiceCount} global choices to solution.`}
+                                </div>
                             </div>
                         </div>
                     `;
+                    
+                    // Update navigation after successful deployment
+                    updateNavigationButtons();
+                    
+                    // Change deploy button to green "Done" button
+                    deployBtn.innerHTML = 'Done';
+                    deployBtn.classList.remove('btn-primary');
+                    deployBtn.classList.add('btn-success');
+                    // Update the click handler to completely reset the wizard when Done is clicked
+                    deployBtn.onclick = function() {
+                        console.log('Resetting wizard for a new deployment...');
+                        // Reset everything to start a fresh deployment
+                        resetWizardUI();
+                    };
                 } else {
                     deploymentOutput.innerHTML = `
                         <div class="message-card error">
@@ -2477,6 +2683,9 @@
         // Initialize the application
         function init() {
             console.log('Initializing application...');
+            // Initialize the wizard state
+            window.wizard = new WizardState();
+            
             setupFileUpload();
             // setupChoicesFileUpload(); // Now handled in setupFileUpload
             setupPublisherOptions();

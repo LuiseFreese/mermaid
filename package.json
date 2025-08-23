@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node tests/test-schema-generation.js",
-    "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1"
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
+    "cleanup": "powershell -ExecutionPolicy Bypass -File scripts/cleanup-repo.ps1",
+    "cleanup:dry": "powershell -ExecutionPolicy Bypass -File scripts/cleanup-repo.ps1 -DryRun"
   },
   "dependencies": {
     "@azure/identity": "^4.11.0",

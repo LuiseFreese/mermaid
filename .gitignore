@@ -5,6 +5,7 @@ node_modules/
 .env.local
 *.log
 logs/
+src/logs/
 .DS_Store
 .vscode/
 dist/

@@ -35,7 +35,7 @@ async function testSchemaGeneration(mermaidFilePath, publisherPrefix = 'test') {
     }
     
     // Parse Mermaid content
-    console.log("🔍 Parsing Mermaid ERD diagram...");
+    console.log("Parsing Mermaid ERD diagram...");
     const parser = new MermaidERDParser();
     const parsedResult = parser.parse(mermaidContent);
     
@@ -51,8 +51,8 @@ async function testSchemaGeneration(mermaidFilePath, publisherPrefix = 'test') {
     // Display parsing results
     console.log("\n📋 PARSING RESULTS:");
     console.log("==================");
-    console.log(`Entities: ✅ ${parsedResult.entities.length} found`);
-    console.log(`Relationships: ✅ ${parsedResult.relationships.length} found`);
+    console.log(`Entities:  ${parsedResult.entities.length} found`);
+    console.log(`Relationships:  ${parsedResult.relationships.length} found`);
     
     // Display entity details
     if (parsedResult.entities.length > 0) {
@@ -105,7 +105,7 @@ async function testSchemaGeneration(mermaidFilePath, publisherPrefix = 'test') {
       console.log(`${entity.name} → LogicalName: ${logicalName}, SchemaName: ${schemaName}`);
     });
     
-    console.log("\n✅ TEST SUCCESSFUL: All validations passed!");
+    console.log("\n TEST SUCCESSFUL: All validations passed!");
     return {
       success: true,
       entities: parsedResult.entities.length,

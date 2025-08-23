@@ -1,7 +1,7 @@
 {
     "globalChoices": [
         {
-            "name": "east_deployment_stage",
+            "name": "deployment_stage",
             "displayName": "Deployment Stage",
             "description": "Stages in the deployment lifecycle",
             "options": [
@@ -28,7 +28,7 @@
             ]
         },
         {
-            "name": "east_customer_tier",
+            "name": "customer_tier",
             "displayName": "Customer Tier",
             "description": "Customer classification tiers",
             "options": [
@@ -55,7 +55,7 @@
             ]
         },
         {
-            "name": "east_approval_status",
+            "name": "approval_status",
             "displayName": "Approval Status",
             "description": "Status for approval workflows",
             "options": [
