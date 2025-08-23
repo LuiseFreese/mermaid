@@ -2194,9 +2194,8 @@
             document.getElementById('customChoicesCount').textContent = `(${customVisible}/${filteredChoices.custom.length})`;
         }
 
-        // Summary generation
+        // Summary generation - Improved version that provides better organization and display
         function generateSummary() {
-            console.log('Generating summary, wizard.stepData:', wizard.stepData);
             const container = document.getElementById('deploymentSummary');
             
             // Determine publisher information
@@ -2217,97 +2216,78 @@
                 }
             }
             
+            // Get selected global choices
+            const selectedChoices = [];
+            document.querySelectorAll('#globalChoicesCheckbox input:checked, #builtinChoicesContainer input:checked, #customChoicesContainer input:checked').forEach(input => {
+                const label = input.nextElementSibling;
+                if (label) {
+                    const choiceName = label.querySelector('strong')?.textContent || 'Unknown';
+                    const choiceId = label.querySelector('.text-muted')?.textContent || input.value;
+                    const choiceType = input.closest('#builtinChoicesContainer') ? 'Built-in' : 
+                                      input.closest('#customChoicesContainer') ? 'Custom' : 'Global';
+                    selectedChoices.push(`${choiceName} (${choiceType})`);
+                }
+            });
+            
+            // Add uploaded custom choices from wizard state
+            if (wizard.stepData && wizard.stepData.choices && wizard.stepData.choices.customChoices && Array.isArray(wizard.stepData.choices.customChoices)) {
+                wizard.stepData.choices.customChoices.forEach(choice => {
+                    if (choice.Name || choice.name) {
+                        selectedChoices.push(`${choice.Name || choice.name} (Uploaded JSON)`);
+                    }
+                });
+            }
+            
+            // Get entity details
+            const entityDetails = wizard.stepData.validation.entities.map(entity => 
+                `${entity.name || entity.logicalName || 'Unknown'} - ${entity.displayName || entity.name || 'No display name'}`
+            );
+            
+            // Get relationship details
+            const relationshipDetails = wizard.stepData.validation.relationships.map(rel => {
+                const relationshipType = rel.cardinality?.type || rel.type || 'one-to-many';
+                const relationshipName = rel.name || rel.displayName || '';
+                const nameDisplay = relationshipName ? ` "${relationshipName}"` : '';
+                return `${rel.fromEntity} → ${rel.toEntity} (${relationshipType})${nameDisplay}`;
+            });
+
+            // Create publisher details array
+            let publisherDetails = [publisherInfo];
+            if (wizard.stepData.publisher.type === 'new') {
+                const publisherUniqueName = document.getElementById('publisherUniqueName')?.value;
+                const publisherPrefix = document.getElementById('publisherPrefix')?.value;
+                publisherDetails = [
+                    publisherInfo,
+                    `Unique Name: ${publisherUniqueName || 'Auto-generated'}`,
+                    `Prefix: ${publisherPrefix || 'Auto-generated'}`
+                ];
+            }
+
             const summaryItems = [
                 {
-                    title: 'Entities',
-                    count: wizard.stepData.validation.entities.length,
-                    details: wizard.stepData.validation.entities.map(entity => 
-                        `${entity.name || entity.logicalName || 'Unknown'} - ${entity.displayName || entity.name || 'No display name'}`
-                    )
-                },
-                {
-                    title: 'Relationships',
-                    count: wizard.stepData.validation.relationships.length,
-                    details: wizard.stepData.validation.relationships.map(rel => {
-                        const relationshipType = rel.cardinality?.type || rel.type || 'one-to-many';
-                        const relationshipName = rel.name || rel.displayName || '';
-                        const nameDisplay = relationshipName ? ` "${relationshipName}"` : '';
-                        return `${rel.fromEntity} → ${rel.toEntity} (${relationshipType})${nameDisplay}`;
-                    })
-                },
-                {
-                    title: 'Publisher',
-
-                    count: 1,
-                    details: [publisherInfo]
-                },
-                {
                     title: 'Solution',
-
                     count: 1,
                     details: [document.getElementById('solutionName')?.value || 'Not specified']
                 },
                 {
+                    title: 'Publisher',
+                    count: 1,
+                    details: publisherDetails
+                },
+                {
+                    title: 'Entities',
+                    count: wizard.stepData.validation.entities.length,
+                    details: entityDetails
+                },
+                {
+                    title: 'Relationships',
+                    count: wizard.stepData.validation.relationships.length,
+                    details: relationshipDetails
+                },
+                {
                     title: 'Global Choices',
-                    count: (() => {
-                        const selectedBuiltIn = [];
-                        const selectedCustom = [];
-                        const uploadedCustom = [];
-                        
-                        // Check selected built-in and custom choices from UI
-                        document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked').forEach(input => {
-                            const label = input.nextElementSibling;
-                            if (label) {
-                                const choiceName = label.querySelector('strong')?.textContent || 'Unknown';
-                                if (input.closest('#builtinChoicesContainer')) {
-                                    selectedBuiltIn.push(choiceName);
-                                } else {
-                                    selectedCustom.push(choiceName);
-                                }
-                            }
-                        });
-                        
-                        // Add uploaded custom choices
-                        if (wizard.stepData && wizard.stepData.choices && wizard.stepData.choices.customChoices && Array.isArray(wizard.stepData.choices.customChoices)) {
-                            wizard.stepData.choices.customChoices.forEach(choice => {
-                                if (choice.Name || choice.name) {
-                                    uploadedCustom.push(choice.Name || choice.name);
-                                }
-                            });
-                        }
-                        
-                        return selectedBuiltIn.length + selectedCustom.length + uploadedCustom.length;
-                    })(),
-                    details: (() => {
-                        const selectedBuiltIn = [];
-                        const selectedCustom = [];
-                        const uploadedCustom = [];
-                        
-                        // Check selected built-in and custom choices from UI
-                        document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked').forEach(input => {
-                            const label = input.nextElementSibling;
-                            if (label) {
-                                const choiceName = label.querySelector('strong')?.textContent || 'Unknown';
-                                if (input.closest('#builtinChoicesContainer')) {
-                                    selectedBuiltIn.push(`${choiceName} (Built-in)`);
-                                } else {
-                                    selectedCustom.push(`${choiceName} (Custom)`);
-                                }
-                            }
-                        });
-                        
-                        // Add uploaded custom choices
-                        if (wizard.stepData && wizard.stepData.choices && wizard.stepData.choices.customChoices && Array.isArray(wizard.stepData.choices.customChoices)) {
-                            wizard.stepData.choices.customChoices.forEach(choice => {
-                                if (choice.Name || choice.name) {
-                                    uploadedCustom.push(`${choice.Name || choice.name} (Uploaded JSON)`);
-                                }
-                            });
-                        }
-                        
-                        const allChoices = [...selectedBuiltIn, ...selectedCustom, ...uploadedCustom];
-                        return allChoices.length > 0 ? allChoices : ['None selected'];
-                    })()
+                    count: selectedChoices.length,
+                    details: selectedChoices.length > 0 ? selectedChoices : ['None selected']
                 }
             ];
 

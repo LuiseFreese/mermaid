@@ -329,7 +329,7 @@ erDiagram
 - **Solution Management**: Creates or uses existing solutions with proper metadata
 - **Entity Creation**: Creates custom entities with proper metadata and naming
 - **Column Creation**: Adds custom columns to entities with full attribute support
-- **Relationship Creation**: Establishes one-to-many and many-to-many relationships
+- **Relationship Creation**: Establishes one-to-many and many-to-many relationships (via junction table)
 - **Global Choice Management**: Creates and manages global choice sets
 - **Logging**: Creates detailed logs in the file system and streams to UI
 
@@ -437,40 +437,12 @@ async getKeyVaultSecrets() {
 }
 ```
 
-**Example Usage in Mermaid Diagrams**:
-
-When designing your ERD, create standard entities and attributes. After uploading both the Mermaid file and the global choices JSON file, the system will associate the appropriate fields with the global choice sets based on field names.
-
-```mermaid
-erDiagram
-    LEAD {
-        string lead_id PK
-        string name
-        string email
-        string status
-        string priority
-    }
-    OPPORTUNITY {
-        string opportunity_id PK
-        string name
-        decimal value
-        string status
-        string priority
-    }
-```
-
-The `status` and `priority` fields in the entities above can be linked to the global choice sets defined in the JSON file.
-
-### Global Choice Detection
-- Automatically detects fields designated for global choice sets
-- Creates global choices for reusable optionsets like Status, Priority, Region
-- Prevents duplicate choice creation across deployments
 
 ### Global Choice Creation Process
 1. **Parse ERD**: Extract all choice field definitions
 2. **Validate**: Check if global choice already exists
 3. **Create**: Generate new global choice with proper metadata
-4. **Link**: Associate choice with entity fields during table creation
+
 
 ### Enhanced ERD Validation
 
@@ -555,14 +527,14 @@ In this example:
 ```mermaid
 sequenceDiagram
     participant User as Web Browser
-    participant Server as Node.js Server
+    participant Server as Azure App Service
     participant Parser as Mermaid Parser
     participant KeyVault as Azure Key Vault
     participant MI as Managed Identity
     participant Client as Dataverse Client
     participant Dataverse as Microsoft Dataverse
 
-    User->>Server: Upload Mermaid file via web form
+    User->>Server: Upload Mermaid file via wizard UI
     Server->>User: Start streaming logs
     Server->>Server: Validate file format (contains erDiagram)
     Server->>Parser: Parse Mermaid ERD content
@@ -584,7 +556,7 @@ sequenceDiagram
     Client->>Dataverse: Test connection
     Dataverse->>Client: Confirm connectivity
     Client->>Server: Connection successful
-    Server->>User: Stream connection status
+    Server->>User: Stream connection status in wizard UI
     
     alt Dry Run Mode
         Server->>User: Stream validation results only

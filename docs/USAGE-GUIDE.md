@@ -4,15 +4,16 @@ This guide explains how to use the Mermaid to Dataverse web application to trans
 
 ## Overview
 
-The application provides a **web interface** for uploading Mermaid ERD files and automatically creating corresponding Dataverse entities. No local installation or CLI commands required - everything runs in your browser!
+The application provides a **step-by-step wizard interface** for uploading Mermaid ERD files and automatically creating corresponding Dataverse entities. No local installation or CLI commands required - everything runs in your browser!
 
 ## Prerequisites
 
-**Application URL** - Get this from your automated deployment  
+**Application URL** - Get this from your Azure App Service deployment  
 **Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
 **Dataverse environment** - Already configured during setup  
+**Global Choices file** (optional) - JSON file with choice definitions if needed
 
-> **Note**: All authentication and environment setup is handled automatically. You just need your deployed application URL and a Mermaid file.
+> **Note**: All authentication and environment setup is handled automatically through Azure managed identity. You just need your deployed application URL and your diagram files.
 
 ## Before You Start: Testing with Dry Run
 
@@ -116,47 +117,59 @@ The web interface provides live feedback during processing:
 
 ## Quick Start
 
-### 1. Access the Web Application
+### 1. Access the Wizard Interface
 
-Navigate to your deployed application URL:
+Navigate to your deployed Azure App Service URL:
 ```
 https://your-app-name.azurewebsites.net
 ```
 
-### 2. Upload Your Mermaid File
+### 2. Step through the Wizard
 
-1. **Click "Choose File"** and select your `.mmd` file
-2. **Configure options**:
+1. **Welcome Screen**: Review introduction and click "Start"
+
+2. **Upload Files**:
+   - **Select Mermaid File**: Click "Choose File" and select your `.mmd` file
+   - **[Optional] Select Global Choices File**: Upload JSON file with global choice definitions 
+   - Click "Next" to proceed
+
+3. **Configure Deployment**:
    - **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management")
    - **Publisher Prefix**: 3-8 character prefix (e.g., "cmgt")
-   - **Dry Run**: Enable to preview without creating anything
-3. **Click "Upload and Process"**
+   - **Create Publisher**: Enable to create publisher if it doesn't exist
+   - **Dry Run**: Toggle to validate without creating anything
+   - Click "Next" to continue
+
+4. **Review and Deploy**:
+   - Review your configuration settings
+   - Click "Convert & Deploy" to start the process
 
 ### 3. Monitor Real-Time Progress
 
-Watch the live log output as your solution is created:
+Watch the live log output in the wizard interface as your solution is created:
 
 ```
-File uploaded: customer-management.mmd (2.3 KB)
-File contains valid erDiagram syntax
+Processing file: customer-management.mmd (2.3 KB)
+✅ File contains valid erDiagram syntax
 Parsing Mermaid ERD structure...
 Found 3 entities: Customer, Order, Product
 Found 2 relationships
-Validation completed successfully
+✅ Validation completed successfully
 
 Connecting to Dataverse...
-Dataverse connection successful
+✅ Dataverse connection successful
 Creating solution: Customer Management
-Creating entity: Customer (3 columns)
-Creating entity: Order (4 columns)  
-Creating entity: Product (5 columns)
-Creating relationship: Customer → Order
-Creating relationship: Order → Product
+✅ Creating entity: Customer (3 columns)
+✅ Creating entity: Order (4 columns)  
+✅ Creating entity: Product (5 columns)
+✅ Creating relationship: Customer → Order
+✅ Creating relationship: Order → Product
 
-Deployment completed successfully!
-Solution 'Customer Management' created in Dataverse
-3 entities created
-2 relationships established
+✅ Deployment completed successfully!
+✓ Solution 'Customer Management' created in Dataverse
+✓ 3 entities created
+✓ 2 relationships established
+✓ Global choices processed (if provided)
 ```
 
 ## Deployment Options
@@ -196,22 +209,26 @@ Ready for actual deployment!
 
 When ready to create actual Dataverse entities:
 
-1. Upload your Mermaid file
-2. Disable "Dry Run" option  
-3. Configure Solution Name and Publisher Prefix
-4. Click "Upload and Process"
-5. Monitor the real-time progress
-6. Verify success in your Dataverse environment
+1. Complete all wizard steps
+2. Disable "Dry Run" toggle in the configuration step 
+3. Ensure all fields are correctly configured
+4. Click "Convert & Deploy" on the final review screen
+5. Monitor the real-time progress in the wizard interface
+6. View the success confirmation and summary
+7. Verify entities in your Dataverse environment
 
 ## What Happens During Deployment
 
-When you upload a Mermaid file through the web interface:
+When you use the wizard interface to deploy your Mermaid ERD:
 
 ```mermaid
 flowchart TD
-    %% Web interface flow
-    start([User]) --> upload[Upload .mmd file via web form]
-    upload --> validate[Validate file format]
+    %% Wizard interface flow
+    start([User]) --> wizard[Navigate through Wizard Steps]
+    wizard --> upload[Upload Mermaid & Global Choices files]
+    upload --> config[Configure Deployment Options]
+    config --> review[Review Settings]
+    review --> validate[Validate file format]
     validate --> parse[Parse Mermaid ERD structure]
     parse --> auth[Authenticate to Dataverse]
     auth --> create[Create Dataverse components]
