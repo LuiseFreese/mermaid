@@ -16,7 +16,7 @@
     "@azure/keyvault-secrets": "^4.10.0",
     "@azure/msal-node": "^2.16.2",
     "axios": "^1.11.0",
-    "dotenv": "^16.6.1",
+    "dotenv": "^16.4.1",
     "express": "^5.1.0"
   },
   "devDependencies": {

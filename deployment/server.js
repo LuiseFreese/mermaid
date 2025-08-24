@@ -3,20 +3,17 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
-// Configure logging - Linux-friendly approach
-// Prefer App Service log volume on Linux; fall back to stdout-only
-const APP_LOG_BASE = process.env.WEBSITE_LOG_DIR || '/home/LogFiles';
-const LOG_DIR = path.join(APP_LOG_BASE, 'mermaid-to-dataverse');
-let logStream = null;
+// Configure logging
+const LOG_DIR = path.join(__dirname, 'logs');
+const LOG_FILE = path.join(LOG_DIR, `server-${new Date().toISOString().replace(/:/g, '-')}.log`);
 
-try {
+// Create log directory if it doesn't exist
+if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
-  const LOG_FILE = path.join(LOG_DIR, `server-${new Date().toISOString().replace(/:/g, '-')}.log`);
-  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
-  console.log(`File logging enabled at: ${LOG_DIR}`);
-} catch (e) {
-  console.warn(`File logging disabled (using stdout only): ${e.message}`);
 }
+
+// Create a write stream for logging
+const logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
 
 // Custom console logger that writes to both console and log file
 const originalConsoleLog = console.log;
@@ -48,8 +45,8 @@ console.log = function() {
   // Log to terminal
   originalConsoleLog.apply(console, args);
   
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
+  // Log to file
+  logStream.write(logMessage + '\n');
 };
 
 console.error = function() {
@@ -60,8 +57,8 @@ console.error = function() {
   // Log to terminal
   originalConsoleError.apply(console, args);
   
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
+  // Log to file
+  logStream.write(logMessage + '\n');
 };
 
 console.warn = function() {
@@ -72,8 +69,8 @@ console.warn = function() {
   // Log to terminal
   originalConsoleWarn.apply(console, args);
   
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
+  // Log to file
+  logStream.write(logMessage + '\n');
 };
 
 // Global variables for caching
@@ -1104,8 +1101,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-const port = Number(process.env.PORT) || 3000;
-server.listen(port, '0.0.0.0', () => {
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
   console.log(`Mermaid to Dataverse server running on port ${port}`);
   console.log(`Access the wizard at: http://localhost:${port}/wizard`);
 });

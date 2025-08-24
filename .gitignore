@@ -18,6 +18,7 @@ coverage/
 # Debug/temp files
 fix_*.ps1
 server-output.log
+scripts/obsolete
 
 # Project management
 TODO.md

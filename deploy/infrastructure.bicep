@@ -26,12 +26,20 @@ param appServicePlanSku string = 'B1'
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: managedIdentityName
   location: location
+  tags: {
+    application: appName
+    environment: environment
+  }
 }
 
 // Key Vault with RBAC enabled (idempotent - will use existing if found)
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
+  tags: {
+    application: appName
+    environment: environment
+  }
   properties: {
     sku: {
       family: 'A'
@@ -54,18 +62,28 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: appServicePlanName
   location: location
+  tags: {
+    application: appName
+    environment: environment
+  }
   sku: {
     name: appServicePlanSku
   }
   properties: {
-    reserved: false // Windows
+    reserved: true // Linux
   }
+  kind: 'linux'
 }
 
 // App Service (idempotent - will use existing if found)
 resource appService 'Microsoft.Web/sites@2023-01-01' = {
   name: appServiceName
   location: location
+  kind: 'app,linux'
+  tags: {
+    application: appName
+    environment: environment
+  }
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -76,7 +94,7 @@ resource appService 'Microsoft.Web/sites@2023-01-01' = {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      nodeVersion: '18-lts'
+      linuxFxVersion: 'NODE|18-lts'
       alwaysOn: true
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
@@ -95,12 +113,12 @@ resource appService 'Microsoft.Web/sites@2023-01-01' = {
           value: managedIdentity.properties.clientId
         }
         {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '18.17.0'
-        }
-        {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
           value: 'true'
+        }
+        {
+          name: 'SCM_COMMAND_IDLE_TIMEOUT'
+          value: '1800'
         }
       ]
     }
