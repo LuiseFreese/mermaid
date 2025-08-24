@@ -49,7 +49,7 @@
     # Interactive mode - prompts for all values
     
 .EXAMPLE
-    .\setup-entra-app.ps1 -Unattended -EnvironmentUrl "https://yourorg.crm.dynamics.com" -ResourceGroup "rg-mermaid" -Location "East US"
+    .\setup-entra-app.ps1 -Unattended -EnvironmentUrl "https://yourorg.crm.dynamics.com" -ResourceGroup "rg-mermaid" -Location "West Europe"
     # Unattended mode with parameters
 #>
 
@@ -84,6 +84,9 @@ param(
     
     [Parameter(Mandatory = $false)]
     [string]$SecurityRole,
+    
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipDataverseUser,
     
     [Parameter(Mandatory = $false)]
     [switch]$DryRun
@@ -145,7 +148,7 @@ function Get-Configuration {
             Location = $Location
             AppRegistrationName = if ($AppRegistrationName) { $AppRegistrationName } else { "Mermaid-Dataverse-Converter" }
             AppServiceName = if ($AppServiceName) { $AppServiceName } else { "app-mermaid-dataverse" }
-            KeyVaultName = if ($KeyVaultName) { $KeyVaultName } else { "kv-mermaid-secrets" }
+            KeyVaultName = if ($KeyVaultName) { $KeyVaultName } else { "kv-mermaid-secrets-$(Get-Random -Minimum 1000 -Maximum 9999)" }
             ManagedIdentityName = if ($ManagedIdentityName) { $ManagedIdentityName } else { "mi-mermaid-dataverse" }
             AppServicePlanName = if ($AppServicePlanName) { $AppServicePlanName } else { "plan-mermaid-dataverse" }
             SecurityRole = if ($SecurityRole) { $SecurityRole } else { "System Administrator" }
@@ -162,6 +165,8 @@ function Get-Configuration {
     
     # Get Dataverse environment
     $envUrl = Get-UserInput "Dataverse Environment URL (e.g., https://yourorg.crm.dynamics.com)" -Required
+    # Normalize URL by removing trailing slash
+    $envUrl = $envUrl.TrimEnd('/')
     
     # Get Azure configuration
     $resourceGroup = Get-UserInput "Resource Group Name" "rg-mermaid-dataverse" -Required
@@ -169,7 +174,7 @@ function Get-Configuration {
     # Get available locations
     $locations = @("East US", "West US 2", "West Europe", "North Europe", "UK South", "Australia East")
     Write-Host "Available locations: $($locations -join ', ')" -ForegroundColor Yellow
-    $location = Get-UserInput "Azure Region" "East US" -Required -ValidValues $locations
+    $location = Get-UserInput "Azure Region" "West Europe" -Required -ValidValues $locations
     
     Write-Host ""
     Write-Info "Resource Naming (will check for existing resources):"
@@ -177,7 +182,8 @@ function Get-Configuration {
     # Get resource names
     $appRegName = Get-UserInput "App Registration Name" "Mermaid-Dataverse-Converter" -Required
     $appServiceName = Get-UserInput "App Service Name" "app-mermaid-dataverse" -Required
-    $keyVaultName = Get-UserInput "Key Vault Name" "kv-mermaid-secrets" -Required
+    $randomSuffix = Get-Random -Minimum 1000 -Maximum 9999
+    $keyVaultName = Get-UserInput "Key Vault Name" "kv-mermaid-secrets-$randomSuffix" -Required
     $managedIdentityName = Get-UserInput "Managed Identity Name" "mi-mermaid-dataverse" -Required
     $appServicePlanName = Get-UserInput "App Service Plan Name" "plan-mermaid-dataverse" -Required
     
@@ -221,6 +227,19 @@ function Test-Prerequisites {
     Write-Success "Subscription: $($account.name)"
     
     return $true
+}
+
+function Get-ServicePrincipalObjectId {
+    param([Parameter(Mandatory)][string]$AppId)
+    $spId = az ad sp list --filter "appId eq '$AppId'" --query "[0].id" -o tsv
+    if (-not $spId) {
+        Write-Info "Creating service principal for appId $AppId..."
+        az ad sp create --id $AppId --output none
+        # retry read
+        $spId = az ad sp list --filter "appId eq '$AppId'" --query "[0].id" -o tsv
+        if (-not $spId) { throw "Could not resolve service principal objectId for appId $AppId" }
+    }
+    return $spId
 }
 
 function Get-OrCreateAppRegistration {
@@ -267,7 +286,11 @@ function Get-OrCreateAppRegistration {
 }
 
 function Get-OrCreateClientSecret {
-    param($AppId, $ForceNew = $false)
+    param(
+        [Parameter(Mandatory)]
+        [string]$AppId,
+        [bool]$ForceNew = $false
+    )
     
     if ($ForceNew) {
         Write-Info "Generating new client secret..."
@@ -281,20 +304,28 @@ function Get-OrCreateClientSecret {
     }
     
     try {
-        # For existing apps, we need to generate a new secret as we can't retrieve existing ones
-        # Only generate if forced or if this is a new app registration
-        if ($ForceNew -or -not $existingApp) {
-            $credential = az ad app credential reset --id $AppId --years 2 | ConvertFrom-Json
+        # Explicitly check if the app exists first
+        $appExists = $null -ne (az ad app show --id $AppId --query "appId" -o tsv 2>$null)
+        
+        # Create a new secret if:
+        # 1. ForceNew is true, OR
+        # 2. We know for sure the app exists (and needs a new secret)
+        if ($ForceNew -or $appExists) {
+            # Reset-credential will generate a new client secret; we don't need to check existing ones
+            $credential = az ad app credential reset --id $AppId --years 2 2>$null | ConvertFrom-Json
+            if (-not $credential -or -not $credential.password) {
+                throw "Failed to generate client secret - credential reset returned no password"
+            }
             Write-Success "Client secret generated (expires: 2 years)"
             return $credential.password
         } else {
-            Write-Warning "Using existing App Registration. If you need a new secret, run with -ForceNew"
-            Write-Info "You may need to create a new client secret manually in the Azure Portal"
+            Write-Warning "App registration not found or error checking status. Cannot generate secret."
             return $null
         }
     }
     catch {
         Write-Error "Failed to create client secret: $_"
+        Write-Info "You may need to create a new client secret manually in the Azure Portal"
         throw
     }
 }
@@ -334,68 +365,82 @@ function Get-OrCreateResourceGroup {
 
 function Invoke-InfrastructureDeployment {
     param($ResourceGroup, $Location, $Config)
-    
+
     Write-Info "Deploying infrastructure using Bicep..."
-    
+
     if ($DryRun) {
         Write-Warning "[DRY RUN] Would deploy infrastructure to resource group: $ResourceGroup"
         return @{
-            keyVaultUri = "https://kv-fake-dry-run.vault.azure.net/"
-            keyVaultName = $Config.KeyVaultName
+            keyVaultUri             = "https://kv-fake-dry-run.vault.azure.net/"
+            keyVaultName            = $Config.KeyVaultName
             managedIdentityClientId = "00000000-0000-0000-0000-000000000000"
-            appServiceName = $Config.AppServiceName
-            appServiceUrl = "https://fake-dry-run.azurewebsites.net"
+            appServiceName          = $Config.AppServiceName
+            appServiceUrl           = "https://fake-dry-run.azurewebsites.net"
         }
     }
-    
+
     try {
-        # Deploy Bicep template
         $deploymentName = "mermaid-deployment-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-        $bicepFile = "deploy/infrastructure.bicep"
-        
-        if (-not (Test-Path $bicepFile)) {
+        $repoRoot = Split-Path -Parent $PSScriptRoot
+        $bicepFile = Join-Path $repoRoot "deploy/infrastructure.bicep"
+        if (-not (Test-Path $bicepFile)) { 
             Write-Error "Bicep template not found at: $bicepFile"
-            Write-Info "Please ensure you're running this script from the repository root."
-            throw "Bicep template not found"
+            Write-Info "Please ensure the Bicep template exists in the repository."
+            throw "Bicep template not found" 
         }
         
-        $deploymentParams = @{
-            location = $Location
-            keyVaultName = $Config.KeyVaultName
-            managedIdentityName = $Config.ManagedIdentityName
-            appServiceName = $Config.AppServiceName
-            appServicePlanName = $Config.AppServicePlanName
+        # pass params inline in the proper shape (no tmp parameters.json)
+        # Check for soft-deleted Key Vault and purge it if it exists
+        Write-Info "Checking for soft-deleted Key Vault: $($Config.KeyVaultName)"
+        $deletedVault = az keyvault list-deleted --query "[?name=='$($Config.KeyVaultName)']" | ConvertFrom-Json
+        
+        if ($deletedVault -and $deletedVault.Length -gt 0) {
+            Write-Warning "Found soft-deleted Key Vault with name: $($Config.KeyVaultName)"
+            Write-Info "Purging soft-deleted Key Vault..."
+            az keyvault purge --name $($Config.KeyVaultName) --no-wait
+            Write-Info "Waiting for purge operation to complete..."
+            Start-Sleep -Seconds 60  # Give Azure more time to complete the purge
+            Write-Success "Soft-deleted Key Vault purge initiated"
         }
         
-        # Create parameters file
-        $paramsJson = $deploymentParams | ConvertTo-Json
-        $paramsFile = "deploy/parameters.json"
-        $paramsJson | Out-File -FilePath $paramsFile -Encoding UTF8
-        
+        $paramArgs = @(
+          "--parameters", "appName=Mermaid",
+          "--parameters", "location=$Location",
+          "--parameters", "environment=prod", 
+          "--parameters", "keyVaultName=$($Config.KeyVaultName)",
+          "--parameters", "managedIdentityName=$($Config.ManagedIdentityName)",
+          "--parameters", "appServiceName=$($Config.AppServiceName)",
+          "--parameters", "appServicePlanName=$($Config.AppServicePlanName)"
+        )
+
         Write-Info "Deploying infrastructure (this may take a few minutes)..."
-        $deployment = az deployment group create `
-            --resource-group $ResourceGroup `
-            --template-file $bicepFile `
-            --parameters "@$paramsFile" `
-            --name $deploymentName `
-            --output json | ConvertFrom-Json
-        
-        if ($deployment.properties.provisioningState -eq "Succeeded") {
-            Write-Success "Infrastructure deployment completed successfully"
-            
-            $outputs = $deployment.properties.outputs
-            return @{
-                keyVaultUri = $outputs.keyVaultUri.value
-                keyVaultName = $outputs.keyVaultName.value
-                managedIdentityClientId = $outputs.managedIdentityClientId.value
-                appServiceName = $outputs.appServiceName.value
-                appServiceUrl = $outputs.appServiceUrl.value
-            }
-        } else {
-            Write-Error "Infrastructure deployment failed"
-            throw "Deployment failed"
+
+        # 1) run create with no output to avoid JSON stream issues
+        az deployment group create `
+          --resource-group $ResourceGroup `
+          --template-file $bicepFile `
+          @paramArgs `
+          --name $deploymentName `
+          --only-show-errors `
+          --output none
+
+        # 2) fetch outputs separately
+        $deployment = az deployment group show `
+          --resource-group $ResourceGroup `
+          --name $deploymentName `
+          --query properties.outputs `
+          --output json | ConvertFrom-Json
+
+        Write-Success "Infrastructure deployment completed successfully"
+
+        return @{
+            keyVaultUri             = $deployment.keyVaultUri.value
+            keyVaultName            = $deployment.keyVaultName.value
+            managedIdentityClientId = $deployment.managedIdentityClientId.value
+            appServiceName          = $deployment.appServiceName.value
+            appServiceUrl           = $deployment.appServiceUrl.value
         }
-    }
+        }
     catch {
         Write-Error "Failed to deploy infrastructure: $_"
         throw
@@ -413,6 +458,9 @@ function Set-KeyVaultSecrets {
     }
     
     try {
+        # Standardize environment URL by removing trailing slash
+        $normalizedUrl = $EnvironmentUrl.TrimEnd('/')
+        
         # Get current user for Key Vault permissions
         $currentUser = az ad signed-in-user show --query "id" -o tsv
         $subscriptionId = az account show --query 'id' -o tsv
@@ -420,7 +468,7 @@ function Set-KeyVaultSecrets {
         
         # Grant current user temporary Key Vault Administrator role to store secrets
         Write-Info "Granting temporary Key Vault Administrator role to current user..."
-        az role assignment create --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope --output none
+        $assignmentId = az role assignment create --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope --query id -o tsv
         
         # Wait for role assignment to propagate
         Write-Info "Waiting for permissions to propagate..."
@@ -431,7 +479,7 @@ function Set-KeyVaultSecrets {
         
         # Store secrets
         Write-Info "Storing secrets..."
-        az keyvault secret set --vault-name $KeyVaultName --name "DATAVERSE-URL" --value $EnvironmentUrl --output none
+        az keyvault secret set --vault-name $KeyVaultName --name "DATAVERSE-URL" --value $normalizedUrl --output none
         az keyvault secret set --vault-name $KeyVaultName --name "CLIENT-ID" --value $AppId --output none
         az keyvault secret set --vault-name $KeyVaultName --name "CLIENT-SECRET" --value $ClientSecret --output none
         az keyvault secret set --vault-name $KeyVaultName --name "TENANT-ID" --value $tenant --output none
@@ -439,11 +487,8 @@ function Set-KeyVaultSecrets {
         
         Write-Success "Secrets stored in Key Vault successfully"
         
-        # Clean up: Remove temporary role assignment
-        Write-Info "Removing temporary Key Vault Administrator role..."
-        az role assignment delete --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope --output none 2>$null
-        Write-Success "Temporary permissions cleaned up"
-        
+        # Return assignment ID instead of removing it
+        return @{ AssignmentId = $assignmentId }
     }
     catch {
         Write-Error "Failed to store secrets in Key Vault: $_"
@@ -467,13 +512,16 @@ function Update-EnvFile {
         $envFile = Join-Path $projectRoot ".env"
         $tenant = az account show --query "tenantId" -o tsv
         
+        # Normalize the URL by removing trailing slash
+        $normalizedUrl = $EnvironmentUrl.TrimEnd('/')
+        
         # Create .env content
         $envContent = @"
 # Mermaid to Dataverse Converter Configuration
 # Generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 
 # Replace YOUR-ORG with your actual Dataverse organization name
-DATAVERSE_URL=$EnvironmentUrl
+DATAVERSE_URL=$normalizedUrl
 
 # Microsoft Entra ID App Registration Details
 CLIENT_ID=$AppId
@@ -517,112 +565,189 @@ function Deploy-Application {
     
     try {
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $deployScript = Join-Path $projectRoot "scripts\deploy.ps1"
+        $deployScript = Join-Path $projectRoot "scripts\full-deploy.ps1"
         
         if (Test-Path $deployScript) {
-            Write-Info "Running deployment script..."
+            Write-Info "Running full deployment script for Linux App Service..."
             & $deployScript
             Write-Success "Application deployed successfully"
         } else {
-            Write-Warning "Deploy script not found at $deployScript"
-            Write-Info "You can deploy manually using: az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path deployment.zip"
+            Write-Warning "Full deploy script not found at $deployScript"
+            Write-Info "You can deploy manually using: az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path deployment.zip --type zip"
         }
         
     }
     catch {
         Write-Error "Failed to deploy application: $_"
+        Write-Warning "You can manually deploy using the full-deploy.ps1 script in the scripts folder"
         throw
     }
 }
 
-function New-DataverseApplicationUser {
-    param($AppId, $EnvironmentUrl, $SecurityRole)
+function New-DataverseApplicationUserWithPowerShell {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentUrl,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$AppId,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$SecurityRole
+    )
     
-    Write-Info "Creating Dataverse Application User..."
+    Write-Info "Creating Dataverse Application User using pure PowerShell method..."
     
-    if ($DryRun) {
-        Write-Warning "[DRY RUN] Would create Application User in Dataverse with role: $SecurityRole"
-        return
-    }
+    # Normalize URL by removing trailing slash
+    $envBase = $EnvironmentUrl.TrimEnd('/')
     
     try {
-        # Get access token for Dataverse using the app registration we just created
-        Write-Info "Getting access token for Dataverse API..."
+        # Step 1: Get admin access token using Azure CLI
+        Write-Info "Getting admin access token via Azure CLI..."
+        $accessToken = az account get-access-token --resource $envBase --query accessToken -o tsv
         
-        # Get access token using current user credentials (for setup purposes)
-        $userToken = az account get-access-token --resource $EnvironmentUrl --query "accessToken" -o tsv
+        if (-not $accessToken -or $accessToken.Length -lt 100) {
+            Write-Warning "Failed to get valid access token. Please ensure you're logged into Azure CLI."
+            return $false
+        }
+        
+        Write-Info "Successfully obtained admin access token"
+        
+        # Step 2: Check if Application User already exists
+        Write-Info "Checking for existing Application User..."
+        $checkUrl = "$envBase/api/data/v9.2/systemusers?`$select=systemuserid&`$filter=applicationid eq $AppId"
+        $checkUrl = [uri]::EscapeUriString($checkUrl)
         
         $headers = @{
-            'Authorization' = "Bearer $userToken"
-            'OData-MaxVersion' = '4.0'
-            'OData-Version' = '4.0'
-            'Accept' = 'application/json'
-            'Content-Type' = 'application/json'
+            "Authorization" = "Bearer $accessToken"
+            "Content-Type" = "application/json"
+            "Accept" = "application/json"
+            "OData-MaxVersion" = "4.0"
+            "OData-Version" = "4.0"
         }
         
-        # First, check if application user already exists
-        Write-Info "Checking if Application User already exists..."
-        $existingUserUrl = "$EnvironmentUrl/api/data/v9.2/systemusers?`$filter=applicationid eq $AppId"
-        $existingUserResponse = Invoke-RestMethod -Uri $existingUserUrl -Method Get -Headers $headers -ErrorAction SilentlyContinue
+        $existingUserResponse = Invoke-RestMethod -Uri $checkUrl -Headers $headers -Method Get
         
-        if ($existingUserResponse.value -and $existingUserResponse.value.Count -gt 0) {
-            Write-Warning "Application User already exists for App ID: $AppId"
-            $applicationUserId = $existingUserResponse.value[0].systemuserid
-        } else {
-            # Create Application User
-            Write-Info "Creating new Application User..."
-            $applicationUserBody = @{
-                applicationid = $AppId
-                businessunitid = "@odata.bind|businessunits()" # Default business unit
-            } | ConvertTo-Json
-            
-            $createUserUrl = "$EnvironmentUrl/api/data/v9.2/systemusers"
-            $createUserResponse = Invoke-RestMethod -Uri $createUserUrl -Method Post -Headers $headers -Body $applicationUserBody
-            
-            # Get the created user ID from Location header
-            $locationHeader = $createUserResponse.Headers.Location
-            $applicationUserId = ($locationHeader -split '\(')[1] -replace '\)', ''
-            
-            Write-Success "Application User created with ID: $applicationUserId"
+        if ($existingUserResponse.value.Count -gt 0) {
+            Write-Success "Application User already exists. Skipping creation."
+            return $true
         }
         
-        # Get the security role ID
-        Write-Info "Looking up security role: $SecurityRole"
-        $roleUrl = "$EnvironmentUrl/api/data/v9.2/roles?`$filter=name eq '$SecurityRole'"
-        $roleResponse = Invoke-RestMethod -Uri $roleUrl -Method Get -Headers $headers
+        Write-Info "No existing Application User found. Proceeding with creation."
         
-        if ($roleResponse.value -and $roleResponse.value.Count -gt 0) {
-            $roleId = $roleResponse.value[0].roleid
-            Write-Success "Found security role: $SecurityRole (ID: $roleId)"
+        # Step 3: Get root Business Unit
+        Write-Info "Getting root Business Unit..."
+        $buUrl = "$envBase/api/data/v9.2/businessunits?`$filter=parentbusinessunitid eq null&`$select=businessunitid,name"
+        $buUrl = [uri]::EscapeUriString($buUrl)
+        
+        $buResponse = Invoke-RestMethod -Uri $buUrl -Headers $headers -Method Get
+        
+        if ($buResponse.value.Count -eq 0) {
+            Write-Warning "No root Business Unit found"
+            return $false
+        }
+        
+        $businessUnitId = $buResponse.value[0].businessunitid
+        $businessUnitName = $buResponse.value[0].name
+        Write-Info "Found root Business Unit: $businessUnitName"
+        
+        # Step 4: Get Security Role
+        Write-Info "Getting $SecurityRole role..."
+        $roleUrl = "$envBase/api/data/v9.2/roles?`$filter=name eq '$SecurityRole'&`$select=roleid,name"
+        $roleUrl = [uri]::EscapeUriString($roleUrl)
+        
+        $roleResponse = Invoke-RestMethod -Uri $roleUrl -Headers $headers -Method Get
+        
+        if ($roleResponse.value.Count -eq 0) {
+            Write-Warning "Security Role '$SecurityRole' not found"
+            return $false
+        }
+        
+        $roleId = $roleResponse.value[0].roleid
+        Write-Info "Found Security Role: $SecurityRole"
+        
+        # Step 5: Create Application User
+        Write-Info "Creating Application User..."
+        $createUrl = "$envBase/api/data/v9.2/systemusers"
+        
+        $userBody = @{
+            applicationid = $AppId
+            "businessunitid@odata.bind" = "/businessunits($businessUnitId)"
+            firstname = "Mermaid"
+            lastname = "Service Principal"
+            domainname = "$AppId@mermaid.app"
+        } | ConvertTo-Json
+        
+        $createHeaders = $headers.Clone()
+        $createHeaders["Prefer"] = "return=representation"
+        
+        $createResponse = Invoke-RestMethod -Uri $createUrl -Headers $createHeaders -Method Post -Body $userBody -ContentType "application/json"
+        
+        # The response should contain the ID directly in PowerShell
+        $userId = $createResponse.systemuserid
+        
+        if (-not $userId) {
+            Write-Warning "Failed to extract user ID from creation response"
+            return $false
+        }
+        
+        Write-Success "Application User created successfully"
+        
+        # Step 6: Assign Security Role
+        Write-Info "Assigning $SecurityRole role..."
+        $assignUrl = "$envBase/api/data/v9.2/systemusers($userId)/systemuserroles_association/`$ref"
+        
+        $assignBody = @{
+            "@odata.id" = "$envBase/api/data/v9.2/roles($roleId)"
+        } | ConvertTo-Json
+        
+        try {
+            Write-Verbose "Calling Dataverse API to assign role: $assignUrl"
+            Write-Verbose "Request body: $assignBody"
             
-            # Assign security role to application user
-            Write-Info "Assigning security role to Application User..."
-            $assignRoleUrl = "$EnvironmentUrl/api/data/v9.2/systemusers($applicationUserId)/systemuserroles_association/`$ref"
-            $assignRoleBody = @{
-                "@odata.id" = "$EnvironmentUrl/api/data/v9.2/roles($roleId)"
-            } | ConvertTo-Json
+            Invoke-RestMethod -Uri $assignUrl -Headers $headers -Method Post -Body $assignBody -ContentType "application/json"
+            Write-Success "Successfully created and configured Application User with $SecurityRole role"
+            return $true
+        }
+        catch {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+            $errorMessage = $_.ErrorDetails.Message
             
-            Invoke-RestMethod -Uri $assignRoleUrl -Method Post -Headers $headers -Body $assignRoleBody -ErrorAction SilentlyContinue
-            Write-Success "Security role '$SecurityRole' assigned to Application User"
-        } else {
-            Write-Error "Security role '$SecurityRole' not found in environment"
-            throw "Security role not found"
+            Write-Warning "Failed to assign security role: $errorMessage"
+            Write-Verbose "HTTP Status Code: $statusCode"
+            Write-Verbose "Exception details: $_"
+            
+            # Return true anyway since the user was created, just not assigned the role
+            Write-Warning "Application User was created but role assignment failed. You may need to assign the role manually."
+            return $true
         }
     }
     catch {
-        Write-Error "Failed to create Dataverse Application User: $_"
-        Write-Warning "You may need to create the Application User manually:"
-        Write-Info "1. Go to Power Platform Admin Center: https://admin.powerplatform.microsoft.com"
-        Write-Info "2. Select your environment: $EnvironmentUrl"
-        Write-Info "3. Go to Settings > Users + permissions > Application users"
-        Write-Info "4. Create new app user with App ID: $AppId"
-        Write-Info "5. Assign security role: $SecurityRole"
-        throw
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        $errorMessage = $_.ErrorDetails.Message
+        
+        if ($statusCode -eq 401) {
+            Write-Warning "Authentication failed. Please ensure you're logged into Azure CLI with 'az login' and have admin permissions."
+        }
+        elseif ($statusCode -eq 403) {
+            Write-Warning "Access denied. Your account doesn't have sufficient permissions to perform this operation."
+        }
+        else {
+            Write-Warning "Failed to create Application User: $errorMessage"
+            Write-Verbose "Exception details: $_"
+        }
+        
+        return $false
     }
 }
-
 function Test-Setup {
-    param($KeyVaultUri, $AppId)
+    param(
+        [Parameter(Mandatory)]
+        [string]$KeyVaultUri, 
+        [Parameter(Mandatory)]
+        [string]$AppId
+    )
     
     Write-Info "Testing setup..."
     
@@ -631,23 +756,61 @@ function Test-Setup {
         return $true
     }
     
-    try {
-        # Test Key Vault access
-        $testSecret = az keyvault secret show --vault-name (Split-Path $KeyVaultUri -Leaf).Split('.')[0] --name "CLIENT-ID" --query "value" -o tsv
-        if ($testSecret -eq $AppId) {
-            Write-Success "Key Vault access test: PASSED"
-        } else {
-            Write-Error "Key Vault access test: FAILED"
+    # Maximum number of retries for RBAC propagation
+    $maxRetries = 3
+    $retryCount = 0
+    $retryDelaySeconds = 30
+    
+    do {
+        try {
+            if ($retryCount -gt 0) {
+                Write-Info "Retry attempt $retryCount of $maxRetries (waiting for RBAC propagation)..."
+                Start-Sleep -Seconds $retryDelaySeconds
+                # Increase delay for each subsequent retry
+                $retryDelaySeconds = $retryDelaySeconds * 2
+            }
+            
+            # Extract Key Vault name safely using proper URI parsing
+            $kvName = ([System.Uri]$KeyVaultUri).Host.Split('.')[0]
+            if (-not $kvName) {
+                throw "Could not extract Key Vault name from URI: $KeyVaultUri"
+            }
+            
+            # Test Key Vault access
+            $testSecret = az keyvault secret show --vault-name $kvName --name "CLIENT-ID" --query "value" -o tsv
+            if ($testSecret -eq $AppId) {
+                Write-Success "Key Vault access test: PASSED"
+                # If we got here, break out of the retry loop
+                break
+            } else {
+                Write-Error "Key Vault access test: FAILED"
+                if ($retryCount -lt $maxRetries) {
+                    Write-Warning "Key Vault access failed, waiting for RBAC propagation..."
+                    $retryCount++
+                    continue
+                }
+                return $false
+            }
+        }
+        catch {
+            $errorMessage = $_
+            $retryCount++
+            
+            # Check if error is related to RBAC permissions
+            if ($errorMessage.ToString() -match "Caller is not authorized|Forbidden|Permission denied") {
+                if ($retryCount -lt $maxRetries) {
+                    Write-Warning "Key Vault permissions not propagated yet, waiting..."
+                    continue
+                }
+            }
+            
+            Write-Error "Setup test failed: $errorMessage"
             return $false
         }
-        
-        Write-Success "Setup test completed successfully"
-        return $true
-    }
-    catch {
-        Write-Error "Setup test failed: $_"
-        return $false
-    }
+    } while ($retryCount -lt $maxRetries)
+    
+    Write-Success "Setup test completed successfully"
+    return $true
 }
 
 function Show-DeploymentInfo {
@@ -766,11 +929,14 @@ function Start-Setup {
             exit 1
         }
         
+        # Get the Service Principal ObjectId for the app
+        $spObjectId = Get-ServicePrincipalObjectId -AppId $app.appId
+        
         # Deploy Infrastructure
         $infrastructure = Invoke-InfrastructureDeployment -ResourceGroup $config.ResourceGroup -Location $config.Location -Config $config
         
         # Store secrets in Key Vault
-        Set-KeyVaultSecrets -KeyVaultName $infrastructure.keyVaultName -AppId $app.appId -ClientSecret $clientSecret -EnvironmentUrl $config.EnvironmentUrl -ResourceGroup $config.ResourceGroup
+        $kvGrant = Set-KeyVaultSecrets -KeyVaultName $infrastructure.keyVaultName -AppId $app.appId -ClientSecret $clientSecret -EnvironmentUrl $config.EnvironmentUrl -ResourceGroup $config.ResourceGroup
         
         # Update .env file with new configuration
         Update-EnvFile -AppId $app.appId -ClientSecret $clientSecret -EnvironmentUrl $config.EnvironmentUrl -KeyVaultName $infrastructure.keyVaultName
@@ -778,14 +944,70 @@ function Start-Setup {
         # Deploy application to Azure App Service
         Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup
         
-        # Create Dataverse Application User
-        New-DataverseApplicationUser -AppId $app.appId -EnvironmentUrl $config.EnvironmentUrl -SecurityRole $config.SecurityRole
+        # Create Dataverse Application User (unless skipped)
+        if (-not $SkipDataverseUser) {
+            try {
+                $success = New-DataverseApplicationUserWithPowerShell -EnvironmentUrl $config.EnvironmentUrl -AppId $app.appId -SecurityRole $config.SecurityRole
+                
+                if ($success) {
+                    Write-Success "Dataverse Application User created successfully"
+                } else {
+                    Write-Warning "Failed to create Dataverse Application User"
+                    Write-Info "You can create it manually in Power Platform Admin Center:"
+                    Write-Info "1. Admin Center > Environments > $($config.EnvironmentUrl)"
+                    Write-Info "2. Settings > Users + permissions > Application users"
+                    Write-Info "3. New app user; App ID: $($app.appId); Role: $($config.SecurityRole)"
+                    
+                    if (-not $Unattended) {
+                        $continue = Get-UserInput "Continue with setup despite Dataverse user creation failure? (y/n)" "y" -ValidValues @("y", "n")
+                        if ($continue -eq "n") {
+                            Write-Error "Setup aborted by user."
+                            exit 1
+                        }
+                    }
+                }
+            }
+            catch {
+                Write-Warning "Failed to create Dataverse Application User: $_"
+                Write-Info "You can create it manually in Power Platform Admin Center:"
+                Write-Info "1. Admin Center > Environments > $($config.EnvironmentUrl)"
+                Write-Info "2. Settings > Users + permissions > Application users"
+                Write-Info "3. New app user; App ID: $($app.appId); Role: $($config.SecurityRole)"
+                
+                if (-not $Unattended) {
+                    $continue = Get-UserInput "Continue with setup despite Dataverse user creation failure? (y/n)" "y" -ValidValues @("y", "n")
+                    if ($continue -eq "n") {
+                        Write-Error "Setup aborted by user."
+                        exit 1
+                    }
+                }
+            }
+        }
+        else {
+            Write-Warning "Skipping Dataverse Application User creation as requested."
+            Write-Info "You will need to create the Application User manually:"
+            Write-Info "1. Admin Center > Environments > $($config.EnvironmentUrl)"
+            Write-Info "2. Settings > Users + permissions > Application users" 
+            Write-Info "3. New app user; App ID: $($app.appId); Role: $($config.SecurityRole)"
+        }
         
         # Test the setup
         if (Test-Setup -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId) {
+            # Clean up the role assignment after all operations and tests complete
+            if ($kvGrant.AssignmentId) {
+                Write-Info "Removing temporary Key Vault Administrator role..."
+                az role assignment delete --ids $kvGrant.AssignmentId --output none
+                Write-Success "Temporary permissions cleaned up"
+            }
+            
             Show-DeploymentInfo -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId -AppServiceUrl $infrastructure.appServiceUrl -ManagedIdentityClientId $infrastructure.managedIdentityClientId
         } else {
             Write-Error "Setup completed but tests failed. Please review the configuration."
+            # Clean up the role assignment even on failure
+            if ($kvGrant.AssignmentId) {
+                Write-Info "Removing temporary Key Vault Administrator role..."
+                az role assignment delete --ids $kvGrant.AssignmentId --output none
+            }
             exit 1
         }
     }
