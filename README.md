@@ -57,6 +57,17 @@ If you experience connection issues after deployment:
 - See the `examples/` directory for sample Mermaid ERD files
 
 
+## Note on AI Usage
+
+GitHub Copilot has been helpful in this project - not so much for the logic of the app, but for 
+
+* creating all the countless mermaid diagrams
+* fleshing out examples
+* outlining documentation
+* hardening deployments and making them idempotent
+* commenting the scripts so that others might understand them more easily. 
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
