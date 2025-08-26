@@ -64,7 +64,7 @@ Global choices are defined in JSON files with the following structure:
 }
 ```
 
-When this is deployed with a publisher prefix "south", it will be created in Dataverse as "south_deployment_stage".
+When this is deployed with a publisher prefix "pink", it will be created in Dataverse as "pink_deployment_stage".
 
 ### 🔧 Field Descriptions
 
@@ -218,7 +218,7 @@ curl -X GET http://localhost:8082/api/global-choices-list
   "choiceSets": [
     {
       "MetadataId": "guid-here",
-      "Name": "south_priority_level",
+      "Name": "pink_priority_level",
       "DisplayName": "Priority Level",
       "IsBuiltIn": false,
       "OptionCount": 5
@@ -257,66 +257,19 @@ curl -X POST http://localhost:8082/api/global-choices \
     {
       "success": true,
       "created": true,
-      "choiceSet": { "name": "south_priority_level", "displayName": "Priority Level" }
+      "choiceSet": { "name": "pink_priority_level", "displayName": "Priority Level" }
     }
   ]
 }
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**❌ "Choice set already exists"**
-- **Cause**: A choice set with the same name already exists
-- **Solution**: The application skips existing choices automatically. Check the logs for confirmation.
-
-**❌ "Invalid JSON format"**
-- **Cause**: JSON file has syntax errors or missing required fields
-- **Solution**: Validate your JSON using a JSON validator and ensure all required fields are present
-
-**❌ "Solution not found"**
-- **Cause**: Specified solution doesn't exist in Dataverse
-- **Solution**: Ensure the solution name is correct or enable auto-creation of solutions
-
-**❌ "Authentication failed"**
-- **Cause**: Invalid credentials or permissions
-- **Solution**: Check Key Vault configuration and Dataverse application user permissions
-
-### Debug Tips
-
-1. **Enable dry run mode** - Test your JSON files without creating actual choices
-2. **Check solution assignment** - Verify choices are created in the correct solution
-3. **Review option values** - Ensure values start at 100000000 and are sequential
-4. **Validate JSON syntax** - Use online JSON validators before uploading
-
-## Examples
-
-See the `examples/` directory for sample JSON files:
-
-- [`examples/unique-global-choices.json`](../examples/unique-global-choices.json) - Sample global choices with tested prefixes
-- [`examples/global-choices.json`](../examples/global-choices.json) - General purpose choices
-- [`examples/crm-choices.json`](../examples/crm-choices.json) - CRM-related choice sets
 
 ## Limitations
 
 ### Current Limitations
 - **No automatic field linking** - Mermaid enum fields and global choices are not automatically linked
-- **Manual prefix required** - Must include publisher prefix in JSON choice names
-- **No option updates** - Existing choice sets are skipped entirely during JSON uploads
 - **No deletion support** - Cannot remove choice sets or options through the interface
 - **Name-only existence check** - Only checks choice set names, not option values for new choices
 - **No validation of option values** - Application trusts your value assignments in JSON uploads
 
-### Future Enhancements
-- **Automatic field linking** - Connect Mermaid enum fields to selected global choice sets
-- **Dynamic prefix application** - Automatically apply solution's publisher prefix to choice names
-- **Option set updates** - Update existing choice sets with new options
-- **Value validation** - Ensure option values don't conflict with existing choices
-- **Choice field mapping** - Visual interface to map Mermaid enums to global choices
-- **Bulk management** - Import/export choice sets for backup and migration
-- **Choice usage tracking** - Show which entities use which global choices
 
----
-
-*Last updated: August 2025*

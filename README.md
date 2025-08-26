@@ -35,7 +35,29 @@ cd mermaid
    - **Dry Run**: Toggle to validate without creating entities
    - **Create Publisher**: Enable to auto-create publisher if needed
 4. **Click "Convert & Deploy"** to start the process
-5. **Monitor Progress** with real-time logging in the wizard interface
+
+## Troubleshooting
+
+If you experience connection issues after deployment:
+
+```powershell
+# Test the application and Dataverse connection
+.\scripts\test-connection.ps1 -AppServiceName "your-app-name" -ResourceGroup "your-resource-group"
+
+# Re-run setup if resources were deleted
+.\scripts\setup-entra-app.ps1
+```
+
+**Common Issues:**
+- **403 Forbidden Error**: The Application User is missing or doesn't have proper security roles
+  - Check if Application User exists in Dataverse (setup script creates this)
+  - Ensure Application User has System Administrator role assigned
+  - Re-run setup script if Application User is missing
+- **Connection failed**: Run the setup script again to recreate missing configurations
+- **Key Vault access denied**: Ensure the managed identity has proper Key Vault permissions
+- **App Service not responding**: Check deployment logs in Azure Portal
+
+**Important**: Dataverse permissions are controlled entirely by security roles assigned to the Application User. No API permissions or admin consent are needed in the App Registration.
 
 ## Documentation
 
@@ -43,14 +65,8 @@ cd mermaid
 - **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax reference
+- See the `examples/` directory for sample Mermaid ERD files
 
-## Examples
-
-See the `examples/` directory for sample Mermaid ERD files:
-
-- **`simple-sales.mmd`** - Basic sales entities with relationships
-- **`department-employee.mmd`** - HR-style hierarchical relationships
-- **`event-erd.mmd`** - Event management system example
 
 ## License
 

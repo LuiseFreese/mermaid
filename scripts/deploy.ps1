@@ -1,134 +1,144 @@
-# Linux ZIP deploy for App Service with Oryx
+# Linux ZIP deploy for Node on Azure App Service (Oryx + OneDeploy)
+# Usage: .\scripts\deploy.ps1 -ResourceGroup rg-mermaid-dataverse -AppServiceName app-mermaid-dataverse [-KeyVaultName kv-...]
+param(
+    [Parameter(Mandatory = $true)] [string]$ResourceGroup,
+    [Parameter(Mandatory = $true)] [string]$AppServiceName,
+    [string]$KeyVaultName  # optional; if omitted we'll try to read from .env
+)
 
-Write-Host "Starting Linux deployment for mermaid-to-dataverse app..." -ForegroundColor Green
+$ErrorActionPreference = 'Stop'
+Write-Host "=== Deploying to Linux App Service (Node) ===" -ForegroundColor Cyan
 
-$scriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$projectRoot = Split-Path -Parent $scriptDir
-$stage       = Join-Path $scriptDir 'deployment'
-$zipPath     = Join-Path $scriptDir 'deployment.zip'
-$rg          = "rg-mermaid-dataverse"
-$app         = "app-mermaid-dataverse"
+# ---- locate repo root & stage ------------------------------------------------
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = if ($scriptDir -like "*\scripts") { Split-Path -Parent $scriptDir } else { $scriptDir }
 
-Write-Host "Cleaning up previous deployment files..." -ForegroundColor Cyan
+$stage = Join-Path $env:TEMP "mermaid-deploy-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$zipPath = Join-Path $scriptDir "mermaid-deployment.zip"
+$hcFile = Join-Path $env:TEMP "healthcheck-$(Get-Date -Format 'yyyyMMdd-HHmmss').json"
+
+Write-Host "Staging: $stage" -ForegroundColor Gray
 Remove-Item $stage -Recurse -Force -ErrorAction Ignore
 Remove-Item $zipPath -Force -ErrorAction Ignore
 New-Item -ItemType Directory -Path $stage | Out-Null
 
-Write-Host "Copying package manifest..." -ForegroundColor Yellow
-# Copy package manifest(s)
-Copy-Item "$projectRoot\package.json" "$stage\package.json"
-Write-Host "  ✓ Copied package.json" -ForegroundColor Green
-
-if (Test-Path "$projectRoot\package-lock.json") {
-  Copy-Item "$projectRoot\package-lock.json" "$stage\package-lock.json"
-  Write-Host "  ✓ Copied package-lock.json" -ForegroundColor Green
+# ---- build package -----------------------------------------------------------
+Write-Host "Copy package.json / package-lock.json..." -ForegroundColor Yellow
+Copy-Item (Join-Path $projectRoot "package.json") (Join-Path $stage "package.json")
+if (Test-Path (Join-Path $projectRoot "package-lock.json")) {
+    Copy-Item (Join-Path $projectRoot "package-lock.json") (Join-Path $stage "package-lock.json")
+    Write-Host "  ✓ Copied package-lock.json" -ForegroundColor Green
 } else {
-  Write-Host "  ⚠ No package-lock.json found" -ForegroundColor Yellow
+    Write-Host "  ⚠ No package-lock.json found" -ForegroundColor Yellow
 }
 
-Write-Host "Copying source files..." -ForegroundColor Yellow
-Copy-Item "$projectRoot\src" "$stage\src" -Recurse
-# (Optional) drop local logs from the package
-Remove-Item "$stage\src\logs" -Recurse -Force -ErrorAction Ignore
+Write-Host "Copy src/ ..." -ForegroundColor Yellow
+Copy-Item (Join-Path $projectRoot "src") (Join-Path $stage "src") -Recurse
+Remove-Item (Join-Path $stage "src\logs") -Recurse -Force -ErrorAction Ignore
 Write-Host "  ✓ Copied src/ directory" -ForegroundColor Green
 
-# Show what we're deploying
-Write-Host "Package contents:" -ForegroundColor Cyan
+Write-Host "Package contents:" -ForegroundColor DarkCyan
 Get-ChildItem $stage -Recurse | ForEach-Object {
-    $relativePath = $_.FullName.Substring($stage.Length + 1)
+    $rel = $_.FullName.Substring($stage.Length + 1)
     $size = if ($_.PSIsContainer) { "folder" } else { "{0:N1}KB" -f ($_.Length / 1KB) }
-    Write-Host "  - $relativePath $size" -ForegroundColor White
+    Write-Host "  - $rel $size"
 }
 
-Write-Host "Creating deployment ZIP..." -ForegroundColor Cyan
-# Create zip
-Compress-Archive -Path "$stage\*" -DestinationPath $zipPath -Force
+Write-Host "Create ZIP..." -ForegroundColor Yellow
+Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zipPath -Force
 
-# ----- App config hardening for Linux + Oryx -----
-
-Write-Host "Removing settings that force Run-From-Zip..." -ForegroundColor Cyan
-# Remove WEBSITE_RUN_FROM_PACKAGE and WEBSITE_RUN_FROM_ZIP (forces "skip build")
-az webapp config appsettings delete `
-  --resource-group $rg `
-  --name $app `
-  --setting-names WEBSITE_RUN_FROM_PACKAGE WEBSITE_RUN_FROM_ZIP `
-  --output none
-
-# Remove Windows-style Node version setting if it exists
-az webapp config appsettings delete `
-  --resource-group $rg `
-  --name $app `
-  --setting-names WEBSITE_NODE_DEFAULT_VERSION `
-  --output none
-
-Write-Host "Configuring app settings for Oryx..." -ForegroundColor Cyan
-# Let Oryx build/install and give it time
-az webapp config appsettings set `
-  --resource-group $rg `
-  --name $app `
-  --settings SCM_DO_BUILD_DURING_DEPLOYMENT=1 SCM_COMMAND_IDLE_TIMEOUT=1800 `
-  --output none
-
-# Clear custom startup so Oryx will pick 'npm start'
-Write-Host "Clearing custom startup (if any)..." -ForegroundColor Cyan
-az webapp config set `
-  --resource-group $rg `
-  --name $app `
-  --startup-file "" `
-  --output none
-
-# Ensure Linux Node 18 runtime
-$fx = az webapp config show -g $rg -n $app --query linuxFxVersion -o tsv 2>$null
-if (-not $fx -or -not $fx.StartsWith("NODE|18")) {
-  Write-Host "Setting linuxFxVersion to NODE|18-lts..." -ForegroundColor Cyan
-  az webapp config set -g $rg -n $app --linux-fx-version "NODE|18-lts" --output none
+# ---- discover Key Vault name (your server reads KEY_VAULT_NAME) -------------
+if (-not $KeyVaultName) {
+    $envFile = Join-Path $projectRoot ".env"
+    if (Test-Path $envFile) {
+        $kvLine = Select-String -Path $envFile -Pattern '^\s*KEY_VAULT_NAME\s*=\s*(.+)\s*$' -ErrorAction Ignore | Select-Object -First 1
+        if ($kvLine) { $KeyVaultName = ($kvLine.Matches[0].Groups[1].Value).Trim() }
+    }
+}
+if ($KeyVaultName) {
+    Write-Host "Using Key Vault: $KeyVaultName (will set as app setting)" -ForegroundColor Gray
 }
 
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "❌ Failed to configure app settings" -ForegroundColor Red
-  exit 1
+# ---- app configuration for Oryx/Node on Linux -------------------------------
+Write-Host "Harden app config for Linux/Node..." -ForegroundColor Yellow
+
+# 0) Ensure runtime to Node 18 LTS
+$fx = az webapp config show --resource-group $ResourceGroup --name $AppServiceName --query linuxFxVersion -o tsv 2>$null
+if (-not $fx -or ($fx -notlike "NODE|18*")) {
+    Write-Host "Setting linuxFxVersion to NODE|18-lts..." -ForegroundColor Cyan
+    az webapp config set --resource-group $ResourceGroup --name $AppServiceName --linux-fx-version "NODE|18-lts" --output none
 }
 
-# ----- Deploy (OneDeploy API) -----
+# 1) Remove Run-From-Package flags (otherwise Oryx build is skipped)
+az webapp config appsettings delete --resource-group $ResourceGroup --name $AppServiceName `
+    --setting-names WEBSITE_RUN_FROM_PACKAGE WEBSITE_RUN_FROM_ZIP --output none
 
-Write-Host "Deploying ZIP package with OneDeploy API..." -ForegroundColor Cyan
-# Deploy with OneDeploy API (NOT config-zip) - this allows Oryx to build
-az webapp deploy `
-  --resource-group $rg `
-  --name $app `
-  --src-path $zipPath `
-  --type zip `
-  --async false
+# 2) Remove legacy Windows Node default version (harmless if absent)
+az webapp config appsettings delete --resource-group $ResourceGroup --name $AppServiceName `
+    --setting-names WEBSITE_NODE_DEFAULT_VERSION --output none
 
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "❌ Zip deploy failed" -ForegroundColor Red
-  Write-Host "Checking deployment logs..." -ForegroundColor Yellow
-  az webapp log deployment show -n $app -g $rg --logs
-  exit 1
+# 3) Oryx build + generous idle timeout + prod mode
+$settings = @("SCM_DO_BUILD_DURING_DEPLOYMENT=1","SCM_COMMAND_IDLE_TIMEOUT=1800","NODE_ENV=production")
+if ($KeyVaultName) { $settings += "KEY_VAULT_NAME=$KeyVaultName"; $settings += "USE_KEY_VAULT=true" }
+az webapp config appsettings set --resource-group $ResourceGroup --name $AppServiceName --settings $settings --output none
+
+# 4) Health check as proper JSON (no quoting issues)
+'{"healthCheckPath":"/health"}' | Out-File -FilePath $hcFile -Encoding ascii -Force
+az webapp config set --resource-group $ResourceGroup --name $AppServiceName --generic-configurations "@$hcFile" --output none
+# AlwaysOn (only effective on Basic+)
+az webapp config set --resource-group $ResourceGroup --name $AppServiceName --always-on true --output none
+
+# 5) Clear any custom startup command reliably
+$siteId = az webapp show --resource-group $ResourceGroup --name $AppServiceName --query id -o tsv
+$currentCmd = az webapp config show --resource-group $ResourceGroup --name $AppServiceName --query siteConfig.appCommandLine -o tsv
+if ($currentCmd) {
+    Write-Host "Clearing existing startup command..." -ForegroundColor Cyan
+    az resource update --ids $siteId --set siteConfig.appCommandLine="" --output none
 }
 
-Write-Host "✅ Deployment successful!" -ForegroundColor Green
-Write-Host ""
-Write-Host "🌐 Application URL: https://$app.azurewebsites.net/" -ForegroundColor Cyan
-Write-Host "Oryx will now:" -ForegroundColor Yellow
-Write-Host "  1. Detect Node.js from package.json" -ForegroundColor White
-Write-Host "  2. Run npm install to install dependencies" -ForegroundColor White
-Write-Host "  3. Start with: npm start -> node src/server.js" -ForegroundColor White
+# ---- deploy (retry OneDeploy, then fall back to config-zip) ------------------
+function Invoke-OneDeploy {
+    param([string]$zip)
+    az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path $zip --type zip --async false --output none
+}
 
-Write-Host ""
-Write-Host "Checking deployment logs..." -ForegroundColor Cyan
-az webapp log deployment show -g $rg -n $app --logs
+function Invoke-ConfigZip {
+    param([string]$zip)
+    az webapp deployment source config-zip --resource-group $ResourceGroup --name $AppServiceName --src $zip --output none
+}
 
-Write-Host ""
-Write-Host "Enabling application logging..." -ForegroundColor Cyan
-az webapp log config -g $rg -n $app --application-logging filesystem --level information --output none
+Write-Host "Deploy ZIP (OneDeploy, with retries)..." -ForegroundColor Yellow
+$max = 3; $ok = $false
+for ($i=1; $i -le $max -and -not $ok; $i++) {
+    try {
+        Write-Host "Attempt $i of $max..." -ForegroundColor Gray
+        Invoke-OneDeploy -zip $zipPath
+        $ok = $true
+    } catch {
+        $msg = $_.Exception.Message
+        Write-Host "OneDeploy failed: $msg" -ForegroundColor DarkYellow
+        if ($i -lt $max) { Start-Sleep -Seconds (15 * $i) }
+    }
+}
 
-Write-Host ""
-Write-Host "Tailing logs to watch build/startup..." -ForegroundColor Cyan
+if (-not $ok) {
+    Write-Host "Falling back to config-zip..." -ForegroundColor Yellow
+    Invoke-ConfigZip -zip $zipPath
+}
 
-# Clean up local files
+Write-Host "✅ Deployment request accepted" -ForegroundColor Green
+
+# ---- enable logs & quick post-deploy sanity ---------------------------------
+az webapp log config --resource-group $ResourceGroup --name $AppServiceName --application-logging filesystem --level information --output none
+
+# Clean local temp files
 Remove-Item $stage -Recurse -Force -ErrorAction Ignore
 Remove-Item $zipPath -Force -ErrorAction Ignore
+Remove-Item $hcFile -Force -ErrorAction Ignore
 
-# Tail logs to watch the process
-az webapp log tail -n $app -g $rg
+Write-Host ""
+Write-Host "🌐 https://$AppServiceName.azurewebsites.net/" -ForegroundColor Cyan
+Write-Host "   Health: https://$AppServiceName.azurewebsites.net/health" -ForegroundColor DarkCyan
+Write-Host ""
+Write-Host "Tailing logs (Ctrl+C to stop)..." -ForegroundColor Gray
+az webapp log tail --resource-group $ResourceGroup --name $AppServiceName

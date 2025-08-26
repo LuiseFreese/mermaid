@@ -11,6 +11,21 @@
     - Creates only what doesn't exist
     - Can be run multiple times safely
     
+    PREREQUISITES:
+    1. Azure CLI installed and logged in (run 'az login' first)
+    2. PowerShell execution policy set to allow scripts
+    3. Your Dataverse environment URL ready (e.g., https://yourorg.crm.dynamics.com)
+    4. Azure subscription with permission to create resources
+    
+.PREREQUISITES
+    Before running this script:
+    1. Install Azure CLI: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli
+    2. Login to Azure: az login
+    3. Obtain your Dataverse environment URL from Power Platform Admin Center
+       - Go to https://admin.powerplatform.microsoft.com
+       - Navigate to Environments > [Your Environment] > Settings > Developer resources
+       - Copy the "Web API endpoint" URL (e.g., https://yourorg.crm.dynamics.com/)
+    
 .PARAMETER Unattended
     Run in unattended mode using provided parameters (no prompts)
     
@@ -142,12 +157,20 @@ function Get-Configuration {
         if (-not $ResourceGroup) { throw "ResourceGroup is required for unattended mode" }
         if (-not $Location) { throw "Location is required for unattended mode" }
         
+        # Validate Dataverse URL format
+        if ($EnvironmentUrl -notmatch '^https://[^.]+\.crm[0-9]*\.dynamics\.com/?$') {
+            throw "Invalid EnvironmentUrl format. Expected: https://orgXXXXX.crm4.dynamics.com (found: $EnvironmentUrl)"
+        }
+        
+        # Normalize URL by removing trailing slash
+        $EnvironmentUrl = $EnvironmentUrl.TrimEnd('/')
+        
         return @{
             EnvironmentUrl = $EnvironmentUrl
             ResourceGroup = $ResourceGroup
             Location = $Location
             AppRegistrationName = if ($AppRegistrationName) { $AppRegistrationName } else { "Mermaid-Dataverse-Converter" }
-            AppServiceName = if ($AppServiceName) { $AppServiceName } else { "app-mermaid-dataverse" }
+            AppServiceName = if ($AppServiceName) { $AppServiceName } else { "app-mermaid-dv-$(Get-Random -Minimum 1000 -Maximum 9999)" }
             KeyVaultName = if ($KeyVaultName) { $KeyVaultName } else { "kv-mermaid-secrets-$(Get-Random -Minimum 1000 -Maximum 9999)" }
             ManagedIdentityName = if ($ManagedIdentityName) { $ManagedIdentityName } else { "mi-mermaid-dataverse" }
             AppServicePlanName = if ($AppServicePlanName) { $AppServicePlanName } else { "plan-mermaid-dataverse" }
@@ -164,24 +187,46 @@ function Get-Configuration {
     Write-Host ""
     
     # Get Dataverse environment
-    $envUrl = Get-UserInput "Dataverse Environment URL (e.g., https://yourorg.crm.dynamics.com)" -Required
+    Write-Info "Find your Dataverse Environment URL:"
+    Write-Info "1. Go to https://make.powerapps.com"
+    Write-Info "2. Navigate to your environment > Settings > Session details"
+    Write-Info "3. Copy the 'WInstance url' (e.g., https://orgXXXXX.crm4.dynamics.com)"
+    Write-Host ""
+    $envUrl = Get-UserInput "Dataverse Environment URL (e.g., https://orgXXXXX.crm4.dynamics.com)" -Required
     # Normalize URL by removing trailing slash
     $envUrl = $envUrl.TrimEnd('/')
+    
+    # Validate the URL format
+    if ($envUrl -notmatch '^https://[^.]+\.crm[0-9]*\.dynamics\.com$') {
+        Write-Warning "The URL format seems incorrect. Expected format: https://orgXXXXX.crm4.dynamics.com"
+        Write-Warning "Please verify this is your correct Dataverse Web API endpoint URL."
+    }
     
     # Get Azure configuration
     $resourceGroup = Get-UserInput "Resource Group Name" "rg-mermaid-dataverse" -Required
     
     # Get available locations
-    $locations = @("East US", "West US 2", "West Europe", "North Europe", "UK South", "Australia East")
+    $locations = @("eastus", "westus2", "westeurope", "northeurope", "uksouth", "australiaeast")
     Write-Host "Available locations: $($locations -join ', ')" -ForegroundColor Yellow
-    $location = Get-UserInput "Azure Region" "West Europe" -Required -ValidValues $locations
+    $location = Get-UserInput "Azure Region" "westeurope" -Required -ValidValues $locations
+    
+    # Normalize location to Azure's internal format
+    $locationNormalized = switch ($location) {
+        "West Europe" { "westeurope" }
+        "East US" { "eastus" }
+        "West US 2" { "westus2" }
+        "North Europe" { "northeurope" }
+        "UK South" { "uksouth" }
+        "Australia East" { "australiaeast" }
+        default { $location.ToLower().Replace(" ", "") }
+    }
     
     Write-Host ""
     Write-Info "Resource Naming (will check for existing resources):"
     
     # Get resource names
     $appRegName = Get-UserInput "App Registration Name" "Mermaid-Dataverse-Converter" -Required
-    $appServiceName = Get-UserInput "App Service Name" "app-mermaid-dataverse" -Required
+    $appServiceName = Get-UserInput "App Service Name" "app-mermaid-dv-we-$(Get-Random -Minimum 1000 -Maximum 9999)" -Required
     $randomSuffix = Get-Random -Minimum 1000 -Maximum 9999
     $keyVaultName = Get-UserInput "Key Vault Name" "kv-mermaid-secrets-$randomSuffix" -Required
     $managedIdentityName = Get-UserInput "Managed Identity Name" "mi-mermaid-dataverse" -Required
@@ -197,7 +242,7 @@ function Get-Configuration {
     return @{
         EnvironmentUrl = $envUrl
         ResourceGroup = $resourceGroup
-        Location = $location
+        Location = $locationNormalized
         AppRegistrationName = $appRegName
         AppServiceName = $appServiceName
         KeyVaultName = $keyVaultName
@@ -344,12 +389,20 @@ function Get-OrCreateResourceGroup {
         $existingRG = az group show --name $ResourceGroupName 2>$null | ConvertFrom-Json
         if ($existingRG) {
             Write-Success "Found existing Resource Group: $ResourceGroupName in $($existingRG.location)"
-            if ($existingRG.location -ne $Location) {
+            # Normalize location comparison (handle both "West Europe" and "westeurope")
+            $normalizedExisting = $existingRG.location.ToLower().Replace(" ", "")
+            $normalizedRequested = $Location.ToLower().Replace(" ", "")
+            
+            if ($normalizedExisting -ne $normalizedRequested) {
                 Write-Warning "Resource Group is in $($existingRG.location), but you specified $Location"
-                $useExisting = Get-UserInput "Use existing location $($existingRG.location)? (y/n)" "y" -ValidValues @("y", "n")
-                if ($useExisting -eq "n") {
-                    throw "Cannot change location of existing Resource Group. Please use a different name."
+                if (-not $Unattended) {
+                    $useExisting = Get-UserInput "Use existing location $($existingRG.location)? (y/n)" "y" -ValidValues @("y", "n")
+                    if ($useExisting -eq "n") {
+                        throw "Cannot change location of existing Resource Group. Please use a different name."
+                    }
                 }
+                # Update location to match existing RG
+                $Location = $existingRG.location
             }
         } else {
             Write-Info "Creating new Resource Group: $ResourceGroupName in $Location"
@@ -508,7 +561,13 @@ function Update-EnvFile {
     }
     
     try {
-        $projectRoot = Split-Path -Parent $PSScriptRoot
+        # Determine project root correctly regardless of where script is run from
+        $scriptPath = $PSScriptRoot
+        if ($scriptPath -like "*\scripts") {
+            $projectRoot = Split-Path -Parent $scriptPath
+        } else {
+            $projectRoot = $scriptPath
+        }
         $envFile = Join-Path $projectRoot ".env"
         $tenant = az account show --query "tenantId" -o tsv
         
@@ -565,21 +624,21 @@ function Deploy-Application {
     
     try {
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $deployScript = Join-Path $projectRoot "scripts\full-deploy.ps1"
+        $deployScript = Join-Path $projectRoot "scripts\deploy.ps1"
         
         if (Test-Path $deployScript) {
-            Write-Info "Running full deployment script for Linux App Service..."
-            & $deployScript
+            Write-Info "Running deployment script for Linux App Service..."
+            & $deployScript -ResourceGroup $ResourceGroup -AppServiceName $AppServiceName
             Write-Success "Application deployed successfully"
         } else {
-            Write-Warning "Full deploy script not found at $deployScript"
+            Write-Warning "Deploy script not found at $deployScript"
             Write-Info "You can deploy manually using: az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path deployment.zip --type zip"
         }
         
     }
     catch {
         Write-Error "Failed to deploy application: $_"
-        Write-Warning "You can manually deploy using the full-deploy.ps1 script in the scripts folder"
+        Write-Warning "You can manually deploy using the deploy.ps1 script in the scripts folder"
         throw
     }
 }

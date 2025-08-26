@@ -119,7 +119,8 @@ class DataverseClient {
         'OData-MaxVersion': '4.0',
         'OData-Version': '4.0',
         ...additionalHeaders
-      }
+      },
+      timeout: 120000 // 2 minutes timeout for entity creation operations
     };
 
     if (data) {

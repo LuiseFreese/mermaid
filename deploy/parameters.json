@@ -1,7 +1,0 @@
-{
-  "location": "West Europe",
-  "keyVaultName": "kv-mermaid-secrets",
-  "appServicePlanName": "plan-mermaid-dataverse",
-  "appServiceName": "app-mermaid-dataverse",
-  "managedIdentityName": "mi-mermaid-dataverse"
-}

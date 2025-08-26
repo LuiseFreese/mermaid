@@ -12,135 +12,27 @@ The Mermaid to Dataverse Converter is a **production-ready Node.js web applicati
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
 - **Enterprise Security** - Azure Key Vault + Managed Identity
-- **Comprehensive Logging** - File-based and UI streaming
+
 
 ### Key Characteristics
 
-- **Runtime**: Node.js (CommonJS modules)
-- **Deployment**: Azure App Service with managed identity
-- **Authentication**: Azure Key Vault with managed identity
+- **Runtime**: Node.js
+- **Deployment**: Azure App Service with Managed Identity
+- **Authentication**: Azure Key Vault with Managed iIdentity
 - **Security**: No secrets in code, all credentials in Key Vault
 - **UI**: Web-based wizard with real-time streaming logs
 - **API**: RESTful endpoints for validation and testing
-- **Logging**: Comprehensive logging to files and UI
 
-## High-Level Architecture
-
-```mermaid
-graph TB
-    subgraph "User Layer"
-        USER[Web Browser]
-        WIZARD[Wizard UI]
-    end
-    
-    subgraph "Azure App Service"
-        subgraph "Node.js Application"
-            SERVER[Web Server<br/>src/server.js]
-            PARSER[Mermaid Parser<br/>src/mermaid-parser.js]
-            CLIENT[Dataverse Client<br/>src/dataverse-client.js]
-            VAULT[Key Vault Config<br/>src/azure-keyvault.js]
-        end
-        
-        subgraph "Runtime Features"
-            LOGS[Real-time Log Streaming]
-            HEALTH[Health Check Endpoints]
-            API[REST API Endpoints]
-        end
-    end
-    
-    subgraph "Azure Services"
-        KV[Azure Key Vault<br/>Secret Management]
-        MI[Managed Identity<br/>Authentication]
-        DV[Microsoft Dataverse<br/>Target Environment]
-        AAD[Azure Active Directory<br/>Identity Provider]
-    end
-    
-    USER --> WIZARD
-    WIZARD --> SERVER
-    SERVER --> PARSER
-    PARSER --> CLIENT
-    SERVER --> LOGS
-    SERVER --> HEALTH
-    SERVER --> API
-    
-    VAULT --> KV
-    MI --> KV
-    MI --> AAD
-    CLIENT --> DV
-    
-    style SERVER fill:#e1f5fe
-    style KV fill:#fff3e0
-    style MI fill:#f3e5f5
-    style DV fill:#e8f5e8
-```
 
 ### High-Level Flow
 1. **Modern Wizard Interface**: User accesses step-by-step wizard at `/wizard`
 2. **ERD Input & Validation**: Real-time syntax checking with auto-corrections
 3. **Publisher Configuration**: Select existing or create new publisher with custom prefix
 4. **Global Choices Integration**: Optional upload of global choice definitions
-5. **Real-time Deployment**: Live progress tracking with detailed logging
-6. **Authentication**: Managed identity for secure Azure service access
-7. **Result Dashboard**: Success/failure feedback with comprehensive details
+5. **Authentication**: Managed identity for secure Azure service access
+
 
 ## Core Components
-
-```mermaid
-classDiagram
-    class WebServer {
-        +serveWizardUI()
-        +handleDeployment()
-        +streamLogs()
-        +healthCheck()
-        +testManagedIdentity()
-        +validateEntities()
-        +testDataverse()
-        +getPublishers()
-        +getGlobalChoices()
-        +deployFromWizard()
-    }
-    
-    class MermaidParser {
-        +parse(content)
-        +extractEntities()
-        +extractRelationships()
-        +validateSyntax()
-        +processAttributes()
-    }
-    
-    class DataverseClient {
-        +authenticate()
-        +testConnection()
-        +createEntitiesFromMermaid()
-        +createPublisher()
-        +createSolution()
-        +createEntity()
-        +createColumn()
-        +createRelationship()
-        +createEntitiesFromMermaidWithLogging()
-    }
-    
-    class KeyVaultConfig {
-        +getKeyVaultSecrets()
-        +authenticateWithManagedIdentity()
-        +fallbackToEnvironment()
-    }
-    
-    class SchemaGenerator {
-        +generateDataverseSchema()
-        +generateColumnMetadata()
-        +generateRelationshipMetadata()
-        +validateEntityStructure()
-    }
-    
-    WebServer --> MermaidParser
-    WebServer --> DataverseClient
-    WebServer --> KeyVaultConfig
-    WebServer --> SchemaGenerator
-    MermaidParser --> SchemaGenerator
-    SchemaGenerator --> DataverseClient
-    KeyVaultConfig --> DataverseClient
-```
 
 ### 1. Web Server (`src/server.js`)
 
@@ -148,9 +40,7 @@ classDiagram
 
 **Key Features**:
 - HTTP server with wizard interface
-- Real-time log streaming to frontend
 - Health check and diagnostic endpoints
-- CORS-enabled API for cross-origin requests
 - Publisher and solution management
 - Global choices integration
 
@@ -179,21 +69,6 @@ classDiagram
 - `GET /managed-identity` - Managed identity status
 - `POST /api/cache/clear` - Clear system caches
 
-**Real-time Logging Implementation**:
-```javascript
-// Streaming logs to frontend
-function sendLog(message) {
-  const logData = JSON.stringify({ type: 'log', message: message }) + '\n';
-  res.write(logData);
-}
-
-// Final result
-function sendResult(success, data) {
-  const resultData = JSON.stringify({ type: 'result', success: success, ...data }) + '\n';
-  res.write(resultData);
-  res.end();
-}
-```
 
 ### 2. Mermaid Parser (`src/mermaid-parser.js`)
 
@@ -227,12 +102,12 @@ erDiagram
         string status
     }
     
-    %% Relationships with cardinality
+    %% One-to-many relationships (directly supported)
     Customer ||--o{ Order : "places"
     Customer ||--o{ Contact : "has"
     
-    %% Many-to-many via junction table
-    Student }o--o{ Course : "enrolled_in"
+    %% Note: Many-to-many relationships require explicit junction tables
+    %% See the "Advanced Relationship Handling" section for examples
 ```
 
 **Validation & Auto-Correction**:
@@ -279,37 +154,33 @@ erDiagram
 - **Modern Responsive UI**: Clean, intuitive interface for all devices
 - **Publisher Management**: Visual selection of existing or creation of new publishers
 - **Global Choices Integration**: Upload and preview global choice definitions
-- **Real-time Progress**: Live deployment feedback with detailed logging
+
 - **Interactive Elements**: Dynamic form validation and user guidance
 
 **Wizard Steps Flow**:
 ```javascript
-// Step 1: ERD Input & Validation
-- Paste Mermaid ERD content
-- Real-time syntax validation
-- Auto-correction suggestions
-- Entity/relationship preview
+// Step 1: ERD Validation & Upload
+- Upload your Mermaid ERD file 
+- Real-time syntax validation and structure checking
+- Auto-correction suggestions for Dataverse compatibility
+- Entity and relationship preview with detailed schema display
 
-// Step 2: Publisher Configuration  
-- Select existing publisher OR
-- Create new publisher with custom prefix
-- Validation of publisher requirements
+// Step 2: Solution & Publisher Setup  
+- Define your solution name (required field)
+- Choose existing publisher from Dataverse OR
+- Create new publisher with custom prefix (3-8 characters)
+- Publisher and solution validation
 
-// Step 3: Solution Configuration
-- Solution name (required field)
-- Description and metadata
-- Integration with selected publisher
+// Step 3: Global Choice Management (Optional)
+- Add existing global choice sets from Dataverse
+- Upload JSON file with custom global choice definitions
+- Preview and validate choice sets before deployment
+- Search and filter available choices
 
-// Step 4: Global Choices (Optional)
-- Upload JSON file with global choice definitions
-- Preview choice sets and options
-- Dry-run validation
+// Step 4: Final Review & Deployment
+- Review complete configuration summary
+- Dry-run option for validation-only testing
 
-// Step 5: Deployment & Results
-- Dry-run option for validation-only
-- Real-time deployment progress
-- Detailed success/failure reporting
-- Download deployment logs
 ```
 
 ### 4. Dataverse Client (`src/dataverse-client.js`)
@@ -331,7 +202,7 @@ erDiagram
 - **Column Creation**: Adds custom columns to entities with full attribute support
 - **Relationship Creation**: Establishes one-to-many and many-to-many relationships (via junction table)
 - **Global Choice Management**: Creates and manages global choice sets
-- **Logging**: Creates detailed logs in the file system and streams to UI
+
 
 **Authentication with Managed Identity**:
 ```javascript
@@ -476,15 +347,17 @@ async getKeyVaultSecrets() {
 The parser supports the following relationship scenarios:
 
 #### Relationship Types
-- **One-to-Many (1:M)**: `||--o{` syntax (primary relationship type supported)
-- **Many-to-One (M:1)**: `}o--||` syntax (inverse of one-to-many)
-- **Many-to-Many (M:M)**: Requires explicit junction table definition in the ERD
-- **Self-Referencing**: Tables with relationships to themselves
+- **One-to-Many (1:M)**: `||--o{` syntax ✅ **Directly supported**
+- **Many-to-One (M:1)**: `}o--||` syntax ✅ **Directly supported** (inverse of one-to-many)
+- **Many-to-Many (M:M)**: ❌ **NOT directly supported** - Use explicit junction tables instead
+- **Self-Referencing**: ✅ **Supported** - Tables with relationships to themselves
 
 #### Relationship Implementation
-- **One-to-Many**: Directly supported with lookup fields
-- **Many-to-Many**: Implemented using a junction table with two one-to-many relationships
+- **One-to-Many**: Directly supported with Dataverse lookup fields
+- **Many-to-Many**: Must be implemented using an explicit junction table with two one-to-many relationships
 - **Junction Tables**: Must be explicitly defined in the ERD with foreign keys to both related entities
+
+> **Important**: Direct many-to-many syntax like `}o--o{` is not supported. Always use explicit junction tables for many-to-many relationships.
 
 #### Example of Many-to-Many with Junction Table
 ```mermaid
@@ -827,8 +700,8 @@ graph LR
 1. **App Service**: Hosts the Node.js application
 2. **App Service Plan**: Compute resources (B1 Basic or higher)
 3. **Managed Identity**: Service authentication
-4. **Key Vault**: Secure secret storage
-5. **Key Vault Access Policy**: Grant managed identity access
+4. **Key Vault**: Secure secret storage (with RBAC enabled)
+5. **RBAC Role Assignments**: Grant managed identity "Key Vault Secrets User" role
 
 ### ⚡ Automated One-Click Setup
 
@@ -847,8 +720,8 @@ cd mermaid
 
 **What it does automatically**:
 - Creates App Registration with secret
-- **Calls Bicep template** (`deploy/infrastructure.bicep`) to deploy Azure resources
-- **Deploys complete Node.js application** (not just empty webapp)
+- Calls Bicep template* (`deploy/infrastructure.bicep`) to deploy Azure resources
+- Deploys complete Node.js application (not just empty webapp)
 - Configures managed identity & RBAC
 - Stores secrets in Key Vault
 - Creates Dataverse application user
@@ -863,7 +736,7 @@ Interactive Setup for Mermaid-to-Dataverse Solution
 ==================================================
 
 Resource Group Name (or 'new' to create): rg-mermaid-prod
-Location for new resources: East US
+Location for new resources: West Europe
 App Registration Name: MermaidToDataverse-Prod
 App Service Name: mermaid-dataverse-prod
 Key Vault Name: kv-mermaid-prod-001
@@ -887,7 +760,7 @@ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsit
 ### Prerequisites
 
 **For Automated Deployment:**
-- **Azure subscription** with Dataverse environment access
+- **Azure subscription** 
 - **PowerShell 7+** (includes Azure CLI integration)
 - **Appropriate permissions** in Azure AD (to create App Registrations)
 - **Dataverse admin rights** (to create application users)
@@ -923,9 +796,7 @@ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsit
    npm test
    # → Runs the schema generation test
 
-   # Deploy to Azure
-   npm run deploy
-   # → Deploys the application to Azure
+  
    ```
 
 3. **Setup Environment**:
@@ -945,57 +816,6 @@ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsit
    http://localhost:8082/wizard
    ```
 
-## Best Practices
-
-### Development
-
-- **Separation of Concerns**: Each module has a single responsibility
-- **Error First**: Always handle errors before success cases
-- **Logging**: Comprehensive logging for debugging and monitoring
-- **Testing**: Unit tests for core logic, integration tests for API
-
-### Security
-
-- **No Hardcoded Secrets**: All sensitive data in Key Vault
-- **Principle of Least Privilege**: Minimal required permissions
-- **Input Validation**: Validate all user inputs
-- **Output Encoding**: Prevent injection attacks
-
-### Performance & Caching
-
-**Caching Strategy**:
-- **Publisher Cache**: 10-minute cache for Dataverse publishers
-- **Global Choices Cache**: 5-minute cache for global choice sets
-- **Cache Invalidation**: Manual cache clearing via `/api/cache/clear`
-- **Development Optimization**: Reduces repeated Dataverse API calls
-
-**Memory Management**:
-- In-memory caching for frequently accessed data
-- Automatic cache expiration with configurable duration
-- Cache hit/miss logging for performance monitoring
-- **Graceful Shutdown**: Handle SIGTERM (termination request) and SIGINT (interrupt signal) properly
-- **Resource Cleanup**: Clean up temporary files and connections
-- **Monitoring**: Track key business and technical metrics
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Authentication Failures**
-   - **Symptom**: "Failed to authenticate with Key Vault" or "Unable to acquire token"
-   - **Solution**: Verify managed identity is properly configured, check Key Vault access policies
-
-2. **Dataverse Connection Issues**
-   - **Symptom**: "Unable to connect to Dataverse" or "Organization not found"
-   - **Solution**: Verify Dataverse URL, check application user permissions
-
-3. **Publisher Prefix Errors**
-   - **Symptom**: "Invalid publisher prefix" or "Publisher not found"
-   - **Solution**: Ensure publisher exists in Dataverse with specified prefix
-
-4. **Deployment Failures**
-   - **Symptom**: Azure deployment fails with permission errors
-   - **Solution**: Verify Azure AD permissions, try running setup script with `-Verbose` flag
 
 ### Diagnostic Tools
 

@@ -164,17 +164,8 @@ erDiagram
     }
 ```
 
-### Global Choices
-You can also reference global choice sets by using a string field with a comment indicating the global choice:
-```mermaid
-erDiagram
-    ORDER {
-        string order_id PK "Order identifier"
-        string status "Uses mmd_order_status global choice"
-    }
-```
 
-Note: Global choice names must include a publisher prefix (e.g., `mmd_` or `south_`) as required by Dataverse.
+
 
 ## Lookup Fields
 
