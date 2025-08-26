@@ -47,7 +47,7 @@ Get-ChildItem $stage -Recurse | ForEach-Object {
 Write-Host "Create ZIP..." -ForegroundColor Yellow
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zipPath -Force
 
-# ---- discover Key Vault name (your server reads KEY_VAULT_NAME) -------------
+# ---- discover Key Vault name (for your server) -------------------------------
 if (-not $KeyVaultName) {
     $envFile = Join-Path $projectRoot ".env"
     if (Test-Path $envFile) {
@@ -56,17 +56,17 @@ if (-not $KeyVaultName) {
     }
 }
 if ($KeyVaultName) {
-    Write-Host "Using Key Vault: $KeyVaultName (will set as app setting)" -ForegroundColor Gray
+    Write-Host "Using Key Vault: $KeyVaultName (set as app setting)" -ForegroundColor Gray
 }
 
 # ---- app configuration for Oryx/Node on Linux -------------------------------
 Write-Host "Harden app config for Linux/Node..." -ForegroundColor Yellow
 
-# 0) Ensure runtime to Node 18 LTS
+# 0) Ensure Node 20 LTS runtime (silences EBADENGINE >=20 warnings)
 $fx = az webapp config show --resource-group $ResourceGroup --name $AppServiceName --query linuxFxVersion -o tsv 2>$null
-if (-not $fx -or ($fx -notlike "NODE|18*")) {
-    Write-Host "Setting linuxFxVersion to NODE|18-lts..." -ForegroundColor Cyan
-    az webapp config set --resource-group $ResourceGroup --name $AppServiceName --linux-fx-version "NODE|18-lts" --output none
+if (-not $fx -or ($fx -notlike "NODE|20*")) {
+    Write-Host "Setting linuxFxVersion to NODE|20-lts..." -ForegroundColor Cyan
+    az webapp config set --resource-group $ResourceGroup --name $AppServiceName --linux-fx-version "NODE|20-lts" --output none
 }
 
 # 1) Remove Run-From-Package flags (otherwise Oryx build is skipped)
@@ -77,15 +77,15 @@ az webapp config appsettings delete --resource-group $ResourceGroup --name $AppS
 az webapp config appsettings delete --resource-group $ResourceGroup --name $AppServiceName `
     --setting-names WEBSITE_NODE_DEFAULT_VERSION --output none
 
-# 3) Oryx build + generous idle timeout + prod mode
-$settings = @("SCM_DO_BUILD_DURING_DEPLOYMENT=1","SCM_COMMAND_IDLE_TIMEOUT=1800","NODE_ENV=production")
+# 3) Oryx build + generous idle timeout + prod mode (+ KV settings if provided)
+$settings = @("SCM_DO_BUILD_DURING_DEPLOYMENT=1","SCM_COMMAND_IDLE_TIMEOUT=1800","NODE_ENV=production","WEBSITES_PORT=8080")
 if ($KeyVaultName) { $settings += "KEY_VAULT_NAME=$KeyVaultName"; $settings += "USE_KEY_VAULT=true" }
 az webapp config appsettings set --resource-group $ResourceGroup --name $AppServiceName --settings $settings --output none
 
-# 4) Health check as proper JSON (no quoting issues)
+# 4) Health check via JSON (no quoting issues)
 '{"healthCheckPath":"/health"}' | Out-File -FilePath $hcFile -Encoding ascii -Force
 az webapp config set --resource-group $ResourceGroup --name $AppServiceName --generic-configurations "@$hcFile" --output none
-# AlwaysOn (only effective on Basic+)
+# AlwaysOn (effective on Basic+)
 az webapp config set --resource-group $ResourceGroup --name $AppServiceName --always-on true --output none
 
 # 5) Clear any custom startup command reliably

@@ -19,6 +19,9 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0"
   },
+  "engines": {
+    "node": ">=20 <21"
+  },
   "devDependencies": {
     "@types/node": "^20.11.16"
   },
