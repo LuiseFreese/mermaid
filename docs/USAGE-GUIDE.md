@@ -6,76 +6,19 @@ This guide explains how to use the Mermaid to Dataverse web application to trans
 
 ### 1. Initial Setup
 
-Before using the application, you need to deploy it to Azure. The entire setup is automated with a single command:
-
-```powershell
-# Login to Azure
-az login
-
-# Run the automated setup script
-./scripts/setup-entra-app.ps1
-```
-
-The setup script will:
-- Create all Azure resources (App Service, Key Vault, Managed Identity)
-- Deploy the web application 
-- Configure Dataverse integration
-- Provide you with the application URL
+Before using the application, you need to deploy it to Azure. See [Deployment](DEPLOYMENT.md) for details.
 
 ### 2. Prerequisites
 
-**Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
-**Dataverse environment** with admin access
-**Global Choices file** (optional) - JSON file with choice definitions if needed
+* **Mermaid ERD file** (`.mmd` extension) with valid ER diagram syntax  
+* **Dataverse environment** with admin access
+* **Global Choices file** (optional) - JSON file with choice definitions if needed
 
 ## Overview
 
-The application provides a **step-by-step wizard interface** for uploading Mermaid ERD files and automatically creating corresponding Dataverse entities. Once deployed, everything runs in your browser!
+The application provides a **step-by-step wizard interface** for uploading Mermaid ERD files and automatically creating corresponding Dataverse entities. Once deployed, everything runs in your browser: https://your-app-name.azurewebsites.net/wizard
 
-## Web Interface Features
-
-### Status Dashboard
-
-The application shows real-time status of all components:
-
-- **Application Health**: Server status
-- **Azure Key Vault**: Secret access  
-- **Managed Identity**: Authentication status
-- **Dataverse Connection**: API connectivity
-
-### API Endpoints
-
-The application provides several REST API endpoints for integration and automation:
-
-#### Web Interface Endpoints
-- **`GET /`** - Web interface for file upload
-- **`POST /upload`** - File upload and processing with streaming logs
-
-#### Health Check Endpoints  
-- **`GET /health`** - Overall application health
-- **`GET /keyvault`** - Key Vault connectivity test
-- **`GET /managed-identity`** - Managed identity authentication status
-
-#### Validation & Testing Endpoints
-- **`POST /api/validate`** - Validate Mermaid entities without creation
-- **`POST /api/test-dataverse`** - Test Dataverse operations and connectivity
-
-#### Global Choices Endpoint
-- **`POST /api/global-choices`** - Create global choice sets from JSON
-
-Access additional diagnostic information through these endpoints for troubleshooting and integration purposes.
-
-
-## Quick Start
-
-### 1. Access the Application
-
-After running the setup script, navigate to your deployed Azure App Service URL:
-```
-https://your-app-name.azurewebsites.net/wizard
-```
-
-### 2. Use the Step-by-Step Wizard
+## 1. Use the Step-by-Step Wizard
 
 1. **ERD Validation & Upload**:
    - Upload your Mermaid ERD file (`.mmd` extension)
@@ -97,27 +40,9 @@ https://your-app-name.azurewebsites.net/wizard
    - Review your complete configuration
    - Click "Convert & Deploy" to create your solution
 
-### 3. Monitor Real-Time Progress
+### 3. Wait for your success message! 
 
-Watch the live log output in the wizard interface as your solution is created:
-
-```
-Processing file: customer-management.mmd (2.3 KB)
-✅ File contains valid erDiagram syntax
-Parsing Mermaid ERD structure...
-Found 3 entities: Customer, Order, Product
-Found 2 relationships
-✅ Validation completed successfully
-
-Connecting to Dataverse...
-✅ Dataverse connection successful
-Creating solution: Customer Management
-✅ Creating entity: Customer (3 columns)
-✅ Creating entity: Order (4 columns)  
-✅ Creating entity: Product (5 columns)
-✅ Creating relationship: Customer → Order
-✅ Creating relationship: Order → Product
-
+```bash
 ✅ Deployment completed successfully!
 ✓ Solution 'Customer Management' created in Dataverse
 ✓ 3 entities created

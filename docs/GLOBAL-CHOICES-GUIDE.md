@@ -177,7 +177,7 @@ As Mermaid doe not support choice fields, you can ater on enhance your tables wi
 - **Display names**: Use Title Case (e.g., "Order Status", "Customer Type")
 - **Option labels**: Use clear, concise text (e.g., "In Progress", not "in_progress")
 
-### 🔢 Value Ranges
+### Value Ranges
 - **Start at 100000000** - Dataverse standard for custom option values
 - **Sequential values** - Increment by 1 for each option
 - **Consistent numbering** - Don't skip numbers within a choice set

@@ -78,15 +78,15 @@ The setup script automatically creates:
 
 The setup script (`scripts/setup-entra-app.ps1`) performs these tasks automatically:
 
-1. ✅ **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
-2. ✅ **Generates Client Secret** with 2-year expiration (securely, without console exposure)
-3. ✅ **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
-4. ✅ **Configures RBAC permissions** for Key Vault access
-5. ✅ **Stores all secrets** securely in Key Vault
-6. ✅ **Deploys application code** to Azure App Service
-7. ✅ **Creates Application User** in Dataverse via REST API
-8. ✅ **Assigns Security Roles** (System Administrator by default)
-9. ✅ **Tests the complete setup** end-to-end
+1. **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
+2. **Generates Client Secret** with 2-year expiration (securely, without console exposure)
+3. **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
+4. **Configures RBAC permissions** for Key Vault access
+5. **Stores all secrets** securely in Key Vault
+6. **Deploys application code** to Azure App Service
+7. **Creates Application User** in Dataverse via REST API
+8. **Assigns Security Roles** (System Administrator by default)
+9. **Tests the complete setup** end-to-end
 
 ### Interactive Setup Example
 
@@ -94,12 +94,9 @@ The setup script (`scripts/setup-entra-app.ps1`) performs these tasks automatica
 Mermaid to Dataverse - Interactive Setup
 =========================================
 
-Find your Dataverse Environment URL:
-1. Go to https://admin.powerplatform.microsoft.com
-2. Navigate to Environments > [Your Environment] > Settings > Developer resources
-3. Copy the 'Web API endpoint' URL (e.g., https://orgXXXXX.crm4.dynamics.com)
+Find your Dataverse Environment URL  at make.powerapps.com > Settings > Session details, copy the **Instance URL**
 
-Dataverse Environment URL: https://orgb85e2da2.crm4.dynamics.com
+Dataverse Environment URL: https://orgxxxxxxx.crm4.dynamics.com
 Resource Group Name: rg-mermaid-dv-we-test
 Azure Region: westeurope
 App Registration Name: Mermaid-Dataverse-Converter
@@ -119,22 +116,7 @@ Key Vault Name: kv-mermaid-secrets-5678
 
 ## Infrastructure as Code
 
-All Azure resources are defined in `scripts/infrastructure.bicep`:
-
-```bicep
-// Key components deployed:
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01'
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31'  
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01'
-resource appService 'Microsoft.Web/sites@2023-01-01'
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01'
-```
-
-The Bicep template ensures:
-- **Idempotent deployments** - Can be run multiple times safely
-- **Secure configuration** - RBAC-enabled Key Vault with least privilege access
-- **Production-ready settings** - HTTPS-only, TLS 1.2+, Node.js 18.17.0 LTS
-- **Managed identity integration** - No passwords or connection strings in code
+All Azure resources are defined in `deploy/infrastructure.bicep`
 
 ## Deploying Code Updates
 
@@ -176,10 +158,6 @@ Visit the URL provided by the setup script:
 https://your-app-name.azurewebsites.net
 ```
 
-**Interface Options:**
-- **Root Interface** (`/`) - Direct file upload with real-time processing logs
-- **Wizard Interface** (`/wizard`) - Step-by-step guided setup process
-
 ### 2. Upload Mermaid Files
 - Use the web interface to upload `.mmd` files
 - Start with **dry-run mode** to validate your files
@@ -190,54 +168,6 @@ https://your-app-name.azurewebsites.net
 - Check the status dashboard for system health
 - Use diagnostic endpoints to troubleshoot issues
 - View created entities in your Dataverse environment
-
-## Troubleshooting
-
-### Common Setup Issues
-
-**1. Setup Script Fails**
-```
-❌ Error: App Registration creation failed
-```
-**Solutions**:
-- Ensure you have Application Administrator rights in Microsoft Entra ID
-- Check Azure CLI login: `az account show`
-- Verify subscription permissions: `az account list-locations`
-
-**2. Permission Errors**
-```
-❌ Insufficient privileges to complete the operation
-```
-**Solutions**:
-- Verify you have Contributor/Owner role on the Azure subscription
-- Check you have System Administrator role in Dataverse environment
-- Ensure you can create App Registrations in Microsoft Entra ID
-
-**3. Dataverse Connection Issues**
-```
-❌ Application User creation failed
-```
-**Solutions**:
-- Verify Dataverse URL is correct and accessible
-- Check you have admin rights in the target environment
-- Ensure environment is not in Administration Mode
-
-**4. Invalid Dataverse URL Format**
-```
-❌ Invalid EnvironmentUrl format. Expected: https://orgXXXXX.crm4.dynamics.com
-```
-**Solutions**:
-- Get the correct URL from Power Platform Admin Center
-- Navigate to Environments > [Your Environment] > Settings > Developer resources
-- Copy the "Web API endpoint" URL exactly
-
-### Getting Help
-
-1. **Run in dry-run mode first**: `./scripts/setup-entra-app.ps1 -DryRun` to see what would be created
-2. **Check App Service logs** in the Azure Portal or using: `az webapp log tail --name your-app --resource-group your-rg`
-3. **Test Key Vault access**: Ensure your Managed Identity has access to Key Vault
-4. **Verify the Dataverse Application User** has the correct security role
-5. **Use the web interface diagnostics** to test individual components
 
 ## Next Steps
 

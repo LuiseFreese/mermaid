@@ -158,30 +158,29 @@ erDiagram
 - **Interactive Elements**: Dynamic form validation and user guidance
 
 **Wizard Steps Flow**:
-```javascript
-// Step 1: ERD Validation & Upload
-- Upload your Mermaid ERD file 
-- Real-time syntax validation and structure checking
-- Auto-correction suggestions for Dataverse compatibility
-- Entity and relationship preview with detailed schema display
 
-// Step 2: Solution & Publisher Setup  
-- Define your solution name (required field)
-- Choose existing publisher from Dataverse OR
-- Create new publisher with custom prefix (3-8 characters)
-- Publisher and solution validation
+* Step 1: ERD Validation & Upload
+    - Upload your Mermaid ERD file 
+    - Real-time syntax validation and structure checking
+    - Auto-correction suggestions for Dataverse compatibility
+    - Entity and relationship preview with detailed schema display
 
-// Step 3: Global Choice Management (Optional)
-- Add existing global choice sets from Dataverse
-- Upload JSON file with custom global choice definitions
-- Preview and validate choice sets before deployment
-- Search and filter available choices
+* Step 2: Solution & Publisher Setup  
+  - Define your solution name (required field)
+  - Choose existing publisher from Dataverse OR
+  - Create new publisher with custom prefix (3-8 characters)
+  - Publisher and solution validation
 
-// Step 4: Final Review & Deployment
-- Review complete configuration summary
-- Dry-run option for validation-only testing
+* Step 3: Global Choice Management (Optional)
+  - Add existing global choice sets from Dataverse
+  - Upload JSON file with custom global choice definitions
+  - Preview and validate choice sets before deployment
+  - Search and filter available choices
 
-```
+* Step 4: Final Review & Deployment
+  - Review complete configuration summary
+  - Dry-run option for validation-only testing
+
 
 ### 4. Dataverse Client (`src/dataverse-client.js`)
 
@@ -251,7 +250,7 @@ async createEntitiesFromMermaidWithLogging(entities, options, logFunction) {
 - `CLIENT-ID` - App registration client ID
 - `CLIENT-SECRET` - App registration secret
 - `TENANT-ID` - Azure AD tenant ID
-- `SOLUTION-NAME` - Default solution name
+- `SOLUTION-NAME` - Solution name
 
 **Secret Retrieval**:
 ```javascript
@@ -330,17 +329,6 @@ async getKeyVaultSecrets() {
 - Missing primary keys → Automatic ID field generation
 - Invalid naming → Proper naming convention suggestions
 - Relationship inconsistencies → Corrected relationship definitions
-
-### Logging
-
-**Purpose**: Provide detailed logging for debugging and auditing.
-
-**Features**:
-- **File-based logging** - Writes logs to files in `/logs` and `/src/logs` directories
-- **Real-time streaming** - Sends log events to the wizard UI
-- **Log levels** - ERROR, WARN, INFO, DEBUG levels for appropriate filtering
-- **Log rotation** - Automatically manages log file sizes and archives old logs
-- **IP and timestamp** - Records client IP and precise timestamps for audit trails
 
 ### Advanced Relationship Handling
 

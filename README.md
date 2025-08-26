@@ -1,6 +1,6 @@
 # Mermaid to Dataverse Converter
 
-A production-ready Azure App Service application that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+An Azure App Service application that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
@@ -47,17 +47,6 @@ If you experience connection issues after deployment:
 # Re-run setup if resources were deleted
 .\scripts\setup-entra-app.ps1
 ```
-
-**Common Issues:**
-- **403 Forbidden Error**: The Application User is missing or doesn't have proper security roles
-  - Check if Application User exists in Dataverse (setup script creates this)
-  - Ensure Application User has System Administrator role assigned
-  - Re-run setup script if Application User is missing
-- **Connection failed**: Run the setup script again to recreate missing configurations
-- **Key Vault access denied**: Ensure the managed identity has proper Key Vault permissions
-- **App Service not responding**: Check deployment logs in Azure Portal
-
-**Important**: Dataverse permissions are controlled entirely by security roles assigned to the Application User. No API permissions or admin consent are needed in the App Registration.
 
 ## Documentation
 

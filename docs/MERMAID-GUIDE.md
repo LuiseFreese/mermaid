@@ -151,21 +151,6 @@ erDiagram
     COURSE ||--o{ ENROLLMENT : "has_student"
 ```
 
-## Choice Fields
-
-Choice fields provide predefined options for users and can be defined using the `choice()` syntax:
-
-```mermaid
-erDiagram
-    CONTACT {
-        string contact_id PK "Contact identifier"
-        string name "Contact name"
-        choice(Active,Inactive,Pending) status "Contact status"
-    }
-```
-
-
-
 
 ## Lookup Fields
 
@@ -209,49 +194,6 @@ erDiagram
 - Use present tense verbs ("has", "contains", "manages")
 - Model many-to-many as junction entities with additional attributes
 
-## Advanced Features
-
-### Audit Fields Pattern
-
-```mermaid
-erDiagram
-    ENTITY {
-        string entity_id PK "Unique identifier"
-        string name "Entity name"
-        datetime created_date "Creation timestamp"
-        datetime modified_date "Last modification timestamp"
-        string created_by_id FK "Created by user reference"
-        string modified_by_id FK "Modified by user reference"
-        boolean is_active "Active status"
-    }
-```
-
-### Address Pattern
-```mermaid
-erDiagram
-    ADDRESS {
-        string address_id PK "Address identifier"
-        string street_1 "Street address line 1"
-        string street_2 "Street address line 2"
-        string city "City name"
-        string state_province "State or province"
-        string postal_code "Postal or ZIP code"
-        string country "Country name"
-        string address_label "Address label or description"
-        boolean is_primary "Primary address flag"
-    }
-```
-
-### Contact Information Pattern
-```mermaid
-erDiagram
-    CONTACT_INFO {
-        string contact_label "Label or description for contact method"
-        string value "Contact value"
-        boolean is_primary "Primary contact flag"
-        boolean is_active "Active status"
-    }
-```
 
 ## Validation and Testing
 
@@ -263,4 +205,3 @@ Before using your ERD with the web application:
 4. **Test Relationships**: Ensure relationships make business sense
 5. **Consider Scale**: Think about performance with large datasets
 
-This guide provides the foundation for creating effective Mermaid ERDs that work seamlessly with the Dataverse web application. Start with simple examples and gradually add complexity as you become more comfortable with the syntax and patterns.
