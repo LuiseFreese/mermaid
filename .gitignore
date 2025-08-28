@@ -19,11 +19,13 @@ coverage/
 fix_*.ps1
 server-output.log
 scripts/obsolete
+scripts/mermaid-deployment.zip
 
 # Project management
 TODO.md
 NOTES.md
 *.todo
+CDM_ENTITY_DETECTION_DESIGN.md
 
 # ESLint cache
 .eslintcache

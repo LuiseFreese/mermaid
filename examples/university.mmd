@@ -1,0 +1,74 @@
+erDiagram
+    Student {
+        string  student_id PK
+        string  first_name
+        string  last_name
+        string  email
+        datetime enrollment_date
+        phone   mobile_phone
+        date    birth_date
+        boolean is_full_time
+        decimal gpa
+        money   tuition_balance
+        url     website
+        image   profile_photo
+        file    resume_file
+    }
+    
+    Course {
+        string  course_id PK
+        string  course_name
+        string  description
+        integer credits
+        string  department
+        money   course_fee
+        date    start_date
+        date    end_date
+        url     course_url
+        file    syllabus_file
+        boolean is_active
+    }
+    
+    Instructor {
+        string  instructor_id PK
+        string  first_name
+        string  last_name
+        string  department
+        string  email
+        phone   office_phone
+        url     website
+        date    hire_date
+        money   salary
+        image   photo
+        text    bio
+    }
+    
+    StudentCourse {
+        string  enrollment_id PK
+        string  student_id FK
+        string  course_id  FK
+        datetime enrollment_date
+        string  grade
+        string  status
+        boolean is_pass_fail
+        decimal attendance_pct
+        date    completion_date
+        money   fee_charged
+        money   fee_paid
+        file    certificate_file
+    }
+    
+    CourseInstructor {
+        string  assignment_id PK
+        string  course_id     FK
+        string  instructor_id FK
+        string  semester
+        string  role
+        boolean is_primary_instructor
+        money   hourly_rate
+    }
+    
+    Student     ||--o{ StudentCourse   : "enrolls_in"
+    Course      ||--o{ StudentCourse   : "has_enrollment"
+    Course      ||--o{ CourseInstructor: "taught_by"
+    Instructor  ||--o{ CourseInstructor: "teaches"

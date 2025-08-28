@@ -1,6 +1,6 @@
 # Mermaid to Dataverse Converter
 
-An Azure App Service application that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+An Azure App Service application that converts [Mermaid](https://www.mermaidchart.com/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
