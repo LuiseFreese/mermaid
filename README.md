@@ -12,16 +12,29 @@ An Azure App Service application that converts [Mermaid](https://www.mermaidchar
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
 
-## Quick Start
+## 🚀 Quick Start
+
+**One command sets up everything:**
 
 ```powershell
 # Clone the repository
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Run automated setup (creates all Azure resources)
+# Run the complete setup (interactive)
 .\scripts\setup-entra-app.ps1
 ```
+
+**That's it!** The script will:
+- ✅ Create Entra App Registration
+- ✅ Deploy Azure infrastructure (App Service, Key Vault, etc.)
+- ✅ Deploy the application
+- ✅ Set up Dataverse permissions
+- ✅ Give you the final web app URL
+
+### Prerequisites
+- Azure CLI installed and logged in (`az login`)
+- Power Platform Admin or Dataverse System Admin access
 
 ## Usage
 

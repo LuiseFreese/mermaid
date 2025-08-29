@@ -2,15 +2,29 @@
 
 <#
 .SYNOPSIS
-    Interactive/idempotent setup for Mermaid → Dataverse on Azure
+    🚀 MAIN ENTRY POINT: Complete setup for Mermaid → Dataverse on Azure
 
 .DESCRIPTION
-    - Prompts or accepts parameters (Unattended)
-    - Reuses existing resources; creates missing ones
-    - App Registration + SP + Infra (App Service, Plan, KV, Managed Identity)
-    - Stores secrets in Key Vault
-    - Deploys the app
-    - **Ensures Dataverse Application User exists and has the selected role (root BU)**
+    This is the main setup script that handles everything:
+    - ✅ Creates/reuses Entra App Registration + Service Principal
+    - ✅ Deploys infrastructure (App Service, Key Vault, Managed Identity) via Bicep
+    - ✅ Stores secrets securely in Key Vault
+    - ✅ Deploys the application using az webapp up
+    - ✅ Creates Dataverse Application User with proper permissions
+    - ✅ Everything is idempotent - safe to run multiple times
+
+.EXAMPLE
+    # Interactive mode (recommended for first-time setup)
+    .\scripts\setup-entra-app.ps1
+
+.EXAMPLE
+    # Unattended mode (for CI/CD)
+    .\scripts\setup-entra-app.ps1 -Unattended -EnvironmentUrl "https://org12345.crm4.dynamics.com" -ResourceGroup "rg-mermaid" -Location "westeurope"
+
+.NOTES
+    Prerequisites:
+    - Azure CLI installed and logged in (az login)
+    - Power Platform Admin or Dataverse System Admin access
 #>
 
 [CmdletBinding()]
@@ -66,7 +80,7 @@ function Get-Configuration {
             ResourceGroup      = $ResourceGroup
             Location           = $Location
             AppRegistrationName= if ($AppRegistrationName) { $AppRegistrationName } else { "Mermaid-Dataverse-Converter" }
-            AppServiceName     = if ($AppServiceName)      { $AppServiceName }      else { "app-mermaid-dv-$(Get-Random -Minimum 1000 -Maximum 9999)" }
+            AppServiceName     = if ($AppServiceName)      { $AppServiceName }      else { "app-mermaid-converter-$(Get-Random -Minimum 1000 -Maximum 9999)" }
             KeyVaultName       = if ($KeyVaultName)        { $KeyVaultName }        else { "kv-mermaid-secrets-$(Get-Random -Minimum 1000 -Maximum 9999)" }
             ManagedIdentityName= if ($ManagedIdentityName) { $ManagedIdentityName } else { "mi-mermaid-dataverse" }
             AppServicePlanName = if ($AppServicePlanName)  { $AppServicePlanName }  else { "plan-mermaid-dataverse" }
@@ -99,7 +113,7 @@ function Get-Configuration {
     Write-Host ""
     Write-Info "Resource Naming:"
     $appRegName         = Get-UserInput "App Registration Name" "Mermaid-Dataverse-Converter" -Required
-    $appServiceName     = Get-UserInput "App Service Name" "app-mermaid-dv-we-$(Get-Random -Minimum 1000 -Maximum 9999)" -Required
+    $appServiceName     = Get-UserInput "App Service Name" "app-mermaid-converter-$(Get-Random -Minimum 1000 -Maximum 9999)" -Required
     $randomSuffix       = Get-Random -Minimum 1000 -Maximum 9999
     $keyVaultName       = Get-UserInput "Key Vault Name" "kv-mermaid-secrets-$randomSuffix" -Required
     $managedIdentity    = Get-UserInput "Managed Identity Name" "mi-mermaid-dataverse" -Required
@@ -235,6 +249,7 @@ function Invoke-InfrastructureDeployment {
             managedIdentityClientId = "00000000-0000-0000-0000-000000000000"
             appServiceName          = $Config.AppServiceName
             appServiceUrl           = "https://fake-dry-run.azurewebsites.net"
+            appServicePlanName      = $Config.AppServicePlanName
         }
     }
 
@@ -275,6 +290,7 @@ function Invoke-InfrastructureDeployment {
             managedIdentityClientId = $deployment.managedIdentityClientId.value
             appServiceName          = $deployment.appServiceName.value
             appServiceUrl           = $deployment.appServiceUrl.value
+            appServicePlanName      = $deployment.appServicePlanName.value
         }
     } catch { Write-Error "Failed to deploy infrastructure: $_"; throw }
 }
@@ -349,22 +365,28 @@ KEY_VAULT_NAME=$KeyVaultName
 
 # ---------- Deploy code ----------
 function Deploy-Application {
-    param($AppServiceName,$ResourceGroup)
+    param($AppServiceName,$ResourceGroup,$AppServicePlanName)
     Write-Info "Deploying application to Azure App Service..."
     if ($DryRun) { Write-Warning "[DRY RUN] Would deploy application to App Service: $AppServiceName"; return }
 
     try {
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $deployScript = Join-Path $projectRoot "scripts\deploy.ps1"
-        if (Test-Path $deployScript) {
-            Write-Info "Running deployment script for Linux App Service..."
-            & $deployScript -ResourceGroup $ResourceGroup -AppServiceName $AppServiceName
+        Set-Location $projectRoot
+        
+        Write-Info "Deploying application using az webapp up..."
+        az webapp up --resource-group $ResourceGroup --name $AppServiceName --plan $AppServicePlanName --runtime "NODE:20-lts" --sku B1 --only-show-errors
+        
+        if ($LASTEXITCODE -eq 0) {
             Write-Success "Application deployed successfully"
+            Write-Info "🌐 App URL: https://$AppServiceName.azurewebsites.net/"
+            Write-Info "❤️ Health: https://$AppServiceName.azurewebsites.net/health"
         } else {
-            Write-Warning "Deploy script not found at $deployScript"
-            Write-Info "Manual deploy: az webapp deploy --resource-group $ResourceGroup --name $AppServiceName --src-path deployment.zip --type zip"
+            throw "az webapp up failed with exit code $LASTEXITCODE"
         }
-    } catch { Write-Error "Failed to deploy application: $_"; throw }
+    } catch { 
+        Write-Error "Failed to deploy application: $_"
+        throw 
+    }
 }
 
 # ---------- NEW: Ensure Dataverse Application User (idempotent) ----------
@@ -507,16 +529,7 @@ function Show-DeploymentInfo {
         Write-Host "Run again without -DryRun to deploy." -ForegroundColor Cyan
     } else {
         Write-Host "Setup Complete! Ready for use." -ForegroundColor Green
-        Write-Host ""
-        Write-Host "Infrastructure Deployed:" -ForegroundColor Cyan
-        Write-Host "   App Service URL: $AppServiceUrl" -ForegroundColor White
-        Write-Host "   Key Vault URI:   $KeyVaultUri" -ForegroundColor White
-        Write-Host "   Managed Identity Client ID: $ManagedIdentityClientId" -ForegroundColor White
-        Write-Host ""
-        Write-Host "Next Steps:" -ForegroundColor Cyan
-        Write-Host "1. Open $AppServiceUrl/wizard" -ForegroundColor White
-        Write-Host "2. Convert & deploy ERDs 🚀" -ForegroundColor White
-    }
+     }
 }
 
 # ---------- Main ----------
@@ -566,12 +579,12 @@ function Start-Setup {
             Write-Warning "Skipping Dataverse Application User creation as requested (-SkipDataverseUser)."
         }
 
-        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup
+        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup -AppServicePlanName $infrastructure.appServicePlanName
 
         if (Test-Setup -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId) {
             if ($kvGrant.AssignmentId) {
                 Write-Info "Removing temporary Key Vault Administrator role..."
-                az role assignment delete --ids $kvGrant.AssignmentId --output none
+                az role assignment delete --ids $kvGrant.AssignmentId --output none --only-show-errors
                 Write-Success "Temporary permissions cleaned up"
             }
             Show-DeploymentInfo -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId -AppServiceUrl $infrastructure.appServiceUrl -ManagedIdentityClientId $infrastructure.managedIdentityClientId
@@ -579,7 +592,7 @@ function Start-Setup {
             Write-Error "Setup completed but tests failed. Please review the configuration."
             if ($kvGrant.AssignmentId) {
                 Write-Info "Removing temporary Key Vault Administrator role..."
-                az role assignment delete --ids $kvGrant.AssignmentId --output none
+                az role assignment delete --ids $kvGrant.AssignmentId --output none --only-show-errors
             }
             exit 1
         }
