@@ -901,9 +901,15 @@
 
                     <div class="section">
                         <div class="form-group">
-                            <label class="form-label" for="solutionName">Solution Name *</label>
-                            <input type="text" id="solutionName" class="form-control" placeholder="e.g., Customer Management Solution" required>
-                            <div class="text-muted mt-2">Name of the Dataverse solution to create or update</div>
+                            <label class="form-label" for="solutionDisplayName">Solution Display Name (Friendly) *</label>
+                            <input type="text" id="solutionDisplayName" class="form-control" placeholder="e.g., Customer Management Solution" required>
+                            <div class="text-muted mt-2">Friendly name for your solution that users will see</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="solutionName">Solution Name (Internal)</label>
+                            <input type="text" id="solutionName" class="form-control" placeholder="CustomerManagementSolution" pattern="[a-zA-Z][a-zA-Z0-9]*" readonly>
+                            <div class="text-muted mt-2">Auto-generated internal unique name for Dataverse (no spaces, letters and numbers only)</div>
                         </div>
 
                         <div class="form-group">
@@ -1127,19 +1133,19 @@
             isPublisherStepComplete() {
                 if (this.stepData.publisher.type === 'existing') {
                     return this.stepData.publisher.selectedPublisher && 
-                           document.getElementById('solutionName') && 
-                           document.getElementById('solutionName').value.trim();
+                           document.getElementById('solutionDisplayName') && 
+                           document.getElementById('solutionDisplayName').value.trim();
                 } else {
                     // For new publisher, check that all required fields are filled
                     const nameField = document.getElementById('publisherName');
                     const uniqueNameField = document.getElementById('publisherUniqueName');
                     const prefixField = document.getElementById('publisherPrefix');
-                    const solutionField = document.getElementById('solutionName');
+                    const solutionDisplayField = document.getElementById('solutionDisplayName');
                     
                     return nameField && nameField.value.trim() &&
                            uniqueNameField && uniqueNameField.value.trim() &&
                            prefixField && prefixField.value.trim() &&
-                           solutionField && solutionField.value.trim();
+                           solutionDisplayField && solutionDisplayField.value.trim();
                 }
             }
 
@@ -1211,8 +1217,12 @@
                 publisherForm.reset();
             }
             
-            // Reset solution name field
+            // Reset solution name fields
+            const solutionDisplayName = document.getElementById('solutionDisplayName');
             const solutionName = document.getElementById('solutionName');
+            if (solutionDisplayName) {
+                solutionDisplayName.value = '';
+            }
             if (solutionName) {
                 solutionName.value = '';
             }
@@ -2267,7 +2277,10 @@
                 {
                     title: 'Solution',
                     count: 1,
-                    details: [document.getElementById('solutionName')?.value || 'Not specified']
+                    details: [
+                        document.getElementById('solutionDisplayName')?.value || 'Not specified',
+                        `Internal Name: ${document.getElementById('solutionName')?.value || 'Auto-generated'}`
+                    ]
                 },
                 {
                     title: 'Publisher',
@@ -2354,12 +2367,15 @@
                 validatePublisherStep();
             });
 
-            ['publisherName', 'publisherUniqueName', 'publisherPrefix', 'solutionName'].forEach(id => {
+            ['publisherName', 'publisherUniqueName', 'publisherPrefix', 'solutionDisplayName', 'solutionName'].forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
                     element.addEventListener('input', (e) => {
                         if (id === 'publisherName') {
                             generatePublisherUniqueName();
+                        }
+                        if (id === 'solutionDisplayName') {
+                            generateSolutionName();
                         }
                         
                         // Store new publisher data in wizard stepData
@@ -2419,6 +2435,35 @@
             } else {
                 prefixField.value = '';
             }
+        }
+
+        function generateSolutionName() {
+            const displayName = document.getElementById('solutionDisplayName').value;
+            const solutionNameField = document.getElementById('solutionName');
+            
+            if (!displayName) {
+                solutionNameField.value = '';
+                return;
+            }
+            
+            // Auto-generate internal name by removing spaces and special chars, keeping only letters and numbers
+            let internalName = displayName
+                .replace(/[^a-zA-Z0-9]/g, '') // Remove all non-alphanumeric characters including spaces
+                .replace(/^\d+/, ''); // Remove leading numbers
+            
+            // Ensure it starts with a letter
+            if (internalName && !/^[a-zA-Z]/.test(internalName)) {
+                internalName = 'Solution' + internalName;
+            }
+            
+            // Ensure it has content
+            if (!internalName) {
+                internalName = 'MermaidSolution';
+            }
+            
+            // Set the internal name field
+            solutionNameField.value = internalName;
+            solutionNameField.readOnly = false; // Allow manual editing after auto-generation
         }
 
         function validatePublisherStep() {
@@ -2506,6 +2551,7 @@
                     entities: wizard.stepData.validation.entities,
                     relationships: wizard.stepData.validation.relationships,
                     solutionName: document.getElementById('solutionName').value,
+                    solutionDisplayName: document.getElementById('solutionDisplayName').value,
                     dryRun: document.getElementById('dryRunMode').checked,
                     publisher: wizard.stepData.publisher.type === 'existing' && wizard.stepData.publisher.selectedPublisher ? 
                         JSON.parse(wizard.stepData.publisher.selectedPublisher) : null,

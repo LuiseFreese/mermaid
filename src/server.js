@@ -216,9 +216,30 @@ async function getDataverseConfig() {
       };
     } catch (error) {
       console.error('❌ Failed to get Dataverse config from Key Vault:', error.message);
-      throw error;
+      console.log('🔄 Falling back to local environment variables...');
+      // Fall back to local environment variables
     }
   }
+  
+  // Fallback to local environment variables
+  console.log('📍 Using local environment variables (fallback)');
+  const localConfig = {
+    source: 'local_env_fallback',
+    serverUrl: process.env.DATAVERSE_URL || process.env.DATAVERSE_SERVER_URL,
+    tenantId: process.env.TENANT_ID || process.env.DATAVERSE_TENANT_ID,
+    clientId: process.env.CLIENT_ID || process.env.DATAVERSE_CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET || process.env.DATAVERSE_CLIENT_SECRET
+  };
+  
+  console.log('Local config details:', {
+    hasServerUrl: !!localConfig.serverUrl,
+    hasTenantId: !!localConfig.tenantId,
+    hasClientId: !!localConfig.clientId,
+    hasClientSecret: !!localConfig.clientSecret,
+    serverUrl: localConfig.serverUrl ? localConfig.serverUrl.substring(0, 30) + '...' : 'undefined'
+  });
+  
+  return localConfig;
   
   throw new Error('No Dataverse configuration available');
 }
@@ -315,8 +336,17 @@ async function handleDeployment(req, res) {
       }
       
       // Validate required fields
-      const { mermaidContent, publisherName, publisherPrefix, solutionName, entities, relationships } = data;
+      const { mermaidContent, publisherName, publisherPrefix, solutionName, solutionDisplayName, entities, relationships, publisher, createPublisher } = data;
       console.log('Validating required fields...');
+      console.log('Full data structure received:', {
+        hasPublisher: !!publisher,
+        publisherData: publisher,
+        createPublisher: createPublisher,
+        hasPublisherName: !!publisherName,
+        hasPublisherPrefix: !!publisherPrefix,
+        hasEntities: !!entities,
+        hasSolutionName: !!solutionName
+      });
       console.log('Field validation:', {
         hasMermaidContent: !!mermaidContent,
         mermaidContentLength: mermaidContent?.length || 0,
@@ -345,17 +375,40 @@ async function handleDeployment(req, res) {
         return;
       }
       
-      if (!publisherName?.trim() || !publisherPrefix?.trim() || !solutionName?.trim()) {
-        console.error('❌ Validation failed: Missing required fields');
-        console.error('❌ Missing fields details:', {
-          publisherName: !publisherName?.trim() ? 'MISSING' : 'OK',
-          publisherPrefix: !publisherPrefix?.trim() ? 'MISSING' : 'OK',
-          solutionName: !solutionName?.trim() ? 'MISSING' : 'OK'
+      // Check if we have either existing publisher data or new publisher fields
+      const hasExistingPublisher = publisher && (publisher.uniquename || publisher.uniqueName) && (publisher.customizationprefix || publisher.prefix);
+      const hasNewPublisherData = publisherName?.trim() && publisherPrefix?.trim();
+      
+      console.log('Publisher validation check:', {
+        hasExistingPublisher,
+        hasNewPublisherData,
+        publisherUniqueNameField: publisher?.uniquename || publisher?.uniqueName,
+        publisherPrefixField: publisher?.customizationprefix || publisher?.prefix
+      });
+      
+      if (!hasExistingPublisher && !hasNewPublisherData) {
+        console.error('❌ Validation failed: Missing publisher information');
+        console.error('❌ Publisher validation details:', {
+          hasExistingPublisher,
+          hasNewPublisherData,
+          publisherData: publisher,
+          publisherName: publisherName,
+          publisherPrefix: publisherPrefix
         });
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: false,
-          error: 'Publisher name, prefix, and solution name are required'
+          error: 'Either existing publisher selection or new publisher details (name and prefix) are required'
+        }));
+        return;
+      }
+      
+      if (!solutionName?.trim()) {
+        console.error('❌ Validation failed: Missing solution name');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Solution name is required'
         }));
         return;
       }
@@ -486,16 +539,41 @@ async function handleDeployment(req, res) {
         console.log(' handleDeployment: No uploaded global choices to process');
       }
       
+      // Extract publisher information - either from existing publisher or new publisher data
+      let effectivePublisherName, effectivePublisherPrefix, effectivePublisherUniqueName;
+      
+      if (hasExistingPublisher) {
+        // Use existing publisher data - handle both possible field name formats
+        effectivePublisherName = publisher.friendlyname || publisher.friendlyName;
+        effectivePublisherPrefix = publisher.customizationprefix || publisher.prefix;
+        effectivePublisherUniqueName = publisher.uniquename || publisher.uniqueName;
+        console.log('Using existing publisher:', {
+          name: effectivePublisherName,
+          prefix: effectivePublisherPrefix,
+          uniqueName: effectivePublisherUniqueName
+        });
+      } else {
+        // Use new publisher data
+        effectivePublisherName = publisherName;
+        effectivePublisherPrefix = publisherPrefix;
+        effectivePublisherUniqueName = data.publisherUniqueName || publisherName?.replace(/\s+/g, '');
+        console.log('Using new publisher data:', {
+          name: effectivePublisherName,
+          prefix: effectivePublisherPrefix,
+          uniqueName: effectivePublisherUniqueName
+        });
+      }
+
       // Use simplified options like the working backup, but include required publisher/solution info
       const creationOptions = {
-        publisherPrefix: publisherPrefix,
-        publisherName: publisherName,
-        publisherUniqueName: data.publisherUniqueName || publisherName.replace(/\s+/g, ''), // Remove spaces for unique name
-        publisherFriendlyName: publisherName,
-        solutionFriendlyName: solutionName,
+        publisherPrefix: effectivePublisherPrefix,
+        publisherName: effectivePublisherName,
+        publisherUniqueName: effectivePublisherUniqueName,
+        publisherFriendlyName: effectivePublisherName,
+        solutionFriendlyName: solutionDisplayName || solutionName,
         solutionDescription: data.solutionDescription,
         dryRun: false,
-        createPublisher: data.createPublisher !== false,
+        createPublisher: !hasExistingPublisher, // Only create publisher if not using existing one
         relationships: parseResult.relationships || [],
         selectedChoices: data.selectedChoices && data.selectedChoices.length > 0 ? 
           data.selectedChoices.filter(choice => choice && choice.trim() !== '') : []

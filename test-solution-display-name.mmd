@@ -1,0 +1,16 @@
+erDiagram
+    Product {
+        string name PK "Product Name"
+        decimal price "Product Price"
+        boolean isActive "Is Active"
+        choice category "Product Category"
+    }
+    
+    Review {
+        string title PK "Review Title"
+        int rating "Rating (1-5)"
+        text comment "Review Comment"
+        dateonly reviewDate "Review Date"
+    }
+    
+    Product ||--o{ Review : "has reviews"
