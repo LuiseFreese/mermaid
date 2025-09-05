@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Fluent UI 2 Web Components -->
     <script type="module" src="https://unpkg.com/@fluentui/web-components/dist/web-components.js"></script>
+    <!-- Mermaid.js for diagram rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
     <style>
         :root {
             --neutral-foreground-rest: #323130;
@@ -950,11 +952,8 @@
                                         <h5 style="margin: 0 0 8px 0; color: #d13438; font-weight: 600;">
                                             Original ERD (Issues Found)
                                         </h5>
+                                        <!-- Code -->
                                         <div style="position: relative;">
-                                            <button id="copyOriginalERD" class="btn btn-secondary" 
-                                                    style="position: absolute; top: 8px; right: 8px; z-index: 10; font-size: 11px; padding: 3px 6px;">
-                                                Copy
-                                            </button>
                                             <pre id="originalERDContent" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 12px; margin: 0; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto;"></pre>
                                         </div>
                                     </div>
@@ -964,6 +963,7 @@
                                         <h5 style="margin: 0 0 8px 0; color: #107c10; font-weight: 600;">
                                             Corrected ERD (Best Practices)
                                         </h5>
+                                        <!-- Code -->
                                         <button id="copyCorrectedERD" 
                                                 style="position: absolute; top: 0; right: 0; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: #666; font-size: 16px;"
                                                 title="Copy corrected ERD">
@@ -1000,6 +1000,14 @@
                                     <p style="margin: 12px 0 0 0; font-size: 12px; color: #666;">
                                         This will replace your current ERD with the corrected version that addresses all validation warnings.
                                     </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Main ERD Visualization (appears after using corrected ERD) -->
+                            <div id="mainDiagramSection" class="hidden" style="margin-top: 20px;">
+                                <h4 style="color: #000; margin-bottom: 12px;">ERD Visualization</h4>
+                                <div id="mainERDDiagram" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; padding: 16px; margin-bottom: 12px; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <span style="color: #6c757d;">Diagram will be rendered here...</span>
                                 </div>
                             </div>
                             
@@ -1753,7 +1761,7 @@
                 // Mark if we're using a corrected ERD for filtering purposes
                 result.usingCorrectedERD = usingCorrectedERD;
                 
-                displayValidationResults(result);
+                await displayValidationResults(result);
                 
                 if (result.success) {
                     wizard.stepData.validation = {
@@ -1770,19 +1778,25 @@
                         updateStepStatus('validation', 'error');
                     }
                 } else {
-                    wizard.stepData.validation.valid = false;
+                    wizard.stepData.validation = {
+                        valid: false,
+                        entities: [],
+                        relationships: [],
+                        warnings: [],
+                        validation: { isValid: false }
+                    };
                     updateStepStatus('validation', 'error');
                 }
                 
                 updateNavigationButtons();
             } catch (error) {
                 console.error('Validation error:', error);
-                displayValidationResults({ success: false, error: error.message });
+                await displayValidationResults({ success: false, error: error.message });
                 updateStepStatus('validation', 'error');
             }
         }
 
-        function displayValidationResults(result) {
+        async function displayValidationResults(result) {
             // Define variables used throughout this function
             const usingCDM = wizard.cdmChoice === 'cdm' || wizard.usingCDMERD;
             const cdmMatches = (result.cdmDetection && result.cdmDetection.matches) ? result.cdmDetection.matches : [];
@@ -2079,14 +2093,15 @@
                 hasCorrecterdERD: result.correctedERD && result.correctedERD.trim() !== '',
                 correctedERDLength: result.correctedERD ? result.correctedERD.length : 0,
                 usingCorrectedERD: result.usingCorrectedERD,
-                shouldShow: !result.usingCorrectedERD && (hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))
+                isValid: validation.isValid,
+                shouldShow: !result.usingCorrectedERD && (validation.isValid || hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))
             });
             
-            // Only show corrected ERD section if we have warnings to fix OR a corrected ERD was generated
-            if (!result.usingCorrectedERD && (hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))) {
+            // Show corrected ERD section if validation is successful OR if we have warnings to fix OR a corrected ERD was generated
+            if (!result.usingCorrectedERD && (validation.isValid || hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))) {
                 // Show appropriate corrected ERD based on user's choice
-                let correctedERDToShow = result.correctedERD || 'No corrected ERD generated yet.';
-                let erdTitle = "Corrected ERD (Best Practices)";
+                let correctedERDToShow = result.correctedERD || currentERDContent || 'No ERD content available.';
+                let erdTitle = result.correctedERD ? "Corrected ERD (Best Practices)" : "ERD Visualization";
                 
                 if (wizard.cdmChoice === 'cdm') {
                     // If user chose CDM, we still need to apply naming fixes to custom entities
@@ -2186,28 +2201,16 @@
                 correctedERDSection.classList.remove('hidden');
                 console.log('✅ Corrected ERD section is now visible');
                 
-                // Add copy original ERD functionality
-                const copyOriginalButton = document.getElementById('copyOriginalERD');
-                copyOriginalButton.onclick = function() {
-                    const contentToCopy = isUsingCorrectedERD ? originalERDContent : currentERDContent;
-                    navigator.clipboard.writeText(contentToCopy || '').then(function() {
-                        copyOriginalButton.innerHTML = 'Copied';
-                        setTimeout(() => {
-                            copyOriginalButton.innerHTML = 'Copy';
-                        }, 2000);
-                    }).catch(function(err) {
-                        console.error('Could not copy text: ', err);
-                        copyOriginalButton.innerHTML = 'Failed';
-                        setTimeout(() => {
-                            copyOriginalButton.innerHTML = 'Copy';
-                        }, 2000);
-                    });
-                };
+                // Removed copy original ERD functionality (button no longer exists)
                 
                 // Add copy corrected ERD functionality
                 const copyButton = document.getElementById('copyCorrectedERD');
                 copyButton.onclick = function() {
-                    navigator.clipboard.writeText(correctedERDToShow).then(function() {
+                    // Get the corrected ERD content from the DOM element
+                    const correctedERDContentElement = document.getElementById('correctedERDContent');
+                    const contentToCopy = correctedERDContentElement ? correctedERDContentElement.textContent : '';
+                    
+                    navigator.clipboard.writeText(contentToCopy).then(function() {
                         copyButton.innerHTML = 'Copied';
                         setTimeout(() => {
                             copyButton.innerHTML = 'Copy';
@@ -2228,11 +2231,12 @@
                         console.log('USE THIS button clicked');
                         
                         try {
-                            // Use the corrected ERD content that's currently being displayed
-                            const correctedContent = correctedERDToShow;
+                            // Get the corrected ERD content from the DOM element where it's displayed
+                            const correctedERDContentElement = document.getElementById('correctedERDContent');
+                            const correctedContent = correctedERDContentElement ? correctedERDContentElement.textContent : null;
                             
                             // Validate that we have valid content
-                            if (!correctedContent || correctedContent === 'No corrected ERD generated yet.') {
+                            if (!correctedContent || correctedContent === 'No corrected ERD generated yet.' || correctedContent === 'No ERD content available.') {
                                 throw new Error('No valid corrected ERD content available');
                             }
                             
@@ -2339,6 +2343,15 @@
                             
                             // Re-validate the corrected ERD to show updated results
                             await validateERD(correctedContent, true);
+                            
+                            // Render Mermaid diagram for the corrected ERD as additional visual information
+                            try {
+                                console.log('Rendering Mermaid diagram for corrected ERD...');
+                                await renderMermaidDiagrams('', correctedContent);
+                                console.log('Mermaid diagram rendered successfully');
+                            } catch (diagramError) {
+                                console.error('Error rendering Mermaid diagram:', diagramError);
+                            }
                             
                             // Debug: Check wizard state after re-validation
                             console.log('🔍 After re-validation - Wizard state:', {
@@ -3043,7 +3056,7 @@
                 console.log('About to call displayValidationResults with result:', result);
                 
                 // Re-display validation results now that choice is made
-                displayValidationResults(result);
+                await displayValidationResults(result);
                     
                     // Generate new ERD with CDM entities silently in background
                     try {
@@ -3083,7 +3096,7 @@
                     }
                 };
                 
-                useCustomButton.onclick = function() {
+                useCustomButton.onclick = async function() {
                     // Store custom choice in wizard state
                     wizard.cdmChoice = 'custom';
                     wizard.cdmMatches = null;
@@ -3107,7 +3120,7 @@
                     console.log('User chose to use custom entities');
                     
                     // Re-display validation results now that choice is made
-                    displayValidationResults(result);
+                    await displayValidationResults(result);
                 };
             } else {
                 cdmChoiceSection.classList.add('hidden');
@@ -4178,6 +4191,47 @@
                         </div>
                     `;
                 }
+            }
+        }
+        
+        // Render Mermaid diagrams
+        async function renderMermaidDiagrams(originalContent, correctedContent) {
+            try {
+                // Initialize Mermaid if not already done
+                if (typeof mermaid !== 'undefined') {
+                    mermaid.initialize({ 
+                        startOnLoad: false,
+                        theme: 'default',
+                        flowchart: { useMaxWidth: true },
+                        er: { useMaxWidth: true }
+                    });
+                    
+                    // Render diagram in main diagram section (appears after using corrected ERD)
+                    const mainContainer = document.getElementById('mainERDDiagram');
+                    if (mainContainer && correctedContent && correctedContent.trim() && !originalContent) {
+                        try {
+                            console.log('Rendering diagram in main section...');
+                            mainContainer.innerHTML = '';
+                            const { svg } = await mermaid.render('mainERD', correctedContent);
+                            mainContainer.innerHTML = svg;
+                            
+                            // Show the diagram section
+                            const diagramSection = document.getElementById('mainDiagramSection');
+                            if (diagramSection) {
+                                diagramSection.classList.remove('hidden');
+                            }
+                            console.log('Main diagram rendered successfully');
+                        } catch (error) {
+                            console.warn('Could not render main ERD diagram:', error);
+                            mainContainer.innerHTML = '<div class="diagram-error">Could not render diagram</div>';
+                        }
+                        return; // Exit early for main rendering
+                    }
+                } else {
+                    console.warn('Mermaid library not loaded');
+                }
+            } catch (error) {
+                console.error('Error rendering Mermaid diagrams:', error);
             }
         }
         

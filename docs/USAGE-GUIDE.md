@@ -23,6 +23,7 @@ The application provides a **step-by-step wizard interface** for uploading Merma
 1. **ERD Validation & Upload**:
    - Upload your Mermaid ERD file (`.mmd` extension)
    - Review the parsed entities and relationships
+   - If validation issues are found, review suggested corrections
    - Click "Next" to proceed
 
 2. **Solution & Publisher Setup**:
@@ -40,6 +41,39 @@ The application provides a **step-by-step wizard interface** for uploading Merma
 4. **Final Review & Deploy**:
    - Review your complete configuration
    - Click "Convert & Deploy" to create your solution
+
+## Using ERD Corrections and Visual Rendering
+
+When validation issues are detected in your ERD, the application provides an interactive correction workflow:
+
+### Validation Results Display
+
+After uploading your ERD file, you'll see:
+- **Validation status** with detailed error and warning messages
+- **Suggested corrections** showing original vs. corrected ERD code
+- **Copy functionality** to copy the corrected code to your clipboard
+
+### Applying Corrections
+
+1. **Review the corrections**: Compare your original ERD with the suggested corrections
+2. **Click "Use Corrected ERD"**: This applies the corrections and updates your file
+3. **Visual rendering**: After applying corrections, you'll see:
+   - **ERD Visualization**: A rendered Mermaid diagram showing your corrected ERD
+   - **Parsed Schema Overview**: Detailed tables showing entities, attributes, and relationships
+
+### What You'll See After Applying Corrections
+
+```
+✓ Validation Results (with any remaining warnings)
+✓ ERD Visualization (Mermaid diagram rendering)
+✓ Parsed Schema Overview (detailed entity tables)
+```
+
+The visual rendering helps you:
+- **Verify the structure** of your ERD before deployment
+- **Understand relationships** between entities
+- **Confirm corrections** were applied properly
+- **Review the final schema** that will be created in Dataverse
 
 ### 3. Wait for your success message! 
 

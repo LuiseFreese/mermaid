@@ -154,6 +154,7 @@ erDiagram
     - Real-time syntax validation and structure checking
     - Auto-correction suggestions for Dataverse compatibility
     - **CDM Detection**: Automatic identification of entities that match Microsoft Common Data Model
+    - **Visual ERD Rendering**: Mermaid diagram display after applying corrections
     - Entity and relationship preview with detailed schema display
 
 * Step 2: Solution & Publisher Setup  
@@ -720,6 +721,55 @@ const foundChoice = allChoices.value?.find(choice => choice.Name === targetName)
 - Missing primary keys → Automatic ID field generation
 - Invalid naming → Proper naming convention suggestions
 - Relationship inconsistencies → Corrected relationship definitions
+
+### ERD Visual Rendering
+
+**Purpose**: Provide visual diagram rendering of Mermaid ERDs after validation and correction to enhance user understanding and verification.
+
+**Key Features**:
+- **Mermaid.js Integration**: Client-side rendering using the official Mermaid.js library
+- **Post-Correction Rendering**: Diagrams appear only after users apply corrected ERD
+- **Strategic Placement**: Positioned between validation results and parsed schema overview
+- **Clean UI Flow**: No overwhelming red/green comparisons, just clean visualization
+
+**Implementation Details**:
+- **Library**: Mermaid.js loaded via CDN in the wizard interface
+- **Trigger**: Diagram renders when "Use Corrected ERD" button is clicked
+- **Container**: Dedicated `mainERDDiagram` section with neutral styling
+- **Error Handling**: Graceful fallback if diagram cannot be rendered
+
+**User Experience Flow**:
+1. **Upload & Validate**: User uploads ERD, sees validation results with corrections
+2. **Apply Corrections**: User clicks "Use Corrected ERD" button
+3. **Visual Confirmation**: System displays rendered Mermaid diagram above schema overview
+4. **Proceed**: User can visually verify structure before deployment
+
+**Technical Implementation** (`src/wizard-ui.html`):
+```javascript
+// Mermaid diagram rendering after corrections applied
+async function renderMermaidDiagrams(originalContent, correctedContent) {
+    if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: { useMaxWidth: true },
+            er: { useMaxWidth: true }
+        });
+        
+        const mainContainer = document.getElementById('mainERDDiagram');
+        if (mainContainer && correctedContent && !originalContent) {
+            const { svg } = await mermaid.render('mainERD', correctedContent);
+            mainContainer.innerHTML = svg;
+        }
+    }
+}
+```
+
+**Benefits**:
+- **Visual Verification**: Users can see the structure before deployment
+- **Error Detection**: Visual inconsistencies are easier to spot than text
+- **Confidence Building**: Users feel more confident about their ERD structure
+- **Professional UX**: Clean, modern interface with visual feedback
 
 ### Smart Timeout Handling & Deployment Verification
 
