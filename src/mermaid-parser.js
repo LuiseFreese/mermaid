@@ -8,6 +8,7 @@ class MermaidERDParser {
     this.entities = new Map();
     this.relationships = [];
     this.warnings = [];
+    this.cdmDetectionResults = null; // Store CDM detection results
   }
 
   /**
@@ -19,6 +20,7 @@ class MermaidERDParser {
     this.entities.clear();
     this.relationships = [];
     this.warnings = [];
+    this.cdmDetectionResults = null; // Reset CDM detection results
 
     const lines = mermaidContent
       .split('\n')
@@ -59,7 +61,18 @@ class MermaidERDParser {
       if (inEntityDefinition && currentEntity) {
         const attribute = this.parseAttribute(line);
         if (attribute) {
-          this.entities.get(currentEntity).attributes.push(attribute);
+          // Filter out system timestamp and user fields that Dataverse provides automatically
+          const systemFieldsToIgnore = ['createdon', 'createdby', 'modifiedon', 'modifiedby'];
+          if (systemFieldsToIgnore.includes(attribute.name.toLowerCase())) {
+            console.log(`🔍 Ignoring system field: ${attribute.name} (automatically provided by Dataverse)`);
+          } else if (attribute.isForeignKey) {
+            // For foreign key attributes, we still add them to the entity model for relationship validation,
+            // but they won't be created as regular attributes - the relationship creation will handle them
+            console.log(`🔍 Detected foreign key attribute: ${attribute.name} (will be created by relationship)`);
+            this.entities.get(currentEntity).attributes.push(attribute);
+          } else {
+            this.entities.get(currentEntity).attributes.push(attribute);
+          }
         }
         continue;
       }
@@ -78,7 +91,8 @@ class MermaidERDParser {
       entities: Array.from(this.entities.values()),
       relationships: this.relationships,
       warnings: this.warnings,
-      validation: this.getValidationSummary()
+      validation: this.getValidationSummary(),
+      cdmDetection: this.cdmDetectionResults // Include CDM detection results
     };
   }
 
@@ -164,12 +178,15 @@ class MermaidERDParser {
 
     const [, fromEntity, cardinality, toEntity, relationshipName = ''] = match;
 
+    // Remove quotes from relationship name if present
+    const cleanRelationshipName = relationshipName.trim().replace(/^["']|["']$/g, '');
+
     return {
       fromEntity,
       toEntity,
       cardinality: this.parseCardinality(cardinality),
-      name: relationshipName.trim() || `${fromEntity}_${toEntity}`,
-      displayName: relationshipName.trim() || this.formatDisplayName(`${fromEntity}_${toEntity}`)
+      name: cleanRelationshipName || `${fromEntity}_${toEntity}`,
+      displayName: cleanRelationshipName || this.formatDisplayName(`${fromEntity}_${toEntity}`)
     };
   }
 
@@ -312,9 +329,17 @@ class MermaidERDParser {
   /**
    * Validate entity naming to detect potential conflicts
    * @param {string} entityName - Name of the entity to validate
+   * @param {boolean} isCDMEntity - Whether this entity is a CDM entity (skip system name conflicts)
    */
-  validateEntityNaming(entityName) {
+  validateEntityNaming(entityName, isCDMEntity = false) {
     const entity = this.entities.get(entityName);
+    if (!entity || !entity.attributes) return;
+
+    // For CDM entities, skip all naming conflict checks since we're using existing entities
+    if (isCDMEntity) {
+      console.log(`🔍 Skipping naming conflict checks for CDM entity: ${entityName}`);
+      return;
+    }
     if (!entity || !entity.attributes) return;
 
     // Check for "name" column conflicts (case-insensitive)
@@ -334,11 +359,14 @@ class MermaidERDParser {
       });
     }
 
-    // Check for other potential conflicts with system columns
+    // Check for other potential conflicts with system columns (exclude timestamp/user fields)
     const problemColumns = entity.attributes.filter(attr => {
       const lowerName = attr.name.toLowerCase();
-      return ['createdon', 'createdby', 'modifiedon', 'modifiedby', 'ownerid', 'statecode', 'statuscode'].includes(lowerName);
+      console.log(`🔍 Checking attribute: ${attr.name} (lowercase: ${lowerName})`);
+      return ['status', 'ownerid', 'statecode', 'statuscode'].includes(lowerName);
     });
+
+    console.log(`🔍 Problem columns found for ${entityName}:`, problemColumns.map(c => c.name));
 
     if (problemColumns.length > 0) {
       this.warnings.push({
@@ -346,7 +374,7 @@ class MermaidERDParser {
         severity: 'warning',
         entity: entityName,
         message: `Entity '${entityName}' has columns that conflict with system columns: ${problemColumns.map(c => c.name).join(', ')}`,
-        suggestion: `Consider adding a prefix to these columns to avoid conflicts with Dataverse system columns.`,
+        suggestion: `Consider renaming these columns using the pattern: ${entityName.toLowerCase()}_columnname. For example: ${problemColumns.map(col => `'${entityName.toLowerCase()}_${col.name.toLowerCase()}'`).join(', ')}. Note: 'status' columns are automatically provided by Dataverse and usually represent choice fields.`,
         columns: problemColumns.map(col => col.name),
         category: 'naming'
       });
@@ -360,25 +388,42 @@ class MermaidERDParser {
     // Clear previous warnings
     this.warnings = [];
 
-    // Validate each entity
+    // First, detect CDM entities so we can use this information during validation
+    this.detectCDMEntities();
+
+    // Get CDM entity names for filtering during validation
+    const cdmEntityNames = new Set();
+    if (this.cdmDetection && this.cdmDetection.detectedCDM) {
+      this.cdmDetection.detectedCDM.forEach(match => {
+        if (match.originalEntity && match.originalEntity.name) {
+          cdmEntityNames.add(match.originalEntity.name);
+        }
+      });
+    }
+
+    // Validate each entity (skip system name conflicts for CDM entities)
     for (const entityName of this.entities.keys()) {
-      this.validateEntity(entityName);
+      this.validateEntity(entityName, cdmEntityNames.has(entityName));
     }
 
     // Validate relationships
     this.validateRelationships();
-
-    // Check for Common Data Model entities
-    this.detectCDMEntities();
   }
 
   /**
    * Validate individual entity structure
    * @param {string} entityName - Name of the entity to validate
+   * @param {boolean} isCDMEntity - Whether this entity is a CDM entity (skip system name conflicts)
    */
-  validateEntity(entityName) {
+  validateEntity(entityName, isCDMEntity = false) {
     const entity = this.entities.get(entityName);
     if (!entity || !entity.attributes) return;
+
+    // For CDM entities, skip most validations since we're using existing entities
+    if (isCDMEntity) {
+      console.log(`🔍 Skipping system name conflict checks for CDM entity: ${entityName}`);
+      return; // Skip all validations for CDM entities
+    }
 
     // CRITICAL: Check for multiple primary keys
     const primaryKeys = entity.attributes.filter(attr => attr.isPrimaryKey);
@@ -419,6 +464,27 @@ class MermaidERDParser {
       });
     }
 
+    // Check for system attributes that already exist in Dataverse (exclude timestamp/user fields)
+    const systemAttributes = ['status', 'statuscode', 'statecode', 'ownerid', 'owninguser', 'owningteam'];
+    const conflictingAttributes = entity.attributes.filter(attr => 
+      systemAttributes.includes(attr.name.toLowerCase())
+    );
+    
+    if (conflictingAttributes.length > 0) {
+      conflictingAttributes.forEach(attr => {
+        this.warnings.push({
+          type: 'system_attribute_conflict',
+          severity: 'error',
+          entity: entityName,
+          attribute: attr.name,
+          message: `Column '${attr.name}' conflicts with a system attribute that already exists in Dataverse.`,
+          suggestion: `Rename '${attr.name}' to '${entityName.toLowerCase()}_${attr.name.toLowerCase()}' (recommended pattern: tablename_columnname). Alternative options: '${attr.name}_value' or 'custom_${attr.name}'. System attributes like 'status' are automatically provided by Dataverse.`,
+          category: 'naming',
+          systemAttribute: true
+        });
+      });
+    }
+
     // Check for empty entities
     if (entity.attributes.length === 0) {
       this.warnings.push({
@@ -431,8 +497,8 @@ class MermaidERDParser {
       });
     }
 
-    // Call existing naming validation
-    this.validateEntityNaming(entityName);
+    // Call existing naming validation (only for custom entities)
+    this.validateEntityNaming(entityName, isCDMEntity);
   }
 
   /**
@@ -493,17 +559,33 @@ class MermaidERDParser {
       if (this.entities.has(relationship.fromEntity) && this.entities.has(relationship.toEntity)) {
         const toEntity = this.entities.get(relationship.toEntity);
         const expectedFK = `${relationship.fromEntity.toLowerCase()}_id`;
+        
+        // Check if there's any FK field in the target entity
+        // We're more flexible here - any FK could potentially be the relationship FK
+        const hasForeignKeys = toEntity.attributes.some(attr => attr.isForeignKey);
         const hasMatchingFK = toEntity.attributes.some(attr => 
           attr.isForeignKey && attr.name.toLowerCase() === expectedFK
         );
         
-        if (!hasMatchingFK) {
+        // Only warn if there are NO foreign keys at all, or if there are FKs but none match the expected pattern
+        // If there are FKs present, assume one of them handles this relationship
+        if (!hasForeignKeys) {
           this.warnings.push({
             type: 'missing_foreign_key',
             severity: 'warning',
             relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
-            message: `Relationship defined but no matching foreign key found in '${relationship.toEntity}'.`,
-            suggestion: `Add a foreign key field '${expectedFK} FK' to entity '${relationship.toEntity}'.`,
+            message: `Relationship defined but no foreign key found in '${relationship.toEntity}'.`,
+            suggestion: `Add a foreign key field '${expectedFK} FK' to entity '${relationship.toEntity}' or ensure one of the existing FK fields handles this relationship.`,
+            category: 'relationships'
+          });
+        } else if (!hasMatchingFK) {
+          // There are FKs but none match the expected pattern - this is just informational
+          this.warnings.push({
+            type: 'foreign_key_naming',
+            severity: 'info',
+            relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
+            message: `Relationship '${relationship.fromEntity} → ${relationship.toEntity}' exists with foreign keys present in '${relationship.toEntity}', but no FK named '${expectedFK}' was found.`,
+            suggestion: `If using a different FK name, ensure it properly references '${relationship.fromEntity}'. Otherwise, consider renaming to '${expectedFK} FK' for clarity.`,
             category: 'relationships'
           });
         }
@@ -512,31 +594,164 @@ class MermaidERDParser {
   }
 
   /**
-   * Detect Common Data Model entities
+   * Detect Common Data Model entities using advanced CDM detection
    */
   detectCDMEntities() {
+    try {
+      // Try to use the advanced CDM detector if available
+      const CDMEntityRegistry = require('./cdm/cdm-entity-registry');
+      const cdmRegistry = new CDMEntityRegistry();
+      
+      // Convert parser entities to format expected by CDM detector
+      const entitiesArray = Array.from(this.entities.values());
+      
+      // Get CDM detection results
+      const cdmResults = cdmRegistry.detectCDMEntities(entitiesArray);
+      
+      // Store CDM detection results for the API - keep full objects
+      this.cdmDetectionResults = {
+        matches: cdmResults.detectedCDM.map(match => ({
+          originalEntity: { name: match.originalEntity.name },
+          cdmEntity: {
+            logicalName: match.cdmEntity.logicalName,
+            displayName: match.cdmEntity.displayName,
+            description: match.cdmEntity.description,
+            keyAttributes: match.cdmEntity.keyAttributes,
+            category: match.cdmEntity.category
+          },
+          matchType: match.matchType,
+          confidence: match.confidence,
+          matchReasons: match.matchReasons || [],
+          attributes: match.cdmEntity.keyAttributes
+        })),
+        detectedCDM: cdmResults.detectedCDM,   // ← full, untouched objects
+        recommendations: cdmResults.recommendations.map(rec => ({
+          originalEntity: { name: rec.originalEntity.name },
+          cdmEntity: {
+            logicalName: rec.cdmEntity.logicalName,
+            displayName: rec.cdmEntity.displayName,
+            description: rec.cdmEntity.description
+          },
+          reason: rec.reason
+        })),
+        report: cdmResults.summary
+      };
+      
+      // Add detailed CDM warnings based on detection results
+      if (cdmResults.detectedCDM.length > 0) {
+        cdmResults.detectedCDM.forEach(match => {
+          this.warnings.push({
+            type: 'cdm_entity_detected',
+            severity: 'info',
+            entity: match.originalEntity.name,
+            cdmEntity: match.cdmEntity,
+            matchType: match.matchType,
+            confidence: match.confidence,
+            message: `Entity '${match.originalEntity.name}' matches CDM entity '${match.cdmEntity.displayName}' (${(match.confidence * 100).toFixed(1)}% confidence).`,
+            suggestion: `Consider using the existing CDM ${match.cdmEntity.displayName} entity instead of creating a custom one.`,
+            benefits: [
+              `${match.cdmEntity.keyAttributes.length}+ pre-built attributes`,
+              'Standard business processes and workflows',
+              'Integration with other CDM entities',
+              'Microsoft-maintained schema updates'
+            ],
+            recommendation: match.recommendation,
+            documentationLink: '/docs/USAGE-GUIDE.md#common-data-model-integration',
+            category: 'cdm'
+          });
+        });
+      }
+      
+      // Add overall CDM summary if matches found
+      if (cdmResults.summary.cdmMatches > 0) {
+        this.warnings.push({
+          type: 'cdm_summary',
+          severity: 'info',
+          message: `Found ${cdmResults.summary.cdmMatches} potential CDM entity matches with ${cdmResults.summary.confidenceLevel} confidence.`,
+          suggestion: 'Consider leveraging CDM entities for better integration and reduced development time.',
+          cdmSummary: cdmResults.summary,
+          category: 'cdm'
+        });
+      }
+      
+    } catch (error) {
+      // Fall back to basic CDM detection if advanced detection fails
+      console.warn('⚠️ Advanced CDM detection not available, using basic detection:', error.message);
+      this.detectCDMEntitiesBasic();
+    }
+  }
+
+  /**
+   * Basic CDM entity detection (fallback) - Simple exact name matching
+   */
+  detectCDMEntitiesBasic() {
     const cdmEntities = [
-      'account', 'contact', 'lead', 'opportunity', 'case', 'incident',
-      'activity', 'email', 'phonecall', 'task', 'appointment',
-      'user', 'team', 'businessunit', 'systemuser',
-      'product', 'pricelevel', 'quote', 'order', 'invoice',
-      'campaign', 'marketinglist', 'competitor'
+      'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
+      'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
+      'User', 'Team', 'BusinessUnit', 'SystemUser',
+      'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
+      'Campaign', 'MarketingList', 'Competitor'
     ];
 
+    const matches = [];
+
     this.entities.forEach((entity, entityName) => {
-      const lowerName = entityName.toLowerCase();
-      if (cdmEntities.includes(lowerName)) {
+      // Simple case-insensitive name matching
+      const matchingCDM = cdmEntities.find(cdm => 
+        cdm.toLowerCase() === entityName.toLowerCase()
+      );
+      
+      if (matchingCDM) {
+        const logical = matchingCDM.toLowerCase();
+        matches.push({
+          originalEntity: { name: entityName },
+          cdmEntity: {
+            logicalName: logical,
+            displayName: matchingCDM,
+            description: `Standard ${matchingCDM} entity with built-in attributes and relationships`,
+            keyAttributes: []
+          },
+          matchType: 'exact',
+          confidence: 1.0,
+          matchReasons: ['Exact name match'],
+          attributes: [`Standard ${matchingCDM} attributes available`]
+        });
+        
         this.warnings.push({
           type: 'cdm_entity_detected',
           severity: 'info',
           entity: entityName,
-          message: `Entity '${entityName}' appears to be a Common Data Model entity.`,
-          suggestion: 'Consider using the existing CDM entity instead of creating a custom one.',
+          message: `Entity '${entityName}' matches CDM entity '${matchingCDM}'.`,
+          suggestion: `Consider using the existing CDM ${matchingCDM} entity instead of creating a custom one.`,
           documentationLink: '/docs/USAGE-GUIDE.md#common-data-model-integration',
           category: 'cdm'
         });
       }
     });
+    
+    // Keep both shapes for consumers
+    this.cdmDetectionResults = {
+      matches,
+      detectedCDM: matches, // same shape, so it works everywhere
+      recommendations: [],
+      report: {
+        totalEntitiesAnalyzed: this.entities.size,
+        cdmMatchesFound: matches.length,
+        recommendationsMade: 0,
+        customEntities: this.entities.size - matches.length
+      }
+    };
+    
+    // Add summary info message if we found CDM matches
+    if (matches.length > 0) {
+      this.warnings.push({
+        type: 'cdm_summary',
+        category: 'cdm',
+        severity: 'info',
+        message: `Found ${matches.length} CDM entity matches.`,
+        suggestion: 'Consider leveraging CDM entities for better integration and reduced development time.'
+      });
+    }
   }
 
   /**
@@ -586,6 +801,11 @@ class MermaidERDParser {
       w.severity === 'warning'
     );
     
+    const systemAttributeConflicts = this.warnings.filter(w => 
+      w.type === 'system_attribute_conflict' && 
+      w.severity === 'error'
+    );
+    
     const missingForeignKeys = this.warnings.filter(w => 
       w.type === 'missing_foreign_key' && 
       w.severity === 'warning'
@@ -625,21 +845,31 @@ class MermaidERDParser {
         const entityPKCount = entity.attributes.filter(a => a.isPrimaryKey).length;
         const isJunctionTable = entityPKCount > 1 && entity.attributes.filter(a => a.isPrimaryKey && a.isForeignKey).length > 1;
         
-        // Always rename primary keys to 'name' (Dataverse convention) EXCEPT for junction tables
-        if (attr.isPrimaryKey && !isJunctionTable) {
-          correctedName = 'name';
-          description = description || `Primary name column`;
-        } else {
-          // Only fix name conflicts if it's actually a non-primary 'name' column
-          const hasNameConflict = criticalNameConflicts.some(w => 
-            w.entity === entityName && 
-            w.columns.includes(attr.name) && 
-            !attr.isPrimaryKey
-          );
-          
-          if (hasNameConflict) {
-            correctedName = `${entityName.toLowerCase()}_name`;
-            description = description || `${entityName} display name`;
+        // Check if this attribute has a system attribute conflict
+        const hasSystemConflict = systemAttributeConflicts.some(w => 
+          w.entity === entityName && 
+          w.attribute.toLowerCase() === attr.name.toLowerCase()
+        );
+        
+        // Only rename to 'name' if there's an actual naming conflict with non-primary columns
+        const hasNameConflict = criticalNameConflicts.some(w => 
+          w.entity === entityName && 
+          w.columns.some(col => col.toLowerCase() === attr.name.toLowerCase())
+        );
+        
+        if (hasSystemConflict) {
+          // Rename system conflicting attributes using tablename_columnname pattern
+          correctedName = `${entityName.toLowerCase()}_${attr.name.toLowerCase()}`;
+          description = description || `${entityName} ${attr.name}`;
+        } else if (hasNameConflict) {
+          if (attr.isPrimaryKey && !isJunctionTable) {
+            // For primary keys with name conflicts, rename to 'name' (Dataverse convention)
+            correctedName = 'name';
+            description = description || `Primary name column`;
+          } else if (!attr.isPrimaryKey) {
+            // For non-primary keys with name conflicts, add entity prefix
+            correctedName = `${entityName.toLowerCase()}_${attr.name}`;
+            description = description || `${entityName} ${attr.name}`;
           }
         }
         
@@ -688,8 +918,8 @@ class MermaidERDParser {
         correctedERD += '    }\n\n';
         
         // Create two one-to-many relationships instead of many-to-many
-        correctedERD += `    ${rel.fromEntity} ||--o{ ${intersectionTableName} : has\n`;
-        correctedERD += `    ${rel.toEntity} ||--o{ ${intersectionTableName} : has\n`;
+        correctedERD += `    ${rel.fromEntity} ||--o{ ${intersectionTableName} : "has"\n`;
+        correctedERD += `    ${rel.toEntity} ||--o{ ${intersectionTableName} : "has"\n`;
       } else {
         // Preserve original relationship exactly as written
         let cardinalitySymbol = '||--o{'; // Default, but try to preserve original
@@ -705,7 +935,9 @@ class MermaidERDParser {
         }
         
         const relationshipName = rel.name || 'has';
-        correctedERD += `    ${rel.fromEntity} ${cardinalitySymbol} ${rel.toEntity} : ${relationshipName}\n`;
+        // Remove any existing quotes to avoid double quotes, then add quotes
+        const cleanRelationshipName = relationshipName.replace(/^["']|["']$/g, '');
+        correctedERD += `    ${rel.fromEntity} ${cardinalitySymbol} ${rel.toEntity} : "${cleanRelationshipName}"\n`;
       }
     });
 

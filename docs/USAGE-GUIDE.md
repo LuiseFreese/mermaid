@@ -43,7 +43,7 @@ The application provides a **step-by-step wizard interface** for uploading Merma
 ### 3. Wait for your success message! 
 
 ```bash
-✅ Deployment completed successfully!
+Deployment completed successfully!
 ✓ Solution 'Customer Management' created in Dataverse
 ✓ 3 entities created
 ✓ 2 relationships established

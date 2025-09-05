@@ -1,0 +1,330 @@
+{
+    "globalChoices": [
+        {
+            "name": "CompanyStatus",
+            "displayName": "Company Status",
+            "description": "Status of a company account",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Active"
+                },
+                {
+                    "value": 2,
+                    "label": "Inactive"
+                },
+                {
+                    "value": 3,
+                    "label": "Prospect"
+                },
+                {
+                    "value": 4,
+                    "label": "Customer"
+                },
+                {
+                    "value": 5,
+                    "label": "Partner"
+                }
+            ]
+        },
+        {
+            "name": "AccountType",
+            "displayName": "Account Type",
+            "description": "Type of company account",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Customer"
+                },
+                {
+                    "value": 2,
+                    "label": "Partner"
+                },
+                {
+                    "value": 3,
+                    "label": "Vendor"
+                },
+                {
+                    "value": 4,
+                    "label": "Distributor"
+                },
+                {
+                    "value": 5,
+                    "label": "Prospect"
+                },
+                {
+                    "value": 6,
+                    "label": "Other"
+                }
+            ]
+        },
+        {
+            "name": "ContactStatus",
+            "displayName": "Contact Status",
+            "description": "Status of a contact",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Active"
+                },
+                {
+                    "value": 2,
+                    "label": "Inactive"
+                },
+                {
+                    "value": 3,
+                    "label": "Lead"
+                },
+                {
+                    "value": 4,
+                    "label": "Qualified"
+                },
+                {
+                    "value": 5,
+                    "label": "Do Not Contact"
+                }
+            ]
+        },
+        {
+            "name": "LeadSource",
+            "displayName": "Lead Source",
+            "description": "Source of a lead or contact",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Website"
+                },
+                {
+                    "value": 2,
+                    "label": "Referral"
+                },
+                {
+                    "value": 3,
+                    "label": "Social Media"
+                },
+                {
+                    "value": 4,
+                    "label": "Trade Show"
+                },
+                {
+                    "value": 5,
+                    "label": "Direct Mail"
+                },
+                {
+                    "value": 6,
+                    "label": "Email Campaign"
+                },
+                {
+                    "value": 7,
+                    "label": "Cold Call"
+                },
+                {
+                    "value": 8,
+                    "label": "Partner"
+                },
+                {
+                    "value": 9,
+                    "label": "Other"
+                }
+            ]
+        },
+        {
+            "name": "ActivityType",
+            "displayName": "Activity Type",
+            "description": "Type of activity",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Email"
+                },
+                {
+                    "value": 2,
+                    "label": "Call"
+                },
+                {
+                    "value": 3,
+                    "label": "Meeting"
+                },
+                {
+                    "value": 4,
+                    "label": "Task"
+                },
+                {
+                    "value": 5,
+                    "label": "Note"
+                },
+                {
+                    "value": 6,
+                    "label": "Social Engagement"
+                },
+                {
+                    "value": 7,
+                    "label": "Demo"
+                },
+                {
+                    "value": 8,
+                    "label": "Site Visit"
+                }
+            ]
+        },
+        {
+            "name": "Priority",
+            "displayName": "Priority Level",
+            "description": "Priority level for tasks and activities",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Low"
+                },
+                {
+                    "value": 2,
+                    "label": "Medium"
+                },
+                {
+                    "value": 3,
+                    "label": "High"
+                },
+                {
+                    "value": 4,
+                    "label": "Critical"
+                }
+            ]
+        },
+        {
+            "name": "SalesStage",
+            "displayName": "Sales Stage",
+            "description": "Stage in the sales process",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Prospecting"
+                },
+                {
+                    "value": 2,
+                    "label": "Qualification"
+                },
+                {
+                    "value": 3,
+                    "label": "Needs Analysis"
+                },
+                {
+                    "value": 4,
+                    "label": "Value Proposition"
+                },
+                {
+                    "value": 5,
+                    "label": "Proposal/Price Quote"
+                },
+                {
+                    "value": 6,
+                    "label": "Negotiation"
+                },
+                {
+                    "value": 7,
+                    "label": "Closed Won"
+                },
+                {
+                    "value": 8,
+                    "label": "Closed Lost"
+                }
+            ]
+        },
+        {
+            "name": "OpportunityType",
+            "displayName": "Opportunity Type",
+            "description": "Type of sales opportunity",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "New Business"
+                },
+                {
+                    "value": 2,
+                    "label": "Existing Business"
+                },
+                {
+                    "value": 3,
+                    "label": "Add-on"
+                },
+                {
+                    "value": 4,
+                    "label": "Renewal"
+                },
+                {
+                    "value": 5,
+                    "label": "Upgrade"
+                }
+            ]
+        },
+        {
+            "name": "ReasonLost",
+            "displayName": "Reason Lost",
+            "description": "Reason why an opportunity was lost",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Price"
+                },
+                {
+                    "value": 2,
+                    "label": "Competitor"
+                },
+                {
+                    "value": 3,
+                    "label": "No Budget"
+                },
+                {
+                    "value": 4,
+                    "label": "No Decision"
+                },
+                {
+                    "value": 5,
+                    "label": "Timing"
+                },
+                {
+                    "value": 6,
+                    "label": "Feature Gap"
+                },
+                {
+                    "value": 7,
+                    "label": "Lost Champion"
+                },
+                {
+                    "value": 8,
+                    "label": "Other"
+                }
+            ]
+        },
+        {
+            "name": "ProductCategory",
+            "displayName": "Product Category",
+            "description": "Category of product",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Software"
+                },
+                {
+                    "value": 2,
+                    "label": "Hardware"
+                },
+                {
+                    "value": 3,
+                    "label": "Services"
+                },
+                {
+                    "value": 4,
+                    "label": "Subscription"
+                },
+                {
+                    "value": 5,
+                    "label": "Training"
+                },
+                {
+                    "value": 6,
+                    "label": "Support"
+                }
+            ]
+        }
+    ]
+}

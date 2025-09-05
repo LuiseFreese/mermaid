@@ -1,1188 +1,657 @@
-const http = require('http');
-const url = require('url');
-const fs = require('fs');
-const path = require('path');
+/**
+ * Minimal server focused on CDM integration flow.
+ * - /wizard serves the static UI (wizard-ui.html)
+ * - /api/validate-erd uses MermaidERDParser to parse entities
+ * - /upload executes CDM integration (adds existing Dataverse entities to a solution)
+ */
 
-// Load environment variables from .env file
+const http = require('http');
+const url  = require('url');
+const fs   = require('fs');
+const path = require('path');
 require('dotenv').config();
 
-// Configure logging - Linux-friendly approach
-// Prefer App Service log volume on Linux; fall back to stdout-only
-const APP_LOG_BASE = process.env.WEBSITE_LOG_DIR || '/home/LogFiles';
-const LOG_DIR = path.join(APP_LOG_BASE, 'mermaid-to-dataverse');
-let logStream = null;
-
-try {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-  const LOG_FILE = path.join(LOG_DIR, `server-${new Date().toISOString().replace(/:/g, '-')}.log`);
-  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
-  console.log(`File logging enabled at: ${LOG_DIR}`);
-} catch (e) {
-  console.warn(`File logging disabled (using stdout only): ${e.message}`);
-}
-
-// Custom console logger that writes to both console and log file
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-
-// Store recent logs for streaming to client
+// --- tiny rotating log buffer for streaming back to client -------------
 const recentLogs = [];
-const MAX_RECENT_LOGS = 200; // Keep last 200 log entries
-
-// Add getLastLogs method to console
-console.getLastLogs = function() {
-  return [...recentLogs]; // Return a copy to prevent mutation
-};
-
-console.log = function() {
-  const args = Array.from(arguments);
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] [INFO] ${args.join(' ')}`;
-  
-  // Store the log message for streaming
-  recentLogs.push(args.join(' '));
-  
-  // Trim the log buffer if it gets too large
-  if (recentLogs.length > MAX_RECENT_LOGS) {
-    recentLogs.shift(); // Remove oldest log
-  }
-  
-  // Log to terminal
-  originalConsoleLog.apply(console, args);
-  
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
-};
-
-console.error = function() {
-  const args = Array.from(arguments);
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] [ERROR] ${args.join(' ')}`;
-  
-  // Log to terminal
-  originalConsoleError.apply(console, args);
-  
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
-};
-
-console.warn = function() {
-  const args = Array.from(arguments);
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] [WARN] ${args.join(' ')}`;
-  
-  // Log to terminal
-  originalConsoleWarn.apply(console, args);
-  
-  // Log to file safely
-  if (logStream) try { logStream.write(logMessage + '\n'); } catch {}
-};
-
-// Global variables for caching
-let cachedPublishers = null;
-let publishersCacheTime = null;
-const PUBLISHERS_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-
-let cachedGlobalChoices = null;
-let globalChoicesCacheTime = null;
-const GLOBAL_CHOICES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Azure SDK and Key Vault integration
-let azureSDKLoaded = false;
-let keyVaultConfig = null;
-
-// Mermaid processing components
-let MermaidERDParser = null;
-let DataverseClient = null;
-
-try {
-  // Load Azure SDK
-  const { DefaultAzureCredential, ManagedIdentityCredential, ChainedTokenCredential } = require("@azure/identity");
-  const { SecretClient } = require("@azure/keyvault-secrets");
-  
-  // Load CommonJS Key Vault config
-  const kvConfig = require('./azure-keyvault.js');
-  keyVaultConfig = kvConfig;
-  
-  azureSDKLoaded = true;
-  console.log('Azure SDK and Key Vault config loaded successfully');
-} catch (error) {
-  console.error('❌ Failed to load Azure SDK:', error.message);
-  azureSDKLoaded = false;
+const MAX_RECENT = 200;
+const originalLog = console.log;
+const originalErr = console.error;
+function pushLog(prefix, args) {
+  const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+  recentLogs.push(`[${new Date().toISOString()}] ${prefix} ${msg}`);
+  if (recentLogs.length > MAX_RECENT) recentLogs.shift();
 }
+console.log = (...args) => { pushLog('[INFO]', args); originalLog(...args); };
+console.error = (...args) => { pushLog('[ERR ]', args); originalErr(...args); };
+console.getLastLogs = () => [...recentLogs];
 
-// Load Mermaid processing modules
+// --- load modules -------------------------------------------------------
+let MermaidERDParser = null;
+let DataverseClient  = null;
 try {
   const { MermaidERDParser: Parser } = require('./mermaid-parser.js');
-  const { DataverseClient: Client } = require('./dataverse-client.js');
-  
+  const { DataverseClient: Client }  = require('./dataverse-client.js');
   MermaidERDParser = Parser;
-  DataverseClient = Client;
-  
-  console.log('Mermaid processing modules loaded successfully');
-} catch (error) {
-  console.error('❌ Failed to load Mermaid processing modules:', error.message);
+  DataverseClient  = Client;
+  console.log('MermaidERDParser and DataverseClient loaded');
+} catch (e) {
+  console.error('❌ Failed to load core modules:', e.message);
 }
 
-// Simple MSI test function
-async function testManagedIdentityDirect() {
-  try {
-    const clientId = process.env.MANAGED_IDENTITY_CLIENT_ID;
-    const msiEndpoint = process.env.MSI_ENDPOINT;
-    const msiSecret = process.env.MSI_SECRET;
-    
-    if (!msiEndpoint || !msiSecret) {
-      return {
-        success: false,
-        message: 'MSI endpoint not available',
-        available: false
-      };
-    }
-    
-    const tokenUrl = `${msiEndpoint}?resource=https://vault.azure.net/&api-version=2017-09-01${clientId ? `&clientid=${clientId}` : ''}`;
-    
-    return new Promise((resolve) => {
-      const protocol = require('http');
-      const req = protocol.request(tokenUrl, {
-        headers: { 'Secret': msiSecret },
-        timeout: 10000
-      }, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          resolve({
-            success: res.statusCode === 200,
-            message: res.statusCode === 200 ? 'MSI token retrieved successfully' : `MSI request failed: ${res.statusCode}`,
-            statusCode: res.statusCode,
-            hasToken: res.statusCode === 200,
-            clientId: clientId || 'system-assigned',
-            msiEndpoint: msiEndpoint
-          });
-        });
-      });
-      
-      req.on('error', (error) => {
-        resolve({
-          success: false,
-          message: `MSI request failed: ${error.message}`,
-          error: error.message,
-          msiEndpoint: msiEndpoint
-        });
-      });
-      
-      req.end();
-    });
-  } catch (error) {
-    return {
-      success: false,
-      message: `MSI test failed: ${error.message}`,
-      error: error.message
-    };
+// optional KeyVault helper (if available in your project)
+let keyVaultConfig = null;
+try {
+  keyVaultConfig = require('./azure-keyvault.js'); // optional
+  console.log('Azure SDK + Key Vault config loaded');
+} catch {
+  console.log('Azure SDK not configured; falling back to env');
+}
+
+// --- helpers ------------------------------------------------------------
+function readRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', ch => body += ch);
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+function streamLogs(res) {
+  const logs = console.getLastLogs().map(l => JSON.stringify({ type: 'log', message: l }) + '\n');
+  for (const line of logs) res.write(line);
+}
+function writeFinal(res, obj) {
+  res.write(JSON.stringify({ type: 'result', ...obj }) + '\n');
+  res.end();
+}
+function serveWizard(res) {
+  const p = path.join(__dirname, 'wizard-ui.html');
+  if (!fs.existsSync(p)) {
+    res.writeHead(404, {'Content-Type':'text/html'});
+    return res.end('<h1>Wizard UI not found</h1>');
   }
+  res.writeHead(200, {'Content-Type':'text/html'});
+  res.end(fs.readFileSync(p, 'utf8'));
 }
 
-// Get Dataverse configuration from environment or Key Vault
 async function getDataverseConfig() {
-  console.log('Getting Dataverse configuration...');
-  
-  // Check if we should use local environment variables
-  if (process.env.USE_LOCAL_ENV === 'true') {
-    console.log('📍 Using local environment variables');
-    return {
-      source: 'local_env',
-      serverUrl: process.env.DATAVERSE_SERVER_URL,
-      tenantId: process.env.DATAVERSE_TENANT_ID,
-      clientId: process.env.DATAVERSE_CLIENT_ID,
-      clientSecret: process.env.DATAVERSE_CLIENT_SECRET ? '***' : undefined
-    };
-  }
-  
-  // Try to get from Key Vault if Azure SDK is loaded
-  if (azureSDKLoaded && keyVaultConfig) {
+  // Prefer Key Vault when available
+  if (keyVaultConfig && process.env.KEY_VAULT_URI) {
     try {
-      const config = await keyVaultConfig.getDataverseConfig();
-      console.log('Retrieved Dataverse config from Key Vault');
-      console.log('Config details:', {
-        hasServerUrl: !!config.serverUrl,
-        hasTenantId: !!config.tenantId,
-        hasClientId: !!config.clientId,
-        hasClientSecret: !!config.clientSecret,
-        clientSecretLength: config.clientSecret ? config.clientSecret.length : 0
-      });
-      return {
-        source: 'key_vault',
-        ...config
-      };
-    } catch (error) {
-      console.error('❌ Failed to get Dataverse config from Key Vault:', error.message);
-      console.log('🔄 Falling back to local environment variables...');
-      // Fall back to local environment variables
+      console.log('Getting Dataverse configuration from Key Vault...');
+      const cfg = await keyVaultConfig.getDataverseConfig();
+      if (cfg?.serverUrl && cfg?.tenantId && cfg?.clientId && cfg?.clientSecret) {
+        return { source: 'key_vault', ...cfg };
+      }
+      console.warn('Key Vault returned incomplete config, falling back to env');
+    } catch (e) {
+      console.warn('Key Vault config failed, falling back to env:', e.message);
     }
   }
-  
-  // Fallback to local environment variables
-  console.log('📍 Using local environment variables (fallback)');
-  const localConfig = {
-    source: 'local_env_fallback',
-    serverUrl: process.env.DATAVERSE_URL || process.env.DATAVERSE_SERVER_URL,
-    tenantId: process.env.TENANT_ID || process.env.DATAVERSE_TENANT_ID,
-    clientId: process.env.CLIENT_ID || process.env.DATAVERSE_CLIENT_ID,
+  // Fallback: environment variables
+  const env = {
+    serverUrl:  process.env.DATAVERSE_URL || process.env.DATAVERSE_SERVER_URL,
+    tenantId:   process.env.TENANT_ID || process.env.DATAVERSE_TENANT_ID,
+    clientId:   process.env.CLIENT_ID || process.env.DATAVERSE_CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET || process.env.DATAVERSE_CLIENT_SECRET
   };
-  
-  console.log('Local config details:', {
-    hasServerUrl: !!localConfig.serverUrl,
-    hasTenantId: !!localConfig.tenantId,
-    hasClientId: !!localConfig.clientId,
-    hasClientSecret: !!localConfig.clientSecret,
-    serverUrl: localConfig.serverUrl ? localConfig.serverUrl.substring(0, 30) + '...' : 'undefined'
+  console.log('Local fallback config:', {
+    hasServerUrl: !!env.serverUrl,
+    hasTenantId: !!env.tenantId,
+    hasClientId: !!env.clientId,
+    hasClientSecret: !!env.clientSecret
   });
-  
-  return localConfig;
-  
-  throw new Error('No Dataverse configuration available');
+  return { source:'env', ...env };
 }
 
-// Serve wizard UI
-function serveWizardUI(res) {
-  try {
-    const wizardPath = path.join(__dirname, 'wizard-ui.html');
-    
-    if (!fs.existsSync(wizardPath)) {
-      console.error(`❌ Wizard UI file not found at: ${wizardPath}`);
-      res.writeHead(404, { 'Content-Type': 'text/html' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-        <head><title>Wizard UI Not Available</title></head>
-        <body style="font-family: 'Segoe UI', sans-serif; padding: 40px; text-align: center;">
-          <h1>Wizard UI Temporarily Unavailable</h1>
-          <p>The wizard interface is currently not available.</p>
-          <p>Please check that the wizard-ui.html file exists.</p>
-        </body>
-        </html>
-      `);
-      return;
+// --- API handlers -------------------------------------------------------
+async function handleValidateErd(req, res) {
+  let body = '';
+  req.on('data', ch => body += ch);
+  req.on('end', () => {
+    try {
+      const data = JSON.parse(body || '{}');
+      if (!MermaidERDParser) throw new Error('MermaidERDParser not available');
+      const parser = new MermaidERDParser();
+      const result = parser.parse(data.mermaidContent || '');
+      
+      // Generate corrected ERD if there are warnings
+      let correctedERD = null;
+      if (result.warnings && result.warnings.length > 0) {
+        try {
+          correctedERD = parser.generateCorrectedERD();
+          console.log('✅ Generated corrected ERD:', correctedERD ? 'Success' : 'Failed');
+        } catch (e) {
+          console.warn('⚠️ Could not generate corrected ERD:', e.message);
+        }
+      }
+      
+      const response = {
+        success: true, // Request succeeded, validation details are in the validation field
+        entities: result.entities || [],
+        relationships: result.relationships || [],
+        warnings: result.warnings || [],
+        validation: result.validation || { isValid:false },
+        cdmDetection: result.cdmDetection || {},
+        correctedERD: correctedERD,
+        summary: {
+          entityCount: result.entities?.length || 0,
+          relationshipCount: result.relationships?.length || 0
+        }
+      };
+      
+      console.log('🔍 Validation response:', JSON.stringify(response, null, 2));  // Debug log
+      
+      res.writeHead(200, {'Content-Type':'application/json'});
+      res.end(JSON.stringify(response));
+    } catch (e) {
+      console.error('❌ Validation error:', e);
+      const errorResponse = { success:false, error: e.message };
+      res.writeHead(500, {'Content-Type':'application/json'});
+      res.end(JSON.stringify(errorResponse));
     }
+  });
+}
+
+async function handleUpload(req, res) {
+  let body = '';
+  req.on('data', ch => body += ch);
+  req.on('end', async () => {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked' });
+    try {
+      const data = JSON.parse(body || '{}');
+      console.log('POST /upload payload keys:', Object.keys(data));
+
+ // Parse ERD if provided
+      let erdEntities = [];
+      let erdRelationships = []; // Add this line to store relationships
+
+      if (data.mermaidContent && MermaidERDParser) {
+        const parser = new MermaidERDParser();
+        const pr = parser.parse(data.mermaidContent);
+        erdEntities = pr.entities || [];
+        erdRelationships = pr.relationships || []; // Extract relationships
+        console.log(`Parsed ERD: ${erdEntities.length} entities, ${erdRelationships.length} relationships`);
+      } else if (Array.isArray(data.entities)) {
+        erdEntities = data.entities;
+        // If client provided relationships directly
+        erdRelationships = Array.isArray(data.relationships) ? data.relationships : [];
+      }
+
+      // Dataverse client
+      const cfg = await getDataverseConfig();
+      const client = new DataverseClient({
+        dataverseUrl: cfg.serverUrl,
+        tenantId:     cfg.tenantId,
+        clientId:     cfg.clientId,
+        clientSecret: cfg.clientSecret
+      });
+
+      const solutionUnique = (data.solutionName || 'MermaidSolution').trim();
+      const friendly       = (data.solutionDisplayName || solutionUnique).trim();
+  let publisherName    = data.publisherName || 'Mermaid Publisher';
+  let publisherPrefix  = (typeof data.publisherPrefix === 'string' && data.publisherPrefix.length > 0) ? data.publisherPrefix : undefined;
+
+      // If a publisher was selected (data.publisher), get its details
+      if (data.publisher && typeof data.publisher === 'string') {
+        try {
+          console.log(`🔍 Looking up selected publisher: ${data.publisher}`);
+          const publishers = await client.getPublishers();
+          const selectedPublisher = publishers.find(p => 
+            p.uniqueName === data.publisher || 
+            p.id === data.publisher
+          );
+          
+          if (selectedPublisher) {
+            publisherPrefix = selectedPublisher.prefix;
+            publisherName = selectedPublisher.friendlyName;
+            console.log(`✅ Using selected publisher: ${publisherName} (prefix: ${publisherPrefix})`);
+          } else {
+            console.warn(`⚠️ Selected publisher '${data.publisher}' not found, using default prefix`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to lookup publisher '${data.publisher}':`, error.message);
+        }
+      }
+
+      const cdmChoice = data.cdmChoice;
+      let cdmMatches = Array.isArray(data.cdmMatches) ? data.cdmMatches : [];
+
+      // Determine which entities are CDM vs custom (initial calculation)
+      let cdmEntityNames = cdmMatches.map(m => m?.originalEntity?.name || m?.entity || '').filter(n => n);
+      let customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
+      const hasCDMEntities = cdmMatches.length > 0;
+      let hasCustomEntities = customEntities.length > 0;
+
+      console.log(`📊 Deployment Analysis: ${cdmMatches.length} CDM entities, ${customEntities.length} custom entities`);
+
+      let results = {
+        success: true,
+        cdmResults: null,
+        customResults: null,
+        summary: '',
+        message: 'Deployment completed successfully',
+        entitiesCreated: 0,
+        relationshipsCreated: 0,
+        cdmEntitiesIntegrated: [],
+        error: null
+      };
+
+      // Ensure solution exists
+      let solInfo;
+      try {
+        // First, ensure publisher exists
+        const pub = await client.ensurePublisher({
+          uniqueName: (publisherName || 'MermaidPublisher').replace(/\s+/g, ''),
+          friendlyName: publisherName || 'Mermaid Publisher',
+          prefix: publisherPrefix || 'mmd'
+        });
+        
+        // Then create/ensure solution with the publisher
+        solInfo = await client.ensureSolution(solutionUnique, friendly, pub);
+        console.log(`Solution ready: ${solInfo.uniquename} (${solInfo.solutionid})`);
+      console.log(`DEBUG: solInfo object:`, JSON.stringify(solInfo, null, 2));
+      } catch (e) {
+        console.warn('ensureSolution warning:', e.message);
+        const check = await client.checkSolutionExists(solutionUnique);
+        if (!check || !check.solutionid) {
+          streamLogs(res);
+          return writeFinal(res, { success:false, summary:'Failed to create or locate solution', message:'Deployment failed', error:e.message });
+        }
+        solInfo = check;
+      }
+
+      // Process CDM entities if any
+      if (hasCDMEntities && cdmChoice === 'cdm') {
+        console.log(`🔄 Processing ${cdmMatches.length} CDM entities...`);
+        
+        // ensure we have matches with logicalName; fallback to server-side detection if needed
+        if (!cdmMatches.length || cdmMatches.some(m => !m?.cdmEntity?.logicalName)) {
+          try {
+            const CDMEntityRegistry = require('./cdm/cdm-entity-registry.js');
+            const reg = new CDMEntityRegistry();
+            const det = reg.detectCDMEntities(erdEntities);
+            cdmMatches = det.detectedCDM || det.matches || [];
+            console.log(`Server-side CDM detection produced ${cdmMatches.length} matches`);
+            
+            // Recalculate entity separation after fallback detection
+            if (cdmMatches.length > 0) {
+              cdmEntityNames = cdmMatches.map(m => m?.originalEntity?.name || m?.entity || '').filter(n => n);
+              customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
+              hasCustomEntities = customEntities.length > 0;
+              console.log(`📊 Updated Analysis: ${cdmMatches.length} CDM entities, ${customEntities.length} custom entities`);
+            }
+          } catch (e) {
+            console.warn('CDM detection unavailable:', e.message);
+          }
+        }
+
+        if (cdmMatches.length > 0) {
+          results.cdmResults = await client.integrateCDMEntities(cdmMatches, solInfo.uniquename, data.includeRelatedEntities);
+          if (results.cdmResults.success) {
+            results.cdmEntitiesIntegrated = results.cdmResults.integratedEntities || [];
+            console.log(`✅ CDM integration: ${results.cdmResults.summary?.successfulIntegrations || 0} entities integrated`);
+          } else {
+            console.warn(`⚠️ CDM integration failed: ${results.cdmResults.error}`);
+            results.success = false;
+          }
+        }
+      }
+
+      // Process custom entities if any
+if (hasCustomEntities) {
+  console.log(`🔄 Processing ${customEntities.length} custom entities...`);
+  console.log(`DEBUG: Passing solutionUniqueName: "${solInfo.uniquename}"`);
+  
+  try {
+    results.customResults = await client.createCustomEntities(
+      customEntities, 
+      { 
+        publisherPrefix,
+        publisherName,
+        publisherUniqueName: (publisherName || '').replace(/\s+/g, ''),
+        solutionUniqueName: solInfo.uniquename,  // Note: lowercase 'uniquename' from Dataverse API
+        solutionFriendlyName: friendly,
+        relationships: erdRelationships, // Pass relationships
+        cdmEntities: cdmMatches || [],   // Pass CDM entities for mixed relationships
+        includeRelatedEntities: data.includeRelatedEntities // Pass the user choice
+      }
+    );
     
-    const html = fs.readFileSync(wizardPath, 'utf8');
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(html);
+    if (results.customResults.success) {
+      results.entitiesCreated += results.customResults.entitiesCreated || 0;
+      results.relationshipsCreated += results.customResults.relationshipsCreated || 0;
+      console.log(`✅ Custom entities: ${results.customResults.entitiesCreated} entities created, ${results.customResults.relationshipsCreated || 0} relationships created`);
+    } else {
+      console.warn(`⚠️ Custom entity creation failed: ${results.customResults.error}`);
+      // Don't mark overall deployment as failed if CDM succeeded and custom partially failed
+      if (!results.cdmResults?.success) {
+        results.success = false;
+      }
+    }
   } catch (error) {
-    console.error('❌ Error serving wizard UI:', error);
-    res.writeHead(500, { 'Content-Type': 'text/html' });
-    res.end(`
-      <!DOCTYPE html>
-      <html>
-      <head><title>Error Loading Wizard UI</title></head>
-      <body style="font-family: 'Segoe UI', sans-serif; padding: 40px; text-align: center;">
-        <h1>❌ Error Loading Wizard UI</h1>
-        <p>There was an error loading the wizard interface.</p>
-        <p><small>Error: ${error.message}</small></p>
-      </body>
-      </html>
-    `);
+    console.error('Custom entity creation error:', error);
+    results.customResults = {
+      success: false,
+      entitiesCreated: 0,
+      relationshipsCreated: 0,
+      error: error.message,
+      customEntitiesFound: customEntities.map(e => e.name)
+    };
+    // Don't mark overall deployment as failed if CDM succeeded
+    if (!results.cdmResults?.success) {
+      results.success = false;
+    }
   }
 }
 
-// Handle deployment requests
-async function handleDeployment(req, res) {
-  let body = '';
-  req.on('data', chunk => {
-    body += chunk.toString();
-  });
-  
-  req.on('end', async () => {
-    try {
-      console.log('Starting deployment process...');
-      
-      // Parse JSON request
-      let data;
-      try {
-        console.log('Raw body length:', body.length);
-        console.log('Body preview (first 500 chars):', body.substring(0, 500));
-        
-        if (!body.trim()) {
-          console.error('❌ Empty request body detected');
-          throw new Error('Empty request body');
-        }
-        
-        console.log('Attempting to parse JSON...');
-        data = JSON.parse(body);
-        console.log('JSON parsed successfully');
-        console.log('Parsed data keys:', Object.keys(data));
-        
-        // Debug uploaded global choices specifically
-        console.log('Uploaded global choices debug:', {
-          hasUploadedGlobalChoices: !!data.uploadedGlobalChoices,
-          uploadedGlobalChoicesKeys: data.uploadedGlobalChoices ? Object.keys(data.uploadedGlobalChoices) : null,
-          hasData: data.uploadedGlobalChoices ? !!data.uploadedGlobalChoices.data : false,
-          dataType: data.uploadedGlobalChoices ? typeof data.uploadedGlobalChoices.data : 'undefined',
-          dataLength: data.uploadedGlobalChoices && data.uploadedGlobalChoices.data ? 
-            (Array.isArray(data.uploadedGlobalChoices.data) ? data.uploadedGlobalChoices.data.length : 'not array') : 'no data',
-          count: data.uploadedGlobalChoices ? data.uploadedGlobalChoices.count : 'no count'
+      // Process global choices if any selected
+      if (data.selectedChoices && Array.isArray(data.selectedChoices) && data.selectedChoices.length > 0) {
+        // Filter out undefined, null, and empty values
+        const validChoices = data.selectedChoices.filter(choice => {
+          if (!choice) return false;
+          if (typeof choice === 'string' && choice.trim() === '') return false;
+          if (typeof choice === 'object' && !choice.LogicalName && !choice.Name && !choice.name) return false;
+          return true;
         });
-      } catch (parseError) {
-        console.error('❌ JSON Parse Error:', parseError.message);
-        console.error('❌ Parse error stack:', parseError.stack);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          message: 'Invalid JSON in request body',
-          error: parseError.message
-        }));
-        return;
-      }
-      
-      // Validate required fields
-      const { mermaidContent, publisherName, publisherPrefix, solutionName, solutionDisplayName, entities, relationships, publisher, createPublisher } = data;
-      console.log('Validating required fields...');
-      console.log('Full data structure received:', {
-        hasPublisher: !!publisher,
-        publisherData: publisher,
-        createPublisher: createPublisher,
-        hasPublisherName: !!publisherName,
-        hasPublisherPrefix: !!publisherPrefix,
-        hasEntities: !!entities,
-        hasSolutionName: !!solutionName
-      });
-      console.log('Field validation:', {
-        hasMermaidContent: !!mermaidContent,
-        mermaidContentLength: mermaidContent?.length || 0,
-        hasEntities: !!entities,
-        entitiesCount: entities?.length || 0,
-        hasRelationships: !!relationships,
-        relationshipsCount: relationships?.length || 0,
-        hasPublisherName: !!publisherName,
-        publisherName: publisherName,
-        hasPublisherPrefix: !!publisherPrefix,
-        publisherPrefix: publisherPrefix,
-        hasSolutionName: !!solutionName,
-        solutionName: solutionName
-      });
-      
-      // Check if we have either mermaid content OR pre-parsed entities
-      const hasValidInput = (mermaidContent?.trim()) || (entities && Array.isArray(entities) && entities.length > 0);
-      
-      if (!hasValidInput) {
-        console.error('❌ Validation failed: Missing mermaid content and entities');
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Either mermaid content or parsed entities are required'
-        }));
-        return;
-      }
-      
-      // Check if we have either existing publisher data or new publisher fields
-      const hasExistingPublisher = publisher && (publisher.uniquename || publisher.uniqueName) && (publisher.customizationprefix || publisher.prefix);
-      const hasNewPublisherData = publisherName?.trim() && publisherPrefix?.trim();
-      
-      console.log('Publisher validation check:', {
-        hasExistingPublisher,
-        hasNewPublisherData,
-        publisherUniqueNameField: publisher?.uniquename || publisher?.uniqueName,
-        publisherPrefixField: publisher?.customizationprefix || publisher?.prefix
-      });
-      
-      if (!hasExistingPublisher && !hasNewPublisherData) {
-        console.error('❌ Validation failed: Missing publisher information');
-        console.error('❌ Publisher validation details:', {
-          hasExistingPublisher,
-          hasNewPublisherData,
-          publisherData: publisher,
-          publisherName: publisherName,
-          publisherPrefix: publisherPrefix
-        });
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Either existing publisher selection or new publisher details (name and prefix) are required'
-        }));
-        return;
-      }
-      
-      if (!solutionName?.trim()) {
-        console.error('❌ Validation failed: Missing solution name');
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Solution name is required'
-        }));
-        return;
-      }
-      
-      // Validate publisher prefix format
-      console.log('Validating publisher prefix format...');
-      // Dataverse allows 2-8 lowercase letters for publisher prefix
-      if (!/^[a-z]{2,8}$/.test(publisherPrefix)) {
-        console.error('❌ Validation failed: Invalid publisher prefix format');
-        console.error('❌ Publisher prefix:', publisherPrefix);
-        console.error('❌ Publisher prefix length:', publisherPrefix.length);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Publisher prefix must be 2-8 lowercase letters'
-        }));
-        return;
-      }
-      
-      console.log(`Processing deployment for solution: ${solutionName}`);
-      console.log(`Publisher: ${publisherName} (${publisherPrefix})`);
-      console.log(`Dry run: ${data.dryRun ? 'Yes' : 'No'}`);
-      
-      let parseResult;
-      
-      // Check if we have pre-parsed entities or need to parse mermaid content
-      if (entities && Array.isArray(entities) && entities.length > 0) {
-        console.log('Using pre-parsed entities from request');
-        parseResult = {
-          entities: entities,
-          relationships: relationships || [],
-          validation: { isValid: true, summary: { errorCount: 0, warningCount: 0 } }
-        };
-      } else {
-        console.log('Parsing mermaid content...');
-        // Parse Mermaid content
-        if (!MermaidERDParser) {
-          throw new Error('Mermaid parser not available');
-        }
         
-        const parser = new MermaidERDParser();
-        parseResult = parser.parse(mermaidContent);
+        console.log(`🎨 Processing ${validChoices.length} selected global choices (filtered from ${data.selectedChoices.length})...`);
+        console.log(`🔍 DEBUG: selectedChoices array:`, JSON.stringify(data.selectedChoices, null, 2));
+        console.log(`🔍 DEBUG: validChoices array:`, JSON.stringify(validChoices, null, 2));
         
-        if (!parseResult.validation.isValid) {
-          console.error('❌ Schema validation failed');
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: false,
-            error: `Schema parsing failed: ${parseResult.validation.summary.errorCount} errors found`
-          }));
-          return;
-        }
-      }
-      
-      console.log(`Parsed ${parseResult.entities.length} entities and ${parseResult.relationships.length} relationships`);
-      
-      // If dry run, return validation results
-      if (data.dryRun) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: true,
-          message: 'Schema validation completed successfully',
-          dryRun: true,
-          entities: parseResult.entities,
-          relationships: parseResult.relationships,
-          summary: {
-            entityCount: parseResult.entities.length,
-            relationshipCount: parseResult.relationships.length
-          }
-        }));
-        return;
-      }
-      
-      // Get Dataverse configuration
-      const dataverseConfig = await getDataverseConfig();
-      console.log(`Using Dataverse config from: ${dataverseConfig.source}`);
-      
-      // Initialize Dataverse client
-      if (!DataverseClient) {
-        throw new Error('Dataverse client not available');
-      }
-      
-      // Map the config properties correctly for DataverseClient
-      const clientConfig = {
-        dataverseUrl: dataverseConfig.serverUrl, // Map serverUrl to dataverseUrl
-        tenantId: dataverseConfig.tenantId,
-        clientId: dataverseConfig.clientId,
-        clientSecret: dataverseConfig.clientSecret
-      };
-      
-      const client = new DataverseClient(clientConfig);
-      
-      // Set publisher prefix and solution name on the client before any operations
-      client.publisherPrefix = publisherPrefix;
-      client.solutionName = solutionName;
-      client.solutionName = solutionName;
-      
-      console.log('Starting Dataverse deployment...');
-      
-      // Store information about uploaded global choices but don't process them yet
-      // We'll process them after the solution is created
-      if (data.uploadedGlobalChoices && data.uploadedGlobalChoices.data) {
-        console.log(`Found ${data.uploadedGlobalChoices.count} custom global choices to process later...`);
-        
-        try {
-          // Just create the global choices but don't add them to solution yet
-          console.log(' handleDeployment: Creating global choices (will add to solution later)...');
-          const choicesResult = await client.createGlobalChoicesFromJson(data.uploadedGlobalChoices.data, false); // false means don't try to add to solution yet
-          console.log(' handleDeployment: Global choices result:', choicesResult);
-          
-          if (choicesResult.success) {
-            if (choicesResult.created > 0) {
-              console.log(`Created ${choicesResult.created} new global choice sets`);
+        if (validChoices.length === 0) {
+          console.log('⚠️ No valid global choices to add to solution');
+          results.globalChoicesAdded = 0;
+          results.globalChoicesFailed = 0;
+          results.globalChoicesErrors = ['No valid choices after filtering'];
+        } else {
+          try {
+            // Resolve choice names properly
+            const choiceNames = validChoices.map(choice => {
+              const choiceName = choice?.LogicalName || choice?.Name || choice?.name || choice;
+              console.log(`🔍 Resolved choice: ${JSON.stringify(choice)} → ${choiceName}`);
+              return choiceName;
+            });
+            
+            const choicesResult = await client.addGlobalChoicesToSolution(choiceNames, solInfo.uniquename);
+            results.globalChoicesAdded = choicesResult.added || 0;
+            results.globalChoicesFailed = choicesResult.failed || 0;
+            results.globalChoicesErrors = choicesResult.errors || [];
+            
+            if (choicesResult.added > 0) {
+              console.log(`✅ Global choices: ${choicesResult.added} choice sets added to solution`);
             }
-            if (choicesResult.skipped > 0) {
-              console.log(`⏭️ Skipped ${choicesResult.skipped} existing global choice sets`);
+            if (choicesResult.failed > 0) {
+              console.warn(`⚠️ Global choices: ${choicesResult.failed} choice sets failed to add`);
             }
-          } else {
-            console.warn(`⚠️ Some global choices failed to create (${choicesResult.errors.length} errors)`);
-            console.log(' handleDeployment: Global choices errors:', choicesResult.errors);
+          } catch (error) {
+            console.error('Global choices processing error:', error);
+            results.globalChoicesAdded = 0;
+            results.globalChoicesFailed = validChoices.length;
+            results.globalChoicesErrors = [error.message];
           }
-        } catch (choicesError) {
-          console.error(' handleDeployment: Global choices processing error:', choicesError);
-          console.warn(`⚠️ Custom global choices processing failed: ${choicesError.message}`);
-          // Don't fail the entire deployment for global choices errors
         }
+      } else if (data.selectedChoices && data.selectedChoices.length > 0) {
+        console.log(`⚠️ Warning: ${data.selectedChoices.length} global choices provided but no solution name - skipping`);
+        results.globalChoicesAdded = 0;
+        results.globalChoicesFailed = 0;
+        results.globalChoicesErrors = ['No solution name provided for global choices'];
       } else {
-        console.log(' handleDeployment: No uploaded global choices to process');
-      }
-      
-      // Extract publisher information - either from existing publisher or new publisher data
-      let effectivePublisherName, effectivePublisherPrefix, effectivePublisherUniqueName;
-      
-      if (hasExistingPublisher) {
-        // Use existing publisher data - handle both possible field name formats
-        effectivePublisherName = publisher.friendlyname || publisher.friendlyName;
-        effectivePublisherPrefix = publisher.customizationprefix || publisher.prefix;
-        effectivePublisherUniqueName = publisher.uniquename || publisher.uniqueName;
-        console.log('Using existing publisher:', {
-          name: effectivePublisherName,
-          prefix: effectivePublisherPrefix,
-          uniqueName: effectivePublisherUniqueName
-        });
-      } else {
-        // Use new publisher data
-        effectivePublisherName = publisherName;
-        effectivePublisherPrefix = publisherPrefix;
-        effectivePublisherUniqueName = data.publisherUniqueName || publisherName?.replace(/\s+/g, '');
-        console.log('Using new publisher data:', {
-          name: effectivePublisherName,
-          prefix: effectivePublisherPrefix,
-          uniqueName: effectivePublisherUniqueName
-        });
+        console.log('📋 No global choices selected to add to solution');
       }
 
-      // Use simplified options like the working backup, but include required publisher/solution info
-      const creationOptions = {
-        publisherPrefix: effectivePublisherPrefix,
-        publisherName: effectivePublisherName,
-        publisherUniqueName: effectivePublisherUniqueName,
-        publisherFriendlyName: effectivePublisherName,
-        solutionFriendlyName: solutionDisplayName || solutionName,
-        solutionDescription: data.solutionDescription,
-        dryRun: false,
-        createPublisher: !hasExistingPublisher, // Only create publisher if not using existing one
-        relationships: parseResult.relationships || [],
-        selectedChoices: data.selectedChoices && data.selectedChoices.length > 0 ? 
-          data.selectedChoices.filter(choice => choice && choice.trim() !== '') : []
-      };
-      
-      console.log('Creation options:', JSON.stringify(creationOptions, null, 2));
-      console.log('Selected choices count:', creationOptions.selectedChoices.length);
-      console.log('Selected choices details:', creationOptions.selectedChoices);
-      
-      // Deploy to Dataverse using the same method as the working backup
-      const deployResult = await client.createEntitiesFromMermaid(parseResult.entities, creationOptions);
-      
-      console.log(`🎉 Deployment completed: ${deployResult.success ? 'Success' : 'Failed'}`);
-      console.log('Deploy result details:', {
-        success: deployResult.success,
-        entitiesCreated: deployResult.entitiesCreated,
-        relationshipsCreated: deployResult.relationshipsCreated,
-        globalChoicesProcessed: deployResult.globalChoicesProcessed || 0
-      });
-      
-      // Process pending global choices after solution creation
-      // Wait a few seconds to make sure the solution is fully provisioned
-      console.log('⏳ Waiting 5 seconds for solution to be fully provisioned...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      if (data.uploadedGlobalChoices && data.uploadedGlobalChoices.data) {
-        try {
-          console.log('Adding uploaded global choices to solution...');
-          console.log(' DEBUG: Processing pending global choices for solution addition...');
-          
-          // Verify solution exists before adding global choices to it
-          console.log(`Verifying solution '${data.solutionName}' exists before adding global choices...`);
-          const solutionExists = await client.checkSolutionExists(data.solutionName);
-          
-          if (solutionExists) {
-            console.log(`Solution '${data.solutionName}' exists, adding global choices to it...`);
-            const globalChoicesResult = await client.addPendingGlobalChoicesToSolution();
+      // Process custom uploaded global choices if any
+      if (data.customChoices && Array.isArray(data.customChoices) && data.customChoices.length > 0) {
+        // Filter out invalid custom choices
+        const validCustomChoices = data.customChoices.filter(choice => {
+          if (!choice) return false;
+          if (!choice.name && !choice.logicalName) return false;
+          if (!choice.options || !Array.isArray(choice.options) || choice.options.length === 0) return false;
+          return true;
+        });
+        
+        console.log(`🎨 Processing ${validCustomChoices.length} custom uploaded global choices (filtered from ${data.customChoices.length})...`);
+        console.log(`🔍 DEBUG: customChoices array:`, JSON.stringify(data.customChoices, null, 2));
+        console.log(`🔍 DEBUG: validCustomChoices array:`, JSON.stringify(validCustomChoices, null, 2));
+        
+        if (validCustomChoices.length === 0) {
+          console.log('⚠️ No valid custom global choices to create');
+          results.customGlobalChoicesCreated = 0;
+          results.customGlobalChoicesFailed = 0;
+          results.customGlobalChoicesErrors = ['No valid custom choices after filtering'];
+        } else {
+          try {
+            const customChoicesResult = await client.createAndAddCustomGlobalChoices(validCustomChoices, solInfo.uniquename, publisherPrefix);
+            results.customGlobalChoicesCreated = customChoicesResult.created || 0;
+            results.customGlobalChoicesFailed = customChoicesResult.failed || 0;
+            results.customGlobalChoicesErrors = customChoicesResult.errors || [];
             
-            if (globalChoicesResult && globalChoicesResult.added > 0) {
-              console.log(`Successfully added ${globalChoicesResult.added} global choices to solution`);
-              // Update deployment result with global choices info
-              deployResult.globalChoicesAddedToSolution = globalChoicesResult.added;
+            if (customChoicesResult.created > 0) {
+              console.log(`✅ Custom global choices: ${customChoicesResult.created} choice sets created and added to solution`);
             }
-            if (globalChoicesResult && globalChoicesResult.failed > 0) {
-              console.warn(`⚠️ ${globalChoicesResult.failed} global choices failed to be added to solution`);
-              console.warn(' DEBUG: Global choice solution addition errors:', globalChoicesResult.errors);
-              deployResult.globalChoicesAddedToSolution = deployResult.globalChoicesAddedToSolution || 0;
-              deployResult.globalChoicesFailedToAdd = globalChoicesResult.failed;
+            if (customChoicesResult.failed > 0) {
+              console.warn(`⚠️ Custom global choices: ${customChoicesResult.failed} choice sets failed to create`);
+              console.log(`🔍 Custom choice errors:`, customChoicesResult.errors);
             }
-          } else {
-            console.warn(`⚠️ Solution '${data.solutionName}' not found after waiting, cannot add global choices`);
-            deployResult.globalChoicesAddedToSolution = 0;
-            deployResult.globalChoicesError = `Solution '${data.solutionName}' not found after waiting`;
+          } catch (error) {
+            console.error('Custom global choices processing error:', error);
+            results.customGlobalChoicesCreated = 0;
+            results.customGlobalChoicesFailed = validCustomChoices.length;
+            results.customGlobalChoicesErrors = [error.message];
           }
-        } catch (globalChoicesError) {
-          console.warn(`⚠️ Failed to add global choices to solution: ${globalChoicesError.message}`);
-          console.error(' DEBUG: Global choices solution addition error:', globalChoicesError);
-          deployResult.globalChoicesAddedToSolution = 0;
-          deployResult.globalChoicesError = globalChoicesError.message;
+        }
+      } else {
+        console.log('📋 No custom global choices to create');
+      }
+
+      // Build summary message
+      const summaryParts = [];
+      const warningParts = [];
+      
+      if (results.cdmResults?.success) {
+        summaryParts.push(`${results.cdmResults.summary?.successfulIntegrations || 0} CDM entities integrated`);
+      }
+      
+      if (results.customResults?.success) {
+        summaryParts.push(`${results.customResults.entitiesCreated || 0} custom entities created`);
+        
+ // Add relationship summary if any were created
+  if (results.customResults.relationshipsCreated && results.customResults.relationshipsCreated > 0) {
+    summaryParts.push(`${results.customResults.relationshipsCreated} relationships created`);
+  }
+
+} else if (results.customResults?.customEntitiesFound?.length > 0) {
+  warningParts.push(`${results.customResults.customEntitiesFound.length} custom entities failed to create: ${results.customResults.error}`);
+}
+
+
+      if (summaryParts.length === 0) {
+        results.success = false;
+        results.summary = 'No entities were processed successfully';
+        results.message = 'Deployment failed';
+        results.error = 'no_entities_processed';
+      } else {
+        results.summary = `Successfully processed: ${summaryParts.join(', ')}`;
+        if (warningParts.length > 0) {
+          results.summary += `. Note: ${warningParts.join(', ')}`;
         }
       }
-      
-      // Add success message for selected choices if any
-      if (creationOptions.selectedChoices && creationOptions.selectedChoices.length > 0) {
-        console.log(`Added ${creationOptions.selectedChoices.length} global choices to solution`);
-        deployResult.selectedGlobalChoicesAdded = creationOptions.selectedChoices.length;
-      }
-      
-      // Ensure deployment is marked as successful if either entities or relationships were created
-      const hasEntities = Array.isArray(deployResult.entitiesCreated) 
-                           ? deployResult.entitiesCreated.length > 0 
-                           : (deployResult.entitiesCreated > 0);
-      const hasRelationships = Array.isArray(deployResult.relationshipsCreated) 
-                               ? deployResult.relationshipsCreated.length > 0 
-                               : (deployResult.relationshipsCreated > 0);
-      
-      if (!deployResult.success && 
-          (hasEntities || 
-           hasRelationships || 
-           (deployResult.globalChoicesAddedToSolution > 0)) && 
-          !deployResult.criticalError) {
-        console.log('Correcting deployment success flag - components were created successfully');
-        deployResult.success = true;
-        // Add a warning message about partial success if needed
-        if (deployResult.error) {
-          deployResult.warning = deployResult.error;
-          delete deployResult.error;
-        }
-      }
-      
-      // Process entity count correctly - it might be an array or a number
-      let entityCount = 0;
-      if (Array.isArray(deployResult.entitiesCreated)) {
-        entityCount = deployResult.entitiesCreated.length;
-      } else if (typeof deployResult.entitiesCreated === 'number') {
-        entityCount = deployResult.entitiesCreated;
-      }
-      
-      // Process relationship count correctly - it might be an array or a number
-      let relationshipCount = 0;
-      if (Array.isArray(deployResult.relationshipsCreated)) {
-        relationshipCount = deployResult.relationshipsCreated.length;
-        console.log(`ℹ️ Found ${relationshipCount} relationships in response array`);
-      } else if (Array.isArray(deployResult.relationships)) {
-        // Try to get from the relationships array if relationshipsCreated isn't available
-        relationshipCount = deployResult.relationships.length;
-        console.log(`ℹ️ Found ${relationshipCount} relationships in legacy array`);
-      } else if (typeof deployResult.relationshipsCreated === 'number') {
-        relationshipCount = deployResult.relationshipsCreated;
-        console.log(`ℹ️ Found ${relationshipCount} relationships (number)`);
-      }
-      
-      const finalStatus = {
-        success: deployResult.success,
-        entitiesCreated: entityCount,
-        relationshipsCreated: relationshipCount,
-        selectedGlobalChoicesAdded: deployResult.selectedGlobalChoicesAdded || 0,
-        globalChoicesAddedToSolution: deployResult.globalChoicesAddedToSolution || 0
-      };
-      
-      console.log('Final deployment result:', JSON.stringify(finalStatus));
-      
-      // Log a clear summary message
-      if (finalStatus.success) {
-        console.log(`DEPLOYMENT SUCCESSFUL: Created ${entityCount} entities, ${relationshipCount} relationships, and added ${finalStatus.globalChoicesAddedToSolution} global choices to solution`);
-      } else {
-        console.log(`❌ DEPLOYMENT FAILED: ${deployResult.error || 'Unknown error occurred'}`);
-      }
-      
-      // Add a final status message at the end of the log
-      console.log(`FINAL DEPLOYMENT STATUS: ${finalStatus.success ? 'SUCCESS' : 'FAILED'}`)
-      
-      // Add a human-readable summary to the result
-      if (finalStatus.success) {
-        deployResult.summary = `Successfully created ${entityCount} entities, ${relationshipCount} relationships, and added ${finalStatus.globalChoicesAddedToSolution} global choices to solution.`;
-      } else {
-        deployResult.summary = `Deployment failed: ${deployResult.error || 'Unknown error occurred'}`;
-      }
-      
-      // Make sure the response includes the proper counts and explicitly set success
-      deployResult.entitiesCreated = entityCount;
-      deployResult.relationshipsCreated = relationshipCount;
-      
-      // Force success flag to true if we have any successful creations
-      if ((entityCount > 0 || relationshipCount > 0 || 
-          (deployResult.globalChoicesAddedToSolution && deployResult.globalChoicesAddedToSolution > 0)) &&
-          !deployResult.criticalError) {
-        deployResult.success = true;
-      }
-      
-      // Log the final status that will be sent to the client
-      console.log(`FINAL DEPLOYMENT STATUS: ${deployResult.success ? 'SUCCESS' : 'FAILURE'}`);
-      
-      // Set up headers for streaming response
-      res.writeHead(200, { 
-        'Content-Type': 'application/json',
-        'Transfer-Encoding': 'chunked'
-      });
-      
-      // First, send all the logs collected during deployment
-      const logs = console.getLastLogs().map(log => {
-        return JSON.stringify({ type: 'log', message: log }) + '\n';
-      });
-      
-      // Send logs
-      for (const log of logs) {
-        res.write(log);
-      }
-      
-      // Send the final result in the expected format with type: 'result'
-      const resultData = JSON.stringify({ 
-        type: 'result', 
-        success: deployResult.success,
-        summary: deployResult.summary,
-        message: deployResult.success ? 'Deployment completed successfully' : 'Deployment failed',
-        entities: deployResult.entitiesCreated,
-        relationships: deployResult.relationshipsCreated,
-        globalChoices: deployResult.globalChoicesAddedToSolution || 0,
-        selectedGlobalChoices: deployResult.selectedGlobalChoicesAdded || 0,
-        error: deployResult.error || null,
-        // Include these properties explicitly for clear client-side handling
-        entitiesCreated: deployResult.entitiesCreated,
-        relationshipsCreated: deployResult.relationshipsCreated,
-        globalChoicesAddedToSolution: deployResult.globalChoicesAddedToSolution || 0,
-        selectedGlobalChoicesAdded: deployResult.selectedGlobalChoicesAdded || 0
-      }) + '\n';
-      
-      // Send final result and end response
-      res.write(resultData);
-      res.end();
-      
-    } catch (error) {
-      console.error('❌ Deployment error:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        success: false,
-        error: error.message,
-        message: 'Deployment failed due to an internal error'
-      }));
+
+      streamLogs(res);
+      return writeFinal(res, results);
+
+    } catch (e) {
+      console.error('❌ /upload error:', e);
+      streamLogs(res);
+      return writeFinal(res, { success:false, message:'Internal error', error: e.message });
     }
   });
 }
 
-// Create HTTP server
-const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
-
-  console.log(`${req.method} ${pathname}`);
-
+// --- cleanup endpoint handler ------------------------------------------
+async function handleCleanup(req, res) {
+  console.log('🧹 Starting cleanup request...');
+  
   try {
-    if (pathname === '/') {
-      // Redirect directly to wizard (primary interface)
-      res.writeHead(302, { 'Location': '/wizard' });
-      res.end();
-      
-    } else if (pathname === '/wizard') {
-      // Serve the wizard UI
-      serveWizardUI(res);
-      
-    } else if (pathname === '/upload' && req.method === 'POST') {
-      // Handle deployment from the wizard
-      await handleDeployment(req, res);
-      
-    } else if (pathname === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        azure: azureSDKLoaded,
-        keyVault: !!process.env.KEY_VAULT_URI
-      }));
-      
-    } else if (pathname === '/keyvault') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        configured: !!process.env.KEY_VAULT_URI,
-        uri: process.env.KEY_VAULT_URI || 'Not configured',
-        authMethod: process.env.AUTH_MODE || 'default'
-      }));
-      
-    } else if (pathname === '/managed-identity') {
-      const result = await testManagedIdentityDirect();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result, null, 2));
-      
-    } else if (pathname === '/api/dataverse-config') {
-      try {
-        const config = await getDataverseConfig();
-        
-        // Add environment and authentication method info
-        const response = {
-          ...config,
-          environment: {
-            nodeEnv: process.env.NODE_ENV || 'development',
-            useLocalEnv: process.env.USE_LOCAL_ENV === 'true',
-            azureSDKLoaded: azureSDKLoaded,
-            keyVaultConfigured: !!keyVaultConfig
-          }
-        };
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(response, null, 2));
-      } catch (error) {
-        console.error('❌ Error getting Dataverse config:', error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: error.message,
-          environment: {
-            nodeEnv: process.env.NODE_ENV || 'development',
-            useLocalEnv: process.env.USE_LOCAL_ENV === 'true',
-            azureSDKLoaded: azureSDKLoaded,
-            keyVaultConfigured: !!keyVaultConfig
-          }
-        }, null, 2));
-      }
-      
-    } else if (pathname === '/api/validate-erd' && req.method === 'POST') {
-      // Validate ERD schema
-      console.log('Starting ERD validation...');
-      let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
-      
-      req.on('end', async () => {
-        try {
-          console.log('📄 Raw request body length:', body.length);
-          console.log('📄 First 200 chars:', body.substring(0, 200));
-          
-          const data = JSON.parse(body);
-          console.log('JSON parsed successfully');
-          console.log('Mermaid content length:', data.mermaidContent?.length || 'undefined');
-          console.log('First 100 chars of content:', data.mermaidContent?.substring(0, 100) || 'NO CONTENT');
-          
-          if (!MermaidERDParser) {
-            console.error('❌ MermaidERDParser not available');
-            throw new Error('Mermaid parser not available');
-          }
-          
-          console.log('Creating parser instance...');
-          const parser = new MermaidERDParser();
-          
-          console.log('Calling parser.parse()...');
-          const result = parser.parse(data.mermaidContent);
-          
-          console.log('Parser returned result:', {
-            success: result?.validation?.isValid,
-            entitiesCount: result?.entities?.length,
-            relationshipsCount: result?.relationships?.length,
-            validationStatus: result?.validation?.status,
-            errorCount: result?.validation?.summary?.errorCount,
-            warningCount: result?.validation?.summary?.warningCount
-          });
-          
-          // Get validation summary from parser
-          const validationSummary = parser.getValidationSummary();
-          console.log('Validation summary:', validationSummary);
-          
-          // Build response data
-          let responseData = {
-            success: validationSummary.isValid,
-            entities: result.entities || [],
-            relationships: result.relationships || [],
-            warnings: result.warnings || [],
-            validation: validationSummary,
-            summary: {
-              entityCount: result.entities ? result.entities.length : 0,
-              relationshipCount: result.relationships ? result.relationships.length : 0,
-              totalAttributes: result.entities ? result.entities.reduce((sum, entity) => sum + entity.attributes.length, 0) : 0
-            }
-          };
-
-          // Include corrected ERD if there are warnings
-          if (validationSummary.warnings && validationSummary.warnings.length > 0) {
-            console.log('⚠️ Warnings found, generating corrected ERD...');
-            try {
-              responseData.correctedERD = parser.generateCorrectedERD();
-              console.log('Corrected ERD generated');
-            } catch (correctionError) {
-              console.warn('⚠️ Failed to generate corrected ERD:', correctionError.message);
-            }
-          }
-          
-          // Add error message if validation failed
-          if (!validationSummary.isValid) {
-            responseData.error = `Validation failed: ${validationSummary.summary.errorCount} errors, ${validationSummary.summary.warningCount} warnings`;
-          }
-          
-          console.log('Sending validation response:', {
-            success: responseData.success,
-            hasEntities: responseData.entities.length > 0,
-            hasWarnings: responseData.warnings.length > 0,
-            hasCorrectedERD: !!responseData.correctedERD,
-            validationIsValid: responseData.validation.isValid
-          });
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(responseData));
-        } catch (error) {
-          console.error('❌ Validation error:', error);
-          console.error('❌ Error stack:', error.stack);
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: false,
-            error: error.message
-          }));
-        }
-      });
-      
-    } else if (pathname === '/api/publishers' && req.method === 'GET') {
-      // Get all publishers from Dataverse
-      console.log('Getting publishers...');
-      
-      try {
-        // Check cache first
-        const now = Date.now();
-        const forceRefresh = url.parse(req.url, true).query.refresh === 'true';
-        
-        if (!forceRefresh && cachedPublishers && publishersCacheTime && (now - publishersCacheTime < PUBLISHERS_CACHE_DURATION)) {
-          const remainingTime = Math.round((PUBLISHERS_CACHE_DURATION - (now - publishersCacheTime)) / 1000);
-          console.log(`Returning cached publishers (${remainingTime}s remaining)`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            publishers: cachedPublishers,
-            cached: true,
-            cacheTimeRemaining: remainingTime
-          }));
-          return;
-        }
-
-        console.log('Cache miss or refresh requested, fetching fresh data...');
-        
-        try {
-          const configResult = await getDataverseConfig();
-          console.log('Got Dataverse config, creating client...');
-          
-          if (!DataverseClient) {
-            throw new Error('Dataverse client not available');
-          }
-          
-          // Map the config properties correctly for DataverseClient
-          const clientConfig = {
-            dataverseUrl: configResult.serverUrl, // Map serverUrl to dataverseUrl
-            tenantId: configResult.tenantId,
-            clientId: configResult.clientId,
-            clientSecret: configResult.clientSecret
-          };
-          
-          console.log('Client config:', {
-            hasDataverseUrl: !!clientConfig.dataverseUrl,
-            dataverseUrlLength: clientConfig.dataverseUrl?.length,
-            hasTenantId: !!clientConfig.tenantId,
-            hasClientId: !!clientConfig.clientId,
-            hasClientSecret: !!clientConfig.clientSecret
-          });
-          
-          const client = new DataverseClient(clientConfig);
-          
-          // Test connection first
-          console.log(' Testing Dataverse connection...');
-          const connectionTest = await client.testConnection();
-          
-          if (!connectionTest.success) {
-            throw new Error(`Connection test failed: ${connectionTest.message}`);
-          }
-          
-          console.log('Getting publishers from Dataverse...');
-          const publishers = await client.getPublishers();
-          
-          console.log(`Retrieved ${publishers ? publishers.length : 0} publishers`);
-          
-          // Cache the results
-          cachedPublishers = publishers;
-          publishersCacheTime = now;
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            publishers: publishers || []
-          }));
-          
-        } catch (dataverseError) {
-          console.error('❌ Dataverse connection failed:', dataverseError.message);
-          
-          // Return mock data when there's an error accessing Dataverse
-          const mockPublishers = [
-            {
-              id: 'mock-default-publisher',
-              uniqueName: 'DefaultPublisher',
-              friendlyName: 'Default Publisher',
-              description: 'Default system publisher',
-              prefix: 'new',
-              isDefault: true
-            },
-            {
-              id: 'mock-custom-publisher',
-              uniqueName: 'CustomPublisher',
-              friendlyName: 'Custom Publisher',
-              description: 'Custom publisher for custom entities',
-              prefix: 'cust',
-              isDefault: false
-            }
-          ];
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            publishers: mockPublishers,
-            usingMockData: true,
-            error: dataverseError.message
-          }));
-        }
-        
-      } catch (error) {
-        console.error('❌ Publishers endpoint error:', error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: error.message,
-          message: 'Failed to retrieve publishers'
-        }));
-      }
-      
-    } else if (pathname === '/api/global-choices-list' && req.method === 'GET') {
-      // Get all global choice sets from Dataverse
-      console.log('Getting global choice sets...');
-      
-      try {
-        // Check cache first
-        const now = Date.now();
-        const forceRefresh = url.parse(req.url, true).query.refresh === 'true';
-        
-        if (!forceRefresh && cachedGlobalChoices && globalChoicesCacheTime && (now - globalChoicesCacheTime < GLOBAL_CHOICES_CACHE_DURATION)) {
-          const remainingTime = Math.round((GLOBAL_CHOICES_CACHE_DURATION - (now - globalChoicesCacheTime)) / 1000);
-          console.log(`Returning cached global choices (${remainingTime}s remaining)`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            ...cachedGlobalChoices,
-            cached: true,
-            cacheTimeRemaining: remainingTime
-          }));
-          return;
-        }
-
-        console.log('Cache miss or refresh requested, fetching fresh data...');
-        
-        try {
-          const configResult = await getDataverseConfig();
-          console.log('Got Dataverse config, creating client...');
-          
-          if (!DataverseClient) {
-            throw new Error('Dataverse client not available');
-          }
-          
-          // Map the config properties correctly for DataverseClient
-          const clientConfig = {
-            dataverseUrl: configResult.serverUrl,
-            tenantId: configResult.tenantId,
-            clientId: configResult.clientId,
-            clientSecret: configResult.clientSecret
-          };
-          
-          const client = new DataverseClient(clientConfig);
-          
-          // Test connection first
-          console.log(' Testing Dataverse connection...');
-          const connectionTest = await client.testConnection();
-          
-          if (!connectionTest.success) {
-            throw new Error(`Connection test failed: ${connectionTest.message}`);
-          }
-          
-          console.log('Getting global choice sets from Dataverse...');
-          const globalChoices = await client.getGlobalChoiceSets();
-          
-          console.log(`Retrieved ${globalChoices?.summary?.total || 0} global choice sets`);
-          
-          // Cache the results
-          cachedGlobalChoices = globalChoices;
-          globalChoicesCacheTime = now;
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            ...globalChoices || { all: [], grouped: { custom: [], builtIn: [] }, summary: { total: 0, custom: 0, builtIn: 0 } }
-          }));
-          
-        } catch (dataverseError) {
-          console.error('❌ Dataverse connection failed for global choices:', dataverseError.message);
-          
-          // Return empty result when there's an error accessing Dataverse
-          const emptyResult = {
-            all: [],
-            grouped: { custom: [], builtIn: [] },
-            summary: { total: 0, custom: 0, builtIn: 0 }
-          };
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            success: true,
-            ...emptyResult,
-            usingEmptyData: true,
-            error: dataverseError.message
-          }));
-        }
-        
-      } catch (error) {
-        console.error('❌ Global choices endpoint error:', error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: error.message,
-          message: 'Failed to retrieve global choice sets'
-        }));
-      }
-      
-    } else {
-      // 404 handler
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: 'Not Found',
-        message: `The requested path ${pathname} was not found`,
-        availableEndpoints: [
-          '/ (redirects to /wizard)',
-          '/wizard (GET)',
-          '/upload (POST)',
-          '/health (GET)',
-          '/keyvault (GET)',
-          '/managed-identity (GET)',
-          '/api/dataverse-config (GET)',
-          '/api/validate-erd (POST)',
-          '/api/publishers (GET)',
-          '/api/global-choices-list (GET)'
-        ]
-      }));
-    }
+    const body = await readRequestBody(req);
+    const data = JSON.parse(body);
     
-  } catch (error) {
-    console.error('❌ Server error:', error);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: 'Internal Server Error',
-      message: error.message
+    if (!data) {
+      console.error('❌ No cleanup data received');
+      res.writeHead(400, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({ success: false, error: 'No data received' }));
+    }
+
+    console.log('POST /cleanup payload keys:', Object.keys(data));
+    
+    // Check if we're in dry run mode
+    const dryRun = data.dryRun === true;
+    console.log(`🔍 Cleanup mode: ${dryRun ? 'DRY RUN' : 'ACTUAL DELETION'}`);
+
+    // Initialize Dataverse client
+    const cfg = { 
+      dataverseUrl: data.dataverseUrl, 
+      tenantId: data.tenantId, 
+      clientId: data.clientId, 
+      clientSecret: data.clientSecret,
+      verbose: true 
+    };
+    
+    const client = new DataverseClient(cfg);
+    
+    // Start the cleanup process
+    console.log('🔍 Discovering test entities and relationships...');
+    
+    const cleanupOptions = {
+      dryRun: dryRun,
+      cleanupAll: data.cleanupAll || false,
+      entityPrefixes: data.entityPrefixes || [],
+      preserveCDM: data.preserveCDM !== false, // Default to true
+      deleteRelationshipsFirst: data.deleteRelationshipsFirst !== false // Default to true
+    };
+    
+    const results = await client.cleanupTestEntities(cleanupOptions);
+    
+    // Send results back to client
+    const response = {
+      success: true,
+      dryRun: dryRun,
+      entitiesFound: results.entitiesFound || [],
+      relationshipsFound: results.relationshipsFound || [],
+      entitiesDeleted: results.entitiesDeleted || 0,
+      relationshipsDeleted: results.relationshipsDeleted || 0,
+      errors: results.errors || [],
+      warnings: results.warnings || [],
+      summary: results.summary || 'Cleanup completed'
+    };
+    
+    console.log('✅ Cleanup completed successfully');
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify(response));
+    
+  } catch (e) {
+    console.error('❌ /cleanup error:', e);
+    res.writeHead(500, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: e.message,
+      dryRun: false
     }));
   }
+}
+
+// --- publishers endpoint handler ---------------------------------------
+async function handleGetPublishers(req, res) {
+  console.log('📋 Getting publishers list...');
+  
+  try {
+    const cfg = await getDataverseConfig();
+    const client = new DataverseClient({
+      dataverseUrl: cfg.serverUrl,
+      tenantId: cfg.tenantId,
+      clientId: cfg.clientId,
+      clientSecret: cfg.clientSecret
+    });
+    
+    const publishers = await client.getPublishers();
+    
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ success: true, publishers }));
+    
+  } catch (error) {
+    console.error('❌ Failed to get publishers:', error);
+    res.writeHead(500, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: error.message,
+      publishers: []
+    }));
+  }
+}
+
+// --- global choices endpoint handler -----------------------------------
+async function handleGetGlobalChoices(req, res) {
+  console.log('📋 Getting global choices list...');
+  
+  try {
+    // Get Dataverse configuration
+    const cfg = await getDataverseConfig();
+    const client = new DataverseClient({
+      dataverseUrl: cfg.serverUrl,
+      tenantId:     cfg.tenantId,
+      clientId:     cfg.clientId,
+      clientSecret: cfg.clientSecret
+    });
+    
+    const choicesResult = await client.getGlobalChoiceSets();
+    
+    console.log('📋 Retrieved global choices:', {
+      total: choicesResult.all?.length || 0,
+      builtIn: choicesResult.grouped?.builtIn?.length || 0,
+      custom: choicesResult.grouped?.custom?.length || 0
+    });
+    
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ 
+      success: true, 
+      ...choicesResult
+    }));
+    
+  } catch (error) {
+    console.error('❌ Failed to get global choices:', error);
+    res.writeHead(500, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: error.message,
+      all: [],
+      grouped: { custom: [], builtIn: [] },
+      summary: { total: 0, custom: 0, builtIn: 0 }
+    }));
+  }
+}
+
+// --- server ------------------------------------------------------------
+const server = http.createServer(async (req, res) => {
+  const { pathname } = url.parse(req.url, true);
+  console.log(`${req.method} ${pathname}`);
+
+  if (req.method === 'GET' && pathname === '/') {
+    res.writeHead(302, { Location: '/wizard' }); res.end(); return;
+  }
+  if (req.method === 'GET' && pathname === '/wizard') return serveWizard(res);
+  if (req.method === 'GET' && pathname === '/api/publishers') return handleGetPublishers(req, res);
+  if (req.method === 'GET' && pathname === '/api/global-choices-list') return handleGetGlobalChoices(req, res);
+  if (req.method === 'POST' && pathname === '/api/validate-erd') return handleValidateErd(req, res);
+  if (req.method === 'POST' && pathname === '/upload') return handleUpload(req, res);
+  if (req.method === 'POST' && pathname === '/cleanup') return handleCleanup(req, res);
+  if (req.method === 'GET' && pathname === '/health') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    return res.end(JSON.stringify({ status:'healthy', time: new Date().toISOString() }));
+  }
+
+  res.writeHead(404, {'Content-Type':'application/json'});
+  res.end(JSON.stringify({ error:'Not Found' }));
 });
 
 const port = Number(process.env.PORT) || 3000;

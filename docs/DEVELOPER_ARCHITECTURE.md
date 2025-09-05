@@ -8,7 +8,8 @@ The Mermaid to Dataverse Converter is a **production-ready Node.js web applicati
 
 **Key Features:**
 - **Modern Wizard Interface** - Step-by-step guided deployment
-- **Real-time ERD Validation** - Auto-correction and syntax checking  
+- **Real-time ERD Validation** - Auto-correction and syntax checking
+- **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
 - **Enterprise Security** - Azure Key Vault + Managed Identity
@@ -52,22 +53,11 @@ The Mermaid to Dataverse Converter is a **production-ready Node.js web applicati
 **Core API Endpoints**:
 - `POST /upload` - **Primary deployment endpoint** from wizard with streaming logs
 - `POST /api/validate-erd` - Enhanced ERD validation with corrections
-- `POST /api/validate` - Validate Mermaid entities without creation
-
-**Dataverse Integration**:
-- `GET /api/dataverse-config` - Get Dataverse configuration
-- `POST /api/test-dataverse` - Test Dataverse operations
-- `GET /api/publishers` - Get available publishers from Dataverse
-
-**Global Choices Management**:
-- `POST /api/global-choices` - Create global choices from JSON
-- `GET /api/global-choices-list` - List existing global choice sets
-
-**System & Diagnostics**:
 - `GET /health` - Application health status
-- `GET /keyvault` - Key Vault connectivity test
-- `GET /managed-identity` - Managed identity status
-- `POST /api/cache/clear` - Clear system caches
+
+**Additional Features**:
+- **Environment Variables Integration** - Credentials passed directly in the upload request
+- **Dry Run Mode** - Validate without creating entities
 
 
 ### 2. Mermaid Parser (`src/mermaid-parser.js`)
@@ -163,6 +153,7 @@ erDiagram
     - Upload your Mermaid ERD file 
     - Real-time syntax validation and structure checking
     - Auto-correction suggestions for Dataverse compatibility
+    - **CDM Detection**: Automatic identification of entities that match Microsoft Common Data Model
     - Entity and relationship preview with detailed schema display
 
 * Step 2: Solution & Publisher Setup  
@@ -179,10 +170,147 @@ erDiagram
 
 * Step 4: Final Review & Deployment
   - Review complete configuration summary
+  - **CDM Integration Options**: Choose between using detected CDM entities or creating custom entities
   - Dry-run option for validation-only testing
 
 
-### 4. Dataverse Client (`src/dataverse-client.js`)
+### 4. API Endpoints Reference
+
+This section provides detailed documentation for all available API endpoints in the Mermaid to Dataverse application.
+
+#### Core Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Returns application health status |
+| `/wizard` | GET | Primary wizard interface for guided deployment |
+| `/api/validate-erd` | POST | Validates a Mermaid ERD diagram and returns parsed entities/relationships |
+| `/upload` | POST | Deploys entities and relationships to Dataverse |
+
+#### Health Endpoint
+
+```
+GET /health
+```
+
+**Purpose**: Check if the application is running and healthy.
+
+**Response**:
+```json
+{
+  "status": "healthy",
+  "time": "2025-09-18T17:26:17.695Z"
+}
+```
+
+#### Wizard Endpoint
+
+```
+GET /wizard
+```
+
+**Purpose**: Serves the web-based wizard interface for interactive deployment.
+
+#### Validate ERD Endpoint
+
+```
+POST /api/validate-erd
+```
+
+**Purpose**: Validates a Mermaid ERD diagram and returns parsed entities and relationships.
+
+**Request Body**:
+```json
+{
+  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }\n"
+}
+```
+
+**Response**:
+```json
+{
+  "valid": true,
+  "entities": [
+    {
+      "name": "Customer",
+      "attributes": [
+        {
+          "name": "customer_id",
+          "dataType": "string",
+          "isPrimaryKey": true
+        },
+        {
+          "name": "name",
+          "dataType": "string"
+        }
+      ]
+    }
+  ],
+  "relationships": []
+}
+```
+
+#### Upload Endpoint
+
+```
+POST /upload
+```
+
+**Purpose**: Deploys entities and relationships to Dataverse.
+
+**Request Body**:
+```json
+{
+  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }\n",
+  "entities": [...],
+  "relationships": [...],
+  "solutionName": "CustomerSolution",
+  "solutionDisplayName": "Customer Management Solution",
+  "dryRun": true,
+  "createPublisher": true,
+  "publisherName": "My Publisher",
+  "publisherPrefix": "myp",
+  "dataverseUrl": "https://myorg.crm.dynamics.com",
+  "tenantId": "tenant-id",
+  "clientId": "client-id",
+  "clientSecret": "client-secret"
+}
+```
+
+**Response**: The response is a stream of JSON objects, each representing a log message or the final result. The final result includes:
+
+```json
+{
+  "success": true,
+  "message": "Deployment completed successfully",
+  "summary": "Successfully processed: 1 entity",
+  "entitiesCreated": 1,
+  "relationshipsCreated": 0
+}
+```
+
+#### Using the API with Scripts
+
+The included PowerShell scripts demonstrate how to use these endpoints programmatically:
+
+- `test-cdm-advanced.ps1`: Tests the core endpoints with comprehensive implementation including CDM entity detection.
+- `cleanup-test-entities.ps1`: Cleanup script to remove test entities and relationships from Dataverse.
+
+To use these scripts:
+
+```powershell
+# Basic usage
+./scripts/test-cdm-advanced.ps1 -erdFilePath ./examples/customer.mmd
+
+# With all options
+./scripts/test-cdm-advanced.ps1 -serverUrl "http://localhost:3000" -erdFilePath "./examples/customer.mmd" -solutionName "CustomerSolution" -solutionDisplayName "Customer Management" -dryRun:$false -envFile ".env.local"
+
+# Cleanup test entities
+./scripts/cleanup-test-entities.ps1 -dryRun
+```
+
+
+### 5. Dataverse Client (`src/dataverse-client.js`)
 
 **Purpose**: Handle all Microsoft Dataverse Web API interactions
 
@@ -235,7 +363,7 @@ async createEntitiesFromMermaidWithLogging(entities, options, logFunction) {
 }
 ```
 
-### 5. Key Vault Configuration (`src/azure-keyvault.js`)
+### 6. Key Vault Configuration (`src/azure-keyvault.js`)
 
 **Purpose**: Secure credential management via Azure Key Vault
 
@@ -277,6 +405,35 @@ async getKeyVaultSecrets() {
 ```
 
 ## Advanced Features
+
+### CDM Integration
+
+**Purpose**: Automatically detect and map Mermaid entities to Microsoft Common Data Model (CDM) standard entities to leverage existing Dataverse capabilities.
+
+**Key Capabilities**:
+- **Automatic Detection**: Analyzes entity names and attributes to identify potential CDM matches
+- **Smart Mapping**: Matches entities like "Contact" → "contact"
+- **Attribute Analysis**: Compares entity attributes against CDM entity schemas
+- **User Choice**: Provides option to use CDM entities or create custom entities
+- **Relationship Preservation**: Maintains relationships between CDM and custom entities
+
+**Detection Algorithm**:
+1. **Name-based Matching**: Fuzzy string matching against CDM entity names and display names
+2. **Attribute Analysis**: Compares common attributes (name, email, phone) for validation
+3. **Confidence Scoring**: Rates match quality based on name similarity and attribute overlap
+4. **User Presentation**: Shows detected matches with confidence levels for user decision
+
+**CDM Entity Examples**:
+- `Customer` → `account` (Customer entity with business attributes)
+- `Contact` → `contact` (Individual person contacts)
+- `Opportunity` → `opportunity` (Sales opportunities)
+- `Lead` → `lead` (Potential customers)
+
+**Integration Benefits**:
+- **Standard Fields**: Leverage pre-built CDM attributes and relationships
+- **Business Processes**: Access to standard Dataverse business processes
+- **Integration Ready**: Compatible with Power Platform and Dynamics 365
+- **Future-Proof**: Benefits from ongoing CDM standard updates
 
 ### Global Choices Integration
 

@@ -8,6 +8,7 @@ An Azure App Service application that converts [Mermaid](https://www.mermaidchar
 
 - **Simple Web Interface**: Upload Mermaid files and deploy with a few clicks
 - **Complete Schema Generation**: Creates publishers, solutions, entities, columns, and relationships
+- **CDM Integration**: Automatically detects and maps to Microsoft Common Data Model entities
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
@@ -64,6 +65,7 @@ If you experience connection issues after deployment:
 ## Documentation
 
 - **[Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md)** - System architecture and development setup
+- **[API Endpoints](docs/API-ENDPOINTS.md)** - Details of the available API endpoints
 - **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax reference
@@ -77,6 +79,7 @@ GitHub Copilot has been helpful in this project - not so much for the logic of t
 * creating all the countless mermaid diagrams
 * fleshing out examples
 * outlining documentation
+* writing debug- and cleanup scripts
 * hardening deployments and making them idempotent
 * commenting the scripts so that others might understand them more easily. 
 

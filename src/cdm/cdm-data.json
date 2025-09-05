@@ -1,0 +1,377 @@
+{
+    "cdmEntities": {
+        "account": {
+            "logicalName": "account",
+            "displayName": "Account",
+            "description": "Business that represents a customer or potential customer",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "emailaddress1",
+                "telephone1",
+                "websiteurl",
+                "address1_line1",
+                "address1_city",
+                "address1_stateorprovince",
+                "address1_postalcode",
+                "primarycontactid",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "customer",
+                "company",
+                "organization",
+                "business"
+            ],
+            "relationships": [
+                "contact",
+                "opportunity",
+                "invoice",
+                "quote",
+                "order"
+            ],
+            "category": "sales"
+        },
+        "contact": {
+            "logicalName": "contact",
+            "displayName": "Contact",
+            "description": "Person with whom a business unit has a relationship",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "fullname",
+                "firstname",
+                "lastname",
+                "emailaddress1",
+                "telephone1",
+                "mobilephone",
+                "jobtitle",
+                "parentcustomerid",
+                "birthdate",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "person",
+                "individual",
+                "customer",
+                "lead"
+            ],
+            "relationships": [
+                "account",
+                "opportunity",
+                "case",
+                "activity"
+            ],
+            "category": "sales"
+        },
+        "opportunity": {
+            "logicalName": "opportunity",
+            "displayName": "Opportunity",
+            "description": "Potential revenue-generating event or sale to an account",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "customerid",
+                "estimatedvalue",
+                "estimatedclosedate",
+                "closeprobability",
+                "salesstage",
+                "stepname",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "deal",
+                "sale",
+                "prospect"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "quote",
+                "order"
+            ],
+            "category": "sales"
+        },
+        "lead": {
+            "logicalName": "lead",
+            "displayName": "Lead",
+            "description": "Prospect or potential customer",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "fullname",
+                "firstname",
+                "lastname",
+                "companyname",
+                "emailaddress1",
+                "telephone1",
+                "subject",
+                "leadsourcecode",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "prospect",
+                "potential customer"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "opportunity"
+            ],
+            "category": "sales"
+        },
+        "case": {
+            "logicalName": "incident",
+            "displayName": "Case",
+            "description": "Service request case associated with a contract",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "title",
+                "description",
+                "customerid",
+                "prioritycode",
+                "severitycode",
+                "caseorigincode",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "incident",
+                "ticket",
+                "issue",
+                "support case"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "product"
+            ],
+            "category": "service"
+        },
+        "product": {
+            "logicalName": "product",
+            "displayName": "Product",
+            "description": "Information about products and services",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "description",
+                "price",
+                "standardcost",
+                "productnumber",
+                "productstructure",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "item",
+                "service",
+                "sku"
+            ],
+            "relationships": [
+                "opportunity",
+                "quote",
+                "order",
+                "invoice"
+            ],
+            "category": "sales"
+        },
+        "quote": {
+            "logicalName": "quote",
+            "displayName": "Quote",
+            "description": "Formal offer for products and services",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "customerid",
+                "totalamount",
+                "effectivefrom",
+                "effectiveto",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "quotation",
+                "estimate",
+                "proposal"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "opportunity",
+                "order"
+            ],
+            "category": "sales"
+        },
+        "order": {
+            "logicalName": "salesorder",
+            "displayName": "Order",
+            "description": "Quote that has been accepted",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "customerid",
+                "totalamount",
+                "datedelivered",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "sales order",
+                "purchase order"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "opportunity",
+                "invoice"
+            ],
+            "category": "sales"
+        },
+        "invoice": {
+            "logicalName": "invoice",
+            "displayName": "Invoice",
+            "description": "Order that has been billed",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "customerid",
+                "totalamount",
+                "duedate",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "bill",
+                "receipt"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "order"
+            ],
+            "category": "sales"
+        },
+        "task": {
+            "logicalName": "task",
+            "displayName": "Task",
+            "description": "Generic activity representing work needing completion",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "subject",
+                "description",
+                "regardingobjectid",
+                "scheduledstart",
+                "scheduledend",
+                "prioritycode",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "activity",
+                "todo",
+                "action item"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "opportunity",
+                "case"
+            ],
+            "category": "activity"
+        },
+        "appointment": {
+            "logicalName": "appointment",
+            "displayName": "Appointment",
+            "description": "Commitment representing a time interval with start/end times",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "subject",
+                "description",
+                "regardingobjectid",
+                "scheduledstart",
+                "scheduledend",
+                "location",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "meeting",
+                "calendar event",
+                "schedule"
+            ],
+            "relationships": [
+                "account",
+                "contact",
+                "opportunity"
+            ],
+            "category": "activity"
+        },
+        "campaign": {
+            "logicalName": "campaign",
+            "displayName": "Campaign",
+            "description": "Container for campaign activities and responses",
+            "entityType": "cdm",
+            "publisher": "Microsoft Corporation",
+            "publisherPrefix": "cr",
+            "keyAttributes": [
+                "name",
+                "description",
+                "expectedrevenue",
+                "budgetedcost",
+                "actualcost",
+                "proposedstart",
+                "proposedend",
+                "statuscode",
+                "statecode"
+            ],
+            "commonAliases": [
+                "marketing campaign",
+                "promotion"
+            ],
+            "relationships": [
+                "lead",
+                "opportunity",
+                "contact",
+                "account"
+            ],
+            "category": "marketing"
+        }
+    },
+    "metadata": {
+        "version": "1.0.0",
+        "lastUpdated": "2025-08-29",
+        "totalEntities": 12,
+        "categories": [
+            "sales",
+            "service",
+            "marketing",
+            "activity"
+        ],
+        "source": "Microsoft Common Data Model"
+    }
+}

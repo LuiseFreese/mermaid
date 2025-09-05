@@ -1,0 +1,74 @@
+erDiagram
+    %% CDM Entities (will be detected and integrated - attributes will be ignored)
+    Account {
+        string name "Company name"
+        string description "Company description"
+        string accountnumber "Account number"
+        string phone "Primary phone"
+        string emailaddress1 "Primary email"
+        string websiteurl "Website URL"
+    }
+
+    Contact {
+        string fullname "Full name"
+        string firstname "First name"
+        string lastname "Last name"
+        string emailaddress1 "Email address"
+        string mobilephone "Mobile phone"
+        string jobtitle "Job title"
+    }
+
+    %% Custom Entities (will be created)
+    Event {
+        int id PK
+        string name "Event name - SYSTEM NAME"
+        string description "Event description"
+        string status "Event status - SYSTEM NAME"
+        datetime startdate "Event start date"
+        datetime enddate "Event end date"
+        int maxattendees "Maximum attendees"
+        int locationid FK "Location reference"
+        string statecode "State code - SYSTEM NAME"
+        string statuscode "Status code - SYSTEM NAME"
+        datetime createdon "Created on - SYSTEM NAME"
+        datetime modifiedon "Modified on - SYSTEM NAME"
+        string modifiedby "Modified by - SYSTEM NAME"
+        string createdby "Created by - SYSTEM NAME"
+    }
+
+    Location {
+        int id PK
+        string name "Location name - SYSTEM NAME"
+        string description "Location description"
+        string address "Street address"
+        string city "City"
+        string state "State/Province"
+        string zipcode "ZIP/Postal code"
+        string country "Country"
+        int capacity "Maximum capacity"
+        string status "Location status - SYSTEM NAME"
+        datetime createdon "Created date - SYSTEM NAME"
+        datetime modifiedon "Modified date - SYSTEM NAME"
+    }
+
+    %% Intersection/Junction Table (Many-to-Many)
+    EventAttendee {
+        int id PK
+        int eventid FK "Event reference"
+        string attendeetype "Type: Account or Contact"
+        int accountid FK "Account attendee"
+        int contactid FK "Contact attendee"
+        string status "Attendance status - SYSTEM NAME"
+        datetime registrationdate "Registration date"
+        string notes "Attendee notes"
+        string statecode "State code - SYSTEM NAME"
+        string statuscode "Status code - SYSTEM NAME"
+        datetime createdon "Created on - SYSTEM NAME"
+        datetime modifiedon "Modified on - SYSTEM NAME"
+    }
+
+    %% Relationships
+    Account ||--o{ EventAttendee : "attends events"
+    Contact ||--o{ EventAttendee : "attends events"
+    Event ||--o{ EventAttendee : "has attendees"
+    Location ||--o{ Event : "hosts events"

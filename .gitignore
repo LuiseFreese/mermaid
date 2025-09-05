@@ -14,18 +14,28 @@ coverage/
 # Backup files
 *.backup
 *.bak
+src/server-old.js
+src/backup-server.js
+
 
 # Debug/temp files
 fix_*.ps1
 server-output.log
 scripts/obsolete
 scripts/mermaid-deployment.zip
+src/dataverse-client-copy.js
+src/backup-server.js
+src/server-old.js
+deploy.zip
+
 
 # Project management
 TODO.md
 NOTES.md
 *.todo
 CDM_ENTITY_DETECTION_DESIGN.md
+docs/AZURE_DEPLOYMENT_CHALLENGES.md
+docs/SECURITY-IMPROVEMENTS.md
 
 # ESLint cache
 .eslintcache

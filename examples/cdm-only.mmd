@@ -1,0 +1,15 @@
+erDiagram
+    Task {
+        guid TaskId PK
+        string Subject
+        datetime CreatedOn
+        string Description
+    }
+    
+    Contact {
+        guid ContactId PK
+        string FullName
+        string EmailPrimary
+    }
+    
+    Task ||--o{ Contact : "assigned_to"

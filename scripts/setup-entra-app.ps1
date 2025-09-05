@@ -6,12 +6,12 @@
 
 .DESCRIPTION
     This is the main setup script that handles everything:
-    - ✅ Creates/reuses Entra App Registration + Service Principal
-    - ✅ Deploys infrastructure (App Service, Key Vault, Managed Identity) via Bicep
-    - ✅ Stores secrets securely in Key Vault
-    - ✅ Deploys the application using az webapp up
-    - ✅ Creates Dataverse Application User with proper permissions
-    - ✅ Everything is idempotent - safe to run multiple times
+    - Creates/reuses Entra App Registration + Service Principal
+    - Deploys infrastructure (App Service, Key Vault, Managed Identity) via Bicep
+    - Stores secrets securely in Key Vault
+    - Deploys the application using az webapp up
+    - Creates Dataverse Application User with proper permissions
+    - Everything is idempotent - safe to run multiple times
 
 .EXAMPLE
     # Interactive mode (recommended for first-time setup)
@@ -365,7 +365,7 @@ KEY_VAULT_NAME=$KeyVaultName
 
 # ---------- Deploy code ----------
 function Deploy-Application {
-    param($AppServiceName,$ResourceGroup,$AppServicePlanName)
+    param($AppServiceName,$ResourceGroup,$AppServicePlanName,$ManagedIdentityClientId)
     Write-Info "Deploying application to Azure App Service..."
     if ($DryRun) { Write-Warning "[DRY RUN] Would deploy application to App Service: $AppServiceName"; return }
 
@@ -373,15 +373,23 @@ function Deploy-Application {
         $projectRoot = Split-Path -Parent $PSScriptRoot
         Set-Location $projectRoot
         
-        Write-Info "Deploying application using az webapp up..."
-        az webapp up --resource-group $ResourceGroup --name $AppServiceName --plan $AppServicePlanName --runtime "NODE:20-lts" --sku B1 --only-show-errors
+        Write-Info "Using improved deployment script (deploy.ps1)..."
+        $deployScript = Join-Path $PSScriptRoot "deploy.ps1"
+        
+        if (-not (Test-Path $deployScript)) {
+            throw "Deploy script not found at: $deployScript"
+        }
+        
+        # Call deploy.ps1 script 
+        # Secrets are retrieved from Key Vault
+        & $deployScript -ResourceGroup $ResourceGroup -AppServiceName $AppServiceName -ManagedIdentityClientId $ManagedIdentityClientId
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Success "Application deployed successfully"
+            Write-Success "Application deployed successfully!"
             Write-Info "🌐 App URL: https://$AppServiceName.azurewebsites.net/"
-            Write-Info "❤️ Health: https://$AppServiceName.azurewebsites.net/health"
+            Write-Info "❤️  Health: https://$AppServiceName.azurewebsites.net/health"
         } else {
-            throw "az webapp up failed with exit code $LASTEXITCODE"
+            throw "deploy.ps1 failed with exit code $LASTEXITCODE"
         }
     } catch { 
         Write-Error "Failed to deploy application: $_"
@@ -579,7 +587,7 @@ function Start-Setup {
             Write-Warning "Skipping Dataverse Application User creation as requested (-SkipDataverseUser)."
         }
 
-        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup -AppServicePlanName $infrastructure.appServicePlanName
+        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup -AppServicePlanName $infrastructure.appServicePlanName -ManagedIdentityClientId $infrastructure.managedIdentityClientId
 
         if (Test-Setup -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId) {
             if ($kvGrant.AssignmentId) {

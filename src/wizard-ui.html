@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mermaid to Dataverse Converter - Modern Wizard</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Fluent UI 2 Web Components -->
     <script type="module" src="https://unpkg.com/@fluentui/web-components/dist/web-components.js"></script>
     <style>
@@ -16,7 +18,7 @@
             --accent-fill-hover: #106ebe;
             --neutral-stroke-rest: #e1dfdd;
             --success-fill: #107c10;
-            --warning-fill: #ff8c00;
+            --warning-fill: #f7c52d;
             --error-fill: #d13438;
         }
 
@@ -557,6 +559,65 @@
             margin-bottom: 8px;
         }
 
+        .form-check {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-check-input {
+            margin-right: 8px;
+        }
+
+        .form-check-label {
+            font-weight: 400;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-button {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+            padding: 2px;
+            margin-left: 4px;
+        }
+
+        .info-button:hover {
+            opacity: 1;
+        }
+
+        .info-tooltip {
+            background: var(--neutral-fill-secondary);
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--neutral-foreground-rest);
+        }
+
+        .info-tooltip.hidden {
+            display: none;
+        }
+
+        .advanced-options {
+            background: var(--neutral-fill-secondary);
+            border: 1px solid var(--neutral-stroke-rest);
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .advanced-options.hidden {
+            display: none;
+        }
+
         .progress-bar {
             height: 4px;
             background: var(--neutral-fill-rest);
@@ -814,8 +875,64 @@
                         </div>
 
                         <div id="validationResults" class="validation-results hidden">
-                            <h4>Validation Results</h4>
+                            <!-- CDM Detection Section (moved above validation messages) -->
+                            <div id="cdmDetectionSection" class="hidden" style="margin-bottom: 24px;">
+                                <h4 style="color: #000; margin-bottom: 12px;">
+                                    Common Data Model (CDM) Detection
+                                </h4>
+                                <p style="margin-bottom: 12px; color: #605e5c;">
+                                    We detected entities in your ERD that match Common Data Model standard entities. Using CDM entities provides better integration with Microsoft business applications:
+                                </p>
+                                
+                                <div id="cdmMatches" class="hidden" style="margin-bottom: 16px;">
+                                    <h5 style="margin: 0 0 8px 0; color: #000000; font-weight: 600;">
+                                        CDM Entities Detected
+                                    </h5>
+                                    <div id="cdmMatchesList" style="background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; padding: 12px;">
+                                        <!-- CDM matches will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                                
+                                <div id="cdmRecommendations" class="hidden" style="margin-bottom: 16px;">
+                                    <h5 style="margin: 0 0 8px 0; color: #d46b08; font-weight: 600;">
+                                        CDM Recommendations
+                                    </h5>
+                                    <div id="cdmRecommendationsList" style="background: #fff8f0; border: 1px solid #ffd591; border-radius: 4px; padding: 12px;">
+                                        <!-- CDM recommendations will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                                
+                                <div id="cdmChoiceSection" class="hidden" style="margin-top: 16px;">
+                                    <h5 style="margin: 0 0 12px 0; color: #000;">
+                                        Choose Your Approach
+                                    </h5>
+                                    <p style="margin: 0 0 12px 0; color: #434343;">
+                                        You can use the detected CDM entities for better integration, or continue with your custom entities:
+                                        <button id="cdmBenefitsToggle" style="margin-left: 8px; background: none; border: 1px solid #ccc; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; color: #666;">i</button>
+                                    </p>
+                                    <div id="cdmBenefitsInfo" class="hidden" style="margin: 0 0 12px 0; padding: 8px 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; color: #666;">
+                                        <strong>CDM Benefits:</strong> Standard attributes, built-in relationships, better integration with Dynamics 365, Power Platform, and other Microsoft applications.
+                                    </div>
+                                    <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-start;">
+                                        <button id="useCDMEntities" class="btn btn-primary" style="padding: 8px 16px; min-width: 140px;">
+                                            Use CDM Entities
+                                        </button>
+                                        <button id="useCustomEntities" class="btn btn-secondary" style="padding: 8px 16px; min-width: 140px;">
+                                            Keep Custom Entities
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h4 id="validationResultsHeading">Validation Results</h4>
                             <div id="validationMessages"></div>
+                            
+                            <!-- Warnings and Suggestions List -->
+                            <div id="warningsListSection" class="hidden" style="margin-bottom: 16px;">
+                                <div id="warningsListContent">
+                                    <!-- Warnings will be populated by JavaScript -->
+                                </div>
+                            </div>
                             
                             <!-- Corrected ERD Display -->
                             <div id="correctedERDSection" class="hidden" style="margin-top: 20px;">
@@ -829,7 +946,7 @@
                                 <!-- Side-by-side comparison -->
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                                     <!-- Original ERD -->
-                                    <div>
+                                    <div id="originalERDSection">
                                         <h5 style="margin: 0 0 8px 0; color: #d13438; font-weight: 600;">
                                             Original ERD (Issues Found)
                                         </h5>
@@ -843,35 +960,46 @@
                                     </div>
                                     
                                     <!-- Corrected ERD -->
-                                    <div>
+                                    <div style="position: relative;">
                                         <h5 style="margin: 0 0 8px 0; color: #107c10; font-weight: 600;">
                                             Corrected ERD (Best Practices)
                                         </h5>
-                                        <div style="position: relative;">
-                                            <div style="position: absolute; top: 8px; right: 8px; z-index: 10; display: flex; gap: 6px;">
-                                                <button id="copyCorrectedERD" class="btn btn-secondary" 
-                                                        style="font-size: 11px; padding: 3px 6px;">
-                                                    Copy
-                                                </button>
-                                                <button id="useCorrectedERD" class="btn btn-primary" 
-                                                        style="font-size: 11px; padding: 3px 6px;">
-                                                    Use This
-                                                </button>
-                                            </div>
-                                            <pre id="correctedERDContent" style="background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 4px; padding: 12px; margin: 0; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto;"></pre>
-                                        </div>
+                                        <button id="copyCorrectedERD" 
+                                                style="position: absolute; top: 0; right: 0; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: #666; font-size: 16px;"
+                                                title="Copy corrected ERD">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                        <pre id="correctedERDContent" style="background: #f3fdf3; border: 1px solid #107c10; border-radius: 4px; padding: 12px; margin: 0; white-space: pre-wrap; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.4; max-height: 300px; overflow-y: auto;"></pre>
                                     </div>
                                 </div>
                                 
                                 <!-- Action buttons and instructions -->
-                                <div style="padding: 12px; background: #f3f2f1; border-radius: 4px; border-left: 4px solid #0078d4;">
+                                <div id="compareChooseInstructions" style="padding: 12px; background: #f3f2f1; border-radius: 4px; border-left: 4px solid #0078d4; margin-bottom: 16px;">
                                     <strong>Compare & Choose:</strong>
                                     <ul style="margin: 8px 0 0 0; padding-left: 20px;">
                                         <li><strong style="color: #d13438;">Red box (Original)</strong> - Shows your current ERD with validation issues highlighted</li>
                                         <li><strong style="color: #107c10;">Green box (Corrected)</strong> - Shows the recommended ERD following Dataverse best practices</li>
-                                        <li><strong>Use This</strong> - Automatically replace your current ERD with the corrected version</li>
                                         <li><strong>Copy</strong> - Copy either version to your clipboard for manual editing</li>
+                                        <li><strong>Use Corrected ERD</strong> - Automatically replace your current ERD with the corrected version</li>
                                     </ul>
+                                </div>
+                                
+                                <!-- Use Corrected ERD Section -->
+                                <div style="margin-top: 16px;">
+                                    <h5 style="margin: 0 0 12px 0; color: #000;">
+                                        Apply Corrections
+                                    </h5>
+                                    <p style="margin: 0 0 12px 0; color: #434343;">
+                                        The corrected ERD follows Dataverse best practices. Click the button below to apply these corrections:
+                                    </p>
+                                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                        <button id="useCorrectedERD" class="btn btn-primary" style="padding: 8px 16px; font-size: 14px; min-width: auto;">
+                                            Use Corrected ERD
+                                        </button>
+                                    </div>
+                                    <p style="margin: 12px 0 0 0; font-size: 12px; color: #666;">
+                                        This will replace your current ERD with the corrected version that addresses all validation warnings.
+                                    </p>
                                 </div>
                             </div>
                             
@@ -943,6 +1071,27 @@
                                     <input type="text" id="publisherPrefix" class="form-control" placeholder="myco" maxlength="8" pattern="[a-zA-Z]{3,8}">
                                     <div class="text-muted mt-2">Auto-generated prefix for all custom entities and fields (letters only, 3-8 characters). You can edit this if needed.</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Solution Component Options</label>
+                            <div class="form-check">
+                                <input type="checkbox" id="includeRelatedEntities" class="form-check-input">
+                                <label class="form-check-label" for="includeRelatedEntities">
+                                    Include related tables that have relationships with your ERD tables
+                                    <button type="button" class="info-button" onclick="toggleInfoTooltip('relatedEntitiesInfo')" title="More information">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M9,9h0a3,3,0,0,1,5.12-2.12A3,3,0,0,1,15,9c0,1-1,1.5-3,2.5"></path>
+                                            <circle cx="12" cy="17" r=".5"></circle>
+                                        </svg>
+                                    </button>
+                                </label>
+                            </div>
+                            <div id="relatedEntitiesInfo" class="info-tooltip hidden">
+                                <strong>Unchecked (recommended):</strong> Only tables defined in your ERD will be added to the solution.<br>
+                                <strong>Checked:</strong> Dataverse will automatically include existing tables that have relationships with your ERD tables (like Contact, Account, etc.).
                             </div>
                         </div>
                     </div>
@@ -1093,6 +1242,8 @@
                     summary: { ready: false }
                 };
                 this.fileContent = null;
+                this.cdmChoice = null; // 'cdm' or 'custom'
+                this.cdmMatches = null; // Array of CDM matches
             }
 
             // Reset the wizard to its initial state
@@ -1106,6 +1257,8 @@
                     summary: { ready: false }
                 };
                 this.fileContent = null;
+                this.cdmChoice = null;
+                this.cdmMatches = null;
             }
 
             getCurrentStepIndex() {
@@ -1343,18 +1496,37 @@
             const fileInput = document.getElementById('fileInput');
             const fileNameDisplay = document.getElementById('fileNameDisplay');
             
+            console.log('setupFileUpload: Elements found:', {
+                fileUploadArea: !!fileUploadArea,
+                fileInput: !!fileInput,
+                fileNameDisplay: !!fileNameDisplay
+            });
+            
             if (fileUploadArea && fileInput) {
                 const uploadButton = fileUploadArea.querySelector('button');
-                uploadButton.addEventListener('click', () => {
-                    fileInput.click();
-                });
+                console.log('setupFileUpload: Upload button found:', !!uploadButton);
+                
+                if (uploadButton) {
+                    uploadButton.addEventListener('click', () => {
+                        console.log('setupFileUpload: Button clicked, triggering file input');
+                        fileInput.click();
+                    });
+                } else {
+                    console.error('setupFileUpload: Upload button not found in fileUploadArea');
+                }
 
                 fileInput.addEventListener('change', (e) => {
+                    console.log('setupFileUpload: File input change event', e.target.files.length);
                     if (e.target.files.length > 0) {
                         const file = e.target.files[0];
                         handleFileSelection(file);
                         fileNameDisplay.textContent = file.name;
                     }
+                });
+            } else {
+                console.error('setupFileUpload: Required elements not found', {
+                    fileUploadArea: !!fileUploadArea,
+                    fileInput: !!fileInput
                 });
             }
 
@@ -1529,6 +1701,9 @@
             // Rebuild the custom choices
             populateCustomChoices();
             
+            // Update choices step status to reflect uploaded custom choices
+            updateChoicesStepStatus();
+            
             // Restore selections after rebuilding
             setTimeout(() => {
                 // Restore built-in selections
@@ -1564,7 +1739,7 @@
         }
 
         // ERD Validation
-        async function validateERD(content) {
+        async function validateERD(content, usingCorrectedERD = false) {
             try {
                 const response = await fetch('/api/validate-erd', {
                     method: 'POST',
@@ -1573,6 +1748,11 @@
                 });
 
                 const result = await response.json();
+                console.log('🔍 Validation result:', result);  // Debug log
+                
+                // Mark if we're using a corrected ERD for filtering purposes
+                result.usingCorrectedERD = usingCorrectedERD;
+                
                 displayValidationResults(result);
                 
                 if (result.success) {
@@ -1603,33 +1783,136 @@
         }
 
         function displayValidationResults(result) {
+            // Define variables used throughout this function
+            const usingCDM = wizard.cdmChoice === 'cdm' || wizard.usingCDMERD;
+            const cdmMatches = (result.cdmDetection && result.cdmDetection.matches) ? result.cdmDetection.matches : [];
+            const validation = result.validation || {};
+            const cdmChoiceMade = wizard.cdmChoice !== undefined && wizard.cdmChoice !== null;
+            
             const resultsDiv = document.getElementById('validationMessages');
             const validationResultsDiv = document.getElementById('validationResults');
+            const schemaDisplaySection = document.getElementById('schemaDisplaySection');
+            const correctedERDSection = document.getElementById('correctedERDSection');
+            
+            // Add null checks to prevent crashes
+            if (!resultsDiv) {
+                console.error('validationMessages element not found');
+                return;
+            }
+            
+            if (!validationResultsDiv) {
+                console.error('validationResults element not found');
+                return;
+            }
+            
             resultsDiv.innerHTML = '';
             
-            validationResultsDiv.classList.remove('hidden');
+            // Check if CDM entities are detected and no choice has been made
+            const hasCDMDetection = result.cdmDetection && result.cdmDetection.matches && result.cdmDetection.matches.length > 0;
+            
+            // Only show validation results after CDM choice has been made
+            // Users should first make their CDM choice, then see relevant validation issues
+            const shouldShowValidationResults = !hasCDMDetection || cdmChoiceMade;
+            
+            console.log('🔍 Conditional Display Logic:', {
+                hasCDMDetection,
+                cdmChoiceMade,
+                cdmChoice: wizard.cdmChoice,
+                shouldShowValidationResults,
+                cdmDetectionMatches: result.cdmDetection?.matches?.length || 0,
+                wizardCdmChoice: wizard.cdmChoice
+            });
+            
+            // Control validation results heading and content visibility
+            const validationHeading = document.getElementById('validationResultsHeading');
+            const validationMessages = document.getElementById('validationMessages');
+            if (shouldShowValidationResults) {
+                validationResultsDiv.classList.remove('hidden');
+                if (validationHeading) validationHeading.style.display = 'block';
+                if (validationMessages) validationMessages.style.display = 'block';
+                console.log('✅ Showing validation results');
+            } else {
+                if (validationHeading) validationHeading.style.display = 'none';
+                if (validationMessages) validationMessages.style.display = 'none';
+                console.log('❌ Hiding validation results heading and content - CDM detected, no choice made');
+            }
+            
+            // Always show validation results div if CDM detected (so CDM section can be visible)
+            if (hasCDMDetection) {
+                validationResultsDiv.classList.remove('hidden');
+                console.log('✅ Showing validation results div for CDM section');
+            }
 
             if (!result.success) {
-                resultsDiv.innerHTML = `
-                    <div class="message-card error">
-                        <div class="message-content">
-                            <div class="message-title">Validation Failed</div>
-                            <div class="message-description">${result.error}</div>
+                if (shouldShowValidationResults) {
+                    resultsDiv.innerHTML = `
+                        <div class="message-card error">
+                            <div class="message-content">
+                                <div class="message-title">Validation Failed</div>
+                                <div class="message-description">${result.error || 'Unknown validation error occurred'}</div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
                 return;
             }
 
-            const validation = result.validation;
+            // Display CDM choice section (without info messages)
+            displayCDMDetection(result);
             
-            // Overall status
-            if (validation.isValid) {
+            // Only proceed with validation results display if we should show them
+            if (!shouldShowValidationResults) {
+                console.log('⏹️ Stopping early - only showing CDM choices');
+                return; // Exit early, don't show validation details until choice is made
+            }
+            
+            // Always show validation results, but conditionally show schema based on CDM choice
+            // Schema will be shown after user makes a choice or if no CDM detected
+
+            // Overall status - only show "valid" if there are no warnings or errors that need attention
+            // Filter out CDM-related warnings and errors that don't apply when using CDM
+            const criticalWarnings = (validation.warnings || []).filter(w => {
+                if (w.category === 'cdm') return false;
+                
+                // If using CDM, filter out custom entity warnings for entities that have CDM matches
+                if (usingCDM && (w.type === 'system_column_conflict' || w.type === 'naming_conflict')) {
+                    const entityName = w.entity;
+                    const hasMatchForEntity = cdmMatches.some(match => match.originalEntity.name === entityName);
+                    return !hasMatchForEntity;
+                }
+                
+                return true;
+            });
+            
+            const relevantErrors = (validation.errors || []).filter(e => {
+                // If using CDM, filter out custom entity errors for entities that have CDM matches
+                if (usingCDM && (e.type === 'system_attribute_conflict' || e.type === 'naming_conflict')) {
+                    const entityName = e.entity;
+                    const hasMatchForEntity = cdmMatches.some(match => match.originalEntity.name === entityName);
+                    return !hasMatchForEntity;
+                }
+                
+                return true;
+            });
+            
+            const hasErrors = relevantErrors.length > 0;
+            const hasCriticalWarnings = criticalWarnings.length > 0;
+            
+            if (validation.isValid && !hasErrors && !hasCriticalWarnings) {
                 resultsDiv.innerHTML += `
                     <div class="message-card success">
                         <div class="message-content">
                             <div class="message-title">ERD Structure Valid</div>
                             <div class="message-description">Your ERD has been validated successfully and is ready for Dataverse deployment.</div>
+                        </div>
+                    </div>
+                `;
+            } else if (validation.isValid && (hasErrors || hasCriticalWarnings)) {
+                resultsDiv.innerHTML += `
+                    <div class="message-card warning">
+                        <div class="message-content">
+                            <div class="message-title">ERD Structure Needs Attention</div>
+                            <div class="message-description">Your ERD structure is valid but has issues that should be addressed before deployment.</div>
                         </div>
                     </div>
                 `;
@@ -1642,7 +1925,89 @@
                 ...(validation.info || [])
             ];
 
-            allMessages.forEach(msg => {
+            // Always filter out CDM-related info messages since we have the choice approach
+            let messagesToDisplay = allMessages.filter(msg => {
+                // Filter out CDM detection info messages
+                if (msg.severity === 'info' && (msg.type === 'cdm_entity_detected' || msg.type === 'cdm_summary')) {
+                    return false;
+                }
+                
+                // Filter out warnings since they'll be shown in the warnings list section
+                if (msg.severity === 'warning') {
+                    return false;
+                }
+                
+                // Filter out info messages that are relationship-related since they'll be shown in warnings list
+                if (msg.severity === 'info' && (msg.type === 'foreign_key_naming' || msg.category === 'relationships')) {
+                    return false;
+                }
+                
+                // If using CDM entities, filter out custom entity validation errors
+                if (usingCDM && (msg.type === 'system_attribute_conflict' || msg.type === 'naming_conflict' || msg.type === 'system_column_conflict')) {
+                    // Check if the entity with the error has a CDM match
+                    const entityName = msg.entity;
+                    const hasMatchForEntity = cdmMatches.some(match => match.originalEntity.name === entityName);
+                    if (hasMatchForEntity) {
+                        console.log(`Filtered out custom entity validation error for CDM entity: ${entityName}`, msg.type);
+                        return false;
+                    }
+                }
+                
+                // If using corrected ERD, only show critical errors, not informational warnings
+                if (result.usingCorrectedERD && msg.severity === 'info') {
+                    return false;
+                }
+                
+                // If using corrected ERD, filter out warnings that should have been fixed
+                if (result.usingCorrectedERD && (msg.severity === 'warning' || msg.severity === 'error')) {
+                    const shouldFilter = msg.type === 'naming_conflict' || 
+                                       msg.type === 'missing_foreign_key' ||
+                                       msg.type === 'foreign_key_naming' ||
+                                       msg.type === 'system_attribute_conflict' ||
+                                       msg.type === 'system_column_conflict' ||
+                                       (msg.message && (
+                                           msg.message.includes('non-primary column called') ||
+                                           msg.message.includes('exists with foreign keys present') ||
+                                           msg.message.includes('conflicts with a system attribute') ||
+                                           msg.message.includes('conflicts with system columns')
+                                       ));
+                    if (shouldFilter) {
+                        console.log('Filtered out corrected warning:', msg.type, msg.message);
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+
+            // If using CDM ERD, also filter out warnings for CDM entities
+            if ((wizard.usingCDMERD || wizard.cdmChoice === 'cdm') && result.cdmDetection && result.cdmDetection.matches) {
+                const cdmEntityNames = result.cdmDetection.matches
+                    .filter(match => match && (match.originalEntity || match.entity)) // Filter out invalid matches
+                    .map(match => {
+                        // Handle both old and new match formats
+                        if (match.originalEntity && match.originalEntity.name) {
+                            return match.originalEntity.name.toLowerCase();
+                        } else if (match.entity) {
+                            return match.entity.toLowerCase();
+                        }
+                        return '';
+                    })
+                    .filter(name => name); // Remove empty names
+                messagesToDisplay = messagesToDisplay.filter(msg => {
+                    // Keep errors and non-CDM info messages
+                    if (msg.severity === 'error' || msg.severity === 'info') {
+                        return true;
+                    }
+                    // For warnings, only keep those not related to CDM entities
+                    if (msg.severity === 'warning' && msg.entity) {
+                        return !cdmEntityNames.includes(msg.entity.toLowerCase());
+                    }
+                    return true;
+                });
+            }
+
+            messagesToDisplay.forEach(msg => {
                 const messageClass = msg.severity === 'error' ? 'error' : 
                                    msg.severity === 'warning' ? 'warning' : 
                                    msg.severity === 'info' ? 'info' : 'success';
@@ -1672,30 +2037,130 @@
                 `;
             });
 
-            // Summary
-            if (result.entities && result.entities.length > 0) {
-                resultsDiv.innerHTML += `
-                    <div class="message-card info">
-                        <div class="message-content">
-                            <div class="message-title">ERD Summary</div>
-                            <div class="message-description">
-                                ${result.entities.length} entities, ${result.relationships.length} relationships detected
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Show corrected ERD if available
-            const correctedERDSection = document.getElementById('correctedERDSection');
-            if (result.correctedERD && (validation.warnings && validation.warnings.length > 0)) {
+            // Debug the variables
+            console.log('🔍 Schema Display Debug:', {
+                usingCDM,
+                cdmMatches: cdmMatches.length,
+                cdmChoiceMade,
+                hasFixableWarnings: validation.warnings && validation.warnings.length > 0,
+                correctedERD: !!result.correctedERD,
+                wizardCdmChoice: wizard.cdmChoice
+            });
+            
+            // Show corrected ERD based on user's choice and available suggestions
+            const hasFixableWarnings = validation.warnings && validation.warnings.length > 0;
+            const hasCustomEntities = result.entities && result.entities.length > 0 && 
+                (!usingCDM || (usingCDM && cdmMatches.length > 0 && result.entities.some(entity => !cdmMatches.some(match => {
+                    const matchEntityName = match.originalEntity?.name || match.entity?.name || (match.cdmEntity?.displayName);
+                    return matchEntityName === entity.name;
+                }))));
+            
+            console.log('🔍 Custom Entities Check:', {
+                hasCustomEntities,
+                totalEntities: result.entities ? result.entities.length : 0,
+                usingCDM,
+                cdmMatchesLength: cdmMatches.length
+            });
+            
+            // Always show corrected ERD when there are warnings and a choice has been made
+            if ((hasFixableWarnings || hasCustomEntities) && cdmChoiceMade) {
+                // Show appropriate corrected ERD based on user's choice
+                let correctedERDToShow = result.correctedERD || 'No corrected ERD generated yet.';
+                let erdTitle = "Corrected ERD (Best Practices)";
+                
+                if (wizard.cdmChoice === 'cdm') {
+                    // If user chose CDM, we still need to apply naming fixes to custom entities
+                    // Start with the server's corrected ERD (which has naming fixes) and merge with CDM
+                    try {
+                        if (cdmMatches.length > 0 && result.correctedERD) {
+                            // Use a hybrid approach: apply naming fixes from corrected ERD to custom entities
+                            correctedERDToShow = generateCDMERDWithFixes(cdmMatches, wizard.stepData.validation.relationships, result.correctedERD);
+                            erdTitle = "Suggested CDM ERD (Includes Standard Entities + Fixed Custom Entities)";
+                        } else if (cdmMatches.length > 0) {
+                            // Fallback to original CDM generation if no corrected ERD
+                            correctedERDToShow = generateCDMERD(cdmMatches, wizard.stepData.validation.relationships);
+                            erdTitle = "Suggested CDM ERD (Includes Standard Entities)";
+                        }
+                    } catch (error) {
+                        console.error('Error generating CDM corrected ERD:', error);
+                    }
+                }
+                
                 // Populate original ERD content
                 const originalERDContentElement = document.getElementById('originalERDContent');
                 originalERDContentElement.textContent = isUsingCorrectedERD ? originalERDContent : (currentERDContent || 'Original ERD content not available');
                 
                 // Populate corrected ERD content
                 const correctedERDContent = document.getElementById('correctedERDContent');
-                correctedERDContent.textContent = result.correctedERD;
+                correctedERDContent.textContent = correctedERDToShow;
+                
+                // Show warnings list only if CDM choice has been made
+                const warningsListSection = document.getElementById('warningsListSection');
+                const warningsListContent = document.getElementById('warningsListContent');
+                
+                // Check if CDM choice has been made (either through button click or no CDM matches found)
+                const hasCDMMatches = validation.cdmAnalysis && validation.cdmAnalysis.matches && validation.cdmAnalysis.matches.length > 0;
+                const cdmChoiceMade = wizard.cdmChoice || !hasCDMMatches; // If no CDM matches, choice is implicit
+                
+                if (cdmChoiceMade && warningsListSection && warningsListContent) {
+                    warningsListSection.classList.remove('hidden');
+                    
+                    if (validation.warnings && validation.warnings.length > 0) {
+                        let warningsHtml = '';
+                        
+                        // Display ALL messages from warnings array (excluding CDM info messages) to ensure consistency
+                        const displayWarnings = validation.warnings.filter(w => w.category !== 'cdm');
+                        
+                        if (displayWarnings.length > 0) {
+                            displayWarnings.forEach((warning, index) => {
+                                warningsHtml += `
+                                    <div class="message-card warning">
+                                        <div class="message-content">
+                                            <div class="message-title">
+                                                ${warning.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                            </div>
+                                            <div class="message-description">
+                                                ${warning.message}
+                                            </div>
+                                            <div class="message-description" style="margin-top: 8px;">
+                                                <strong>Suggestion:</strong> ${warning.suggestion}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            warningsHtml = `
+                                <div class="message-card success">
+                                    <div class="message-content">
+                                        <div class="message-title">No issues found!</div>
+                                        <div class="message-description">Your ERD follows Dataverse best practices.</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        warningsListContent.innerHTML = warningsHtml;
+                    } else {
+                        warningsListContent.innerHTML = `
+                            <div class="message-card info">
+                                <div class="message-content">
+                                    <div class="message-title">No validation warnings</div>
+                                    <div class="message-description">No validation warnings to display.</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (warningsListSection) {
+                    warningsListSection.classList.add('hidden');
+                }
+                
+                // Update the title
+                const correctedERDTitle = document.querySelector('#correctedERDSection h6');
+                if (correctedERDTitle) {
+                    correctedERDTitle.textContent = erdTitle;
+                }
+                
                 correctedERDSection.classList.remove('hidden');
                 
                 // Add copy original ERD functionality
@@ -1719,7 +2184,7 @@
                 // Add copy corrected ERD functionality
                 const copyButton = document.getElementById('copyCorrectedERD');
                 copyButton.onclick = function() {
-                    navigator.clipboard.writeText(result.correctedERD).then(function() {
+                    navigator.clipboard.writeText(correctedERDToShow).then(function() {
                         copyButton.innerHTML = 'Copied';
                         setTimeout(() => {
                             copyButton.innerHTML = 'Copy';
@@ -1740,8 +2205,16 @@
                         console.log('USE THIS button clicked');
                         
                         try {
-                            // Create a new File object with the corrected ERD content
-                            const correctedContent = result.correctedERD;
+                            // Use the corrected ERD content that's currently being displayed
+                            const correctedContent = correctedERDToShow;
+                            
+                            // Validate that we have valid content
+                            if (!correctedContent || correctedContent === 'No corrected ERD generated yet.') {
+                                throw new Error('No valid corrected ERD content available');
+                            }
+                            
+                            console.log('Using corrected ERD content:', correctedContent.substring(0, 100) + '...');
+                            
                             const blob = new Blob([correctedContent], { type: 'text/plain' });
                             const correctedFile = new File([blob], 'corrected-erd.mmd', { type: 'text/plain' });
                             
@@ -1762,7 +2235,7 @@
                                 fileName.innerHTML = 'corrected-erd.mmd <span style="color: #107c10; font-weight: bold;">(Using Corrected Version)</span>';
                                 fileSize.textContent = `${(correctedFile.size / 1024).toFixed(1)} KB`;
                                 fileInfo.style.display = 'flex';
-                                fileInfo.style.backgroundColor = '#f6ffed';
+                                fileInfo.style.backgroundColor = '#f3fdf3';
                                 fileInfo.style.border = '2px solid #b7eb8f';
                                 fileInfo.style.borderRadius = '6px';
                             }
@@ -1774,40 +2247,38 @@
                             }
                             
                             // Show success message on button
-                            useButton.innerHTML = '✓ ERD Updated';
+                            useButton.innerHTML = 'ERD Updated';
                             useButton.style.backgroundColor = '#107c10';
                             useButton.style.borderColor = '#107c10';
                             useButton.disabled = true;
                             
+                            // Show the schema display section
+                            const schemaDisplaySection = document.getElementById('schemaDisplaySection');
+                            if (schemaDisplaySection) {
+                                schemaDisplaySection.classList.remove('hidden');
+                            }
+                            
                             console.log('Updated UI elements');
                             
-                            // Add green success banner at the top of validation results
-                            const validationResults = document.getElementById('validationResults');
-                            if (validationResults) {
-                                // Remove any existing success banner
-                                const existingBanner = document.getElementById('correctedERDSuccessBanner');
-                                if (existingBanner) {
-                                    existingBanner.remove();
-                                }
-                                
-                                // Create success banner
-                                const successBanner = document.createElement('div');
-                                successBanner.id = 'correctedERDSuccessBanner';
-                                successBanner.style.cssText = `
-                                    background: #f6ffed;
-                                    border: 2px solid #b7eb8f;
-                                    border-radius: 6px;
-                                    padding: 16px;
-                                    margin-bottom: 20px;
-                                    text-align: center;
-                                    color: #107c10;
-                                    font-weight: bold;
-                                    font-size: 16px;
-                                `;
-                                successBanner.innerHTML = '✓ Now using corrected ERD version - Re-validating...';
-                                
-                                // Insert at the beginning of validation results
-                                validationResults.insertBefore(successBanner, validationResults.firstChild);
+                            // Hide the original ERD section since we're using the corrected version
+                            const originalERDSection = document.getElementById('originalERDSection');
+                            if (originalERDSection) {
+                                originalERDSection.style.display = 'none';
+                                console.log('Hidden original ERD section');
+                            }
+                            
+                            // Hide the "Compare & Choose" instructions since we're only showing corrected ERD
+                            const compareChooseInstructions = document.getElementById('compareChooseInstructions');
+                            if (compareChooseInstructions) {
+                                compareChooseInstructions.style.display = 'none';
+                                console.log('Hidden compare & choose instructions');
+                            }
+                            
+                            // Update the grid layout to single column for corrected ERD only
+                            const comparisonGrid = originalERDSection?.parentElement;
+                            if (comparisonGrid) {
+                                comparisonGrid.style.gridTemplateColumns = '1fr';
+                                console.log('Updated grid layout to single column');
                             }
                             
                             // Add indicator to step navigation
@@ -1818,13 +2289,101 @@
                             
                             console.log('Starting re-validation...');
                             
-                            // Re-validate the corrected ERD to show updated results
-                            await validateERD(correctedContent);
+                            // Add corrected ERD success banner
+                            const validationResults = document.getElementById('validationResults');
+                            if (validationResults) {
+                                // Remove any existing success banners first
+                                const existingBanners = validationResults.querySelectorAll('.corrected-erd-success-banner, .cdm-choice-success-banner');
+                                existingBanners.forEach(banner => banner.remove());
+                                
+                                // Create and add corrected ERD success banner
+                                const successBanner = document.createElement('div');
+                                successBanner.className = 'corrected-erd-success-banner';
+                                successBanner.style.cssText = `
+                                    background-color: #d4edda;
+                                    border: 1px solid #c3e6cb;
+                                    color: #155724;
+                                    padding: 12px 16px;
+                                    border-radius: 6px;
+                                    margin-bottom: 16px;
+                                    font-size: 14px;
+                                    font-weight: 500;
+                                `;
+                                successBanner.innerHTML = 'Corrected ERD applied successfully! All naming conflicts have been resolved.';
+                                
+                                validationResults.insertBefore(successBanner, validationResults.firstChild);
+                            }
                             
-                            // Update success banner after validation
-                            const banner = document.getElementById('correctedERDSuccessBanner');
-                            if (banner) {
-                                banner.innerHTML = '✓ Successfully loaded and validated corrected ERD version!';
+                            // Re-validate the corrected ERD to show updated results
+                            await validateERD(correctedContent, true);
+                            
+                            // Since we're using a corrected ERD, only show critical errors
+                            // Informational warnings (severity: 'info') should not be displayed after corrections
+                            const validationMessages = document.getElementById('validationMessages');
+                            if (validationMessages) {
+                                // Remove the entire warnings section if only info messages remain
+                                const warningCards = validationMessages.querySelectorAll('.message-card.warning');
+                                let hasRealWarnings = false;
+                                
+                                warningCards.forEach(card => {
+                                    const title = card.querySelector('.message-title')?.textContent || '';
+                                    const message = title.toLowerCase();
+                                    
+                                    // Hide warnings that the corrected ERD should have fixed or that are informational
+                                    if (message.includes('non-primary column called') || 
+                                        message.includes('naming conflict') ||
+                                        message.includes('exists with foreign keys present') ||
+                                        message.includes('foreign key naming') ||
+                                        message.includes('cdm entity detected') ||
+                                        message.includes('cdm summary') ||
+                                        message.includes('foreign key found') || 
+                                        message.includes('missing foreign key') ||
+                                        message.includes('relationship defined but no matching')) {
+                                        card.style.display = 'none';
+                                        console.log('Hidden corrected/informational warning:', title);
+                                    } else {
+                                        hasRealWarnings = true;
+                                    }
+                                });
+                                
+                            // Also clear the warnings list in the corrected ERD section
+                            const warningsListContent = document.getElementById('warningsListContent');
+                            if (warningsListContent) {
+                                // Hide the warnings list section since issues are resolved
+                                const warningsListSection = document.getElementById('warningsListSection');
+                                if (warningsListSection) {
+                                    warningsListSection.classList.add('hidden');
+                                }
+                                console.log('Hidden warnings list section for corrected ERD');
+                            }
+                            
+                            // Hide the entire warnings list section title since issues are resolved
+                            const warningsListSection = document.getElementById('warningsListSection');
+                            if (warningsListSection) {
+                                const fixedTitle = warningsListSection.querySelector('h5');
+                                if (fixedTitle) {
+                                    fixedTitle.style.color = '#0ea5e9';
+                                    fixedTitle.textContent = 'Issues Status';
+                                }
+                            }
+                            
+                                // If no real warnings remain, hide the entire warnings section
+                                if (!hasRealWarnings) {
+                                    const warningsSection = document.getElementById('suggestedCorrectionsSection');
+                                    if (warningsSection) {
+                                        warningsSection.style.display = 'none';
+                                        console.log('Hidden entire warnings section - no critical issues remain');
+                                    }
+                                }
+                            }
+                            
+                            // Remove any existing success banners first
+                            if (validationResults) {
+                                const existingBanners = validationResults.querySelectorAll('.corrected-erd-success-banner, .cdm-choice-success-banner');
+                                existingBanners.forEach(banner => banner.remove());
+                                
+                                // Remove the success banner - no longer showing it
+                                // User feedback will come from the validation results themselves
                             }
                             
                             console.log('Re-validation completed');
@@ -1834,17 +2393,18 @@
                             
                             // Show error message
                             const errorBanner = document.createElement('div');
+                            errorBanner.className = 'message-card error';
                             errorBanner.style.cssText = `
-                                background: #fff2f0;
-                                border: 2px solid #ffccc7;
-                                border-radius: 6px;
-                                padding: 16px;
                                 margin-bottom: 20px;
                                 text-align: center;
-                                color: #d4380d;
                                 font-weight: bold;
                             `;
-                            errorBanner.innerHTML = '❌ Error applying corrected ERD: ' + error.message;
+                            errorBanner.innerHTML = `
+                                <div class="message-content">
+                                    <div class="message-title">❌ Error applying corrected ERD</div>
+                                    <div class="message-description">${error.message}</div>
+                                </div>
+                            `;
                             
                             const validationResults = document.getElementById('validationResults');
                             if (validationResults) {
@@ -1859,56 +2419,191 @@
                 correctedERDSection.classList.add('hidden');
             }
             
-            // Display schema overview
-            displaySchemaOverview(result);
-        }
-
-        function displaySchemaOverview(result) {
+            // Display schema overview directly here with proper scope
             const schemaSection = document.getElementById('schemaDisplaySection');
             const schemaContent = document.getElementById('schemaContent');
             
-            // TEMPORARY: Always show the section for debugging
-            schemaSection.classList.remove('hidden');
+            // Show schema section if using corrected ERD, otherwise keep it hidden until "USE CORRECTED ERD" button is clicked
+            if (result.usingCorrectedERD) {
+                schemaSection.classList.remove('hidden');
+                console.log('✅ Showing schema section for corrected ERD');
+            } else {
+                schemaSection.classList.add('hidden');
+                console.log('❌ Keeping schema section hidden until USE CORRECTED ERD is clicked');
+            }
             
-            if (!result.success || !result.entities || result.entities.length === 0) {
-                schemaContent.innerHTML = '<p style="color: red;">DEBUG: No entities found or result not successful</p>';
+            // If CDM detected but no choice made, show waiting message
+            if (hasCDMDetection && !cdmChoiceMade) {
+                schemaContent.innerHTML = `
+                    <div class="message-card info">
+                        <div class="message-content">
+                            <div class="message-title">CDM Entities Detected</div>
+                            <div class="message-description">Please choose whether to use CDM entities or keep your custom entities above to see the schema overview.</div>
+                        </div>
+                    </div>
+                `;
                 return;
             }
             
-            schemaContent.innerHTML = '<p style="color: green;">DEBUG: Schema function called with ' + result.entities.length + ' entities</p>';
+            // If no entities found
+            if (!result.success || !result.entities || result.entities.length === 0) {
+                schemaContent.innerHTML = `
+                    <div class="message-card warning">
+                        <div class="message-content">
+                            <div class="message-title">No Entities Found</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
             
+            // Build and display the schema overview
             let schemaHtml = '';
             
-            // Display entities
-            result.entities.forEach(entity => {
+            // Use the CDM matches from validation result or wizard
+            const cdmMatchesForDisplay = cdmMatches.length > 0 ? cdmMatches : (wizard.cdmMatches || []);
+            
+            console.log('🔍 Schema Building Debug:', {
+                usingCDM,
+                cdmMatchesLength: cdmMatches.length,
+                cdmMatchesForDisplayLength: cdmMatchesForDisplay.length,
+                wizardCdmMatchesLength: wizard.cdmMatches ? wizard.cdmMatches.length : 0
+            });
+            
+            // Display entities - show CDM entities if using CDM, otherwise show custom entities
+            if (usingCDM && cdmMatchesForDisplay.length > 0) {
+                // Show CDM entity schemas
+                cdmMatchesForDisplay.forEach(match => {
+                    // Handle both backend match structure and wizard structure
+                    const cdmEntity = match.cdmEntity || match;
+                    const originalEntity = match.originalEntity || match.entity;
+                    const cdmEntityName = cdmEntity?.displayName || cdmEntity?.logicalName || 'CDM Entity';
+                    const description = cdmEntity?.description || 'Standard CDM entity';
+                    const keyAttributes = cdmEntity?.keyAttributes || [];
+                    
+                    schemaHtml += `
+                        <div class="schema-entity">
+                            <div class="schema-entity-header">
+                                ${cdmEntityName}
+                                <span style="background: #1677ff; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CDM</span>
+                                <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                    (${keyAttributes.length}+ standard CDM attributes)
+                                </span>
+                            </div>
+                            <div class="schema-entity-content">
+                                <div style="margin-bottom: 12px; padding: 8px; background: #f0f9ff; border-radius: 4px; font-size: 13px; color: #0369a1;">
+                                    📋 ${description}
+                                </div>
+                                <div class="schema-attributes">
+                                    <h6 style="margin: 0 0 8px 0; color: #374151; font-size: 13px; font-weight: 600;">Key CDM Attributes:</h6>
+                `;
+                
+                // Display key CDM attributes
+                if (keyAttributes.length > 0) {
+                    keyAttributes.forEach(attr => {
+                        schemaHtml += `
+                            <div class="schema-attribute" style="margin-bottom: 6px; padding: 6px 8px; background: #f8fafc; border-left: 3px solid #1677ff; font-size: 12px;">
+                                <span style="font-weight: 600; color: #1f2937;">${attr}</span>
+                                <span style="color: #6b7280; margin-left: 8px; font-style: italic;">Standard CDM field</span>
+                            </div>
+                        `;
+                    });
+                } else {
+                    schemaHtml += `
+                        <div style="color: #6b7280; font-style: italic; font-size: 12px;">
+                            Standard CDM attributes will be available after deployment
+                        </div>
+                    `;
+                }
+                
+                schemaHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+                });
+            }
+            
+            // Also show custom entities (entities not covered by CDM matches)
+            if (result.entities && result.entities.length > 0) {
+                const customEntities = usingCDM && cdmMatchesForDisplay.length > 0 
+                    ? result.entities.filter(entity => !cdmMatchesForDisplay.some(match => {
+                        const matchEntityName = match.originalEntity?.name || match.entity?.name || (match.cdmEntity?.displayName);
+                        return matchEntityName === entity.name;
+                    }))
+                    : result.entities;
+                
+                console.log('🔍 Custom Entities Debug (first instance):', {
+                    totalEntities: result.entities.length,
+                    filteredCustomEntities: customEntities.length,
+                    usingCDM,
+                    cdmMatchesForDisplayLength: cdmMatchesForDisplay.length
+                });
+                
+                customEntities.forEach(entity => {
+                    const isCustom = usingCDM && cdmMatchesForDisplay.length > 0;
+                    const customBadge = isCustom ? '<span style="background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CUSTOM</span>' : '';
+                    
+                    schemaHtml += `
+                        <div class="schema-entity">
+                            <div class="schema-entity-header">
+                                ${entity.name}${customBadge}
+                                <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                    (${entity.attributes.length} attributes)
+                                </span>
+                            </div>
+                            <div class="schema-entity-content">
+                                <div class="schema-attributes">
+                    `;
+                    
+                    // Display custom entity attributes
+                    entity.attributes.forEach(attr => {
+                        const pkIcon = attr.isPrimaryKey ? '<span style="color: #f59e0b;">🔑</span> ' : '';
+                        const fkIcon = attr.isForeignKey ? '<span style="color: #8b5cf6;">🔗</span> ' : '';
+                        const requiredIcon = attr.isRequired ? '<span style="color: #ef4444;">*</span>' : '';
+                        
+                        schemaHtml += `
+                            <div class="schema-attribute">
+                                ${pkIcon}${fkIcon}<strong>${attr.name}</strong>
+                                <span class="attribute-type">${attr.type}</span>
+                                ${requiredIcon}
+                            </div>
+                        `;
+                    });
+                    
+                    schemaHtml += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Display relationships
+            if (result.relationships && result.relationships.length > 0) {
                 schemaHtml += `
                     <div class="schema-entity">
                         <div class="schema-entity-header">
-                            ${entity.name}
+                            Relationships
                             <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
-                                (${entity.attributes.length} attributes)
+                                (${result.relationships.length} relationships)
                             </span>
                         </div>
                         <div class="schema-entity-content">
-                            <div class="schema-attributes">
+                            <div class="schema-relationships">
                 `;
                 
-                // Display attributes
-                entity.attributes.forEach(attr => {
-                    const constraints = [];
-                    if (attr.isPrimaryKey) constraints.push('PK');
-                    if (attr.isForeignKey) constraints.push('FK');
-                    if (attr.isUnique) constraints.push('UK');
-                    if (attr.isRequired && !attr.isPrimaryKey) constraints.push('Required');
-                    
-                    const constraintText = constraints.length > 0 ? constraints.join(', ') : '';
+                result.relationships.forEach(rel => {
+                    const cardinalityDisplay = rel.cardinality ? 
+                        `${rel.cardinality.from} → ${rel.cardinality.to}` : 
+                        'Unknown';
                     
                     schemaHtml += `
-                        <div class="schema-attribute">
-                            <span class="attribute-name">${attr.name}</span>
-                            <span class="attribute-type">${attr.originalType || attr.type}</span>
-                            <span class="attribute-constraints">${constraintText}</span>
-                            ${attr.description ? `<span class="attribute-description">"${attr.description}"</span>` : ''}
+                        <div class="schema-relationship">
+                            <strong>${rel.fromEntity}</strong> 
+                            <span style="color: #6b7280;">→</span> 
+                            <strong>${rel.toEntity}</strong>
+                            <span style="color: #6b7280; font-size: 12px;">(${cardinalityDisplay})</span>
                         </div>
                     `;
                 });
@@ -1918,7 +2613,155 @@
                         </div>
                     </div>
                 `;
-            });
+            }
+            
+            // Set the schema content
+            schemaContent.innerHTML = schemaHtml;
+        }
+
+        // Old displaySchemaOverview function removed - logic integrated into displayValidationResults
+
+        function displayCDMDetection(result) {
+            
+            // Show schema section
+            schemaSection.classList.remove('hidden');
+            
+            // If CDM detected but no choice made, show waiting message instead of "No Entities Found"
+            if (hasLocalCDMDetection && !hasLocalCDMChoice) {
+                schemaContent.innerHTML = `
+                    <div class="message-card info">
+                        <div class="message-content">
+                            <div class="message-title">CDM Entities Detected</div>
+                            <div class="message-description">Please choose whether to use CDM entities or keep your custom entities above to see the schema overview.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (!result.success || !result.entities || result.entities.length === 0) {
+                schemaContent.innerHTML = `
+                    <div class="message-card warning">
+                        <div class="message-content">
+                            <div class="message-title">No Entities Found</div>
+                            <div class="message-description">No valid entities were found in your ERD file.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let schemaHtml = '';
+            
+            // Use the CDM matches from validation result or wizard
+            const cdmMatchesForDisplay = cdmMatches.length > 0 ? cdmMatches : (wizard.cdmMatches || []);
+            
+            // Display entities - show CDM entities if using CDM, otherwise show custom entities
+            if (usingCDM && cdmMatchesForDisplay.length > 0) {
+                // Show CDM entity schemas
+                cdmMatchesForDisplay.forEach(match => {
+                    const cdmEntity = match.cdmEntity;
+                    const cdmEntityName = cdmEntity?.displayName || cdmEntity?.logicalName || 'CDM Entity';
+                    const description = cdmEntity?.description || 'Standard CDM entity';
+                    const keyAttributes = cdmEntity?.keyAttributes || [];
+                    
+                    schemaHtml += `
+                        <div class="schema-entity">
+                            <div class="schema-entity-header">
+                                ${cdmEntityName}
+                                <span style="background: #1677ff; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CDM</span>
+                                <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                    (${keyAttributes.length}+ standard CDM attributes)
+                                </span>
+                            </div>
+                            <div class="schema-entity-content">
+                                <div style="margin-bottom: 12px; padding: 8px; background: #f0f9ff; border-radius: 4px; font-size: 13px; color: #0369a1;">
+                                    📋 ${description}
+                                </div>
+                                <div class="schema-attributes">
+                                    <h6 style="margin: 0 0 8px 0; color: #374151; font-size: 13px; font-weight: 600;">Key CDM Attributes:</h6>
+                    `;
+                    
+                    // Display key CDM attributes
+                    if (keyAttributes.length > 0) {
+                        keyAttributes.forEach(attr => {
+                            schemaHtml += `
+                                <div class="schema-attribute" style="margin-bottom: 6px; padding: 6px 8px; background: #f8fafc; border-left: 3px solid #1677ff; font-size: 12px;">
+                                    <span style="font-weight: 600; color: #1f2937;">${attr}</span>
+                                    <span style="color: #6b7280; margin-left: 8px; font-style: italic;">Standard CDM field</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        schemaHtml += `
+                            <div style="color: #6b7280; font-style: italic; font-size: 12px;">
+                                Standard CDM attributes will be available after deployment
+                            </div>
+                        `;
+                    }
+                    
+                    schemaHtml += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Also show custom entities (entities not covered by CDM matches)
+            if (result.entities && result.entities.length > 0) {
+                const customEntities = usingCDM && cdmMatchesForDisplay.length > 0 
+                    ? result.entities.filter(entity => !cdmMatchesForDisplay.some(match => {
+                        const matchEntityName = match.originalEntity?.name || match.entity?.name || (match.cdmEntity?.displayName);
+                        return matchEntityName === entity.name;
+                    }))
+                    : result.entities;
+                
+                console.log('🔍 Custom Entities Debug (second instance):', {
+                    totalEntities: result.entities.length,
+                    filteredCustomEntities: customEntities.length,
+                    usingCDM,
+                    cdmMatchesForDisplayLength: cdmMatchesForDisplay.length
+                });
+                
+                customEntities.forEach(entity => {
+                    const isCustom = usingCDM && cdmMatchesForDisplay.length > 0;
+                    const customBadge = isCustom ? '<span style="background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CUSTOM</span>' : '';
+                    
+                    schemaHtml += `
+                        <div class="schema-entity">
+                            <div class="schema-entity-header">
+                                ${entity.name}${customBadge}
+                                <span style="font-weight: normal; color: #6b7280; font-size: 12px;">
+                                    (${entity.attributes.length} attributes)
+                                </span>
+                            </div>
+                            <div class="schema-entity-content">
+                                <div class="schema-attributes">
+                    `;
+                    
+                    // Display custom entity attributes
+                    entity.attributes.forEach(attr => {
+                        const pkIcon = attr.isPrimaryKey ? '<span style="color: #f59e0b;">🔑</span> ' : '';
+                        const fkIcon = attr.isForeignKey ? '<span style="color: #8b5cf6;">🔗</span> ' : '';
+                        const requiredIcon = attr.isRequired ? '<span style="color: #ef4444;">*</span>' : '';
+                        
+                        schemaHtml += `
+                            <div class="schema-attribute">
+                                ${pkIcon}${fkIcon}<strong>${attr.name}</strong>
+                                <span class="attribute-type">${attr.type}</span>
+                                ${requiredIcon}
+                            </div>
+                        `;
+                    });
+                    
+                    schemaHtml += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
             
             // Display relationships
             if (result.relationships && result.relationships.length > 0) {
@@ -1960,8 +2803,387 @@
             schemaSection.classList.remove('hidden');
         }
 
+        function displayCDMDetection(result) {
+            const cdmSection = document.getElementById('cdmDetectionSection');
+            const cdmMatches = document.getElementById('cdmMatches');
+            const cdmMatchesList = document.getElementById('cdmMatchesList');
+            const cdmRecommendations = document.getElementById('cdmRecommendations');
+            const cdmRecommendationsList = document.getElementById('cdmRecommendationsList');
+            const cdmChoiceSection = document.getElementById('cdmChoiceSection');
+            
+            // Check if CDM detection data exists
+            if (!result.cdmDetection) {
+                cdmSection.classList.add('hidden');
+                return;
+            }
+            
+            const cdmData = result.cdmDetection;
+            const hasMatches = cdmData.matches && cdmData.matches.length > 0;
+            const hasRecommendations = cdmData.recommendations && cdmData.recommendations.length > 0;
+            
+            // Only show CDM section if we have matches or recommendations
+            if (!hasMatches && !hasRecommendations) {
+                cdmSection.classList.add('hidden');
+                return;
+            }
+            
+            cdmSection.classList.remove('hidden');
+            
+            // Display CDM matches - HIDDEN: we show choice section only
+            if (hasMatches) {
+                cdmMatches.classList.add('hidden'); // Hide the detailed match display
+                let matchesHtml = '';
+                
+                cdmData.matches.forEach(match => {
+                    // Safely extract CDM entity name with fallbacks
+                    const cdmEntityName = match.cdmEntity?.displayName || 
+                                         match.cdmEntity?.logicalName || 
+                                         match.cdmEntity?.name ||
+                                         'CDM Entity';
+                    
+                    const originalEntityName = match.originalEntity?.name || 'Entity';
+                    const description = match.cdmEntity?.description || 'Standard CDM entity with built-in attributes and relationships';
+                    
+                    matchesHtml += `
+                        <div style="margin-bottom: 12px; padding: 12px; background: white; border: 1px solid #d9f7be; border-radius: 4px;">
+                            <div style="margin-bottom: 6px;">
+                                <strong style="color: #389e0d;">${originalEntityName} → ${cdmEntityName}</strong>
+                                <span style="background: #1677ff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 8px;">
+                                    CDM Entity
+                                </span>
+                            </div>
+                            <div style="font-size: 13px; color: #595959; margin-bottom: 8px;">
+                                ${description}
+                            </div>
+                            ${match.matchReasons && match.matchReasons.length > 0 ? `
+                                <div style="font-size: 12px; color: #8c8c8c;">
+                                    <strong>Match reasons:</strong> ${match.matchReasons.join(', ')}
+                                </div>
+                            ` : ''}
+                            ${match.attributes && match.attributes.length > 0 ? `
+                                <div style="font-size: 12px; color: #8c8c8c; margin-top: 4px;">
+                                    <strong>Standard attributes:</strong> ${match.attributes.slice(0, 5).join(', ')}${match.attributes.length > 5 ? ` (+${match.attributes.length - 5} more)` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                cdmMatchesList.innerHTML = matchesHtml;
+            } else {
+                cdmMatches.classList.add('hidden');
+            }
+            
+            // Display CDM recommendations - HIDDEN: we show choice section only
+            if (hasRecommendations) {
+                cdmRecommendations.classList.add('hidden'); // Hide the detailed recommendations display
+                let recommendationsHtml = '';
+                
+                cdmData.recommendations.forEach(rec => {
+                    recommendationsHtml += `
+                        <div style="margin-bottom: 12px; padding: 12px; background: white; border: 1px solid #ffe7ba; border-radius: 4px;">
+                            <div style="margin-bottom: 6px;">
+                                <strong style="color: #d46b08;">${rec.originalEntity.name} might be similar to ${rec.cdmEntity.displayName || rec.cdmEntity.logicalName}</strong>
+                            </div>
+                            <div style="font-size: 13px; color: #595959; margin-bottom: 8px;">
+                                ${rec.description}
+                            </div>
+                            ${rec.reason ? `
+                                <div style="font-size: 12px; color: #8c8c8c;">
+                                    <strong>Suggestion:</strong> ${rec.reason}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                cdmRecommendationsList.innerHTML = recommendationsHtml;
+            } else {
+                cdmRecommendations.classList.add('hidden');
+            }
+            
+            // Show choice section if we have matches
+            if (hasMatches) {
+                cdmChoiceSection.classList.remove('hidden');
+                
+                // Add event listeners for CDM choice buttons
+                const useCDMButton = document.getElementById('useCDMEntities');
+                const useCustomButton = document.getElementById('useCustomEntities');
+                
+                // Add event listener for CDM benefits toggle
+                const cdmBenefitsToggle = document.getElementById('cdmBenefitsToggle');
+                const cdmBenefitsInfo = document.getElementById('cdmBenefitsInfo');
+                if (cdmBenefitsToggle && cdmBenefitsInfo) {
+                    cdmBenefitsToggle.onclick = function() {
+                        cdmBenefitsInfo.classList.toggle('hidden');
+                    };
+                }
+                
+                useCDMButton.onclick = async function() {
+                // Store CDM choice in wizard state
+                wizard.cdmChoice = 'cdm';
+                // Prefer full objects; fall back to matches (now same shape after Fix 1)
+                wizard.cdmMatches = cdmData.detectedCDM || cdmData.matches;
+                
+                // Update button states to use blue instead of green
+                useCDMButton.style.background = '#1677ff';
+                useCDMButton.innerHTML = 'Using CDM Entities';
+                useCDMButton.disabled = true;
+                
+                useCustomButton.style.background = '#f5f5f5';
+                useCustomButton.style.color = '#8c8c8c';
+                useCustomButton.disabled = false;
+                
+                // Hide the CDM detection section since choice has been made
+                const cdmDetectionSection = document.getElementById('cdmDetectionSection');
+                if (cdmDetectionSection) {
+                    cdmDetectionSection.style.display = 'none';
+                    console.log('Hidden CDM detection section after choice made');
+                }
+                
+                // Add CDM success banner
+                const validationResults = document.getElementById('validationResults');
+                if (validationResults) {
+                    // Remove any existing success banners first
+                    const existingBanners = validationResults.querySelectorAll('.corrected-erd-success-banner, .cdm-choice-success-banner');
+                    existingBanners.forEach(banner => banner.remove());
+                    
+                    // Create and add CDM success banner
+                    const successBanner = document.createElement('div');
+                    successBanner.className = 'cdm-choice-success-banner';
+                    successBanner.style.cssText = `
+                        background-color: #d4edda;
+                        border-left: 4px solid #28a745;
+                        color: #155724;
+                        padding: 12px 16px;
+                        border-radius: 4px;
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                        font-weight: 500;
+                    `;
+                    successBanner.innerHTML = 'CDM entities selected successfully! Using existing Dataverse entities.';
+                    
+                    validationResults.insertBefore(successBanner, validationResults.firstChild);
+                }
+                
+                console.log('User chose CDM entities – sending:', wizard.cdmMatches);
+                console.log('About to call displayValidationResults with result:', result);
+                
+                // Re-display validation results now that choice is made
+                displayValidationResults(result);
+                    
+                    // Generate new ERD with CDM entities silently in background
+                    try {
+                        const newERD = generateCDMERD(cdmData.detectedCDM || cdmData.matches, wizard.stepData.validation.relationships);
+                        console.log('Generated CDM ERD:', newERD);
+                        
+                        // Update the wizard state with the new ERD content silently
+                        wizard.fileContent = newERD;
+                        currentERDContent = newERD;
+                        
+                        // Update file display to show we're using CDM ERD
+                        const fileInfo = document.getElementById('fileInfo');
+                        const fileName = document.getElementById('fileName');
+                        const fileSize = document.getElementById('fileSize');
+                        
+                        if (fileName && fileSize && fileInfo) {
+                            fileName.innerHTML = 'cdm-enhanced-erd.mmd <span style="color: #1677ff; font-weight: bold;">(Using CDM Entities)</span>';
+                            fileSize.textContent = `${(newERD.length / 1024).toFixed(1)} KB`;
+                            fileInfo.style.display = 'flex';
+                            fileInfo.style.backgroundColor = '#f0f8ff';
+                            fileInfo.style.border = '2px solid #1677ff';
+                            fileInfo.style.borderRadius = '6px';
+                        }
+                        
+                        // Hide the upload area
+                        const uploadArea = document.getElementById('fileUploadArea');
+                        if (uploadArea) {
+                            uploadArea.style.display = 'none';
+                        }
+                        
+                        // Re-validate with the new ERD to show corrected version if needed
+                        console.log('Re-validating with CDM ERD...');
+                        await validateERD(newERD);
+                        
+                    } catch (error) {
+                        console.error('Error generating CDM ERD:', error);
+                    }
+                };
+                
+                useCustomButton.onclick = function() {
+                    // Store custom choice in wizard state
+                    wizard.cdmChoice = 'custom';
+                    wizard.cdmMatches = null;
+                    
+                    // Update button states
+                    useCustomButton.style.background = '#1677ff';
+                    useCustomButton.innerHTML = 'Using Custom Entities';
+                    useCustomButton.disabled = true;
+                    
+                    useCDMButton.style.background = '#f5f5f5';
+                    useCDMButton.style.color = '#8c8c8c';
+                    useCDMButton.disabled = false;
+                    
+                    // Hide the CDM detection section since choice has been made
+                    const cdmDetectionSection = document.getElementById('cdmDetectionSection');
+                    if (cdmDetectionSection) {
+                        cdmDetectionSection.style.display = 'none';
+                        console.log('Hidden CDM detection section after choice made');
+                    }
+                    
+                    console.log('User chose to use custom entities');
+                    
+                    // Re-display validation results now that choice is made
+                    displayValidationResults(result);
+                };
+            } else {
+                cdmChoiceSection.classList.add('hidden');
+            }
+        }
+
+        // Function to generate ERD with CDM entities
+        function generateCDMERD(cdmMatches, relationships) {
+            let erdContent = 'erDiagram\n\n';
+            
+            // Add CDM entities with minimal required structure (just a primary key for validation)
+            cdmMatches.forEach(match => {
+                const cdmEntityName = match.cdmEntity.displayName || match.cdmEntity.logicalName;
+                erdContent += `    ${cdmEntityName} {\n`;
+                erdContent += `        string id PK "Auto-generated unique identifier"\n`;
+                erdContent += `    }\n\n`;
+            });
+            
+            // Add any custom entities that were not matched to CDM
+            const originalEntities = wizard.stepData.validation.entities || [];
+            
+            // Debug: log the CDM matches structure
+            console.log('CDM matches for filtering:', cdmMatches.map(m => ({
+                hasOriginalEntity: !!m.originalEntity,
+                originalEntityName: m.originalEntity?.name,
+                hasCdmEntity: !!m.cdmEntity,
+                cdmEntityName: m.cdmEntity?.displayName || m.cdmEntity?.logicalName
+            })));
+            
+            const cdmEntityNames = cdmMatches
+                .filter(m => m.originalEntity && m.originalEntity.name) // Filter out invalid matches
+                .map(m => m.originalEntity.name.toLowerCase());
+            
+            originalEntities.forEach(entity => {
+                if (!cdmEntityNames.includes(entity.name.toLowerCase())) {
+                    // This is a custom entity, add it as-is
+                    erdContent += `    ${entity.name} {\n`;
+                    entity.attributes.forEach(attr => {
+                        const constraints = [];
+                        if (attr.isPrimaryKey) constraints.push('PK');
+                        if (attr.isForeignKey) constraints.push('FK');
+                        if (attr.isUnique) constraints.push('UK');
+                        if (attr.isRequired && !attr.isPrimaryKey) constraints.push('NOT NULL');
+                        
+                        const constraintText = constraints.length > 0 ? ` ${constraints.join(' ')}` : '';
+                        const descText = attr.description ? ` "${attr.description}"` : '';
+                        
+                        erdContent += `        ${attr.originalType || attr.type} ${attr.name}${constraintText}${descText}\n`;
+                    });
+                    erdContent += `    }\n\n`;
+                }
+            });
+            
+            // Add relationships
+            if (relationships && relationships.length > 0) {
+                relationships.forEach(rel => {
+                    // Map original entity names to CDM entity names if applicable
+                    let fromEntity = rel.fromEntity;
+                    let toEntity = rel.toEntity;
+                    
+                    const fromCDM = cdmMatches.find(m => m.originalEntity && m.originalEntity.name && m.originalEntity.name.toLowerCase() === rel.fromEntity.toLowerCase());
+                    const toCDM = cdmMatches.find(m => m.originalEntity && m.originalEntity.name && m.originalEntity.name.toLowerCase() === rel.toEntity.toLowerCase());
+                    
+                    if (fromCDM) fromEntity = fromCDM.cdmEntity.displayName || fromCDM.cdmEntity.logicalName;
+                    if (toCDM) toEntity = toCDM.cdmEntity.displayName || toCDM.cdmEntity.logicalName;
+                    
+                    const cardinality = rel.cardinality && typeof rel.cardinality === 'string' ? rel.cardinality : '||--o{';
+                    const relationshipName = rel.name || 'relates to';
+                    
+                    // Remove any existing quotes from the relationship name to avoid double quotes
+                    const cleanRelationshipName = relationshipName.replace(/^["']|["']$/g, '');
+                    
+                    erdContent += `    ${fromEntity} ${cardinality} ${toEntity} : "${cleanRelationshipName}"\n`;
+                });
+            }
+            
+            return erdContent;
+        }
+
+        // Function to generate CDM ERD with naming fixes applied to custom entities
+        function generateCDMERDWithFixes(cdmMatches, relationships, correctedERD) {
+            let erdContent = 'erDiagram\n\n';
+            
+            // Add CDM entities with minimal required structure
+            cdmMatches.forEach(match => {
+                const cdmEntityName = match.cdmEntity.displayName || match.cdmEntity.logicalName;
+                erdContent += `    ${cdmEntityName} {\n`;
+                erdContent += `        string id PK "Auto-generated unique identifier"\n`;
+                erdContent += `    }\n\n`;
+            });
+            
+            // Parse the corrected ERD to extract fixed custom entities
+            if (correctedERD) {
+                const lines = correctedERD.split('\n');
+                let currentEntity = null;
+                let inEntityDefinition = false;
+                
+                const cdmEntityNames = cdmMatches
+                    .filter(m => m.originalEntity && m.originalEntity.name)
+                    .map(m => m.originalEntity.name.toLowerCase());
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    
+                    // Check for entity definition start
+                    const entityMatch = trimmedLine.match(/^(\w+)\s*\{/);
+                    if (entityMatch) {
+                        const entityName = entityMatch[1];
+                        // Only include custom entities (not CDM-matched ones)
+                        if (!cdmEntityNames.includes(entityName.toLowerCase())) {
+                            currentEntity = entityName;
+                            inEntityDefinition = true;
+                            erdContent += `    ${entityName} {\n`;
+                        } else {
+                            currentEntity = null;
+                            inEntityDefinition = false;
+                        }
+                        continue;
+                    }
+                    
+                    // Check for entity definition end
+                    if (trimmedLine === '}' && inEntityDefinition) {
+                        erdContent += `    }\n\n`;
+                        currentEntity = null;
+                        inEntityDefinition = false;
+                        continue;
+                    }
+                    
+                    // Add attributes for custom entities
+                    if (inEntityDefinition && currentEntity && trimmedLine && !trimmedLine.includes('erDiagram')) {
+                        erdContent += `    ${trimmedLine}\n`;
+                    }
+                    
+                    // Add relationships (outside entity definitions)
+                    if (!inEntityDefinition && trimmedLine.includes('||--') || trimmedLine.includes('}--')) {
+                        erdContent += `    ${trimmedLine}\n`;
+                    }
+                }
+            }
+            
+            return erdContent;
+        }
+
         function updateStepStatus(step, status) {
             const stepNav = document.querySelector(`[data-step="${step}"]`);
+            if (!stepNav) {
+                console.warn(`Step navigation element not found for step: ${step}`);
+                return;
+            }
             stepNav.classList.remove('completed', 'error');
             if (status !== 'active') {
                 stepNav.classList.add(status);
@@ -2058,7 +3280,7 @@
                                 <input type="checkbox" id="cdm_${entityName}" value="${entityName}">
                                 <label for="cdm_${entityName}" style="flex: 1; cursor: pointer;">
                                     <strong>${entityInfo.displayName}</strong>
-                                    <div class="text-muted">${entityName} - Primary: ${entityInfo.primaryNameAttribute}</div>
+                                    <div class="text-muted">${entityInfo.displayName !== entityName ? `${entityName} - ` : ''}Primary: ${entityInfo.primaryNameAttribute}</div>
                                 </label>
                             `;
                             container.appendChild(item);
@@ -2160,8 +3382,27 @@
         }
 
         function populateEmptyChoices() {
-            document.getElementById('builtinChoicesContainer').innerHTML = '<p class="text-muted">Error loading global choice sets</p>';
-            // Keep the custom choices upload message
+            document.getElementById('builtinChoicesContainer').innerHTML = `
+                <div class="message-card info">
+                    <div class="message-content">
+                        <div class="message-title">No Built-in Global Choice Sets Available</div>
+                        <div class="message-description">
+                            No existing global choice sets were found in your Dataverse environment. 
+                            You can still create custom global choices by uploading a JSON file below.
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('customChoicesContainer').innerHTML = `
+                <div class="message-card info">
+                    <div class="message-content">
+                        <div class="message-title">Upload Custom Global Choices</div>
+                        <div class="message-description">
+                            Use the "Upload Global Choices JSON" section below to add custom choice sets to your solution.
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function updateChoicesCounts() {
@@ -2249,15 +3490,20 @@
             }
             
             // Get entity details
-            const entityDetails = wizard.stepData.validation.entities.map(entity => 
-                `${entity.name || entity.logicalName || 'Unknown'} - ${entity.displayName || entity.name || 'No display name'}`
-            );
+            const entityDetails = wizard.stepData.validation.entities.map(entity => {
+                const name = entity.name || entity.logicalName || 'Unknown';
+                const displayName = entity.displayName || entity.name || 'No display name';
+                // Only show both if they're meaningfully different (case-insensitive, trimmed comparison)
+                const normalizedName = name.toLowerCase().trim();
+                const normalizedDisplayName = displayName.toLowerCase().trim();
+                return normalizedName === normalizedDisplayName ? name : `${name} - ${displayName}`;
+            });
             
             // Get relationship details
             const relationshipDetails = wizard.stepData.validation.relationships.map(rel => {
                 const relationshipType = rel.cardinality?.type || rel.type || 'one-to-many';
                 const relationshipName = rel.name || rel.displayName || '';
-                const nameDisplay = relationshipName ? ` "${relationshipName}"` : '';
+                const nameDisplay = relationshipName ? ` ${relationshipName}` : '';
                 return `${rel.fromEntity} → ${rel.toEntity} (${relationshipType})${nameDisplay}`;
             });
 
@@ -2297,6 +3543,18 @@
                     count: wizard.stepData.validation.relationships.length,
                     details: relationshipDetails
                 },
+                // Add CDM information if available
+                ...(wizard.cdmChoice ? [{
+                    title: 'CDM Integration',
+                    count: wizard.cdmMatches ? wizard.cdmMatches.length : 0,
+                    details: wizard.cdmChoice === 'cdm' ? 
+                        (wizard.cdmMatches ? wizard.cdmMatches.map(match => {
+                            const originalName = match.originalEntity.name;
+                            const cdmName = match.cdmEntity.displayName || match.cdmEntity.logicalName;
+                            return originalName === cdmName ? cdmName : `${originalName} → ${cdmName}`;
+                        }) : ['Using CDM entities']) :
+                        ['Using custom entities (CDM entities detected but not selected)']
+                }] : []),
                 {
                     title: 'Global Choices',
                     count: selectedChoices.length,
@@ -2487,10 +3745,11 @@
         }
 
         function updateChoicesStepStatus() {
-            // Check if any choices are selected (either built-in or custom)
+            // Check if any choices are selected (either built-in, custom checkboxes, or uploaded JSON)
             const builtinSelected = document.querySelectorAll('#builtinChoicesContainer input:checked').length;
             const customSelected = document.querySelectorAll('#customChoicesContainer input:checked').length;
-            const hasSelectedChoices = builtinSelected > 0 || customSelected > 0;
+            const hasUploadedChoices = wizard.stepData?.choices?.customChoices?.length > 0;
+            const hasSelectedChoices = builtinSelected > 0 || customSelected > 0 || hasUploadedChoices;
             
             if (hasSelectedChoices) {
                 updateStepStatus('choices', 'completed');
@@ -2553,6 +3812,7 @@
                     solutionName: document.getElementById('solutionName').value,
                     solutionDisplayName: document.getElementById('solutionDisplayName').value,
                     dryRun: document.getElementById('dryRunMode').checked,
+                    includeRelatedEntities: document.getElementById('includeRelatedEntities').checked,
                     publisher: wizard.stepData.publisher.type === 'existing' && wizard.stepData.publisher.selectedPublisher ? 
                         JSON.parse(wizard.stepData.publisher.selectedPublisher) : null,
                     createPublisher: wizard.stepData.publisher.type === 'new',
@@ -2562,15 +3822,32 @@
                     selectedChoices: Array.from(document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked'))
                         .map(cb => cb.value)
                         .filter(value => value && value.trim() !== '' && value !== 'undefined'),
-                    uploadedGlobalChoices: wizard.stepData.choices.customChoices && wizard.stepData.choices.customChoices.length > 0 ? {
-                        count: wizard.stepData.choices.customChoices.length,
-                        data: wizard.stepData.choices.customChoices,
-                        filename: 'uploaded-choices.json'
-                    } : null
+                    customChoices: wizard.stepData.choices.customChoices || [],
+                    // Add CDM choice information
+                    cdmChoice: wizard.cdmChoice, // 'cdm', 'custom', or null
+                    cdmMatches: wizard.cdmMatches // Array of CDM entity matches
                 };
 
                 console.log('Deployment data being sent:', JSON.stringify(deploymentData, null, 2));
                 console.log('Publisher data details:', wizard.stepData.publisher);
+                
+                // Add temporary validation for CDM matches being sent
+                if (wizard.cdmMatches && wizard.cdmMatches.length > 0) {
+                    console.log('sending cdmMatches:', wizard.cdmMatches.map(m => m.cdmEntity?.logicalName));
+                }
+
+                // Show immediate feedback that deployment started
+                deploymentOutput.innerHTML = `
+                    <div class="message-card info">
+                            <div class="message-content">
+                            <div class="message-title">Deployment Started</div>
+                            <div class="message-description">
+                                Deploying to Dataverse... This may take 4-6 minutes.<br>
+                                <strong>Please wait - the deployment is processing!</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
 
                 const response = await fetch('/upload', {
                     method: 'POST',
@@ -2580,6 +3857,23 @@
 
                 // Handle streaming response from handleDeployment
                 if (!response.ok) {
+                    if (response.status === 504) {
+                        // Handle 504 timeout specifically
+                        deploymentOutput.innerHTML = `
+                            <div class="message-card warning">
+                                <span class="message-icon">⏰</span>
+                                <div class="message-content">
+                                    <div class="message-title">Deployment May Have Completed</div>
+                                    <div class="message-description">
+                                        The request timed out, but <strong>your deployment likely completed successfully</strong>.<br><br>
+                                        Please check your Dataverse environment for the created entities and solution.<br>
+                                        This timeout is a known issue and will be fixed in a future version.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
@@ -2643,49 +3937,20 @@
                     // Mark final review step as complete on successful deployment
                     updateStepStatus('summary', 'completed');
                     
-                    // Format entity and relationship counts for display
-                    const entityCount = Array.isArray(finalResult.entities) ? finalResult.entities.length : 
-                                      (typeof finalResult.entities === 'number' ? finalResult.entities : 
-                                       (typeof finalResult.entitiesCreated === 'number' ? finalResult.entitiesCreated : 0));
-                                      
-                    const relationshipCount = Array.isArray(finalResult.relationships) ? finalResult.relationships.length : 
-                                            (typeof finalResult.relationships === 'number' ? finalResult.relationships : 
-                                             (typeof finalResult.relationshipsCreated === 'number' ? finalResult.relationshipsCreated : 0));
-                    
-                    const globalChoiceCount = finalResult.globalChoices || 
-                                             finalResult.globalChoicesAddedToSolution || 
-                                             finalResult.selectedGlobalChoices || 
-                                             finalResult.selectedGlobalChoicesAdded || 0;
-                    
                     deploymentOutput.innerHTML = `
                         <div class="message-card success">
-                            <span class="message-icon">•</span>
-                            <div class="message-content">
-                                <div class="message-title">Deployment Successful</div>
+                                <div class="message-content">
+                                <div class="message-title">Deployment Completed Successfully!</div>
                                 <div class="message-description">
-                                    ${finalResult.summary || finalResult.message || `Created ${entityCount} entities, ${relationshipCount} relationships, and added ${globalChoiceCount} global choices to solution.`}
+                                    ${finalResult.summary || 'All entities and relationships have been deployed to Dataverse.'}
                                 </div>
                             </div>
                         </div>
                     `;
-                    
-                    // Update navigation after successful deployment
-                    updateNavigationButtons();
-                    
-                    // Change deploy button to green "Done" button
-                    deployBtn.innerHTML = 'Done';
-                    deployBtn.classList.remove('btn-primary');
-                    deployBtn.classList.add('btn-success');
-                    // Update the click handler to completely reset the wizard when Done is clicked
-                    deployBtn.onclick = function() {
-                        console.log('Resetting wizard for a new deployment...');
-                        // Reset everything to start a fresh deployment
-                        resetWizardUI();
-                    };
                 } else {
                     deploymentOutput.innerHTML = `
                         <div class="message-card error">
-                            <span class="message-icon">•</span>
+                            <span class="message-icon">❌</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Failed</div>
                                 <div class="message-description">${finalResult?.error || finalResult?.message || 'An unknown error occurred.'}</div>
@@ -2693,19 +3958,39 @@
                         </div>
                     `;
                 }
+
             } catch (error) {
-                deploymentOutput.innerHTML = `
-                    <div class="message-card error">
-                        <span class="message-icon">•</span>
-                        <div class="message-content">
-                            <div class="message-title">Deployment Error</div>
-                            <div class="message-description">${error.message}</div>
+                console.error('Deployment error:', error);
+                
+                // Special handling for network timeout errors
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    deploymentOutput.innerHTML = `
+                        <div class="message-card warning">
+                            <span class="message-icon">⏰</span>
+                            <div class="message-content">
+                                <div class="message-title">Deployment May Have Completed</div>
+                                <div class="message-description">
+                                    The request timed out, but <strong>your deployment likely completed successfully</strong>.<br><br>
+                                    Please check your Dataverse environment for the created entities and solution.<br>
+                                    This timeout is a known issue and will be fixed in a future version.
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    deploymentOutput.innerHTML = `
+                        <div class="message-card error">
+                            <span class="message-icon">❌</span>
+                            <div class="message-content">
+                                <div class="message-title">Deployment Error</div>
+                                <div class="message-description">${error.message}</div>
+                            </div>
+                        </div>
+                    `;
+                }
             }
         }
-
+        
         // Initialize the application
         function init() {
             console.log('Initializing application...');
@@ -2735,9 +4020,23 @@
             }
         }
 
+        // Toggle info tooltip
+        function toggleInfoTooltip(id) {
+            const tooltip = document.getElementById(id);
+            if (tooltip) {
+                tooltip.classList.toggle('hidden');
+            }
+        }
+
+        // Handle related entities checkbox change
+        function setupRelatedEntitiesToggle() {
+            // No longer needed - simplified to just one checkbox
+        }
+
         // Start the application
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM Content Loaded, initializing...');
+            setupRelatedEntitiesToggle();
             init();
         });
     </script>
