@@ -61,6 +61,19 @@ function streamLogs(res) {
   const logs = console.getLastLogs().map(l => JSON.stringify({ type: 'log', message: l }) + '\n');
   for (const line of logs) res.write(line);
 }
+
+function writeProgress(res, step, message, details = {}) {
+  const progressData = {
+    type: 'progress',
+    step: step,
+    message: message,
+    timestamp: new Date().toISOString(),
+    ...details
+  };
+  res.write(JSON.stringify(progressData) + '\n');
+  console.log(`📋 ${step}: ${message}`);
+}
+
 function writeFinal(res, obj) {
   res.write(JSON.stringify({ type: 'result', ...obj }) + '\n');
   res.end();
@@ -242,6 +255,7 @@ async function handleUpload(req, res) {
       let solInfo;
       try {
         // First, ensure publisher exists
+        writeProgress(res, 'publisher', 'Creating (or reusing) Publisher...');
         const pub = await client.ensurePublisher({
           uniqueName: (publisherName || 'MermaidPublisher').replace(/\s+/g, ''),
           friendlyName: publisherName || 'Mermaid Publisher',
@@ -249,6 +263,7 @@ async function handleUpload(req, res) {
         });
         
         // Then create/ensure solution with the publisher
+        writeProgress(res, 'solution', 'Creating Solution...');
         solInfo = await client.ensureSolution(solutionUnique, friendly, pub);
         console.log(`Solution ready: ${solInfo.uniquename} (${solInfo.solutionid})`);
       console.log(`DEBUG: solInfo object:`, JSON.stringify(solInfo, null, 2));
@@ -264,6 +279,7 @@ async function handleUpload(req, res) {
 
       // Process CDM entities if any
       if (hasCDMEntities && cdmChoice === 'cdm') {
+        writeProgress(res, 'cdm', 'Adding CDM Tables...');
         console.log(`🔄 Processing ${cdmMatches.length} CDM entities...`);
         
         // ensure we have matches with logicalName; fallback to server-side detection if needed
@@ -301,6 +317,7 @@ async function handleUpload(req, res) {
 
       // Process custom entities if any
 if (hasCustomEntities) {
+  writeProgress(res, 'custom-entities', `Creating ${customEntities.length} Custom Tables...`);
   console.log(`🔄 Processing ${customEntities.length} custom entities...`);
   console.log(`DEBUG: Passing solutionUniqueName: "${solInfo.uniquename}"`);
   
@@ -315,7 +332,8 @@ if (hasCustomEntities) {
         solutionFriendlyName: friendly,
         relationships: erdRelationships, // Pass relationships
         cdmEntities: cdmMatches || [],   // Pass CDM entities for mixed relationships
-        includeRelatedEntities: data.includeRelatedEntities // Pass the user choice
+        includeRelatedEntities: data.includeRelatedEntities, // Pass the user choice
+        progressCallback: (step, message, details) => writeProgress(res, step, message, details)
       }
     );
     
@@ -367,6 +385,8 @@ if (hasCustomEntities) {
           results.globalChoicesErrors = ['No valid choices after filtering'];
         } else {
           try {
+            writeProgress(res, 'global-choices-solution', 'Adding Global Choices to Solution...', { choiceCount: validChoices.length });
+            
             // Resolve choice names properly
             const choiceNames = validChoices.map(choice => {
               const choiceName = choice?.LogicalName || choice?.Name || choice?.name || choice;
@@ -422,7 +442,12 @@ if (hasCustomEntities) {
           results.customGlobalChoicesErrors = ['No valid custom choices after filtering'];
         } else {
           try {
-            const customChoicesResult = await client.createAndAddCustomGlobalChoices(validCustomChoices, solInfo.uniquename, publisherPrefix);
+            const customChoicesResult = await client.createAndAddCustomGlobalChoices(
+              validCustomChoices, 
+              solInfo.uniquename, 
+              publisherPrefix,
+              (step, message, details) => writeProgress(res, step, message, details)
+            );
             results.customGlobalChoicesCreated = customChoicesResult.created || 0;
             results.customGlobalChoicesFailed = customChoicesResult.failed || 0;
             results.customGlobalChoicesErrors = customChoicesResult.errors || [];
@@ -481,6 +506,9 @@ if (hasCustomEntities) {
       // Map to frontend expected field names
       results.globalChoicesCreated = (results.customGlobalChoicesCreated || 0);
       results.selectedGlobalChoicesAdded = (results.globalChoicesAdded || 0);
+
+      // Final progress update
+      writeProgress(res, 'complete', 'Finishing...', { completed: true });
 
       streamLogs(res);
       return writeFinal(res, results);

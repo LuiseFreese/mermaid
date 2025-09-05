@@ -773,7 +773,7 @@ class DataverseClient {
   /**
    * Create custom entities with attributes and optional relationships.
    * @param {Array} entities - parser entities
-   * @param {Object} options - { publisherPrefix, relationships, solutionUniqueName, cdmEntities }
+   * @param {Object} options - { publisherPrefix, relationships, solutionUniqueName, cdmEntities, progressCallback }
    */
   async createCustomEntities(entities, options = {}) {
     const results = {
@@ -791,6 +791,7 @@ class DataverseClient {
     const publisherPrefix = options.publisherPrefix || this._generateRandomPrefix();
     const publisherName   = options.publisherName || 'Mermaid Publisher';
     const publisherUnique = options.publisherUniqueName || publisherName.replace(/\s+/g, '');
+    const progressCallback = options.progressCallback;
 
     this._log(`Using publisher prefix: ${publisherPrefix}`);
 
@@ -810,6 +811,9 @@ class DataverseClient {
     const logicalNames = [];
     for (const entity of entities) {
       try {
+        if (progressCallback) {
+          progressCallback('entity-create', `Creating Table: ${entity.displayName || entity.name}`, { entityName: entity.name });
+        }
         this._log(`Creating entity: ${entity.name}`);
         const payload = this._entityPayloadFromParser(entity, publisherPrefix);
         const entityResponse = await this.createEntityWithRetry({
@@ -861,6 +865,10 @@ class DataverseClient {
             return !isFK && !isNameAttr && !isEntityNameAttr && !isStatusAttr;
           });
           this._log(`🔍 Processing ${regularAttributes.length} regular attributes (filtered out ${entity.attributes.length - regularAttributes.length} foreign key/name/status attributes)`);
+          
+          if (progressCallback && regularAttributes.length > 0) {
+            progressCallback('entity-columns', `Adding columns to Table: ${entity.displayName || entity.name}`, { entityName: entity.name, columnCount: regularAttributes.length });
+          }
           
           for (const a of regularAttributes) {
             const attrMeta = this._attributeFromParser(entity.name, a, publisherPrefix);
@@ -914,6 +922,9 @@ class DataverseClient {
       // Wait longer for entities to be fully available in Dataverse
       await this.sleep(25000);
       
+      if (progressCallback) {
+        progressCallback('relationships', 'Creating Relationships...', { relationshipCount: options.relationships.length });
+      }
       this._log(` Starting relationship creation: ${options.relationships.length} relationships to create...`);
 
       try {
@@ -1099,7 +1110,10 @@ class DataverseClient {
     return { added, failed, errors };
   }
 
-  async createAndAddCustomGlobalChoices(customChoices, solutionUniqueName, publisherPrefix) {
+  async createAndAddCustomGlobalChoices(customChoices, solutionUniqueName, publisherPrefix, progressCallback = null) {
+    if (progressCallback) {
+      progressCallback('global-choices', 'Creating Global Choices...', { choiceCount: customChoices.length });
+    }
     console.log(`🎨 Creating ${customChoices.length} custom global choices and adding to solution: ${solutionUniqueName}`);
     
     let created = 0;
@@ -1227,7 +1241,7 @@ class DataverseClient {
           createdChoice = allChoices.value.find(choice => choice.Name === finalChoiceName);
           
           if (!createdChoice && attempts < maxAttempts) {
-            console.log(`⏳ Global choice set '${finalChoiceName}' not found yet, waiting longer...`);
+            console.log(`Global choice set '${finalChoiceName}' not found yet, waiting longer...`);
           }
         }
         
@@ -1311,7 +1325,7 @@ class DataverseClient {
       
       // Add delay between processing choices to prevent overwhelming Dataverse
       if (customChoices.indexOf(choice) < customChoices.length - 1) {
-        console.log(`⏳ Waiting 3 seconds before processing next global choice...`);
+        console.log(`Waiting 3 seconds before processing next global choice...`);
         await this.sleep(3000);
       }
     }

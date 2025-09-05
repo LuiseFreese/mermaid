@@ -12,7 +12,7 @@ The application supports two main approaches for working with global choices:
 
 ## Features
 
-### ✅ Supported Operations
+### Supported Operations
 - **Select existing global choices** - Browse and select from built-in and custom choice sets already in Dataverse
 - **Add choices to solution** - Include selected choices in your Dataverse solution automatically
 - **Create new global choice sets** from JSON definitions
@@ -23,7 +23,7 @@ The application supports two main approaches for working with global choices:
 - **Dry run mode** - preview what would be created without making changes
 - **Built-in choice detection** - automatically identifies and categorizes Microsoft's built-in choices
 
-### 📋 JSON File Format
+### JSON File Format
 
 Global choices are defined in JSON files with the following structure:
 

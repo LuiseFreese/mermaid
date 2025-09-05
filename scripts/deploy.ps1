@@ -51,7 +51,7 @@ function Grant-KeyVaultPermissions {
             az role assignment create --assignee $userId --role "Key Vault Secrets Officer" --scope "/subscriptions/$(az account show --query id --output tsv)/resourcegroups/$ResourceGroup/providers/Microsoft.KeyVault/vaults/$KeyVaultName" 2>$null
             
             # Wait a moment for permissions to propagate
-            Write-Host "⏳ Waiting 10 seconds for permissions to propagate..." -ForegroundColor Yellow
+            Write-Host "Waiting 10 seconds for permissions to propagate..." -ForegroundColor Yellow
             Start-Sleep -Seconds 10
             
             Write-Host "✅ Key Vault permissions granted successfully" -ForegroundColor Green

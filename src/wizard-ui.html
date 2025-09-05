@@ -2559,7 +2559,7 @@
                             </div>
                             <div class="schema-entity-content">
                                 <div style="margin-bottom: 12px; padding: 8px; background: #f0f9ff; border-radius: 4px; font-size: 13px; color: #0369a1;">
-                                    📋 ${description}
+                                     ${description}
                                 </div>
                                 <div class="schema-attributes">
                                     <h6 style="margin: 0 0 8px 0; color: #374151; font-size: 13px; font-weight: 600;">Key CDM Attributes:</h6>
@@ -2748,7 +2748,7 @@
                             </div>
                             <div class="schema-entity-content">
                                 <div style="margin-bottom: 12px; padding: 8px; background: #f0f9ff; border-radius: 4px; font-size: 13px; color: #0369a1;">
-                                    📋 ${description}
+                                    ${description}
                                 </div>
                                 <div class="schema-attributes">
                                     <h6 style="margin: 0 0 8px 0; color: #374151; font-size: 13px; font-weight: 600;">Key CDM Attributes:</h6>
@@ -3900,8 +3900,8 @@
                     
                     if (result.success && result.components.totalCount > 0) {
                         // Success! Show what was actually created
-                        console.log('✅ POLLING SUCCESS: Solution found with components:', result.components);
-                        console.log('📋 This confirms the deployment completed despite the timeout');
+                        console.log('POLLING SUCCESS: Solution found with components:', result.components);
+                        console.log('This confirms the deployment completed despite the timeout');
                         
                         const entitiesText = result.components.entities.length > 0 
                             ? `<strong>${result.components.entities.length} entities:</strong> ${result.components.entities.map(e => e.displayName).join(', ')}<br>`
@@ -4083,6 +4083,19 @@
                                                 <div class="message-title">Deploying...</div>
                                                 <div class="message-description">
                                                     ${logs.slice(-5).map(log => `<div>${log}</div>`).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (data.type === 'progress') {
+                                    // Show elegant progress updates
+                                    deploymentOutput.innerHTML = `
+                                        <div class="message-card info">
+                                     
+                                            <div class="message-content">
+                                                <div class="message-title">${data.message}</div>
+                                                <div class="message-description">
+                                                    Please wait while this step completes.
                                                 </div>
                                             </div>
                                         </div>
