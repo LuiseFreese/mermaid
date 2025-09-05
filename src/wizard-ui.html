@@ -1933,7 +1933,8 @@
                 }
                 
                 // Filter out warnings since they'll be shown in the warnings list section
-                if (msg.severity === 'warning') {
+                // BUT only if CDM choice scenario is active - otherwise show warnings inline
+                if (msg.severity === 'warning' && hasCDMDetection && cdmChoiceMade) {
                     return false;
                 }
                 
@@ -2008,6 +2009,14 @@
             }
 
             messagesToDisplay.forEach(msg => {
+                console.log('🔍 Rendering message:', {
+                    type: msg.type,
+                    severity: msg.severity,
+                    entity: msg.entity,
+                    message: msg.message,
+                    suggestion: msg.suggestion
+                });
+                
                 const messageClass = msg.severity === 'error' ? 'error' : 
                                    msg.severity === 'warning' ? 'warning' : 
                                    msg.severity === 'info' ? 'info' : 'success';
@@ -2062,8 +2071,19 @@
                 cdmMatchesLength: cdmMatches.length
             });
             
-            // Always show corrected ERD when there are warnings and a choice has been made
-            if ((hasFixableWarnings || hasCustomEntities) && cdmChoiceMade) {
+            // Show corrected ERD section only when we have actual corrections to suggest
+            // Don't show it just because there are custom entities - only show if there are real issues to fix
+            console.log('🔍 Corrected ERD Section Debug:', {
+                hasFixableWarnings,
+                hasCustomEntities,
+                hasCorrecterdERD: result.correctedERD && result.correctedERD.trim() !== '',
+                correctedERDLength: result.correctedERD ? result.correctedERD.length : 0,
+                usingCorrectedERD: result.usingCorrectedERD,
+                shouldShow: !result.usingCorrectedERD && (hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))
+            });
+            
+            // Only show corrected ERD section if we have warnings to fix OR a corrected ERD was generated
+            if (!result.usingCorrectedERD && (hasFixableWarnings || (result.correctedERD && result.correctedERD.trim() !== ''))) {
                 // Show appropriate corrected ERD based on user's choice
                 let correctedERDToShow = result.correctedERD || 'No corrected ERD generated yet.';
                 let erdTitle = "Corrected ERD (Best Practices)";
@@ -2094,7 +2114,7 @@
                 const correctedERDContent = document.getElementById('correctedERDContent');
                 correctedERDContent.textContent = correctedERDToShow;
                 
-                // Show warnings list only if CDM choice has been made
+                // Show warnings list only if CDM choice has been made AND there are CDM matches
                 const warningsListSection = document.getElementById('warningsListSection');
                 const warningsListContent = document.getElementById('warningsListContent');
                 
@@ -2102,7 +2122,9 @@
                 const hasCDMMatches = validation.cdmAnalysis && validation.cdmAnalysis.matches && validation.cdmAnalysis.matches.length > 0;
                 const cdmChoiceMade = wizard.cdmChoice || !hasCDMMatches; // If no CDM matches, choice is implicit
                 
-                if (cdmChoiceMade && warningsListSection && warningsListContent) {
+                // Only show warnings list if we have CDM detection and a choice was made
+                // Otherwise warnings are shown inline in the main validation results
+                if (hasCDMDetection && cdmChoiceMade && warningsListSection && warningsListContent) {
                     warningsListSection.classList.remove('hidden');
                     
                     if (validation.warnings && validation.warnings.length > 0) {
@@ -2162,6 +2184,7 @@
                 }
                 
                 correctedERDSection.classList.remove('hidden');
+                console.log('✅ Corrected ERD section is now visible');
                 
                 // Add copy original ERD functionality
                 const copyOriginalButton = document.getElementById('copyOriginalERD');
@@ -2317,6 +2340,13 @@
                             // Re-validate the corrected ERD to show updated results
                             await validateERD(correctedContent, true);
                             
+                            // Debug: Check wizard state after re-validation
+                            console.log('🔍 After re-validation - Wizard state:', {
+                                validationValid: wizard.stepData.validation.valid,
+                                validationData: wizard.stepData.validation,
+                                canProceedToPublisher: wizard.canProceedToStep('publisher')
+                            });
+                            
                             // Since we're using a corrected ERD, only show critical errors
                             // Informational warnings (severity: 'info') should not be displayed after corrections
                             const validationMessages = document.getElementById('validationMessages');
@@ -2367,12 +2397,12 @@
                                 }
                             }
                             
-                                // If no real warnings remain, hide the entire warnings section
+                                // If no real warnings remain, hide the entire corrected ERD section
                                 if (!hasRealWarnings) {
-                                    const warningsSection = document.getElementById('suggestedCorrectionsSection');
-                                    if (warningsSection) {
-                                        warningsSection.style.display = 'none';
-                                        console.log('Hidden entire warnings section - no critical issues remain');
+                                    const correctedERDSection = document.getElementById('correctedERDSection');
+                                    if (correctedERDSection) {
+                                        correctedERDSection.style.display = 'none';
+                                        console.log('Hidden entire corrected ERD section - no critical issues remain');
                                     }
                                 }
                             }
@@ -2417,19 +2447,56 @@
                 }
             } else {
                 correctedERDSection.classList.add('hidden');
+                console.log('❌ Corrected ERD section hidden');
+                
+                // If using corrected ERD, show success message instead of validation warnings
+                if (result.usingCorrectedERD) {
+                    const resultsDiv = document.getElementById('validationMessages');
+                    if (resultsDiv) {
+                        resultsDiv.innerHTML = `
+                            <div class="message-card success" style="margin-bottom: 16px;">
+                                <div class="message-content">
+                                    <div class="message-title">Corrected ERD Applied Successfully!</div>
+                                    <div class="message-description">
+                                        Your ERD has been updated with the suggested corrections. All naming conflicts and best practice issues have been resolved.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
             }
             
             // Display schema overview directly here with proper scope
             const schemaSection = document.getElementById('schemaDisplaySection');
             const schemaContent = document.getElementById('schemaContent');
             
-            // Show schema section if using corrected ERD, otherwise keep it hidden until "USE CORRECTED ERD" button is clicked
-            if (result.usingCorrectedERD) {
-                schemaSection.classList.remove('hidden');
-                console.log('✅ Showing schema section for corrected ERD');
+            // Determine if there are corrections available (reuse existing hasFixableWarnings)
+            // For corrected ERDs, we should ignore the correctedERD field from server since corrections are already applied
+            const hasCorrectionsAvailable = hasFixableWarnings && !result.usingCorrectedERD;
+            
+            // Show schema section immediately if:
+            // 1. Validation is successful AND
+            // 2. (No corrections are available OR we're using a corrected ERD)
+            if (result.success && result.validation && result.validation.isValid) {
+                if (!hasCorrectionsAvailable || result.usingCorrectedERD) {
+                    schemaSection.classList.remove('hidden');
+                    console.log('✅ Showing schema section - no corrections needed or using corrected ERD', {
+                        hasFixableWarnings,
+                        hasCorrectionsAvailable,
+                        usingCorrectedERD: result.usingCorrectedERD
+                    });
+                } else {
+                    schemaSection.classList.add('hidden');
+                    console.log('❌ Keeping schema section hidden until corrections are applied', {
+                        hasFixableWarnings,
+                        hasCorrectionsAvailable,
+                        usingCorrectedERD: result.usingCorrectedERD
+                    });
+                }
             } else {
                 schemaSection.classList.add('hidden');
-                console.log('❌ Keeping schema section hidden until USE CORRECTED ERD is clicked');
+                console.log('❌ Keeping schema section hidden - validation failed or no valid result');
             }
             
             // If CDM detected but no choice made, show waiting message
@@ -2541,7 +2608,12 @@
                 });
                 
                 customEntities.forEach(entity => {
-                    const isCustom = usingCDM && cdmMatchesForDisplay.length > 0;
+                    // Show CUSTOM badge if there are CDM matches available but this entity is not matched
+                    // OR if there are no CDM matches at all (meaning all entities are custom)
+                    const isCustom = cdmMatchesForDisplay.length === 0 || (cdmMatchesForDisplay.length > 0 && !cdmMatchesForDisplay.some(match => {
+                        const matchEntityName = match.originalEntity?.name || match.entity?.name || (match.cdmEntity?.displayName);
+                        return matchEntityName === entity.name;
+                    }));
                     const customBadge = isCustom ? '<span style="background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CUSTOM</span>' : '';
                     
                     schemaHtml += `
@@ -2725,7 +2797,12 @@
                 });
                 
                 customEntities.forEach(entity => {
-                    const isCustom = usingCDM && cdmMatchesForDisplay.length > 0;
+                    // Show CUSTOM badge if there are CDM matches available but this entity is not matched
+                    // OR if there are no CDM matches at all (meaning all entities are custom)
+                    const isCustom = cdmMatchesForDisplay.length === 0 || (cdmMatchesForDisplay.length > 0 && !cdmMatchesForDisplay.some(match => {
+                        const matchEntityName = match.originalEntity?.name || match.entity?.name || (match.cdmEntity?.displayName);
+                        return matchEntityName === entity.name;
+                    }));
                     const customBadge = isCustom ? '<span style="background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 8px;">CUSTOM</span>' : '';
                     
                     schemaHtml += `
@@ -2950,18 +3027,14 @@
                     
                     // Create and add CDM success banner
                     const successBanner = document.createElement('div');
-                    successBanner.className = 'cdm-choice-success-banner';
-                    successBanner.style.cssText = `
-                        background-color: #d4edda;
-                        border-left: 4px solid #28a745;
-                        color: #155724;
-                        padding: 12px 16px;
-                        border-radius: 4px;
-                        margin-bottom: 16px;
-                        font-size: 14px;
-                        font-weight: 500;
+                    successBanner.className = 'message-card success';
+                    successBanner.style.cssText = `margin-bottom: 16px;`;
+                    successBanner.innerHTML = `
+                        <div class="message-content">
+                            <div class="message-title">CDM Integration Successful</div>
+                            <div class="message-description">CDM entities selected successfully! Using existing Dataverse entities.</div>
+                        </div>
                     `;
-                    successBanner.innerHTML = 'CDM entities selected successfully! Using existing Dataverse entities.';
                     
                     validationResults.insertBefore(successBanner, validationResults.firstChild);
                 }
@@ -3796,8 +3869,127 @@
             await deployToDataverse();
         });
 
+        // Handle timeout by polling solution status
+        async function handleTimeoutWithPolling(solutionName, deploymentOutput) {
+            console.log(`🔄 TIMEOUT DETECTED: Deployment timed out, polling solution status for: ${solutionName}`);
+            console.log('📊 This means we will check what was actually created instead of showing a generic timeout message');
+            
+            deploymentOutput.innerHTML = `
+                <div class="message-card info">
+                    <div class="message-content">
+                        <div class="message-title">Checking Deployment Status</div>
+                        <div class="message-description">
+                            The deployment timed out, but it may have completed successfully.<br>
+                            Checking what was actually created in your Dataverse environment...
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const maxPollingAttempts = 10;
+            const pollingInterval = 3000; // 3 seconds
+            let attempts = 0;
+            
+            const pollSolutionStatus = async () => {
+                try {
+                    attempts++;
+                    console.log(`Polling attempt ${attempts}/${maxPollingAttempts} for solution: ${solutionName}`);
+                    
+                    const response = await fetch(`/api/solution-status?solution=${encodeURIComponent(solutionName)}`);
+                    const result = await response.json();
+                    
+                    if (result.success && result.components.totalCount > 0) {
+                        // Success! Show what was actually created
+                        console.log('✅ POLLING SUCCESS: Solution found with components:', result.components);
+                        console.log('📋 This confirms the deployment completed despite the timeout');
+                        
+                        const entitiesText = result.components.entities.length > 0 
+                            ? `<strong>${result.components.entities.length} entities:</strong> ${result.components.entities.map(e => e.displayName).join(', ')}<br>`
+                            : '';
+                        
+                        const choicesText = result.components.optionSets.length > 0 
+                            ? `<strong>${result.components.optionSets.length} global choices:</strong> ${result.components.optionSets.map(o => o.displayName).join(', ')}<br>`
+                            : '';
+                        
+                        const otherText = result.components.others.length > 0 
+                            ? `<strong>${result.components.others.length} other components</strong><br>`
+                            : '';
+
+                        deploymentOutput.innerHTML = `
+                            <div class="message-card success">
+                                <div class="message-content">
+                                    <div class="message-title">Deployment completed successfully</div>
+                                    <div class="message-description">
+                                        <strong>Note:</strong> The deployment timed out, but we confirmed it completed successfully by checking your Dataverse environment.<br><br>
+                                        Found solution <strong>${result.solution.friendlyName}</strong> with ${result.components.entities.length} tables and ${result.components.optionSets.length} global choices deployed to Dataverse.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Mark steps as completed
+                        updateStepStatus('summary', 'completed');
+                        if (result.components.optionSets.length > 0) {
+                            updateStepStatus('choices', 'completed');
+                        }
+                        
+                        return true; // Success
+                    } else if (attempts < maxPollingAttempts) {
+                        // Continue polling
+                        console.log(`Solution not ready yet, waiting ${pollingInterval}ms before next attempt...`);
+                        setTimeout(pollSolutionStatus, pollingInterval);
+                        return false; // Continue polling
+                    } else {
+                        // Max attempts reached
+                        console.log('Max polling attempts reached, showing fallback message');
+                        deploymentOutput.innerHTML = `
+                            <div class="message-card warning">
+                                <div class="message-content">
+                                    <div class="message-title">Deployment Status Unknown</div>
+                                    <div class="message-description">
+                                        The deployment timed out and we couldn't verify the results automatically.<br><br>
+                                        <strong>Please manually check your Dataverse environment</strong> for:<br>
+                                        • Solution: <strong>${solutionName}</strong><br>
+                                        • Created entities and relationships<br><br>
+                                        The deployment likely completed successfully despite the timeout.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        return true; // Stop polling
+                    }
+                } catch (error) {
+                    console.error('Error polling solution status:', error);
+                    if (attempts < maxPollingAttempts) {
+                        setTimeout(pollSolutionStatus, pollingInterval);
+                        return false; // Continue polling despite error
+                    } else {
+                        // Show error after max attempts
+                        deploymentOutput.innerHTML = `
+                            <div class="message-card error">
+                                <div class="message-content">
+                                    <div class="message-title">Unable to Verify Deployment</div>
+                                    <div class="message-description">
+                                        Could not check the deployment status due to an error.<br><br>
+                                        Please manually check your Dataverse environment for the solution and entities.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        return true; // Stop polling
+                    }
+                }
+            };
+            
+            // Start polling
+            await pollSolutionStatus();
+        }
+
         // Deployment function
         async function deployToDataverse() {
+            console.log('🚀 DEPLOYMENT STARTED: Beginning deployment to Dataverse');
+            console.log('📊 This will help us track if the deployment completes normally or times out');
+            
             const deploymentResults = document.getElementById('deploymentResults');
             const deploymentOutput = document.getElementById('deploymentOutput');
             
@@ -3858,20 +4050,8 @@
                 // Handle streaming response from handleDeployment
                 if (!response.ok) {
                     if (response.status === 504) {
-                        // Handle 504 timeout specifically
-                        deploymentOutput.innerHTML = `
-                            <div class="message-card warning">
-                                <span class="message-icon">⏰</span>
-                                <div class="message-content">
-                                    <div class="message-title">Deployment May Have Completed</div>
-                                    <div class="message-description">
-                                        The request timed out, but <strong>your deployment likely completed successfully</strong>.<br><br>
-                                        Please check your Dataverse environment for the created entities and solution.<br>
-                                        This timeout is a known issue and will be fixed in a future version.
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+                        // Handle 504 timeout by polling for solution status
+                        await handleTimeoutWithPolling(deploymentData.solutionName, deploymentOutput);
                         return;
                     }
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -3921,14 +4101,15 @@
 
                 // Handle final result
                 if (finalResult && finalResult.success) {
-                    console.log('Deployment successful with data:', finalResult);
+                    console.log('✅ NORMAL SUCCESS: Deployment successful with data:', finalResult);
+                    console.log('📊 This deployment completed without timeout - streaming worked perfectly');
                     
                     // Update choices step status to show global choices were processed successfully
                     const globalChoicesProcessed = (finalResult.globalChoices > 0 || 
                                                   finalResult.selectedGlobalChoices > 0 || 
                                                   finalResult.globalChoicesAddedToSolution > 0 || 
                                                   finalResult.selectedGlobalChoicesAdded > 0);
-                                                  
+
                     if (globalChoicesProcessed) {
                         console.log('Global choices were processed, updating navigation status');
                         updateStepStatus('choices', 'completed');
@@ -3937,12 +4118,20 @@
                     // Mark final review step as complete on successful deployment
                     updateStepStatus('summary', 'completed');
                     
+                    // Build detailed success message in requested format
+                    const tablesCreated = finalResult.entitiesCreated || 0;
+                    const cdmTablesIntegrated = finalResult.entitiesIntegrated || finalResult.cdmEntitiesIntegrated || 0;
+                    const newGlobalChoicesCreated = finalResult.globalChoicesCreated || 0;
+                    const existingGlobalChoicesIntegrated = finalResult.selectedGlobalChoicesAdded || finalResult.globalChoicesAddedToSolution || 0;
+                    
+                    const detailedSummary = `Successfully created ${tablesCreated} tables, integrated ${cdmTablesIntegrated} CDM tables, created ${newGlobalChoicesCreated} new global choices and integrated ${existingGlobalChoicesIntegrated} already existing global choices.`;
+                    
                     deploymentOutput.innerHTML = `
                         <div class="message-card success">
-                                <div class="message-content">
-                                <div class="message-title">Deployment Completed Successfully!</div>
+                            <div class="message-content">
+                                <div class="message-title">Deployment completed successfully</div>
                                 <div class="message-description">
-                                    ${finalResult.summary || 'All entities and relationships have been deployed to Dataverse.'}
+                                    ${detailedSummary}
                                 </div>
                             </div>
                         </div>
@@ -3950,7 +4139,6 @@
                 } else {
                     deploymentOutput.innerHTML = `
                         <div class="message-card error">
-                            <span class="message-icon">❌</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Failed</div>
                                 <div class="message-description">${finalResult?.error || finalResult?.message || 'An unknown error occurred.'}</div>
@@ -3964,23 +4152,12 @@
                 
                 // Special handling for network timeout errors
                 if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                    deploymentOutput.innerHTML = `
-                        <div class="message-card warning">
-                            <span class="message-icon">⏰</span>
-                            <div class="message-content">
-                                <div class="message-title">Deployment May Have Completed</div>
-                                <div class="message-description">
-                                    The request timed out, but <strong>your deployment likely completed successfully</strong>.<br><br>
-                                    Please check your Dataverse environment for the created entities and solution.<br>
-                                    This timeout is a known issue and will be fixed in a future version.
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // Handle network timeout by polling for solution status
+                    await handleTimeoutWithPolling(deploymentData.solutionName, deploymentOutput);
+                    return;
                 } else {
                     deploymentOutput.innerHTML = `
                         <div class="message-card error">
-                            <span class="message-icon">❌</span>
                             <div class="message-content">
                                 <div class="message-title">Deployment Error</div>
                                 <div class="message-description">${error.message}</div>

@@ -1,0 +1,34 @@
+{
+    "globalChoices": [
+        {
+            "name": "Status",
+            "displayName": "Status",
+            "description": "Simple status options",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Active"
+                },
+                {
+                    "value": 2,
+                    "label": "Inactive"
+                }
+            ]
+        },
+        {
+            "name": "Priority",
+            "displayName": "Priority",
+            "description": "Simple priority levels",
+            "options": [
+                {
+                    "value": 1,
+                    "label": "Low"
+                },
+                {
+                    "value": 2,
+                    "label": "High"
+                }
+            ]
+        }
+    ]
+}

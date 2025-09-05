@@ -1,0 +1,28 @@
+erDiagram
+    EMPLOYEE {
+        string employee_id PK
+        string name
+        string department_id FK  "belongs to department"
+    }
+    DEPARTMENT {
+        string department_id PK
+        string name
+        string manager_id FK     "managed by employee (nullable)"
+    }
+    PROJECT {
+        string project_id PK
+        string name
+    }
+    EMPLOYEE_PROJECT {
+        string assignment_id PK
+        string employee_id FK
+        string project_id FK
+        datetime assigned_date
+        string role
+        // optional: UNIQUE(employee_id, project_id)
+    }
+
+    DEPARTMENT ||--o{ EMPLOYEE : employs
+    EMPLOYEE  ||--o{ DEPARTMENT : manages
+    EMPLOYEE  ||--o{ EMPLOYEE_PROJECT : has assignments
+    PROJECT   ||--o{ EMPLOYEE_PROJECT : has assignments

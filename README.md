@@ -27,11 +27,13 @@ cd mermaid
 ```
 
 **That's it!** The script will:
-- ✅ Create Entra App Registration
-- ✅ Deploy Azure infrastructure (App Service, Key Vault, etc.)
-- ✅ Deploy the application
-- ✅ Set up Dataverse permissions
-- ✅ Give you the final web app URL
+- Create Entra App Registration
+- Deploy Azure infrastructure (App Service, Key Vault, etc.)
+- Deploy the application
+- Set up Dataverse permissions
+- Test everything
+- Give you the final web app URL
+
 
 ### Prerequisites
 - Azure CLI installed and logged in (`az login`)
@@ -74,14 +76,16 @@ If you experience connection issues after deployment:
 
 ## Note on AI Usage
 
-GitHub Copilot has been helpful in this project - not so much for the logic of the app, but for 
+GitHub Copilot has been helpful in this project - especially for 
 
 * creating all the countless mermaid diagrams
 * fleshing out examples
 * outlining documentation
 * writing debug- and cleanup scripts
 * hardening deployments and making them idempotent
-* commenting the scripts so that others might understand them more easily. 
+* commenting the scripts so that others might understand them more easily
+
+Still I'm super hesitant to use `Agent` mode - i just love to stay in the driver's seat! 
 
 
 ## License

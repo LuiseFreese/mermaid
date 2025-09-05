@@ -359,11 +359,12 @@ class MermaidERDParser {
       });
     }
 
-    // Check for other potential conflicts with system columns (exclude timestamp/user fields)
+    // Check for other potential conflicts with system columns (exclude timestamp/user fields and status which should be ignored)
     const problemColumns = entity.attributes.filter(attr => {
       const lowerName = attr.name.toLowerCase();
       console.log(`🔍 Checking attribute: ${attr.name} (lowercase: ${lowerName})`);
-      return ['status', 'ownerid', 'statecode', 'statuscode'].includes(lowerName);
+      // Exclude 'status' as it's a system column that should be ignored, not renamed
+      return ['ownerid', 'statecode', 'statuscode'].includes(lowerName);
     });
 
     console.log(`🔍 Problem columns found for ${entityName}:`, problemColumns.map(c => c.name));
@@ -374,9 +375,28 @@ class MermaidERDParser {
         severity: 'warning',
         entity: entityName,
         message: `Entity '${entityName}' has columns that conflict with system columns: ${problemColumns.map(c => c.name).join(', ')}`,
-        suggestion: `Consider renaming these columns using the pattern: ${entityName.toLowerCase()}_columnname. For example: ${problemColumns.map(col => `'${entityName.toLowerCase()}_${col.name.toLowerCase()}'`).join(', ')}. Note: 'status' columns are automatically provided by Dataverse and usually represent choice fields.`,
+        suggestion: `Consider renaming these columns using the pattern: ${entityName.toLowerCase()}_columnname. For example: ${problemColumns.map(col => `'${entityName.toLowerCase()}_${col.name.toLowerCase()}'`).join(', ')}.`,
         columns: problemColumns.map(col => col.name),
         category: 'naming'
+      });
+    }
+
+    // Handle status columns by filtering them out (they will be ignored during entity creation)
+    const statusColumns = entity.attributes.filter(attr => {
+      const lowerName = attr.name.toLowerCase();
+      return lowerName === 'status';
+    });
+
+    if (statusColumns.length > 0) {
+      console.log(`🔧 Ignoring status columns for ${entityName}:`, statusColumns.map(c => c.name));
+      this.warnings.push({
+        type: 'status_column_ignored',
+        severity: 'info',
+        entity: entityName,
+        message: `Entity '${entityName}' contains 'status' columns which will be ignored. Dataverse provides built-in status functionality via statecode/statuscode.`,
+        suggestion: `Status columns are ignored because Dataverse has built-in status management. If you need custom status options, you'll need to manually create choice columns in Dataverse after deployment. You can use the global choices feature to sync predefined choice sets to your manually created choice columns.`,
+        columns: statusColumns.map(col => col.name),
+        category: 'system'
       });
     }
   }
@@ -464,8 +484,9 @@ class MermaidERDParser {
       });
     }
 
-    // Check for system attributes that already exist in Dataverse (exclude timestamp/user fields)
-    const systemAttributes = ['status', 'statuscode', 'statecode', 'ownerid', 'owninguser', 'owningteam'];
+    // Check for system attributes that already exist in Dataverse (exclude timestamp/user fields and status)
+    // Status is handled separately as an info message since it should be ignored
+    const systemAttributes = ['statuscode', 'statecode', 'ownerid', 'owninguser', 'owningteam'];
     const conflictingAttributes = entity.attributes.filter(attr => 
       systemAttributes.includes(attr.name.toLowerCase())
     );
@@ -816,6 +837,11 @@ class MermaidERDParser {
       w.severity === 'error'
     );
     
+    const missingPrimaryKeys = this.warnings.filter(w => 
+      w.type === 'missing_primary_key' && 
+      w.severity === 'error'
+    );
+    
     // Track entities that need foreign keys
     const entitiesNeedingFKs = new Map();
     missingForeignKeys.forEach(warning => {
@@ -876,7 +902,13 @@ class MermaidERDParser {
         // Build attribute line preserving original format
         const typeToUse = attr.originalType || attr.type; // Use original type format
         let attrLine = `        ${typeToUse} ${correctedName}`;
-        if (attr.isPrimaryKey) {
+        
+        // Check if this attribute should be made a primary key for missing PK fix
+        const needsPrimaryKey = missingPrimaryKeys.some(w => w.entity === entityName);
+        const shouldBePrimaryKey = needsPrimaryKey && 
+          (attr.name.toLowerCase() === 'name' || correctedName === 'name');
+        
+        if (attr.isPrimaryKey || shouldBePrimaryKey) {
           attrLine += ' PK';
         }
         if (attr.isForeignKey) {
@@ -895,6 +927,18 @@ class MermaidERDParser {
         const referencedEntity = fkName.replace('_id', '');
         // Use 'string' instead of 'String' for consistency with original format
         correctedERD += `        string ${fkName} FK "Foreign key to ${referencedEntity.charAt(0).toUpperCase() + referencedEntity.slice(1)}"\n`;
+      }
+      
+      // Add missing primary key if there's a missing primary key warning for this entity
+      const needsPrimaryKey = missingPrimaryKeys.some(w => w.entity === entityName);
+      if (needsPrimaryKey) {
+        // Check if this entity has a 'name' attribute that we can convert to PK
+        const hasNameAttr = entity.attributes.some(attr => attr.name.toLowerCase() === 'name');
+        if (!hasNameAttr) {
+          // Only add a new primary key attribute if there's no 'name' attribute to convert
+          correctedERD += `        string name PK "Primary name column"\n`;
+        }
+        // If there was a 'name' attribute, it was already converted to PK in the attribute processing above
       }
       
       correctedERD += '    }\n\n';

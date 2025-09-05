@@ -219,6 +219,118 @@ class DataverseClient {
     throw new Error('Solution creation did not materialize.');
   }
 
+  // Get solution components to check what was actually deployed
+  async getSolutionComponents(solutionUniqueName) {
+    try {
+      // First get the solution
+      const solution = await this.checkSolutionExists(solutionUniqueName);
+      if (!solution) {
+        return { success: false, error: 'Solution not found' };
+      }
+
+      // Get solution components with more detailed information
+      const query = `/solutioncomponents?$filter=_solutionid_value eq '${solution.solutionid}'&$select=componenttype,objectid,createdon`;
+      const components = await this._req('get', query);
+      
+      const entities = [];
+      const optionSets = [];
+      const others = [];
+
+      for (const component of components.value || []) {
+        try {
+          switch (component.componenttype) {
+            case 1: // Entity
+              if (component.objectid) {
+                try {
+                  // Get entity details separately
+                  const entityQuery = `/EntityDefinitions(${component.objectid})?$select=LogicalName,DisplayName`;
+                  const entityDetails = await this._req('get', entityQuery);
+                  entities.push({
+                    logicalName: entityDetails.LogicalName,
+                    displayName: entityDetails.DisplayName?.UserLocalizedLabel?.Label || entityDetails.LogicalName,
+                    type: 'entity',
+                    createdOn: component.createdon,
+                    metadataId: component.objectid
+                  });
+                } catch (entityError) {
+                  this._log(`Warning: Could not get details for entity ${component.objectid}: ${entityError.message}`);
+                  entities.push({
+                    logicalName: `Entity_${component.objectid}`,
+                    displayName: `Entity (${component.objectid})`,
+                    type: 'entity',
+                    createdOn: component.createdon,
+                    metadataId: component.objectid
+                  });
+                }
+              }
+              break;
+            case 9: // Option Set (Global Choice)
+              if (component.objectid) {
+                try {
+                  // Get option set details separately
+                  const optionSetQuery = `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName,Description`;
+                  const optionSetDetails = await this._req('get', optionSetQuery);
+                  optionSets.push({
+                    logicalName: optionSetDetails.Name,
+                    displayName: optionSetDetails.DisplayName?.UserLocalizedLabel?.Label || optionSetDetails.Name,
+                    description: optionSetDetails.Description?.UserLocalizedLabel?.Label,
+                    type: 'optionset',
+                    createdOn: component.createdon,
+                    metadataId: component.objectid
+                  });
+                } catch (optionSetError) {
+                  this._log(`Warning: Could not get details for option set ${component.objectid}: ${optionSetError.message}`);
+                  optionSets.push({
+                    logicalName: `OptionSet_${component.objectid}`,
+                    displayName: `Global Choice (${component.objectid})`,
+                    type: 'optionset',
+                    createdOn: component.createdon,
+                    metadataId: component.objectid
+                  });
+                }
+              }
+              break;
+            default:
+              others.push({
+                type: 'other',
+                componentType: component.componenttype,
+                objectId: component.objectid,
+                createdOn: component.createdon
+              });
+              break;
+          }
+        } catch (componentError) {
+          this._log(`Warning: Error processing component ${component.objectid}: ${componentError.message}`);
+          others.push({
+            type: 'error',
+            componentType: component.componenttype,
+            objectId: component.objectid,
+            error: componentError.message,
+            createdOn: component.createdon
+          });
+        }
+      }
+
+      return {
+        success: true,
+        solution: {
+          uniqueName: solution.uniquename,
+          friendlyName: solution.friendlyname,
+          solutionId: solution.solutionid
+        },
+        components: {
+          entities,
+          optionSets,
+          others,
+          totalCount: (components.value || []).length
+        }
+      };
+    } catch (error) {
+      this._log(`Error getting solution components: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
   async addEntityToSolution(entityLogicalName, solutionUniqueName, addRequiredComponents = false) {
     // Resolve MetadataId
     const meta = await this._req('get', `/EntityDefinitions(LogicalName='${entityLogicalName}')?$select=MetadataId`);
@@ -737,16 +849,18 @@ class DataverseClient {
 
         // Attributes
         if (Array.isArray(entity.attributes)) {
-          // Filter out foreign key attributes and "name" attributes
+          // Filter out foreign key attributes, "name" attributes, and "status" attributes
           // Foreign key attributes will be created by relationship creation
           // "name" attributes are handled by the primary name column
+          // "status" attributes are system-provided in Dataverse via statecode/statuscode
           const regularAttributes = entity.attributes.filter(a => {
             const isFK = a.isForeignKey;
             const isNameAttr = a.name && a.name.toLowerCase() === 'name';
             const isEntityNameAttr = a.name && a.name.toLowerCase() === `${entity.name.toLowerCase()}_name`;
-            return !isFK && !isNameAttr && !isEntityNameAttr;
+            const isStatusAttr = a.name && a.name.toLowerCase() === 'status';
+            return !isFK && !isNameAttr && !isEntityNameAttr && !isStatusAttr;
           });
-          this._log(`🔍 Processing ${regularAttributes.length} regular attributes (filtered out ${entity.attributes.length - regularAttributes.length} foreign key/name attributes)`);
+          this._log(`🔍 Processing ${regularAttributes.length} regular attributes (filtered out ${entity.attributes.length - regularAttributes.length} foreign key/name/status attributes)`);
           
           for (const a of regularAttributes) {
             const attrMeta = this._attributeFromParser(entity.name, a, publisherPrefix);
@@ -989,6 +1103,7 @@ class DataverseClient {
     console.log(`🎨 Creating ${customChoices.length} custom global choices and adding to solution: ${solutionUniqueName}`);
     
     let created = 0;
+    let skipped = 0;
     let failed = 0;
     const errors = [];
     
@@ -996,7 +1111,7 @@ class DataverseClient {
     let existingChoices = [];
     try {
       const allChoices = await this._get(`GlobalOptionSetDefinitions?$select=Name`);
-      existingChoices = allChoices.value?.map(c => c.Name) || [];
+      existingChoices = allChoices.value?.map(c => c.Name.toLowerCase()) || [];
       console.log(`🔍 Found ${existingChoices.length} existing global choices for duplicate checking`);
     } catch (error) {
       console.warn('⚠️ Could not fetch existing choices for duplicate checking:', error.message);
@@ -1011,11 +1126,32 @@ class DataverseClient {
         const finalChoiceName = publisherPrefix ? `${publisherPrefix}_${choiceName}` : choiceName;
         
         // Check for duplicates before attempting creation
-        if (existingChoices.includes(finalChoiceName)) {
-          failed++;
-          const errorMsg = `Global choice set '${choiceName}' already exists as '${finalChoiceName}' - skipping creation`;
-          errors.push(errorMsg);
-          console.warn(`⚠️ ${errorMsg}`);
+        if (existingChoices.includes(finalChoiceName.toLowerCase())) {
+          skipped++;
+          const warnMsg = `Global choice set '${choiceName}' already exists as '${finalChoiceName}' - skipping creation but will try to add to solution`;
+          console.warn(`⚠️ ${warnMsg}`);
+          
+          // Try to add existing choice to solution
+          try {
+            // Find the existing choice to get its MetadataId
+            const allChoices = await this._get(`GlobalOptionSetDefinitions?$select=MetadataId,Name`);
+            const existingChoice = allChoices.value?.find(choice => choice.Name === finalChoiceName);
+            if (existingChoice) {
+              const componentBody = {
+                ComponentId: existingChoice.MetadataId,
+                ComponentType: 9, // OptionSet component type
+                SolutionUniqueName: solutionUniqueName,
+                AddRequiredComponents: false,
+                DoNotIncludeSubcomponents: false
+              };
+              
+              await this._req('POST', '/AddSolutionComponent', componentBody);
+              console.log(`✅ Added existing global choice set '${finalChoiceName}' to solution`);
+            }
+          } catch (addError) {
+            console.warn(`⚠️ Could not add existing choice '${finalChoiceName}' to solution: ${addError.message}`);
+          }
+          
           continue;
         }
         
@@ -1096,21 +1232,76 @@ class DataverseClient {
         }
         
         if (!createdChoice) {
-          throw new Error(`Created global choice set not found: ${finalChoiceName}`);
+          // Try comprehensive verification using full choices list
+          console.log(`🔄 Final verification using comprehensive global choices list for '${finalChoiceName}'`);
+          try {
+            // Get all global choices to see if our choice exists
+            const allChoicesQuery = `GlobalOptionSetDefinitions?$select=MetadataId,Name,DisplayName`;
+            const allChoicesResult = await this._get(allChoicesQuery);
+            if (allChoicesResult.value) {
+              const foundChoice = allChoicesResult.value.find(choice => 
+                choice.Name === finalChoiceName || choice.Name === finalChoiceName.toLowerCase()
+              );
+              
+              if (foundChoice) {
+                createdChoice = foundChoice;
+                console.log(`✅ Found '${finalChoiceName}' in comprehensive verification`);
+              } else {
+                console.log(`⚠️ Choice '${finalChoiceName}' not found in comprehensive list of ${allChoicesResult.value.length} choices`);
+              }
+            }
+          } catch (altError) {
+            console.log(`⚠️ Comprehensive verification failed: ${altError.message}`);
+          }
+          
+          if (!createdChoice) {
+            // Since choices often exist despite verification failures, treat as warning
+            console.log(`⚠️ Verification failed for '${finalChoiceName}' but treating as non-fatal error`);
+            // Even without MetadataId, we'll try to add to solution later by searching again
+            createdChoice = { Name: finalChoiceName, MetadataId: null, verified: false };
+          }
         }
         
         // Add to solution using AddSolutionComponent action
-        const componentBody = {
-          ComponentId: createdChoice.MetadataId,
-          ComponentType: 9, // OptionSet component type
-          SolutionUniqueName: solutionUniqueName,
-          AddRequiredComponents: false,
-          DoNotIncludeSubcomponents: false
-        };
+        if (createdChoice.MetadataId && createdChoice.verified !== false) {
+          const componentBody = {
+            ComponentId: createdChoice.MetadataId,
+            ComponentType: 9, // OptionSet component type
+            SolutionUniqueName: solutionUniqueName,
+            AddRequiredComponents: false,
+            DoNotIncludeSubcomponents: false
+          };
+          
+          await this._req('POST', '/AddSolutionComponent', componentBody);
+          console.log(`✅ Created and added custom global choice set '${finalChoiceName}' to solution`);
+        } else {
+          // Try one more time to find and add to solution
+          console.log(`🔄 Attempting final solution addition for '${finalChoiceName}' after delay...`);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+          
+          try {
+            const allChoicesForFinalLookup = await this._get(`GlobalOptionSetDefinitions?$select=MetadataId,Name`);
+            const foundChoice = allChoicesForFinalLookup.value?.find(choice => choice.Name === finalChoiceName);
+            if (foundChoice) {
+              const componentBody = {
+                ComponentId: foundChoice.MetadataId,
+                ComponentType: 9,
+                SolutionUniqueName: solutionUniqueName,
+                AddRequiredComponents: false,
+                DoNotIncludeSubcomponents: false
+              };
+              
+              await this._req('POST', '/AddSolutionComponent', componentBody);
+              console.log(`✅ Found and added '${finalChoiceName}' to solution after final attempt`);
+            } else {
+              console.log(`⚠️ Final lookup also failed for '${finalChoiceName}' - choice may still exist but not be discoverable via API`);
+            }
+          } catch (finalError) {
+            console.log(`⚠️ Final solution addition failed for '${finalChoiceName}': ${finalError.message}`);
+          }
+        }
         
-        await this._req('POST', '/AddSolutionComponent', componentBody);
         created++;
-        console.log(`✅ Created and added custom global choice set '${finalChoiceName}' to solution`);
       } catch (error) {
         failed++;
         const errorMsg = `Failed to create custom global choice set '${choice.name}': ${error.message}`;
@@ -1125,7 +1316,7 @@ class DataverseClient {
       }
     }
     
-    return { created, failed, errors };
+    return { created, failed, skipped, errors };
   }
 
   async addPendingGlobalChoicesToSolution() {

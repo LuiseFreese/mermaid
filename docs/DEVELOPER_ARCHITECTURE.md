@@ -1,12 +1,13 @@
 # Developer & Architecture Guide
 
-This document provides a comprehensive overview of the Mermaid to Dataverse Converter application architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project.
+This document provides a comprehensive overview of the Mermaid to Dataverse Converter application architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project. Because after all - this is open-source - which is not only free, but I'd love to invite you to join me in this and make a good thing even better!
 
 ## System Overview
 
-The Mermaid to Dataverse Converter is a **production-ready Node.js web application** deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+The Mermaid to Dataverse Converter is a Node.js web application deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
 
-**Key Features:**
+### Key Features
+
 - **Modern Wizard Interface** - Step-by-step guided deployment
 - **Real-time ERD Validation** - Auto-correction and syntax checking
 - **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
@@ -19,11 +20,10 @@ The Mermaid to Dataverse Converter is a **production-ready Node.js web applicati
 
 - **Runtime**: Node.js
 - **Deployment**: Azure App Service with Managed Identity
-- **Authentication**: Azure Key Vault with Managed iIdentity
+- **Authentication**: Azure Key Vault with Managed Identity
 - **Security**: No secrets in code, all credentials in Key Vault
 - **UI**: Web-based wizard with real-time streaming logs
 - **API**: RESTful endpoints for validation and testing
-
 
 ### High-Level Flow
 1. **Modern Wizard Interface**: User accesses step-by-step wizard at `/wizard`
@@ -185,7 +185,11 @@ This section provides detailed documentation for all available API endpoints in 
 | `/health` | GET | Returns application health status |
 | `/wizard` | GET | Primary wizard interface for guided deployment |
 | `/api/validate-erd` | POST | Validates a Mermaid ERD diagram and returns parsed entities/relationships |
+| `/api/publishers` | GET | Lists available publishers in Dataverse |
+| `/api/global-choices-list` | GET | Lists available global choice sets in Dataverse |
+| `/api/solution-status` | GET | Gets solution components and deployment status for polling |
 | `/upload` | POST | Deploys entities and relationships to Dataverse |
+| `/cleanup` | POST | Removes test entities and relationships from Dataverse |
 
 #### Health Endpoint
 
@@ -289,6 +293,133 @@ POST /upload
 }
 ```
 
+#### Solution Status Endpoint (Polling)
+
+```
+GET /api/solution-status?solution=SolutionName
+```
+
+**Purpose**: Retrieves solution components and deployment status for verification after timeout scenarios.
+
+**Query Parameters**:
+- `solution` (required): The unique name of the solution to check
+
+**Response**:
+```json
+{
+  "success": true,
+  "solution": {
+    "uniqueName": "CustomerSolution",
+    "friendlyName": "Customer Management Solution",
+    "solutionId": "guid-value"
+  },
+  "components": {
+    "entities": [
+      {
+        "logicalName": "custom_customer",
+        "displayName": "Customer",
+        "type": "entity"
+      }
+    ],
+    "optionSets": [
+      {
+        "logicalName": "custom_priority_level",
+        "displayName": "Priority Level",
+        "type": "optionset"
+      }
+    ],
+    "others": [],
+    "totalCount": 2
+  }
+}
+```
+
+**Error Response**:
+```json
+{
+  "success": false,
+  "error": "Solution not found"
+}
+```
+
+#### Publishers Endpoint
+
+```
+GET /api/publishers
+```
+
+**Purpose**: Retrieves all available publishers from Dataverse for selection during deployment.
+
+**Response**:
+```json
+{
+  "success": true,
+  "publishers": [
+    {
+      "id": "f30ac77a-6a86-f011-b4cc-000d3a66881e",
+      "uniqueName": "MermaidPublisher",
+      "friendlyName": "Mermaid Publisher",
+      "prefix": "mdv",
+      "isDefault": false
+    },
+    {
+      "id": "d21aab71-79e7-11dd-8874-00188b01e34f",
+      "uniqueName": "DefaultPublisherorg8efac90e",
+      "friendlyName": "Default Publisher for org8efac90e",
+      "prefix": "new",
+      "isDefault": false
+    }
+  ]
+}
+```
+
+#### Global Choices List Endpoint
+
+```
+GET /api/global-choices-list
+```
+
+**Purpose**: Retrieves all available global choice sets (option sets) from Dataverse for selection during deployment.
+
+**Response**:
+```json
+{
+  "success": true,
+  "all": [...],
+  "grouped": {
+    "custom": [...],
+    "builtIn": [...]
+  },
+  "summary": {
+    "total": 150,
+    "custom": 5,
+    "builtIn": 145
+  }
+}
+```
+
+#### Cleanup Endpoint
+
+```
+POST /cleanup
+```
+
+**Purpose**: Removes test entities and relationships from Dataverse (primarily for development and testing).
+
+**Request Body**:
+```json
+{
+  "dataverseUrl": "https://myorg.crm.dynamics.com",
+  "tenantId": "tenant-id",
+  "clientId": "client-id", 
+  "clientSecret": "client-secret",
+  "dryRun": true,
+  "cleanupAll": false,
+  "entityPrefixes": ["test", "demo"],
+  "preserveCDM": true
+}
+```
+
 #### Using the API with Scripts
 
 The included PowerShell scripts demonstrate how to use these endpoints programmatically:
@@ -329,6 +460,7 @@ To use these scripts:
 - **Column Creation**: Adds custom columns to entities with full attribute support
 - **Relationship Creation**: Establishes one-to-many and many-to-many relationships (via junction table)
 - **Global Choice Management**: Creates and manages global choice sets
+- **Solution Introspection**: Retrieves solution components for deployment verification
 
 
 **Authentication with Managed Identity**:
@@ -360,6 +492,38 @@ async createEntitiesFromMermaidWithLogging(entities, options, logFunction) {
   
   // 4. Create additional columns
   // 5. Create relationships
+}
+```
+
+**Solution Status Checking**:
+```javascript
+// New method for deployment verification
+async getSolutionComponents(solutionUniqueName) {
+  // 1. Get solution metadata
+  const solution = await this.checkSolutionExists(solutionUniqueName);
+  
+  // 2. Query solution components
+  const components = await this._req('get', 
+    `/solutioncomponents?$filter=_solutionid_value eq '${solution.solutionid}'`);
+  
+  // 3. Process each component by type
+  const entities = [], optionSets = [], others = [];
+  for (const component of components.value) {
+    switch (component.componenttype) {
+      case 1: // Entity
+        const entityMeta = await this._req('get', 
+          `/EntityDefinitions(${component.objectid})?$select=LogicalName,DisplayName`);
+        entities.push(entityMeta);
+        break;
+      case 9: // Option Set (Global Choice)
+        const optionMeta = await this._req('get', 
+          `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName`);
+        optionSets.push(optionMeta);
+        break;
+    }
+  }
+  
+  return { success: true, solution, components: { entities, optionSets, others } };
 }
 ```
 
@@ -437,38 +601,108 @@ async getKeyVaultSecrets() {
 
 ### Global Choices Integration
 
-**Purpose**: Manage Dataverse global choice sets (option sets) alongside entity creation.
+**Purpose**: Manage Dataverse global choice sets (option sets) alongside entity creation with robust creation, verification, and solution integration processes.
 
-**Capabilities**:
-- **Upload JSON definitions** of global choice sets
-- **Automatic validation** of choice set structure
-- **Dry-run preview** before creation
-- **Solution integration** - automatically add created choices to solution
-- **Conflict detection** - identify existing choices to avoid duplicates
+**Key Features**:
+- **Custom Global Choices**: Upload and create custom global choice sets with user-defined options
+- **Duplicate Detection**: Case-insensitive duplicate checking to prevent conflicts
+- **Solution Integration**: Automatic addition of created choices to the target solution
+- **Robust Verification**: Multi-attempt verification with fallback mechanisms
+- **API Constraint Handling**: Workarounds for Dataverse API limitations
+
+**Supported Operations**:
+1. Create new global choice sets in Dataverse
+2. Add existing global choices to solutions
+3. Verify creation success with retry logic
+4. Handle API timing and caching issues
 
 **JSON Format**:
 ```json
-{
-  "globalChoices": [
-    {
-      "name": "priority_level",
-      "displayName": "Priority Level",
-      "description": "Priority levels for tasks",
-      "options": [
-        { "value": 1, "label": "High", "description": "High priority" },
-        { "value": 2, "label": "Medium", "description": "Medium priority" },
-        { "value": 3, "label": "Low", "description": "Low priority" }
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "Status",
+    "displayName": "Status",
+    "description": "Simple status options",
+    "options": [
+      {
+        "value": 1,
+        "label": "Active"
+      },
+      {
+        "value": 2,
+        "label": "Inactive"
+      }
+    ]
+  }
+]
 ```
 
+**Required Fields**:
+- `name`: Logical name of the choice set
+- `displayName`: Display name shown in UI
+- `options`: Array of choice options
 
-### Global Choice Creation Process
-1. **Parse ERD**: Extract all choice field definitions
-2. **Validate**: Check if global choice already exists
-3. **Create**: Generate new global choice with proper metadata
+**Optional Fields**:
+- `description`: Description of the choice set
+- `value`: Numeric value for each option (auto-generated if not provided)
+
+### Global Choice Creation & Verification Process
+
+**Duplicate Detection Process**:
+1. Fetch all existing global choices using `GlobalOptionSetDefinitions?$select=Name`
+2. Convert existing names to lowercase for case-insensitive comparison
+3. Check if choice name (with publisher prefix) already exists
+4. If duplicate found, skip creation but attempt to add existing choice to solution
+
+**Creation and Verification Workflow**:
+1. **Create Choice Set**: POST to `/GlobalOptionSetDefinitions` with choice metadata
+2. **Multi-Attempt Verification**: Try up to 5 times with progressive delays (3s, 5s, 7s, 9s, 10s)
+3. **Fallback Verification**: Use comprehensive global choices list if direct lookup fails
+4. **Solution Addition**: Add successfully created/found choices to target solution
+
+**API Constraints and Workarounds**:
+
+The Dataverse API has several limitations that required specific workarounds:
+
+| **Issue** | **Problem** | **Workaround** |
+|-----------|-------------|----------------|
+| **No Filter Support** | `$filter` parameter not supported on `GlobalOptionSetDefinitions` | Fetch all choices and filter client-side |
+| **Property Limitations** | `IsCustom` property not available on `OptionSetMetadataBase` | Use `IsManaged` property instead |
+| **Caching Delays** | Created choices may not be immediately discoverable | Progressive retry with increasing delays |
+
+**Fixed Query Examples**:
+
+❌ **Unsupported (causes API errors)**:
+```javascript
+// These queries will fail
+`GlobalOptionSetDefinitions?$filter=Name eq '${choiceName}'`
+`GlobalOptionSetDefinitions?$select=MetadataId,Name,IsCustom`
+```
+
+✅ **Supported (working queries)**:
+```javascript
+// Get all choices and filter client-side
+`GlobalOptionSetDefinitions?$select=MetadataId,Name,DisplayName`
+const foundChoice = allChoices.value?.find(choice => choice.Name === targetName);
+
+// Use IsManaged instead of IsCustom
+`GlobalOptionSetDefinitions?$select=MetadataId,Name,IsManaged`
+```
+
+**Error Handling**:
+- **API Limitations**: Handle unsupported `$filter` operations gracefully
+- **Timing Issues**: Account for Dataverse caching with retry mechanisms
+- **Non-Fatal Failures**: Treat verification failures as warnings when choices likely exist
+
+**Implementation Details** (`src/dataverse-client.js`):
+- **Method**: `createAndAddCustomGlobalChoices()`
+- **Lines**: ~1100-1320
+- **Key Functions**: Duplicate detection, multi-attempt verification, solution integration
+
+**Status Messages**:
+- `✅ Created and added`: Choice successfully created and added to solution
+- `⚠️ Skipped`: Choice already exists, attempted to add to solution
+- `❌ Failed`: Choice creation failed with error details
 
 
 ### Enhanced ERD Validation
@@ -486,6 +720,74 @@ async getKeyVaultSecrets() {
 - Missing primary keys → Automatic ID field generation
 - Invalid naming → Proper naming convention suggestions
 - Relationship inconsistencies → Corrected relationship definitions
+
+### Smart Timeout Handling & Deployment Verification
+
+**Purpose**: Handle Azure App Service HTTP timeouts (230 seconds) while ensuring deployment results are properly verified and displayed to users.
+
+**The Challenge**:
+- Azure App Service has a 230-second HTTP timeout limit
+- Complex Dataverse deployments (especially with CDM entities) can take 4-6 minutes
+- Traditional timeout messages left users uncertain about deployment success
+
+**The Solution - Intelligent Polling**:
+Instead of showing a generic timeout message, the application now:
+
+1. **Detects Timeout**: Catches 504 Gateway Timeout or network fetch failures
+2. **Starts Polling**: Automatically begins checking solution status via `/api/solution-status`
+3. **Verifies Results**: Queries Dataverse to see what was actually created
+4. **Reports Success**: Shows detailed results of what was deployed
+
+**Implementation Flow**:
+```javascript
+// 1. Deployment starts normally
+await fetch('/upload', { method: 'POST', body: deploymentData });
+
+// 2. If timeout occurs (504 or network error), start polling
+if (response.status === 504 || error.includes('Failed to fetch')) {
+    await handleTimeoutWithPolling(solutionName, outputElement);
+}
+
+// 3. Polling checks solution status every 3 seconds for up to 30 seconds
+for (let attempt = 1; attempt <= 10; attempt++) {
+    const status = await fetch(`/api/solution-status?solution=${solutionName}`);
+    if (status.success && status.components.totalCount > 0) {
+        // Success! Show what was actually created
+        showDeploymentResults(status.components);
+        break;
+    }
+    await delay(3000); // Wait 3 seconds before next attempt
+}
+```
+
+**User Experience Benefits**:
+- **No uncertainty**: Users see actual deployment results instead of timeout warnings
+- **Detailed feedback**: Exact counts of entities, CDM integrations, and global choices
+- **Clear messaging**: Distinguishes between normal completion and polling after timeout
+- **Professional UX**: Eliminates confusing "may have completed" messages
+
+**Technical Benefits**:
+- **Deployment verification**: Confirms what was actually created in Dataverse
+- **Solution introspection**: Uses Dataverse APIs to validate deployment success
+- **Comprehensive logging**: Console logs clearly indicate deployment path taken
+- **Fallback handling**: Graceful degradation if polling also fails
+
+**Success Message Format**:
+```
+Deployment completed successfully
+
+Successfully created X tables, integrated Y CDM tables, 
+created Z new global choices and integrated W already existing global choices.
+```
+
+**Logging for Debugging**:
+```javascript
+// Clear distinction between deployment paths
+console.log('🚀 DEPLOYMENT STARTED: Normal HTTP streaming');
+// OR
+console.log('⏳ POLLING AFTER TIMEOUT: Checking solution status');
+console.log('✅ POLLING SUCCESS: Found solution with components');
+```
 
 ### Advanced Relationship Handling
 
@@ -798,14 +1100,14 @@ node tests/test-schema-generation.js examples/simple-sales.mmd myprefix
 # Health check
 GET /health
 
-# Key Vault connectivity
-GET /keyvault
+# Solution status check (for deployment verification)
+GET /api/solution-status?solution=YourSolutionName
 
-# Managed identity status
-GET /managed-identity
+# Publishers list
+GET /api/publishers
 
-# Dataverse connection test
-POST /api/test-dataverse
+# Global choices list  
+GET /api/global-choices-list
 ```
 
 ### 3. Manual Testing Workflow
@@ -813,7 +1115,9 @@ POST /api/test-dataverse
 1. **Upload Test File**: Use web interface with sample files
 2. **Dry Run Mode**: Validate without creating entities
 3. **Live Deployment**: Test actual Dataverse creation
-4. **Error Scenarios**: Test with invalid files, wrong credentials
+4. **Timeout Testing**: Test with complex files that trigger timeout polling
+5. **Solution Verification**: Use `/api/solution-status` to verify deployment results
+6. **Error Scenarios**: Test with invalid files, wrong credentials
 
 ## Deployment Architecture
 
@@ -964,11 +1268,9 @@ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsit
 
 ### Diagnostic Tools
 
-1. **Health Check Endpoints**
+1. **Health Check Endpoint**
    ```
    https://your-app-service.azurewebsites.net/health
-   https://your-app-service.azurewebsites.net/keyvault
-   https://your-app-service.azurewebsites.net/managed-identity
    ```
 
 2. **Azure Logs**

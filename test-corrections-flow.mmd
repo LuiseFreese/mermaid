@@ -1,0 +1,17 @@
+erDiagram
+    customer_table {
+        string customer_id PK
+        string customer_name
+        string email_address
+        string phone_number
+        string ownerid FK
+    }
+    order_table {
+        string order_id PK
+        string customer_id FK
+        datetime order_date
+        decimal total_amount
+        string statuscode
+    }
+    
+    customer_table ||--o{ order_table : places

@@ -478,6 +478,10 @@ if (hasCustomEntities) {
         }
       }
 
+      // Map to frontend expected field names
+      results.globalChoicesCreated = (results.customGlobalChoicesCreated || 0);
+      results.selectedGlobalChoicesAdded = (results.globalChoicesAdded || 0);
+
       streamLogs(res);
       return writeFinal(res, results);
 
@@ -631,6 +635,57 @@ async function handleGetGlobalChoices(req, res) {
   }
 }
 
+// --- solution status endpoint handler ----------------------------------
+async function handleGetSolutionStatus(req, res) {
+  console.log('🔍 Getting solution status...');
+  
+  try {
+    const urlParts = url.parse(req.url, true);
+    const solutionName = urlParts.query.solution;
+    
+    if (!solutionName) {
+      res.writeHead(400, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({ 
+        success: false, 
+        error: 'Solution name is required as query parameter: ?solution=SolutionName'
+      }));
+    }
+
+    // Get Dataverse configuration
+    const cfg = await getDataverseConfig();
+    const client = new DataverseClient({
+      dataverseUrl: cfg.serverUrl,
+      tenantId: cfg.tenantId,
+      clientId: cfg.clientId,
+      clientSecret: cfg.clientSecret,
+      verbose: true
+    });
+
+    // Get solution components
+    const result = await client.getSolutionComponents(solutionName);
+    
+    if (result.success) {
+      console.log(`✅ Found solution '${solutionName}' with ${result.components.totalCount} components`);
+      console.log(`   - ${result.components.entities.length} entities`);
+      console.log(`   - ${result.components.optionSets.length} global choices`);
+      console.log(`   - ${result.components.others.length} other components`);
+    } else {
+      console.log(`❌ Failed to get solution status: ${result.error}`);
+    }
+
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify(result));
+    
+  } catch (error) {
+    console.error('❌ Failed to get solution status:', error);
+    res.writeHead(500, {'Content-Type':'application/json'});
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: error.message
+    }));
+  }
+}
+
 // --- server ------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
   const { pathname } = url.parse(req.url, true);
@@ -642,6 +697,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/wizard') return serveWizard(res);
   if (req.method === 'GET' && pathname === '/api/publishers') return handleGetPublishers(req, res);
   if (req.method === 'GET' && pathname === '/api/global-choices-list') return handleGetGlobalChoices(req, res);
+  if (req.method === 'GET' && pathname === '/api/solution-status') return handleGetSolutionStatus(req, res);
   if (req.method === 'POST' && pathname === '/api/validate-erd') return handleValidateErd(req, res);
   if (req.method === 'POST' && pathname === '/upload') return handleUpload(req, res);
   if (req.method === 'POST' && pathname === '/cleanup') return handleCleanup(req, res);

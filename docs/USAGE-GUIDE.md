@@ -34,6 +34,7 @@ The application provides a **step-by-step wizard interface** for uploading Merma
 3. **Global Choices** (Optional):
    - Upload JSON file with global choice definitions if needed
    - Review and select existing choices from Dataverse
+   - See [Developer Architecture Guide](DEVELOPER_ARCHITECTURE.md#global-choices-integration) for detailed documentation
    - Click "Next" to continue
 
 4. **Final Review & Deploy**:
