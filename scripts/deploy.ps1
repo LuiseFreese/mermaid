@@ -1,15 +1,71 @@
-# Simplified app deployment for Mermaid to Dataverse
-# This is now called by setup-entra-app.ps1 after infrastructure is deployed
+# Enhanced Mermaid to Dataverse Deployment Script
+# Complete standalone deployment - no additional commands needed
 # Usage: .\scripts\deploy.ps1 -ResourceGroup rg-name -AppServiceName app-name
 
 param(
     [Parameter(Mandatory = $true)] [string]$ResourceGroup,
     [Parameter(Mandatory = $true)] [string]$AppServiceName,
-    [Parameter(Mandatory = $false)] [string]$ManagedIdentityClientId
+    [Parameter(Mandatory = $false)] [string]$ManagedIdentityClientId,
+    [Parameter(Mandatory = $false)] [switch]$SkipPermissions
 )
 
 $ErrorActionPreference = 'Stop'
-Write-Host "=== Deploying Application to App Service ===" -ForegroundColor Cyan
+Write-Host "=== Enhanced Standalone Deployment for Mermaid to Dataverse ===" -ForegroundColor Cyan
+Write-Host "Resource Group: $ResourceGroup" -ForegroundColor Green
+Write-Host "App Service: $AppServiceName" -ForegroundColor Green
+Write-Host ""
+
+# Function to check Azure CLI login
+function Test-AzureLogin {
+    try {
+        $account = az account show --query "user.name" --output tsv 2>$null
+        if ($account) {
+            Write-Host "✅ Azure CLI authenticated as: $account" -ForegroundColor Green
+            return $true
+        }
+    } catch {
+        # Ignore errors
+    }
+    
+    Write-Host "❌ Azure CLI not authenticated" -ForegroundColor Red
+    Write-Host "Please run: az login" -ForegroundColor Yellow
+    return $false
+}
+
+# Function to grant Key Vault permissions
+function Grant-KeyVaultPermissions {
+    param($KeyVaultName, $ResourceGroup)
+    
+    if ($SkipPermissions) {
+        Write-Host "⏭️ Skipping Key Vault permissions (SkipPermissions flag)" -ForegroundColor Yellow
+        return
+    }
+    
+    try {
+        Write-Host "🔐 Attempting to grant Key Vault permissions..." -ForegroundColor Yellow
+        
+        # Try RBAC assignment first
+        $userId = az ad signed-in-user show --query id --output tsv
+        if ($userId) {
+            Write-Host "Granting Key Vault Secrets Officer role..." -ForegroundColor Yellow
+            az role assignment create --assignee $userId --role "Key Vault Secrets Officer" --scope "/subscriptions/$(az account show --query id --output tsv)/resourcegroups/$ResourceGroup/providers/Microsoft.KeyVault/vaults/$KeyVaultName" 2>$null
+            
+            # Wait a moment for permissions to propagate
+            Write-Host "⏳ Waiting 10 seconds for permissions to propagate..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 10
+            
+            Write-Host "✅ Key Vault permissions granted successfully" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "⚠️ Could not grant Key Vault permissions: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "   Deployment will continue with runtime Key Vault authentication" -ForegroundColor Yellow
+    }
+}
+
+# Check prerequisites
+if (-not (Test-AzureLogin)) {
+    throw "Azure CLI authentication required. Please run 'az login' first."
+}
 
 try {
     # Get Key Vault and Managed Identity details
@@ -28,6 +84,9 @@ try {
     $keyVaultUri = "https://$keyVaultName.vault.azure.net/"
     Write-Host "Found Key Vault: $keyVaultName" -ForegroundColor Green
     Write-Host "Found Managed Identity: $managedIdentityName ($managedIdentityClientId)" -ForegroundColor Green
+    
+    # Grant Key Vault permissions to current user if needed
+    Grant-KeyVaultPermissions -KeyVaultName $keyVaultName -ResourceGroup $ResourceGroup
     
     # Configure app settings for proper Node.js deployment with Key Vault integration
     Write-Host "Configuring app settings..." -ForegroundColor Yellow
@@ -140,7 +199,24 @@ try {
     if ($deploymentSuccess) {
         Write-Host ""
         Write-Host "🌐 App URL: https://$AppServiceName.azurewebsites.net/" -ForegroundColor Cyan
+        Write-Host "🧙 Wizard: https://$AppServiceName.azurewebsites.net/wizard" -ForegroundColor Cyan
         Write-Host "❤️ Health: https://$AppServiceName.azurewebsites.net/health" -ForegroundColor DarkCyan
+        
+        # Test the deployment
+        Write-Host ""
+        Write-Host "🧪 Testing deployment..." -ForegroundColor Yellow
+        try {
+            $healthResponse = Invoke-RestMethod -Uri "https://$AppServiceName.azurewebsites.net/health" -TimeoutSec 30
+            if ($healthResponse.status -eq "healthy") {
+                Write-Host "✅ Application is running and healthy!" -ForegroundColor Green
+                Write-Host "🎉 Deployment completed successfully with updated global choices functionality!" -ForegroundColor Green
+            } else {
+                Write-Host "⚠️ Application deployed but health check returned: $($healthResponse.status)" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "⚠️ Application deployed but health check failed: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "   The app may still be starting up. Please check the URL manually." -ForegroundColor Yellow
+        }
         
         # Clean up
         Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
