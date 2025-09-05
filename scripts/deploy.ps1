@@ -209,7 +209,7 @@ try {
             $healthResponse = Invoke-RestMethod -Uri "https://$AppServiceName.azurewebsites.net/health" -TimeoutSec 30
             if ($healthResponse.status -eq "healthy") {
                 Write-Host "✅ Application is running and healthy!" -ForegroundColor Green
-                Write-Host "🎉 Deployment completed successfully with updated global choices functionality!" -ForegroundColor Green
+                Write-Host "🎉 Deployment completed successfully!" -ForegroundColor Green
             } else {
                 Write-Host "⚠️ Application deployed but health check returned: $($healthResponse.status)" -ForegroundColor Yellow
             }
