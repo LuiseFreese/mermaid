@@ -183,6 +183,13 @@ class DataverseClient {
     return null;
   }
 
+  async getSolutionById(solutionId) {
+    const q = `/solutions(${solutionId})?$select=solutionid,uniquename,friendlyname,_publisherid_value&$expand=publisherid($select=publisherid,uniquename,customizationprefix)`;
+    this._log(' GET', `${this.baseUrl}/api/data/v9.2${q}`);
+    const solution = await this._req('get', q);
+    return solution;
+  }
+
   async createSolution(uniqueName, friendlyName, { publisherId, description } = {}) {
     const payload = {
       uniquename: uniqueName,
@@ -465,6 +472,17 @@ class DataverseClient {
       DisplayName: this._label(display)
     };
   }
+  
+  _memoAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.MemoAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxLength: 2000,
+      DisplayName: this._label(display)
+    };
+  }
+  
   _intAttribute(schemaName, display) {
     return {
       '@odata.type': 'Microsoft.Dynamics.CRM.IntegerAttributeMetadata',
@@ -474,12 +492,160 @@ class DataverseClient {
       DisplayName: this._label(display)
     };
   }
+  
+  _decimalAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.DecimalAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Precision: 2,
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _moneyAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.MoneyAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Precision: 2,
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _booleanAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.BooleanAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      DefaultValue: false,
+      OptionSet: {
+        TrueOption: { Value: 1, Label: this._label('Yes') },
+        FalseOption: { Value: 0, Label: this._label('No') }
+      },
+      DisplayName: this._label(display)
+    };
+  }
+  
   _datetimeAttribute(schemaName, display) {
     return {
       '@odata.type': 'Microsoft.Dynamics.CRM.DateTimeAttributeMetadata',
       SchemaName: schemaName,
       RequiredLevel: { Value: 'None' },
       Format: 'DateAndTime',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _dateOnlyAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.DateTimeAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Format: 'DateOnly',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _floatAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.DoubleAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Precision: 5,
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _emailAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.StringAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxLength: 100,
+      Format: 'Email',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _phoneAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.StringAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxLength: 50,
+      Format: 'Phone',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _urlAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.StringAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxLength: 200,
+      Format: 'Url',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _tickerAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.StringAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxLength: 10,
+      Format: 'TickerSymbol',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _durationAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.IntegerAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Format: 'Duration',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _imageAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.ImageAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _fileAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.FileAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      MaxSizeInKB: 32768,
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _timezoneAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.IntegerAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Format: 'TimeZone',
+      DisplayName: this._label(display)
+    };
+  }
+  
+  _languageAttribute(schemaName, display) {
+    return {
+      '@odata.type': 'Microsoft.Dynamics.CRM.IntegerAttributeMetadata',
+      SchemaName: schemaName,
+      RequiredLevel: { Value: 'None' },
+      Format: 'Language',
       DisplayName: this._label(display)
     };
   }
@@ -556,9 +722,63 @@ class DataverseClient {
       case 'integer':
       case 'number':
         return this._intAttribute(this._toSchema(schemaBase), display);
+        
+      case 'decimal':
+        return this._decimalAttribute(this._toSchema(schemaBase), display);
+        
+      case 'money':
+      case 'currency':
+        return this._moneyAttribute(this._toSchema(schemaBase), display);
+        
+      case 'boolean':
+      case 'bool':
+        return this._booleanAttribute(this._toSchema(schemaBase), display);
+        
       case 'datetime':
-      case 'date':
         return this._datetimeAttribute(this._toSchema(schemaBase), display);
+        
+      case 'date':
+      case 'dateonly':
+        return this._dateOnlyAttribute(this._toSchema(schemaBase), display);
+        
+      case 'float':
+      case 'double':
+      case 'floatingpoint':
+        return this._floatAttribute(this._toSchema(schemaBase), display);
+        
+      case 'email':
+        return this._emailAttribute(this._toSchema(schemaBase), display);
+        
+      case 'phone':
+        return this._phoneAttribute(this._toSchema(schemaBase), display);
+        
+      case 'url':
+        return this._urlAttribute(this._toSchema(schemaBase), display);
+        
+      case 'ticker':
+        return this._tickerAttribute(this._toSchema(schemaBase), display);
+        
+      case 'timezone':
+        return this._timezoneAttribute(this._toSchema(schemaBase), display);
+        
+      case 'language':
+        return this._languageAttribute(this._toSchema(schemaBase), display);
+        
+      case 'duration':
+        return this._durationAttribute(this._toSchema(schemaBase), display);
+        
+      case 'text':
+      case 'memo':
+      case 'textarea':
+        return this._memoAttribute(this._toSchema(schemaBase), display);
+        
+      case 'image':
+        return this._imageAttribute(this._toSchema(schemaBase), display);
+        
+      case 'file':
+        return this._fileAttribute(this._toSchema(schemaBase), display);
+        
+      case 'string':
       default:
         // string/fallback
         return this._stringAttribute(this._toSchema(schemaBase), display, 4000);

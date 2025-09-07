@@ -46,10 +46,26 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
       // Prepare deployment data based on wizardData structure
       const deploymentData = {
         mermaidContent: wizardData.originalErdContent || '',
-        solutionName: wizardData.solutionName || 'MermaidSolution',
-        solutionDisplayName: wizardData.solutionName || 'Mermaid Solution',
-        publisher: wizardData.selectedPublisher?.id || wizardData.selectedPublisher?.uniqueName,
+        // Use existing solution name when adding to existing solution
+        solutionName: wizardData.solutionType === 'existing' && wizardData.selectedSolution 
+          ? wizardData.selectedSolution.uniquename 
+          : (wizardData.solutionInternalName || wizardData.solutionName || 'MermaidSolution'),
+        solutionDisplayName: wizardData.solutionType === 'existing' && wizardData.selectedSolution
+          ? wizardData.selectedSolution.friendlyname
+          : (wizardData.solutionName || 'Mermaid Solution'),
+        // Publisher information - for existing solutions, use selected solution's publisher
+        useExistingSolution: wizardData.solutionType === 'existing',
+        selectedSolutionId: wizardData.selectedSolution?.solutionid,
+        selectedPublisher: wizardData.selectedPublisher ? {
+          id: wizardData.selectedPublisher.id,
+          uniqueName: wizardData.selectedPublisher.uniqueName,
+          displayName: wizardData.selectedPublisher.displayName,
+          prefix: wizardData.selectedPublisher.prefix
+        } : null,
+        // For new publishers
+        createNewPublisher: wizardData.publisherType === 'new',
         publisherName: wizardData.newPublisherName || wizardData.selectedPublisher?.displayName || 'Mermaid Publisher',
+        publisherUniqueName: wizardData.newPublisherInternalName || wizardData.selectedPublisher?.uniqueName,
         publisherPrefix: wizardData.newPublisherPrefix || wizardData.selectedPublisher?.prefix || 'mmd',
         cdmChoice: wizardData.entityChoice,
         cdmMatches: wizardData.detectedEntities || [],

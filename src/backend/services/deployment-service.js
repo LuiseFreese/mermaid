@@ -72,7 +72,7 @@ class DeploymentService extends BaseService {
                 });
                 
                 // Step 3: Ensure solution and publisher
-                progress('publisher', 'Creating (or reusing) Publisher...');
+                progress('publisher', config.useExistingSolution ? 'Using existing solution publisher...' : 'Creating (or reusing) Publisher...');
                 const publisherResult = await this.ensurePublisher(config, dataverseConfig);
                 
                 console.log('🔧 DEBUG: publisherResult:', {
@@ -83,13 +83,20 @@ class DeploymentService extends BaseService {
                     success: publisherResult?.success
                 });
                 
-                progress('solution', 'Creating Solution...');
+                progress('solution', config.useExistingSolution ? 'Using existing solution...' : 'Creating Solution...');
                 // Extract the actual publisher data from the wrapped response
                 const publisher = publisherResult?.data || publisherResult;
                 const solutionResult = await this.ensureSolution(config, publisher, dataverseConfig);
                 
                 // Extract the actual solution data from the wrapped response
                 const solution = solutionResult?.data || solutionResult;
+
+                console.log('🔧 DEBUG: Final solution being used:', {
+                    uniquename: solution?.uniquename,
+                    friendlyname: solution?.friendlyname,
+                    solutionid: solution?.solutionid,
+                    publisher: solution?.publisherid?.uniquename || solution?.publisher?.uniquename
+                });
 
                 // Step 4: Determine entity processing strategy
                 const cdmMatches = parseResult.cdmDetection?.detectedCDM || [];
@@ -284,8 +291,23 @@ class DeploymentService extends BaseService {
      * @returns {Promise<Object>} Publisher result
      */
     async ensurePublisher(config, dataverseConfig) {
+        // If using existing solution with selected publisher, use that publisher
+        if (config.useExistingSolution && config.selectedPublisher) {
+            console.log('🔧 DEBUG: Using existing solution publisher:', config.selectedPublisher);
+            return {
+                success: true,
+                data: {
+                    publisherid: config.selectedPublisher.id,
+                    uniquename: config.selectedPublisher.uniqueName,
+                    friendlyname: config.selectedPublisher.displayName,
+                    customizationprefix: config.selectedPublisher.prefix
+                }
+            };
+        }
+
+        // For new publishers or when creating new solution
         const publisherConfig = {
-            uniqueName: (config.publisherName || 'CustomMermaidPublisher').replace(/\s+/g, ''),
+            uniqueName: config.publisherUniqueName || (config.publisherName || 'CustomMermaidPublisher').replace(/\s+/g, ''),
             friendlyName: config.publisherName || 'Custom Mermaid Publisher',
             prefix: config.publisherPrefix || 'cmmd'
         };
@@ -303,6 +325,21 @@ class DeploymentService extends BaseService {
      * @returns {Promise<Object>} Solution result
      */
     async ensureSolution(config, publisher, dataverseConfig) {
+        // If using existing solution, use the selected solution
+        if (config.useExistingSolution && config.selectedSolutionId) {
+            console.log('🔧 DEBUG: Using existing solution:', config.selectedSolutionId);
+            
+            // Get the existing solution details
+            const client = await this.dataverseRepository.getClient(dataverseConfig);
+            const solution = await client.getSolutionById(config.selectedSolutionId);
+            
+            return {
+                success: true,
+                data: solution
+            };
+        }
+
+        // For new solutions
         const solutionConfig = {
             uniqueName: config.solutionName,
             displayName: config.solutionDisplayName,

@@ -270,6 +270,17 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
                                 key={solution.solutionid}
                                 onClick={() => {
                                   updateWizardData({ selectedSolution: solution });
+                                  // When selecting an existing solution, automatically set its publisher
+                                  if (solution.publisherid) {
+                                    updateWizardData({ 
+                                      selectedPublisher: {
+                                        id: solution.publisherid.publisherid,
+                                        uniqueName: solution.publisherid.uniquename,
+                                        displayName: solution.publisherid.uniquename, // Will use uniquename as display name
+                                        prefix: solution.publisherid.customizationprefix
+                                      }
+                                    });
+                                  }
                                   setSolutionSearchTerm('');
                                   setShowDropdown(false);
                                 }}
