@@ -1,4 +1,4 @@
-const { MermaidERDParser } = require('../src/mermaid-parser');
+const { MermaidERDParser } = require('../src/backend/mermaid-parser');
 const fs = require('fs');
 
 console.log('🧜‍♀️ Testing Corrected ERD Generation');

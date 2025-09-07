@@ -16,10 +16,9 @@ import {
   Spinner,
   tokens,
 } from '@fluentui/react-components';
-import { DocumentRegular, CloudArrowUpRegular, SettingsRegular } from '@fluentui/react-icons';
+import { SettingsRegular } from '@fluentui/react-icons';
 import { useGlobalChoices } from '../../../hooks/useGlobalChoices';
 import { useWizardContext } from '../../../context/WizardContext';
-import { GlobalChoice } from '../../../services/globalChoicesService';
 import styles from './GlobalChoicesStep.module.css';
 
 interface GlobalChoicesStepProps {
@@ -32,7 +31,7 @@ export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
   onPrevious,
 }) => {
   const { wizardData, updateWizardData } = useWizardContext();
-  const { globalChoicesSearchTerm, selectedGlobalChoices, uploadedGlobalChoices, uploadedFile } = wizardData;
+  const { globalChoicesSearchTerm, selectedGlobalChoices, uploadedGlobalChoices } = wizardData;
 
   // Local state for uploaded JSON file (separate from ERD file)
   const [uploadedJsonFile, setUploadedJsonFile] = useState<File | null>(null);

@@ -24,12 +24,21 @@ export interface GlobalChoice {
   id: string;
   displayName: string;
   name: string;
-  options?: { value: string; label: string; }[];
+  logicalName?: string;
+  isCustom?: boolean;
+  options?: { value: number; label: string; }[];
+}
+
+export interface EntityAttribute {
+  name: string;
+  type: string;
+  constraint?: string;
 }
 
 export interface Entity {
   name: string;
-  attributes?: string[];
+  attributes?: (string | EntityAttribute)[];
+  isCdm?: boolean;
 }
 
 export interface Relationship {
@@ -37,6 +46,7 @@ export interface Relationship {
   to: string;
   type: string;
   label: string;
+  cardinality?: string;
 }
 
 export interface WizardData {

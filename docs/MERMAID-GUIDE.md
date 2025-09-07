@@ -2,7 +2,105 @@
 
 ## Overview
 
-This guide explains how to create Mermaid Entity Relationship Diagrams (ERDs) that work optimally with the Mermaid to Dataverse web application. Learn the syntax, best practices, and advanced features to create professional data models.
+This guide explains how to create Mermaid Entity Relationship Diagrams (ERDs) that work optimally with the modern React-based Mermaid to Dataverse application. Learn the syntax, best practices, automatic validations, and Common Data Model (CDM) integration features.
+
+## Smart Validation & Auto-Corrections
+
+The React application includes intelligent validation that automatically detects and helps fix common issues:
+
+### 🔍 **Common Data Model (CDM) Detection**
+The system automatically identifies entities that match Microsoft's Common Data Model:
+
+**What it detects:**
+- **Exact matches**: Entity names like `Contact`, `Account`, `Lead` that match CDM entities
+- **Attribute matching**: Compares your entity attributes with CDM entity schemas
+- **Smart suggestions**: Recommends using CDM entities when appropriate
+
+**Benefits of using CDM entities:**
+- Pre-built relationships and attributes
+- Standard business logic and workflows
+- Better Power Platform integration
+- Consistent data model across organizations
+
+**Example with CDM detection:**
+```mermaid
+erDiagram
+    Contact {
+        string contact_id PK "Contact identifier"
+        string first_name "First name"
+        string last_name "Last name"
+        string email "Email address"
+        string phone "Phone number"
+    }
+    
+    Account {
+        string account_id PK "Account identifier"
+        string name "Account name"
+        string phone "Main phone number"
+        string website "Company website"
+    }
+```
+
+> **🎯 Smart Detection**: The system will identify these as CDM entities and offer to use the existing `contact` and `account` entities instead of creating custom ones.
+
+### 🛠️ **Primary Column Validation**
+Dataverse automatically creates a primary name column for each entity. The validator detects conflicts:
+
+**Problem detected:**
+```mermaid
+erDiagram
+    Customer {
+        string customer_id PK "Customer identifier"
+        string name "Customer name"  // ⚠️ Conflicts with auto-generated primary column
+        string email "Email address"
+    }
+```
+
+**Auto-suggested fix:**
+```mermaid
+erDiagram
+    Customer {
+        string customer_id PK "Customer identifier" 
+        string customer_name "Customer name"  // ✅ Renamed to avoid conflict
+        string email "Email address"
+    }
+```
+
+### 🚫 **Status Column Handling**
+Dataverse has built-in status management via `statecode` and `statuscode`. Status columns are automatically ignored:
+
+**Original ERD:**
+```mermaid
+erDiagram
+    Order {
+        string order_id PK "Order identifier"
+        decimal total_amount "Order total"
+        string status "Order status"  // ⚠️ Will be ignored
+    }
+```
+
+**System behavior:**
+- Status columns are automatically filtered out during entity creation
+- Built-in Dataverse status fields (Active/Inactive) are used instead
+- Suggestion provided to use choice columns for custom status values
+
+### 🔧 **System Column Conflict Detection**
+Prevents conflicts with Dataverse system columns:
+
+**Detected conflicts:**
+- `ownerid` - Conflicts with ownership system
+- `statecode` - Conflicts with built-in status
+- `statuscode` - Conflicts with built-in status reason
+
+**Auto-suggested renaming pattern:**
+```mermaid
+erDiagram
+    Task {
+        string task_id PK "Task identifier"
+        string task_ownerid FK "Task owner reference"  // ✅ Prefixed to avoid conflict
+        string description "Task description"
+    }
+```
 
 ## Basic Mermaid ERD Syntax
 
@@ -27,17 +125,106 @@ erDiagram
 
 ### Supported Data Types
 
-| Mermaid Type | Dataverse Type | Description |
-|--------------|----------------|-------------|
-| `string` | Single Line of Text | Text up to 4,000 characters |
-| `text` | Multiple Lines of Text | Large text fields |
-| `int` | Whole Number | Integer values |
-| `decimal` | Decimal Number | Numbers with decimal places |
-| `boolean` | Two Options (Yes/No) | True/false values |
-| `datetime` | Date and Time | Date and time values |
-| `date` | Date Only | Date without time |
+The system supports a comprehensive range of Dataverse column types with smart type mapping:
 
-> **Note**: Choice columns (picklists) cannot be defined in Mermaid ERD syntax. They should be added manually after entity creation or configured as global choice sets.
+| Mermaid Type | Dataverse Type | Description | Max Length/Precision |
+|--------------|----------------|-------------|--------------------|
+| **Basic Types** |
+| `string` | Single Line of Text | Basic text up to 4,000 characters | 4,000 chars |
+| `text` / `memo` / `textarea` | Multiple Lines of Text | Large text fields for descriptions | 1M chars |
+| `int` / `integer` | Whole Number | 32-bit integer values | -2,147,483,648 to 2,147,483,647 |
+| `decimal` | Decimal Number | Fixed precision decimal numbers | Precision: 2 |
+| `money` | Currency | Currency values with formatting | Precision: 2 |
+| `boolean` / `bool` | Two Options (Yes/No) | True/false values | N/A |
+| `float` / `double` | Floating Point Number | 64-bit floating point numbers | Precision: 5 |
+| **Date/Time Types** |
+| `datetime` | Date and Time | Full date and time values | N/A |
+| `date` / `dateonly` | Date Only | Date without time component | N/A |
+| **Communication Types** |
+| `email` | Email | Email address with validation | 100 chars |
+| `phone` | Phone | Phone number with formatting | 50 chars |
+| `url` | URL | Website URL with validation | 200 chars |
+| **Specialized Types** |
+| `ticker` | Ticker Symbol | Stock ticker symbol | 10 chars |
+| `timezone` | Time Zone | Time zone identifier | N/A |
+| `language` | Language | Language LCID code | N/A |
+| `duration` | Duration | Duration in minutes | N/A |
+| `guid` / `uniqueidentifier` | Unique Identifier | GUID values | N/A |
+| **File Types** |
+| `file` | File | File storage (blob) | N/A |
+| `image` | Image | Image blob storage | N/A |
+
+### 🧠 Smart Type Detection
+
+The system includes intelligent type detection that automatically improves data types based on field names:
+
+**Automatic Email Detection:**
+```mermaid
+erDiagram
+    Contact {
+        string user_email "Email address"  // Automatically becomes 'email' type
+        string contact_email "Contact email"  // Automatically becomes 'email' type
+    }
+```
+
+**Automatic Phone Detection:**
+```mermaid
+erDiagram
+    Contact {
+        string mobile_phone "Mobile number"  // Automatically becomes 'phone' type
+        string office_tel "Office telephone"  // Automatically becomes 'phone' type
+    }
+```
+
+**Automatic URL Detection:**
+```mermaid
+erDiagram
+    Company {
+        string website_url "Company website"  // Automatically becomes 'url' type
+        string homepage "Company homepage"  // Automatically becomes 'url' type
+    }
+```
+
+### Type Aliases
+
+Multiple Mermaid type names map to the same Dataverse type for flexibility:
+
+- **Text**: `text`, `memo`, `textarea` → Multiple Lines of Text
+- **Numbers**: `int`, `integer` → Whole Number
+- **Boolean**: `boolean`, `bool` → Two Options
+- **Floating Point**: `float`, `double`, `floatingpoint` → Floating Point Number
+- **Date**: `date`, `dateonly` → Date Only
+- **GUID**: `guid`, `uniqueidentifier` → Unique Identifier
+
+### Complete Example with All Data Types
+
+```mermaid
+erDiagram
+    DataTypeShowcase {
+        string showcase_id PK "Primary identifier"
+        string display_name "Display name (auto-detected as primary name column)"
+        text long_description "Multi-line description"
+        email contact_email "Email address (auto-detected)"
+        phone mobile_phone "Phone number (auto-detected)"
+        url website_url "Website URL (auto-detected)"
+        ticker stock_symbol "Stock ticker symbol"
+        datetime created_date "Date and time created"
+        dateonly birth_date "Date of birth"
+        timezone user_timezone "User's time zone"
+        language preferred_language "Preferred language LCID"
+        int quantity "Whole number quantity"
+        float rating "Floating point rating"
+        decimal price "Fixed precision price"
+        money annual_revenue "Currency value"
+        boolean is_active "Yes/No active status"
+        duration session_duration "Duration in minutes"
+        file attachment "File storage"
+        image profile_picture "Image storage"
+        guid external_id "Unique identifier from external system"
+    }
+```
+
+> **💡 Pro Tip**: Use descriptive field names that include type hints (email, phone, url, etc.) to leverage automatic type detection and get the most appropriate Dataverse column types.
 
 ### Relationships
 
@@ -50,66 +237,62 @@ erDiagram
 - `||--o{` : One-to-many (creates lookup relationship)
 - All relationships are created as referential (lookup) relationships by default
 
-## Complete Example
+## Complete Example with CDM Integration
 
 ```mermaid
 erDiagram
-    CUSTOMER {
-        string customer_id PK "Unique customer identifier"
-        string first_name "Customer first name"
-        string last_name "Customer last name"
-        string email "Email address"
-        string phone "Phone number"
-        datetime created_date "Account creation date"
+    Account {
+        string account_id PK "Account identifier"
+        string account_name "Account name"
+        string website "Company website"
+        string main_phone "Main phone number"
+        decimal annual_revenue "Annual revenue"
         boolean is_active "Active status"
-        string notes "Additional customer notes"
     }
     
-    ADDRESS {
-        string address_id PK "Unique address identifier"
-        string customer_id FK "Associated customer"
-        string street "Street address"
-        string city "City name"
-        string state "State or province"
-        string postal_code "Postal/ZIP code"
-        string country "Country name"
-        boolean is_primary "Primary address flag"
+    Contact {
+        string contact_id PK "Contact identifier"
+        string first_name "First name"
+        string last_name "Last name"
+        string email "Email address"
+        string mobile_phone "Mobile phone"
+        string account_id FK "Associated account"
+        string job_title "Job title"
     }
     
-    ORDER {
-        string order_id PK "Unique order identifier"
-        string customer_id FK "Customer reference"
-        datetime order_date "Order placement date"
-        decimal total_amount "Total order amount"
-        string notes "Order notes"
-        string payment_method "Payment method used"
+    CustomProject {
+        string project_id PK "Project identifier"
+        string project_name "Project name"
+        text project_description "Project description"
+        datetime start_date "Project start date"
+        datetime end_date "Project end date"
+        decimal budget "Project budget"
+        string account_id FK "Client account"
+        string contact_id FK "Primary contact"
     }
     
-    ORDER_ITEM {
-        string item_id PK "Unique item identifier"
-        string order_id FK "Order reference"
-        string product_id FK "Product reference"
-        int quantity "Item quantity"
-        decimal unit_price "Price per unit"
-        decimal line_total "Total for this line"
+    ProjectTask {
+        string task_id PK "Task identifier"
+        string project_id FK "Associated project"
+        string task_name "Task name"
+        text task_description "Task description"
+        datetime due_date "Task due date"
+        decimal estimated_hours "Estimated hours"
+        boolean is_completed "Completion status"
     }
     
-    PRODUCT {
-        string product_id PK "Unique product identifier"
-        string name "Product name"
-        string sku "Stock keeping unit"
-        text description "Product description"
-        decimal price "Product price"
-        int stock_quantity "Available stock"
-        string department "Product department"
-        boolean is_active "Product availability"
-    }
-    
-    CUSTOMER ||--o{ ADDRESS : "has"
-    CUSTOMER ||--o{ ORDER : "places"
-    ORDER ||--o{ ORDER_ITEM : "contains"
-    PRODUCT ||--o{ ORDER_ITEM : "appears_in"
+    Account ||--o{ Contact : "has_contacts"
+    Account ||--o{ CustomProject : "sponsors"
+    Contact ||--o{ CustomProject : "manages"
+    CustomProject ||--o{ ProjectTask : "contains"
 ```
+
+**Smart Processing Results:**
+- **CDM Detection**: `Account` and `Contact` detected as CDM entities
+- **User Choice**: Option to use existing CDM entities or create custom ones
+- **Auto-Corrections**: No naming conflicts detected
+- **Relationships**: All maintained between CDM and custom entities
+- **Result**: Optimal mix of standard CDM entities with custom project management entities
 
 ## Many-to-Many Relationships
 
@@ -188,20 +371,104 @@ erDiagram
 - Use clear, descriptive names
 - Avoid abbreviations unless they're widely understood
 - Be consistent with naming conventions across entities
+- Consider CDM compatibility for common business entities
 
 ### 3. **Relationships**
 - Keep relationship names descriptive
 - Use present tense verbs ("has", "contains", "manages")
 - Model many-to-many as junction entities with additional attributes
 
+### 4. **CDM Integration Strategy**
+- **Review CDM suggestions**: When the system detects CDM matches, consider using them
+- **Mix and match**: Use CDM entities for standard business objects, custom for specialized needs
+- **Preserve relationships**: CDM entities can still relate to your custom entities
+- **Standard naming**: Use CDM-compatible naming when possible
 
-## Validation and Testing
+### 5. **Avoiding Common Issues**
+- **Don't use "name" columns**: Let Dataverse auto-generate the primary name column
+- **Skip status columns**: Use Dataverse built-in status instead
+- **Avoid system column names**: ownerid, statecode, statuscode are reserved
+- **One primary key per entity**: Dataverse requires exactly one primary key
+- **Use choice columns for status**: Create choice columns manually after deployment for custom status values
 
-Before using your ERD with the web application:
+## Advanced Features
 
-1. **Check Syntax**: Ensure proper Mermaid syntax
-2. **Validate Relationships**: Verify all FK references exist
-3. **Review Data Types**: Confirm appropriate types for each field
-4. **Test Relationships**: Ensure relationships make business sense
-5. **Consider Scale**: Think about performance with large datasets
+### 1. **CDM Entity Detection**
+The system uses advanced algorithms to detect CDM entities:
+- **Exact name matching**: Direct CDM entity name matches
+- **Attribute analysis**: Compares your attributes with CDM schemas
+- **Confidence scoring**: Rates the likelihood of CDM compatibility
+- **Recommendation engine**: Suggests best practices for CDM integration
+
+### 2. **Intelligent Validation**
+- **Context-aware suggestions**: Fixes consider your entire data model
+- **Relationship preservation**: Auto-corrections maintain ERD integrity
+- **Performance optimization**: Suggests database design improvements
+- **Security considerations**: Identifies potential security implications
+
+### 3. **Auto-Correction Features**
+- **Bulk renaming**: Applies naming conventions across multiple entities
+- **System compatibility**: Ensures all entities work with Dataverse constraints
+- **Relationship optimization**: Suggests junction tables for complex relationships
+- **Choice column guidance**: Recommends when to use global choices vs. custom columns
+
+
+## Validation and Error Prevention
+
+The React wizard provides comprehensive validation before deployment:
+
+### 1. **Real-time Syntax Checking**
+- **Mermaid syntax validation**: Ensures proper ERD format
+- **Relationship validation**: Verifies all FK references exist
+- **Data type checking**: Confirms supported Dataverse types
+
+### 2. **Smart Auto-Corrections**
+- **CDM Integration**: Offers to use existing CDM entities when detected
+- **Naming Conflicts**: Automatically suggests fixes for system column conflicts
+- **Primary Key Issues**: Detects missing or multiple primary keys
+- **Status Column Filtering**: Removes status columns that conflict with Dataverse built-ins
+
+### 3. **Validation Categories**
+
+| Category | Severity | Description | Auto-Fix |
+|----------|----------|-------------|----------|
+| **CDM Detection** | Info | Entity matches Common Data Model | Suggest CDM entity usage |
+| **Naming Conflicts** | Warning | Conflicts with Dataverse system columns | Auto-rename with entity prefix |
+| **Status Columns** | Info | Status columns will be ignored | Filter out, suggest choice columns |
+| **Primary Keys** | Error | Missing or multiple primary keys | Highlight required fixes |
+| **Relationships** | Warning | Missing foreign key relationships | Suggest FK additions |
+
+### 4. **Validation Examples**
+
+**Before validation:**
+```mermaid
+erDiagram
+    Event {
+        string id PK
+        string name "Primary name conflict"
+        string status "Will be ignored"
+        datetime start_date
+        string ownerid FK "System conflict"
+    }
+```
+
+**After validation & auto-fixes:**
+```mermaid
+erDiagram
+    Event {
+        string id PK  
+        string event_name "Renamed to avoid conflict"
+        datetime start_date
+        string event_ownerid FK "Prefixed to avoid system conflict"
+        // Status column removed - use Dataverse built-in status
+    }
+```
+
+### 5. **CDM Integration Workflow**
+
+1. **Upload ERD**: React wizard analyzes entity structure
+2. **CDM Detection**: System identifies potential CDM matches
+3. **User Choice**: Option to use CDM entities or create custom ones
+4. **Relationship Preservation**: Maintains relationships between CDM and custom entities
+5. **Deployment**: Creates optimal mix of CDM and custom entities
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -8,16 +8,15 @@ import {
   tokens,
   MessageBar,
   MessageBarBody,
-  Field,
   Input,
   Accordion,
   AccordionItem,
   AccordionHeader,
   AccordionPanel,
 } from '@fluentui/react-components';
-import { DocumentRegular, CheckmarkCircleFilled, DocumentArrowUpRegular } from '@fluentui/react-icons';
+import { DocumentRegular, DocumentArrowUpRegular } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
-import { useWizardContext } from '../../../context/WizardContext';
+import { useWizardContext, Entity, Relationship, EntityAttribute } from '../../../context/WizardContext';
 import styles from './FileUploadStep.module.css';
 
 interface FileUploadStepProps {
@@ -35,7 +34,6 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     cdmDetected, 
     detectedEntities, 
     entityChoice, 
-    originalErdContent, 
     correctedErdContent, 
     fixedIssues 
   } = wizardData;
@@ -147,7 +145,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   
   // Detect individual naming conflicts per entity
   const namingConflicts = useMemo(() => {
-    const conflicts = [];
+    const conflicts: string[] = [];
     const entityMatches = correctedErdContent.match(/(\w+)\s*\{[^}]*\}/g);
     if (entityMatches) {
       entityMatches.forEach(entityMatch => {
@@ -165,40 +163,6 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   }, [correctedErdContent]);
   
   const hasNamingIssues = namingConflicts.length > 0;
-
-  const applyStatusColumnFix = useCallback(() => {
-    let updatedContent = correctedErdContent;
-    console.log('Before status fix:', updatedContent);
-    
-    // Remove all status columns from all entities - more generic approach
-    updatedContent = updatedContent.replace(/^\s*\w+\s+status\s*.*$/gm, '');
-    
-    console.log('After status fix:', updatedContent);
-    updateWizardData({ 
-      correctedErdContent: updatedContent,
-      fixedIssues: new Set([...fixedIssues, 'status-columns'])
-    });
-  }, [correctedErdContent, fixedIssues, updateWizardData]);
-
-  const applyNamingConflictFix = useCallback(() => {
-    let updatedContent = correctedErdContent;
-    console.log('Before naming fix:', updatedContent);
-    
-    // Fix naming conflicts: replace 'string name' with entity-specific names for any entity
-    updatedContent = updatedContent.replace(
-      /(\w+)\s*\{([^}]*?)\s+string\s+name/gs, 
-      (match, entityName, content) => {
-        const entitySpecificName = entityName.toLowerCase() + '_name';
-        return `${entityName} {${content} string ${entitySpecificName}`;
-      }
-    );
-    
-    console.log('After naming fix:', updatedContent);
-    updateWizardData({ 
-      correctedErdContent: updatedContent,
-      fixedIssues: new Set([...fixedIssues, 'naming-conflicts'])
-    });
-  }, [correctedErdContent, fixedIssues, updateWizardData]);
 
   const applyChoiceColumnFix = useCallback(() => {
     let updatedContent = correctedErdContent;
@@ -257,8 +221,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   const parseErdContent = useCallback((content: string) => {
     if (!content) return { entities: [], relationships: [] };
 
-    const entities = [];
-    const relationships = [];
+    const entities: Entity[] = [];
+    const relationships: Relationship[] = [];
 
     // Parse entities
     const entityMatches = content.match(/(\w+)\s*\{[^}]*\}/g);
@@ -267,7 +231,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         const nameMatch = entityMatch.match(/(\w+)\s*\{/);
         if (nameMatch) {
           const entityName = nameMatch[1];
-          const attributes = [];
+          const attributes: EntityAttribute[] = [];
           
           // Parse attributes - Updated to handle ERD format properly
           const attributeLines = entityMatch.split('\n')
@@ -281,7 +245,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
               attributes.push({
                 type: attrMatch[1],
                 name: attrMatch[2],
-                constraint: attrMatch[3] || null
+                constraint: attrMatch[3] || undefined
               });
             }
           });
@@ -397,7 +361,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
           mermaidRef.current.innerHTML = svg;
         } catch (error) {
           console.error('Error rendering Mermaid diagram:', error);
-          mermaidRef.current.innerHTML = '<p style="color: red;">Error rendering diagram: ' + error.message + '</p>';
+          mermaidRef.current.innerHTML = '<p style="color: red;">Error rendering diagram: ' + (error instanceof Error ? error.message : String(error)) + '</p>';
         }
       } else {
         retryCount++;
@@ -922,19 +886,23 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                       <Text className={styles.entityName}>{entity.name}</Text>
                                       <div className={styles.entityBadge}>
                                         <span className={styles.customBadge}>CUSTOM</span>
-                                        <span className={styles.attributeCount}>({entity.attributes.length} attributes)</span>
+                                        <span className={styles.attributeCount}>({entity.attributes?.length || 0} attributes)</span>
                                       </div>
                                     </div>
                                     <div className={styles.attributeList}>
-                                      {entity.attributes.map((attr, index) => (
+                                      {entity.attributes?.map((attr, index) => (
                                         <div key={index} className={styles.attribute}>
-                                          {attr.constraint ? (
+                                          {typeof attr === 'object' && attr.constraint ? (
                                             <span className={styles.attributeLabel}>{attr.constraint}</span>
                                           ) : (
                                             <span></span>
                                           )}
-                                          <span className={styles.attributeName}>{attr.name}</span>
-                                          <span className={styles.attributeType}>{attr.type}</span>
+                                          <span className={styles.attributeName}>
+                                            {typeof attr === 'string' ? attr : attr.name}
+                                          </span>
+                                          <span className={styles.attributeType}>
+                                            {typeof attr === 'string' ? 'string' : attr.type}
+                                          </span>
                                         </div>
                                       ))}
                                     </div>

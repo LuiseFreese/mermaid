@@ -10,10 +10,7 @@ import {
   Input,
   RadioGroup,
   Radio,
-  Dropdown,
-  Option,
   Checkbox,
-  InfoLabel,
   Tooltip,
   Accordion,
   AccordionItem,
@@ -37,7 +34,7 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
   onNext,
   onPrevious,
 }) => {
-  const { wizardData, updateWizardData, resetWizard } = useWizardContext();
+  const { wizardData, updateWizardData } = useWizardContext();
   const { 
     solutionType,
     solutionName,
@@ -287,10 +284,7 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
                                 style={{
                                   padding: '12px 16px',
                                   cursor: 'pointer',
-                                  borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-                                  ':hover': {
-                                    backgroundColor: tokens.colorNeutralBackground1Hover
-                                  }
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke2}`
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover;
@@ -552,10 +546,7 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
                                 style={{
                                   padding: '12px 16px',
                                   cursor: 'pointer',
-                                  borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-                                  ':hover': {
-                                    backgroundColor: tokens.colorNeutralBackground1Hover
-                                  }
+                                  borderBottom: `1px solid ${tokens.colorNeutralStroke2}`
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1Hover;

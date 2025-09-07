@@ -1,14 +1,14 @@
 # Global Choices Guide
 
-This guide explains how to create and manage Dataverse global choice sets (option sets) using the Mermaid to Dataverse Converter.
+This guide explains how to create and manage Dataverse global choice sets (option sets) using the modern React-based Mermaid to Dataverse Converter.
 
 ## Overview
 
 Global choice sets in Dataverse are reusable lists of options that can be used across multiple entities. They provide consistency and centralized management of predefined values like status codes, categories, priorities, and other standardized options.
 
-The application supports two main approaches for working with global choices:
+The React wizard application supports two main approaches for working with global choices:
 1. **Select existing choices** - Add built-in or custom global choices that already exist in Dataverse to your solution
-2. **Create new choices** - Upload JSON files to create new custom global choice sets
+2. **Create new choices** - Upload JSON files to create new custom global choice sets through the modern React interface
 
 ## Features
 
@@ -19,8 +19,9 @@ The application supports two main approaches for working with global choices:
 - **Existence checking** to avoid duplicates 
 - **Solution integration** - all choices (existing and new) are added to your specified solution
 - **Bulk processing** - upload JSON files with multiple choice sets
-- **Real-time feedback** - see creation progress in the web UI
+- **Real-time feedback** - see creation progress in the React wizard interface
 - **Built-in choice detection** - automatically identifies and categorizes Microsoft's built-in choices
+- **Modern UI/UX** - Fluent UI v9 components for intuitive interaction
 
 ### JSON File Format
 
@@ -80,23 +81,24 @@ When this is deployed with a publisher prefix "pink", it will be created in Data
 
 ### Method 1: Select Existing Global Choices
 
-The application can browse and select from existing global choices in your Dataverse environment:
+The React application can browse and select from existing global choices in your Dataverse environment:
 
 #### Step 1: Access Global Choices Selection
-1. **Access the application** - Navigate to your deployed App Service URL or use the wizard interface
-2. **Navigate to Global Choices** - Use the Global Choices section in the interface
-3. **View available choices** - The system automatically fetches all global choices from your Dataverse environment
+1. **Open the React Wizard** - Navigate to your deployed Azure App Service URL (e.g., `https://your-app-name.azurewebsites.net`)
+2. **Navigate to Global Choices Step** - Use the Global Choices section in the wizard workflow
+3. **View available choices** - The system automatically fetches all global choices from your Dataverse environment using secure Azure Key Vault credentials
 
 #### Step 2: Browse Available Choices
-The interface shows:
+The React interface displays:
 - **Built-in choices** - Microsoft's standard global choices (e.g., status codes, priorities)
 - **Custom choices** - Organization-specific global choices already created
 - **Choice details** - Name, display name, and option count for each choice set
+- **Modern search and filtering** - Fluent UI components for easy navigation
 
 #### Step 3: Select Choices for Your Solution
-1. **Check/uncheck choices** - Select the global choices you want to include in your solution
-2. **Review selections** - Verify your selected choices before deployment
-3. **Deploy** - The selected choices will be automatically added to your solution
+1. **Interactive checkboxes** - Select the global choices you want to include in your solution
+2. **Real-time preview** - Review selections with live validation feedback
+3. **Continue wizard** - The selected choices will be automatically included in your solution deployment
 
 ### Method 2: Create New Global Choices from JSON
 
@@ -137,16 +139,18 @@ Create a JSON file containing your global choice definitions. Example `my-choice
 }
 ```
 
-#### Step 2: Upload via Web Interface
+#### Step 2: Upload via React Wizard
 
-1. **Access the application** - Navigate to your deployed App Service URL
-2. **Upload your JSON file** - Use the "Global Choices File" section
-3. **Configure solution settings**:
+1. **Open the React Application** - Navigate to your deployed Azure App Service URL (e.g., `https://your-app-name.azurewebsites.net`)
+2. **Global Choices Upload Step** - Use the "Global Choices File" section in the React wizard
+3. **Drag & Drop or Browse** - Upload your JSON file using the modern file upload component
+4. **Configure solution settings** in the wizard interface:
    - **Solution Name**: Name of the Dataverse solution
    - **Publisher**: Select an existing publisher or create a new one
    - **Publisher Prefix**: 3-8 character prefix for your organization (automatically applied to choice names)
-4. **Process** - Click "Convert & Deploy" to create the global choices
-5. **Monitor progress** - Watch real-time logs showing creation status
+5. **Real-time Validation** - The React interface provides immediate feedback on JSON format and content
+6. **Process Deployment** - Continue through the wizard to deploy global choices as part of your complete solution
+7. **Monitor progress** - Watch real-time logs in the React interface showing creation status
 
 #### Step 3: Verify in Dataverse
 
@@ -159,14 +163,14 @@ After processing, verify your global choices in Dataverse:
 
 ### Combining Both Methods
 
-You can use both approaches in a single deployment:
-1. **Select existing choices** that you want to reuse from Dataverse
-2. **Upload JSON file** with new custom choices you want to create
-3. **Deploy together** - Both existing and new choices will be added to your solution
+You can use both approaches in a single deployment through the React wizard:
+1. **Select existing choices** that you want to reuse from Dataverse (Step 3 of wizard)
+2. **Upload JSON file** with new custom choices you want to create (also Step 3)
+3. **Deploy together** - Both existing and new choices will be added to your solution in the final deployment step
 
 This hybrid approach lets you leverage existing organizational standards while adding custom choices specific to your project.
 
-As Mermaid doe not support choice fields, you can ater on enhance your tables with choice columns and pull the values from the global choices that we already added to the solution.
+As Mermaid does not support choice fields, you can later enhance your tables with choice columns and pull the values from the global choices that we already added to the solution.
 
 ## Best Practices
 
@@ -185,11 +189,13 @@ As Mermaid doe not support choice fields, you can ater on enhance your tables wi
 - **Logical file names** - Use descriptive names like `sales-choices.json`
 - **Version control** - Store JSON files in source control with your Mermaid files
 
-### Wizard Interface Integration
-- **Step-by-step guidance** - The wizard interface walks you through global choice selection
-- **Visual choice browser** - Browse existing choices with search and filtering
-- **Real-time validation** - Immediate feedback on JSON file format and content
-- **Combined deployment** - Include global choices as part of your complete solution deployment
+### React Wizard Integration
+- **Step-by-step guidance** - The React wizard interface walks you through global choice selection
+- **Visual choice browser** - Browse existing choices with modern search and filtering components
+- **Real-time validation** - Immediate feedback on JSON file format and content using Fluent UI validation
+- **Combined deployment** - Include global choices as part of your complete solution deployment workflow
+- **Modern UX** - Drag & drop file uploads, interactive checkboxes, and responsive design
+- **Progress tracking** - Real-time deployment progress with detailed status updates
 
 ### Solution Management
 - **Use consistent solution names** - Same solution for related entities and choices
@@ -204,6 +210,12 @@ As Mermaid doe not support choice fields, you can ater on enhance your tables wi
 
 Retrieves all global choice sets available in the Dataverse environment, categorized as built-in or custom.
 
+**Azure Deployment Example**:
+```bash
+curl -X GET https://your-app-name.azurewebsites.net/api/global-choices-list
+```
+
+**Local Development Example**:
 ```bash
 curl -X GET http://localhost:8082/api/global-choices-list
 ```
@@ -236,6 +248,15 @@ curl -X GET http://localhost:8082/api/global-choices-list
 
 **Request**: Multipart form data with JSON file
 
+**Azure Deployment Example**:
+```bash
+curl -X POST https://your-app-name.azurewebsites.net/api/global-choices \
+  -F "globalChoicesFile=@my-choices.json" \
+  -F "solutionName=MySolution" \
+  -F "cleanupAll=false"
+```
+
+**Local Development Example**:
 ```bash
 curl -X POST http://localhost:8082/api/global-choices \
   -F "globalChoicesFile=@my-choices.json" \

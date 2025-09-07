@@ -55,10 +55,28 @@ try {
 // Optional KeyVault helper
 let keyVaultConfig = null;
 try {
-  keyVaultConfig = require('./azure-keyvault.js');
+  keyVaultConfig = require('../azure-keyvault.js');
   console.log('Azure SDK + Key Vault config loaded');
-} catch {
-  console.log('Azure SDK not configured; falling back to env');
+  
+  // Test Key Vault connection at startup
+  if (process.env.KEY_VAULT_URI && process.env.AUTH_MODE) {
+    console.log('🔧 Testing Key Vault connection at startup...');
+    keyVaultConfig.getKeyVaultSecrets()
+      .then(result => {
+        console.log('✅ Key Vault startup test successful:', {
+          success: result.success,
+          secretCount: result.secretCount,
+          authType: result.authType
+        });
+      })
+      .catch(error => {
+        console.error('❌ Key Vault startup test failed:', error.message);
+      });
+  } else {
+    console.log('⚠️ Key Vault environment variables not set, skipping startup test');
+  }
+} catch (error) {
+  console.log('Azure SDK not configured; falling back to env. Error:', error.message);
 }
 
 // --- Logging Setup -----------------------------------------------------
@@ -153,7 +171,7 @@ async function initializeComponents() {
 
     // Initialize controllers
     const wizardController = new WizardController({
-      staticFilesPath: path.join(__dirname),
+      staticFilesPath: process.env.STATIC_FILES_PATH || path.join(__dirname),
       wizardFile: 'wizard-app.html'
     });
 

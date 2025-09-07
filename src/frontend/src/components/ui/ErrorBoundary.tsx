@@ -17,7 +17,7 @@ const useStyles = makeStyles({
   },
   errorCard: {
     backgroundColor: tokens.colorPaletteRedBackground1,
-    borderColor: tokens.colorPaletteRedBorder1,
+    borderColor: tokens.colorPaletteRedBorder1 as any,
   },
   errorIcon: {
     color: tokens.colorPaletteRedForeground1,

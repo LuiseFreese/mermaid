@@ -1,5 +1,5 @@
 // Simple test script to validate parsing locally
-const { MermaidERDParser } = require('../src/mermaid-parser.js');
+const { MermaidERDParser } = require('../src/backend/mermaid-parser.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -8,7 +8,7 @@ async function testParsing() {
         console.log('🧪 Testing Mermaid parsing locally...');
         
         // Read test file - use path.join to handle relative paths correctly
-        const testFile = path.join(__dirname, '../examples/test-example.mmd');
+        const testFile = path.join(__dirname, '../examples/simple-test.mmd');
         const mermaidContent = fs.readFileSync(testFile, 'utf8');
         console.log('📄 File content loaded');
         

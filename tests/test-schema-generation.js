@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Import our CommonJS modules
-const { MermaidERDParser } = require('../src/mermaid-parser.js');
+const { MermaidERDParser } = require('../src/backend/mermaid-parser.js');
 
 // Test function
 async function testSchemaGeneration(mermaidFilePath, publisherPrefix = 'test') {

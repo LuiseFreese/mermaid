@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Title1,
   Title2,
   Text,
-  Card,
-  CardHeader,
   ProgressBar,
   tokens,
   Badge

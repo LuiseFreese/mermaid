@@ -1,6 +1,6 @@
 # Mermaid to Dataverse Converter
 
-An Azure App Service application that converts [Mermaid](https://www.mermaidchart.com/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+A modern React-based Azure App Service application that converts [Mermaid](https://www.mermaidchart.com/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships. Built with React 18, Fluent UI v9, and automated Azure deployment.
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
@@ -13,78 +13,284 @@ An Azure App Service application that converts [Mermaid](https://www.mermaidchar
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
 
+## Architecture
+
+### Modern Tech Stack
+- **Frontend**: React 18 + TypeScript + Fluent UI v9
+- **Backend**: Node.js + Express
+- **Build Tool**: Vite (development and production builds)
+- **Cloud**: Azure App Service with Managed Identity
+- **Security**: Azure Key Vault for secure credential storage
+- **Infrastructure**: Azure Bicep templates for repeatable deployments
+
+### Key Components
+- **Interactive Wizard**: Step-by-step guidance for Dataverse entity-relationship modeling
+- **Live Validation**: Real-time ERD syntax checking and relationship validation
+- **Secure Authentication**: Azure Managed Identity eliminates hardcoded credentials
+- **Automated Deployment**: PowerShell scripts for repeatable infrastructure and code deployment
+- **Modern UI**: Accessible, responsive design with Microsoft Fluent UI components
+
 ## 🚀 Quick Start
 
-**One command sets up everything:**
+**Two steps to deploy everything:**
 
 ```powershell
 # Clone the repository
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Run the complete setup (interactive)
+# Step 1: Create Azure infrastructure and Entra app (interactive)
 .\scripts\setup-entra-app.ps1
+
+# Step 2: Deploy the application
+.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
 ```
 
-**That's it!** The script will:
-- Create Entra App Registration
-- Deploy Azure infrastructure (App Service, Key Vault, etc.)
-- Deploy the application
-- Set up Dataverse permissions
-- Test everything
-- Give you the final web app URL
+**The setup script will:**
+- Create Entra App Registration with proper API permissions
+- Deploy Azure infrastructure (App Service, Key Vault, Managed Identity, etc.)
+- Configure secure authentication and Key Vault access
+- Set up Dataverse application user (optional)
+
+**The deploy script will:**
+- Build the React frontend locally
+- Package only necessary backend files (no node_modules)
+- Deploy to Azure App Service
+- Configure proper static file serving
 
 
 ### Prerequisites
 - Azure CLI installed and logged in (`az login`)
-- Power Platform Admin or Dataverse System Admin access
+- Node.js 18+ (for local frontend build)
+- Power Platform Admin or Dataverse System Admin access (for Dataverse integration)
 
 ## Usage
 
-1. **Access the Application**: Navigate to your deployed App Service URL
-2. **Upload Files** in the wizard interface:
-   - **Mermaid File**: Select a `.mmd` file containing an ERD diagram
-   - **Global Choices File** (Optional): Select a `.json` file with global choice definitions
-3. **Configure Options**:
-   - **Solution Name**: Name for the Dataverse solution
-   - **Publisher Prefix**: 3-8 character prefix for custom entities
-   - **Create Publisher**: Enable to auto-create publisher if needed
-4. **Click "Convert & Deploy"** to start the process
+### Accessing the Application
+
+1. **Open the React Wizard**: Navigate to your deployed App Service URL (e.g., `https://your-app-name.azurewebsites.net`)
+2. **Modern Interface**: Use the intuitive React-based wizard with Fluent UI components
+
+### Step-by-Step Process
+
+#### Step 1: Upload ERD File
+- **Drag & Drop or Browse**: Upload your `.mmd` file containing an ERD diagram
+- **Real-time Validation**: Get immediate feedback on syntax and structure
+- **Auto-corrections**: Review and apply suggested improvements
+- **CDM Detection**: See if your entities match Common Data Model standards
+
+#### Step 2: Configure Solution & Publisher
+- **Solution Name**: Enter a name for your Dataverse solution
+- **Publisher Selection**: Choose existing publisher or create new one
+- **Publisher Prefix**: Set a 3-8 character prefix for custom entities
+- **Validation**: Real-time checking for naming conflicts
+
+#### Step 3: Global Choices (Optional)
+- **Upload JSON**: Add custom global choice definitions
+- **Preview Choices**: Review choice sets before deployment
+- **Integration**: Map to existing Dataverse choices automatically
+
+#### Step 4: Review & Deploy
+- **Configuration Summary**: Review all settings before deployment
+- **CDM Options**: Choose between CDM entities or custom entities
+- **Real-time Progress**: Watch deployment progress with live updates
+- **Success Confirmation**: Get detailed results of what was created
+
+### Sample Workflow
+
+```mermaid
+erDiagram
+    Customer {
+        string customer_id PK "Unique identifier"
+        string first_name "Customer first name"
+        string last_name "Customer last name"
+        string email "Email address"
+        boolean is_active "Active status"
+    }
+    
+    Order {
+        string order_id PK
+        string customer_id FK
+        decimal total_amount
+        datetime order_date
+    }
+    
+    Customer ||--o{ Order : "places"
+```
+
+**Result**: Creates `Customer` and `Order` entities in Dataverse with proper relationships and all specified columns.
 
 ## Troubleshooting
 
-If you experience connection issues after deployment:
+### Common Issues
 
+#### Deployment Connection Issues
 ```powershell
-# Test the application and Dataverse connection
-.\scripts\test-connection.ps1 -AppServiceName "your-app-name" -ResourceGroup "your-resource-group"
+# Check application health
+curl https://your-app-name.azurewebsites.net/health
 
-# Re-run setup if resources were deleted
-.\scripts\setup-entra-app.ps1
+# Test Dataverse connectivity
+.\scripts\test-connection.ps1 -AppServiceName "your-app-name" -ResourceGroup "your-resource-group"
 ```
+
+#### Infrastructure Issues
+```powershell
+# Re-run complete setup if resources were deleted
+.\scripts\setup-entra-app.ps1
+
+# Deploy just the application code
+.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
+```
+
+#### Frontend Issues
+- **Static assets not loading**: Redeploy with `.\scripts\deploy.ps1` to fix static file serving
+- **React app not starting**: Check browser console for JavaScript errors
+- **API calls failing**: Verify Key Vault secrets and Managed Identity configuration
+
+#### Development Issues
+```bash
+# Local development setup
+npm install                    # Install backend dependencies
+cd src/frontend && npm install # Install frontend dependencies
+
+# Start development servers
+npm run dev                    # Backend with auto-restart
+cd src/frontend && npm run dev # Frontend with hot reload
+```
+
+### Getting Help
+
+1. **Check Health Endpoint**: Visit `/health` to see system status
+2. **Review Logs**: Use Azure App Service logs for detailed error information
+3. **Validate Configuration**: Ensure all Azure resources are properly configured
+4. **Test Locally**: Use local development mode to isolate issues
+
+## Advanced Features
+
+### CDM Integration
+- **Automatic Detection**: System identifies entities matching Common Data Model
+- **Smart Mapping**: Suggests using standard Dataverse entities (Account, Contact, etc.)
+- **User Choice**: Option to use CDM entities or create custom ones
+- **Relationship Preservation**: Maintains relationships between CDM and custom entities
+
+### Global Choices Management
+- **Custom Choices**: Create new option sets with your ERD deployment
+- **Existing Integration**: Add existing Dataverse choices to your solution
+- **Validation**: Prevents duplicates and naming conflicts
+- **Solution Integration**: Automatically adds choices to your target solution
+
+### Security Features
+- **Managed Identity**: Passwordless authentication with Azure services
+- **Key Vault Integration**: All secrets stored securely in Azure Key Vault
+- **RBAC Permissions**: Principle of least privilege access control
+- **Audit Trail**: All operations logged through Azure monitoring
 
 ## Documentation
 
 - **[Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md)** - System architecture and development setup
-- **[API Endpoints](docs/API-ENDPOINTS.md)** - Details of the available API endpoints
-- **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Detailed deployment instructions and troubleshooting
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
+- **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax reference
+- **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Supported relationship patterns
+- **[Security Improvements](docs/SECURITY-IMPROVEMENTS.md)** - Security best practices and implementation
 - See the `examples/` directory for sample Mermaid ERD files
 
 
 ## Note on AI Usage
 
-GitHub Copilot has been helpful in this project - especially for 
+GitHub Copilot has been incredibly helpful in this project - especially for:
 
-* creating all the countless mermaid diagrams
-* fleshing out examples
-* outlining documentation
-* writing debug- and cleanup scripts
-* hardening deployments and making them idempotent
-* commenting the scripts so that others might understand them more easily
+* **Creating countless Mermaid diagrams** - Generated all the example ERD files and documentation diagrams
+* **Fleshing out examples** - Built comprehensive test cases and real-world scenarios  
+* **Outlining documentation** - Structured guides and architectural documentation
+* **Writing debug and cleanup scripts** - Automated testing and maintenance utilities
+* **Hardening deployments** - Made scripts idempotent and error-resilient
+* **Code commenting** - Added clear explanations so others can understand and contribute
+* **React development** - TypeScript interfaces, component structure, and modern patterns
+* **Azure integration** - Bicep templates, PowerShell scripts, and security configurations
 
-Still I'm super hesitant to use `Agent` mode - i just love to stay in the driver's seat! 
+Still, I'm super hesitant to use `Agent` mode - I just love to stay in the driver's seat! This project demonstrates how AI can be a powerful **co-pilot** (pun intended) while keeping human judgment and creativity at the center of the development process.
+
+## Contributing
+
+We welcome contributions! This is an open-source project that benefits from community input:
+
+### Development Setup
+```bash
+# Clone and set up for development
+git clone https://github.com/LuiseFreese/mermaid.git
+cd mermaid
+npm install
+cd src/frontend && npm install && cd ../..
+
+# Start development environment
+npm run dev                    # Backend
+cd src/frontend && npm run dev # Frontend
+```
+
+### Areas for Contribution
+- **New ERD Features**: Additional Mermaid syntax support
+- **CDM Expansion**: More Common Data Model entity mappings
+- **UI Improvements**: Enhanced React components and user experience
+- **Documentation**: Examples, guides, and tutorials
+- **Testing**: Automated tests and quality assurance
+- **Security**: Additional security features and best practices
+
+### Contribution Guidelines
+1. **Fork the repository** and create a feature branch
+2. **Follow the existing code style** (TypeScript for frontend, PowerShell for scripts)
+3. **Test your changes** locally before submitting
+4. **Update documentation** for any new features
+5. **Submit a pull request** with a clear description of changes
+
+## Roadmap
+
+### Upcoming Features
+- **Enhanced CDM Support**: More sophisticated entity matching algorithms
+- **Advanced Relationships**: Support for polymorphic and hierarchical relationships
+- **Deployment Templates**: Pre-built templates for common business scenarios
+- **Integration APIs**: REST APIs for programmatic access
+- **Multi-tenant Support**: Enhanced isolation for enterprise deployments
+
+### Long-term Vision
+- **Cross-platform Deployment**: Support for other cloud providers
+- **Visual ERD Editor**: In-browser diagram creation and editing
+- **Data Migration Tools**: Import existing data into generated entities
+- **Power Platform Integration**: Deeper integration with Power Apps and Power Automate
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+This project uses several open-source libraries and tools:
+- **React** - MIT License
+- **Fluent UI v9** - MIT License  
+- **Vite** - MIT License
+- **Express** - MIT License
+- **TypeScript** - Apache 2.0 License
+- **Mermaid** - MIT License
+
+## Contact & Support
+
+**Project Maintainer**: [Luise Freese](https://github.com/LuiseFreese)
+
+### Getting Help
+- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/LuiseFreese/mermaid/issues)
+- **Discussions**: Join community discussions in [GitHub Discussions](https://github.com/LuiseFreese/mermaid/discussions)
+- **Documentation**: Check the comprehensive guides in the `docs/` directory
+- **Examples**: Review sample files in the `examples/` directory
+
+### Connect
+- **Blog**: [M365Princess.com](https://m365princess.com)
+- **Twitter**: [@LuiseFreese](https://twitter.com/LuiseFreese)
+- **LinkedIn**: [Luise Freese](https://linkedin.com/in/luisefreese)
+
+---
+
+**Made with ❤️ for the Power Platform community** 
 
 
 ## License

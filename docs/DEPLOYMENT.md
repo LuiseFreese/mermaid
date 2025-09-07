@@ -4,15 +4,31 @@ This guide explains how to deploy and use the Mermaid-to-Dataverse application. 
 
 ## Quick Start (Recommended)
 
-**One command deploys everything:**
+**Two steps to deploy everything:**
 
 ```powershell
+# Clone the repository
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
-./scripts/setup-entra-app.ps1
+
+# Step 1: Create Azure infrastructure and Entra app (interactive)
+.\scripts\setup-entra-app.ps1
+
+# Step 2: Deploy the application code
+.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
 ```
 
-The script will prompt you for configuration and handle all setup automatically.
+**The setup script will:**
+- Create Entra App Registration with proper API permissions
+- Deploy Azure infrastructure (App Service, Key Vault, Managed Identity, etc.)
+- Configure secure authentication and Key Vault access
+- Set up Dataverse application user (optional)
+
+**The deploy script will:**
+- Build the React frontend locally using Vite
+- Package only necessary backend files (no node_modules)
+- Deploy to Azure App Service with proper static file serving
+- Configure runtime settings for optimal performance
 
 ## What You Get
 
@@ -30,23 +46,21 @@ Before running the setup:
 1. **Azure subscription** with permissions to create resources
 2. **PowerShell 7+** (recommended) or Windows PowerShell 5.1
 3. **Azure CLI** installed and logged in (`az login`)
-4. **Access to Dataverse environment** where you want to create entities
-5. **Appropriate permissions**:
+4. **Node.js 18+** (required for local frontend build)
+5. **Access to Dataverse environment** where you want to create entities
+6. **Appropriate permissions**:
    - **Azure**: Contributor or Owner on subscription
    - **Microsoft Entra ID**: Application Administrator (to create app registrations)
    - **Dataverse**: System Administrator (to create application users)
 
-## Deployment Options
+## Deployment Process
 
-### Interactive Mode (Recommended for First-Time Users)
+### Step 1: Infrastructure Setup
 ```powershell
 # Interactive mode (prompts for configuration)
 .\scripts\setup-entra-app.ps1
-```
 
-### Unattended Mode (For Automation)
-```powershell
-# Unattended mode (provide all parameters)
+# OR unattended mode (provide all parameters)
 .\scripts\setup-entra-app.ps1 -Unattended `
   -EnvironmentUrl "https://orgXXXXX.crm4.dynamics.com" `
   -ResourceGroup "rg-mermaid-dataverse" `
@@ -55,6 +69,12 @@ Before running the setup:
   -AppServiceName "app-mermaid-dv-we-1234" `
   -KeyVaultName "kv-mermaid-secrets-1234" `
   -SecurityRole "System Administrator"
+```
+
+### Step 2: Application Deployment
+```powershell
+# Deploy the application code to existing infrastructure
+.\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-1234" -ResourceGroup "rg-mermaid-dataverse" -KeyVaultName "kv-mermaid-secrets-1234"
 ```
 
 
@@ -71,17 +91,23 @@ The setup script automatically creates:
 
 ## Automated Setup Process
 
-The setup script (`scripts/setup-entra-app.ps1`) performs these tasks automatically:
+The **setup script** (`scripts/setup-entra-app.ps1`) creates the infrastructure:
 
 1. **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
 2. **Generates Client Secret** with 2-year expiration (securely, without console exposure)
 3. **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
 4. **Configures RBAC permissions** for Key Vault access
 5. **Stores all secrets** securely in Key Vault
-6. **Deploys application code** to Azure App Service using secure secret retrieval
-7. **Creates Application User** in Dataverse via REST API
-8. **Assigns Security Roles** (System Administrator by default)
-9. **Tests the complete setup** end-to-end
+6. **Creates Application User** in Dataverse via REST API
+7. **Assigns Security Roles** (System Administrator by default)
+
+The **deployment script** (`scripts/deploy.ps1`) handles the application:
+
+1. **Builds React frontend** locally using Vite for optimal performance
+2. **Packages backend code** (excludes node_modules and source files)
+3. **Deploys to Azure App Service** using Azure CLI with proper static file configuration
+4. **Configures runtime settings** for Key Vault integration and static asset serving
+5. **Validates deployment** by testing the application endpoints
 
 ### Security-First Deployment Approach
 
@@ -95,11 +121,14 @@ The deployment process uses a **security-first approach** that eliminates exposu
 
 ### Interactive Setup Example
 
+**Step 1: Infrastructure Setup**
 ```powershell
-Mermaid to Dataverse - Interactive Setup
-=========================================
+PS> .\scripts\setup-entra-app.ps1
 
-Find your Dataverse Environment URL  at make.powerapps.com > Settings > Session details, copy the **Instance URL**
+Mermaid to Dataverse - Infrastructure Setup
+===========================================
+
+Find your Dataverse Environment URL at make.powerapps.com > Settings > Session details, copy the **Instance URL**
 
 Dataverse Environment URL: https://orgxxxxxxx.crm4.dynamics.com
 Resource Group Name: rg-mermaid-dv-we-test
@@ -110,12 +139,28 @@ Key Vault Name: kv-mermaid-secrets-5678
 
 ✅ App Registration created successfully
 ✅ Infrastructure deployed successfully  
-✅ Application code deployed successfully (with secure secret management)
 ✅ Secrets stored in Key Vault
 ✅ Dataverse Application User created
 ✅ Security roles assigned
 
-🎉 Setup Complete! Application ready at: 
+🎉 Infrastructure Setup Complete!
+Next: Run the deploy script to deploy your application code.
+```
+
+**Step 2: Application Deployment**
+```powershell
+PS> .\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-5678" -ResourceGroup "rg-mermaid-dv-we-test" -KeyVaultName "kv-mermaid-secrets-5678"
+
+Mermaid to Dataverse - Application Deployment
+============================================
+
+✅ Building React frontend with Vite...
+✅ Packaging backend code...
+✅ Deploying to Azure App Service...
+✅ Configuring static file serving...
+✅ Application deployed successfully!
+
+🎉 Deployment Complete! Application ready at: 
    https://app-mermaid-dv-we-5678.azurewebsites.net/
 
 🔒 Security Features:
@@ -158,20 +203,20 @@ The deployment uses **enterprise-grade security** with multiple layers of protec
 
 ## Deploying Code Updates
 
-After the initial setup, you can deploy code changes using the deploy script:
+After the initial infrastructure setup, you can deploy code changes using the deploy script:
 
 ```powershell
 # Deploy code updates to existing infrastructure
-.\scripts\deploy.ps1 -AppServiceName "app-mermaid-dv-we-5678" -ResourceGroup "rg-mermaid-dv-we-test"
+.\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-5678" -ResourceGroup "rg-mermaid-dv-we-test" -KeyVaultName "kv-mermaid-secrets-5678"
 ```
 
 This script will:
-1. **Securely retrieve secrets** from Key Vault using Azure CLI
-2. Create a deployment package with your application code
-3. Deploy the package to your Azure App Service using Oryx build
-4. Configure app settings with Key Vault integration and secure fallback values
-5. Assign Managed Identity for secure Key Vault access
-6. Clean up temporary files
+1. **Build React frontend** locally using Vite for optimal performance
+2. **Package backend code** (excludes node_modules and source files for faster deployment)
+3. **Deploy to Azure App Service** using Azure CLI with proper static file configuration
+4. **Configure runtime settings** for Key Vault integration and static asset serving
+5. **Test deployment** by verifying the application endpoints
+6. **Clean up temporary files** for security
 
 ### Security Benefits
 
@@ -181,20 +226,29 @@ The deployment process ensures **zero exposure of sensitive data**:
 - Managed Identity provides secure, passwordless authentication
 - Fallback environment variables are set securely from Key Vault
 
-### Zero-Downtime Updates
+### Idempotent Deployments
 
-The setup script is **idempotent** - it can be run multiple times safely:
+Both scripts are **idempotent** and can be run multiple times safely:
 
 ```powershell
-# Re-run setup to update existing deployment
-./scripts/setup-entra-app.ps1
+# Re-run infrastructure setup (detects existing resources)
+.\scripts\setup-entra-app.ps1
 
-# The script will:
-# - Detect existing resources and reuse them
-# - Update application code if needed
-# - Only create missing components
-# - Preserve existing configuration
+# Re-run application deployment (updates code only)
+.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
 ```
+
+**Infrastructure script will:**
+- Detect existing resources and reuse them
+- Only create missing components
+- Preserve existing configuration
+- Update secrets if needed
+
+**Deployment script will:**
+- Always deploy fresh application code
+- Rebuild frontend for latest changes
+- Update runtime configuration
+- Ensure optimal performance
 
 ## Using Your Deployed Application
 

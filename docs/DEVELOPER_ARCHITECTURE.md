@@ -4,65 +4,127 @@ This document provides a comprehensive overview of the Mermaid to Dataverse Conv
 
 ## System Overview
 
-The Mermaid to Dataverse Converter is a Node.js web application deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships.
+The Mermaid to Dataverse Converter is a modern React-based web application deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships. The application features a React 18 frontend with Fluent UI v9 components and a Node.js Express backend.
 
 ### Key Features
 
-- **Modern Wizard Interface** - Step-by-step guided deployment
+- **Modern React Frontend** - React 18 + TypeScript + Fluent UI v9 wizard interface
 - **Real-time ERD Validation** - Auto-correction and syntax checking
 - **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
 - **Enterprise Security** - Azure Key Vault + Managed Identity
+- **Two-Step Deployment** - Separate infrastructure setup and application deployment
 
+### Architecture Overview
 
-### Key Characteristics
-
-- **Runtime**: Node.js
+- **Frontend**: React 18 + TypeScript + Fluent UI v9 (built with Vite)
+- **Backend**: Node.js + Express
+- **Build System**: Vite for frontend, npm for backend
 - **Deployment**: Azure App Service with Managed Identity
-- **Authentication**: Azure Key Vault with Managed Identity
-- **Security**: No secrets in code, all credentials in Key Vault
-- **UI**: Web-based wizard with real-time streaming logs
-- **API**: RESTful endpoints for validation and testing
+- **Security**: Azure Key Vault for credential storage
+- **Infrastructure**: Azure Bicep templates for repeatable deployments
 
 ### High-Level Flow
-1. **Modern Wizard Interface**: User accesses step-by-step wizard at `/wizard`
-2. **ERD Input & Validation**: Real-time syntax checking with auto-corrections
+1. **Modern React Wizard**: Step-by-step guided interface built with Fluent UI components
+2. **ERD Upload & Validation**: Real-time syntax checking with auto-corrections
 3. **Publisher Configuration**: Select existing or create new publisher with custom prefix
 4. **Global Choices Integration**: Optional upload of global choice definitions
-5. **Authentication**: Managed identity for secure Azure service access
+5. **Secure Deployment**: Managed identity for passwordless Azure service access
 
 
 ## Core Components
 
-### 1. Web Server (`src/server.js`)
+### 1. React Frontend (`src/frontend/`)
 
-**Purpose**: Main application entry point providing web UI, wizard interface, and comprehensive API endpoints.
+**Purpose**: Modern React 18 application providing the primary user interface with step-by-step wizard functionality.
+
+**Technology Stack**:
+- **React 18** with TypeScript for type safety
+- **Fluent UI v9** for Microsoft-consistent design system
+- **Vite** for fast development and optimized production builds
+- **Modern CSS** with responsive design
 
 **Key Features**:
-- HTTP server with wizard interface
-- Health check and diagnostic endpoints
-- Publisher and solution management
-- Global choices integration
+- Multi-step wizard interface with progress tracking
+- Real-time form validation and user feedback
+- File upload with drag-and-drop support
+- Publisher and solution management UI
+- Global choices integration interface
+- Responsive design for all device sizes
+
+**Main Components**:
+- `App.tsx` - Main application component with wizard orchestration
+- `components/` - Reusable Fluent UI components
+- `types/` - TypeScript type definitions
+- `services/` - API client services for backend communication
+
+**Build Process**:
+```bash
+cd src/frontend
+npm install
+npm run build  # Creates optimized dist/ folder
+```
+
+### 2. Node.js Backend (`src/backend/`)
+
+**Purpose**: Express.js server providing API endpoints, file processing, and Dataverse integration.
+
+**Key Features**:
+- RESTful API endpoints for frontend communication
+- File upload and processing
+- Dataverse client integration
+- Health monitoring and diagnostics
+- Streaming response support for real-time updates
+
+**Main Files**:
+- `server.js` - Express server configuration and routing
+- `routes/` - API endpoint definitions
+- `services/` - Business logic and Dataverse integration
+- `middleware/` - Authentication and request processing
+
+### 3. Main Server Entry (`src/server.js`)
+
+**Purpose**: Production server entry point that serves both the React frontend and backend API.
+
+**Key Features**:
+- Serves built React application as static files
+- Routes API requests to backend services
+- Handles file uploads and processing
+- Provides health check and diagnostic endpoints
+- Configures proper static file serving for SPA routing
 
 **Main Endpoints**:
 
-**UI Endpoints**:
-- `GET /wizard` - **Primary wizard interface** for guided deployment
+**Frontend Routes**:
+- `GET /` - Serves React application (redirects to `/wizard`)
+- `GET /wizard` - Primary wizard interface
+- `GET /static/*` - Serves built frontend assets (CSS, JS, images)
 
-**Core API Endpoints**:
-- `POST /upload` - **Primary deployment endpoint** from wizard with streaming logs
-- `POST /api/validate-erd` - Enhanced ERD validation with corrections
+**API Endpoints**:
+- `POST /api/upload` - Primary deployment endpoint with streaming logs
+- `POST /api/validate-erd` - ERD validation with auto-corrections
+- `GET /api/publishers` - List available Dataverse publishers
+- `GET /api/global-choices` - List available global choice sets
+- `GET /api/solution-status` - Check deployment status for timeout handling
 - `GET /health` - Application health status
 
-**Additional Features**:
-- **Environment Variables Integration** - Credentials passed directly in the upload request
+**Static File Configuration**:
+```javascript
+// Serve React build files
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+
+// Handle SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
+});
+```
 
 
 
-### 2. Mermaid Parser (`src/mermaid-parser.js`)
+### 4. Mermaid Parser (`src/backend/mermaid-parser.js`)
 
-**Purpose**: Parses Mermaid ERD syntax into structured JavaScript objects
+**Purpose**: Parses Mermaid ERD syntax into structured JavaScript objects for Dataverse entity creation.
 
 **Key Features**:
 - **CommonJS Module**: Compatible with Node.js server environment
@@ -104,6 +166,7 @@ erDiagram
 - Automatically adds missing primary keys
 - Validates relationship consistency
 - Suggests proper naming conventions
+- Detects Common Data Model (CDM) entities
 
 **Output Format**:
 ```javascript
@@ -134,63 +197,111 @@ erDiagram
 }
 ```
 
-### 3. Modern Wizard Interface (`src/wizard-ui.html`)
+### 5. React Wizard Interface (`src/frontend/src/App.tsx`)
 
-**Purpose**: Primary user interface providing step-by-step guided deployment experience.
+**Purpose**: Modern React-based user interface providing step-by-step guided deployment experience with Fluent UI components.
+
+**Technology Stack**:
+- **React 18** with functional components and hooks
+- **TypeScript** for type safety and better developer experience
+- **Fluent UI v9** for Microsoft-consistent design system
+- **Modern CSS** with responsive design patterns
 
 **Key Features**:
-- **Step-by-step Wizard**: Guided deployment process with main steps
-- **Real-time ERD Validation**: Live syntax checking with auto-corrections
-- **Modern Responsive UI**: Clean, intuitive interface for all devices
-- **Publisher Management**: Visual selection of existing or creation of new publishers
-- **Global Choices Integration**: Upload and preview global choice definitions
-
-- **Interactive Elements**: Dynamic form validation and user guidance
+- **Multi-step Wizard**: Progressive disclosure with clear navigation
+- **Real-time Validation**: Live ERD syntax checking with auto-corrections
+- **File Upload**: Drag-and-drop support with validation
+- **Publisher Management**: Visual selection and creation interface
+- **Global Choices Integration**: Upload and preview functionality
+- **Responsive Design**: Works on desktop, tablet, and mobile devices
 
 **Wizard Steps Flow**:
 
-* Step 1: ERD Validation & Upload
-    - Upload your Mermaid ERD file 
-    - Real-time syntax validation and structure checking
-    - Auto-correction suggestions for Dataverse compatibility
-    - **CDM Detection**: Automatic identification of entities that match Microsoft Common Data Model
-    - **Visual ERD Rendering**: Mermaid diagram display after applying corrections
-    - Entity and relationship preview with detailed schema display
+**Step 1: ERD Upload & Validation**
+- Modern file upload with drag-and-drop support
+- Real-time syntax validation with detailed error messages
+- Auto-correction suggestions with preview
+- **CDM Detection**: Visual indication of Common Data Model matches
+- **ERD Rendering**: Live Mermaid diagram display after validation
+- Entity and relationship preview with expandable details
 
-* Step 2: Solution & Publisher Setup  
-  - Define your solution name (required field)
-  - Choose existing publisher from Dataverse OR
-  - Create new publisher with custom prefix (3-8 characters)
-  - Publisher and solution validation
+**Step 2: Solution & Publisher Configuration**
+- Clean form design with Fluent UI components
+- Publisher selection with search and filter capabilities
+- New publisher creation with prefix validation
+- Solution name validation and conflict checking
 
-* Step 3: Global Choice Management (Optional)
-  - Add existing global choice sets from Dataverse
-  - Upload JSON file with custom global choice definitions
-  - Preview and validate choice sets before deployment
-  - Search and filter available choices
+**Step 3: Global Choices Management (Optional)**
+- File upload for custom global choice definitions
+- Preview table with sortable columns
+- Integration with existing Dataverse choices
+- Search and filter functionality
 
-* Step 4: Final Review & Deployment
-  - Review complete configuration summary
-  - **CDM Integration Options**: Choose between using detected CDM entities or creating custom entities
+**Step 4: Review & Deploy**
+- Comprehensive configuration summary
+- **CDM Integration Options**: Clear choice between CDM and custom entities
+- Real-time deployment progress with streaming logs
+- Success/error handling with detailed feedback
+
+**Component Structure**:
+```typescript
+// Main application component
+export const App: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [erdData, setErdData] = useState<ERDData | null>(null);
+  const [publishers, setPublishers] = useState<Publisher[]>([]);
+  
+  return (
+    <FluentProvider theme={webLightTheme}>
+      <div className="wizard-container">
+        <ProgressIndicator currentStep={currentStep} totalSteps={4} />
+        {renderCurrentStep()}
+      </div>
+    </FluentProvider>
+  );
+};
+```
+
+**Modern React Patterns**:
+- **Hooks**: useState, useEffect, useCallback for state management
+- **Context**: For sharing state across components
+- **Error Boundaries**: Graceful error handling
+- **Code Splitting**: Lazy loading for optimal performance
 
 
 
-### 4. API Endpoints Reference
+### 8. API Endpoints Reference
 
-This section provides detailed documentation for all available API endpoints in the Mermaid to Dataverse application.
+This section provides detailed documentation for all available API endpoints that support the React frontend and enable programmatic access.
 
 #### Core Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Returns application health status |
-| `/wizard` | GET | Primary wizard interface for guided deployment |
-| `/api/validate-erd` | POST | Validates a Mermaid ERD diagram and returns parsed entities/relationships |
-| `/api/publishers` | GET | Lists available publishers in Dataverse |
-| `/api/global-choices-list` | GET | Lists available global choice sets in Dataverse |
-| `/api/solution-status` | GET | Gets solution components and deployment status for polling |
-| `/upload` | POST | Deploys entities and relationships to Dataverse |
-| `/cleanup` | POST | Removes test entities and relationships from Dataverse |
+| `GET /` | GET | Serves React application (redirects to `/wizard`) |
+| `GET /wizard` | GET | Primary wizard interface (serves React app) |
+| `GET /health` | GET | Application health status and diagnostics |
+| `POST /api/upload` | POST | Primary deployment endpoint with streaming response |
+| `POST /api/validate-erd` | POST | ERD validation with auto-corrections and CDM detection |
+| `GET /api/publishers` | GET | Lists available publishers in Dataverse |
+| `GET /api/global-choices` | GET | Lists available global choice sets |
+| `GET /api/solution-status` | GET | Solution component status for deployment verification |
+
+#### Frontend Routes
+
+```
+GET /
+GET /wizard
+```
+
+**Purpose**: Serves the React application for all frontend routes.
+
+**Response**: Returns the React application HTML with proper SPA routing support.
+
+**Static Assets**: 
+- `/static/css/*` - Compiled CSS from Vite build
+- `/static/js/*` - Compiled JavaScript bundles
+- `/static/assets/*` - Images, fonts, and other assets
 
 #### Health Endpoint
 
@@ -198,36 +309,74 @@ This section provides detailed documentation for all available API endpoints in 
 GET /health
 ```
 
-**Purpose**: Check if the application is running and healthy.
+**Purpose**: Comprehensive health check including Key Vault connectivity and Dataverse authentication.
 
 **Response**:
 ```json
 {
   "status": "healthy",
-  "time": "2025-09-18T17:26:17.695Z"
+  "timestamp": "2025-09-07T14:30:00.000Z",
+  "version": "2.0.0",
+  "keyVault": {
+    "accessible": true,
+    "secretsLoaded": 5
+  },
+  "dataverse": {
+    "authenticated": true,
+    "connectionTest": "passed"
+  }
 }
 ```
 
-#### Wizard Endpoint
+#### Upload Endpoint (Primary Deployment)
 
 ```
-GET /wizard
+POST /api/upload
 ```
 
-**Purpose**: Serves the web-based wizard interface for interactive deployment.
+**Purpose**: Deploys entities and relationships to Dataverse with real-time streaming progress updates.
 
-#### Validate ERD Endpoint
+**Request Body**:
+```json
+{
+  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }",
+  "entities": [...],
+  "relationships": [...],
+  "solutionName": "CustomerSolution",
+  "solutionDisplayName": "Customer Management Solution",
+  "createPublisher": true,
+  "publisherName": "My Publisher",
+  "publisherPrefix": "myp",
+  "globalChoices": [...],
+  "deploymentOptions": {
+    "useCDMEntities": true,
+    "dryRun": false
+  }
+}
+```
+
+**Response**: Streaming JSON response with real-time progress updates:
+
+```json
+{"type": "log", "message": "✅ Connected to Dataverse", "timestamp": "..."}
+{"type": "log", "message": "✅ Publisher: MyPublisher (myp)", "timestamp": "..."}
+{"type": "log", "message": "✅ Solution: CustomerSolution created", "timestamp": "..."}
+{"type": "log", "message": "✅ Entity created: myp_customer", "timestamp": "..."}
+{"type": "result", "success": true, "summary": "Successfully created 1 entity, 0 relationships", "entitiesCreated": 1, "relationshipsCreated": 0}
+```
+
+#### ERD Validation Endpoint
 
 ```
 POST /api/validate-erd
 ```
 
-**Purpose**: Validates a Mermaid ERD diagram and returns parsed entities and relationships.
+**Purpose**: Validates Mermaid ERD syntax, provides auto-corrections, and detects CDM entities.
 
 **Request Body**:
 ```json
 {
-  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }\n"
+  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }"
 }
 ```
 
@@ -238,68 +387,100 @@ POST /api/validate-erd
   "entities": [
     {
       "name": "Customer",
+      "displayName": "Customer",
       "attributes": [
         {
           "name": "customer_id",
           "dataType": "string",
-          "isPrimaryKey": true
-        },
-        {
-          "name": "name",
-          "dataType": "string"
+          "isPrimaryKey": true,
+          "displayName": "Customer Id"
         }
-      ]
+      ],
+      "cdmMatch": {
+        "detected": true,
+        "entity": "account",
+        "confidence": 0.85,
+        "reason": "Entity name 'Customer' matches CDM 'account' entity"
+      }
     }
   ],
-  "relationships": []
+  "relationships": [],
+  "corrections": {
+    "applied": ["Added missing primary key to Order entity"],
+    "suggestions": ["Consider using CDM 'account' entity instead of custom 'Customer'"]
+  }
 }
 ```
 
-#### Upload Endpoint
+#### Publishers Endpoint
 
 ```
-POST /upload
+GET /api/publishers
 ```
 
-**Purpose**: Deploys entities and relationships to Dataverse.
+**Purpose**: Retrieves all available publishers from Dataverse for React frontend selection.
 
-**Request Body**:
-```json
-{
-  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }\n",
-  "entities": [...],
-  "relationships": [...],
-  "solutionName": "CustomerSolution",
-  "solutionDisplayName": "Customer Management Solution",
-  "createPublisher": true,
-  "publisherName": "My Publisher",
-  "publisherPrefix": "myp",
-  "dataverseUrl": "https://myorg.crm.dynamics.com",
-  "tenantId": "tenant-id",
-  "clientId": "client-id",
-  "clientSecret": "client-secret"
-}
-```
-
-**Response**: The response is a stream of JSON objects, each representing a log message or the final result. The final result includes:
-
+**Response**:
 ```json
 {
   "success": true,
-  "message": "Deployment completed successfully",
-  "summary": "Successfully processed: 1 entity",
-  "entitiesCreated": 1,
-  "relationshipsCreated": 0
+  "publishers": [
+    {
+      "id": "f30ac77a-6a86-f011-b4cc-000d3a66881e",
+      "uniqueName": "MermaidPublisher",
+      "friendlyName": "Mermaid Publisher",
+      "prefix": "mdv",
+      "isDefault": false,
+      "canUse": true
+    }
+  ]
 }
 ```
 
-#### Solution Status Endpoint (Polling)
+#### Global Choices Endpoint
+
+```
+GET /api/global-choices
+```
+
+**Purpose**: Retrieves available global choice sets with grouping and filtering support.
+
+**Query Parameters**:
+- `filter` (optional): Filter by name or type
+- `type` (optional): 'custom' or 'builtin'
+
+**Response**:
+```json
+{
+  "success": true,
+  "choices": [
+    {
+      "name": "custom_priority_level",
+      "displayName": "Priority Level",
+      "isCustom": true,
+      "isManaged": false,
+      "options": [
+        {"value": 1, "label": "High"},
+        {"value": 2, "label": "Medium"},
+        {"value": 3, "label": "Low"}
+      ]
+    }
+  ],
+  "summary": {
+    "total": 150,
+    "custom": 5,
+    "builtin": 145
+  }
+}
+```
+
+#### Solution Status Endpoint (Timeout Handling)
 
 ```
 GET /api/solution-status?solution=SolutionName
 ```
 
-**Purpose**: Retrieves solution components and deployment status for verification after timeout scenarios.
+**Purpose**: Retrieves solution components for deployment verification, especially after HTTP timeouts.
 
 **Query Parameters**:
 - `solution` (required): The unique name of the solution to check
@@ -316,256 +497,233 @@ GET /api/solution-status?solution=SolutionName
   "components": {
     "entities": [
       {
-        "logicalName": "custom_customer",
+        "logicalName": "myp_customer",
         "displayName": "Customer",
         "type": "entity"
       }
     ],
     "optionSets": [
       {
-        "logicalName": "custom_priority_level",
+        "logicalName": "myp_priority_level",
         "displayName": "Priority Level",
         "type": "optionset"
       }
     ],
     "others": [],
     "totalCount": 2
-  }
-}
-```
-
-**Error Response**:
-```json
-{
-  "success": false,
-  "error": "Solution not found"
-}
-```
-
-#### Publishers Endpoint
-
-```
-GET /api/publishers
-```
-
-**Purpose**: Retrieves all available publishers from Dataverse for selection during deployment.
-
-**Response**:
-```json
-{
-  "success": true,
-  "publishers": [
-    {
-      "id": "f30ac77a-6a86-f011-b4cc-000d3a66881e",
-      "uniqueName": "MermaidPublisher",
-      "friendlyName": "Mermaid Publisher",
-      "prefix": "mdv",
-      "isDefault": false
-    },
-    {
-      "id": "d21aab71-79e7-11dd-8874-00188b01e34f",
-      "uniqueName": "DefaultPublisherorg8efac90e",
-      "friendlyName": "Default Publisher for org8efac90e",
-      "prefix": "new",
-      "isDefault": false
-    }
-  ]
-}
-```
-
-#### Global Choices List Endpoint
-
-```
-GET /api/global-choices-list
-```
-
-**Purpose**: Retrieves all available global choice sets (option sets) from Dataverse for selection during deployment.
-
-**Response**:
-```json
-{
-  "success": true,
-  "all": [...],
-  "grouped": {
-    "custom": [...],
-    "builtIn": [...]
   },
-  "summary": {
-    "total": 150,
-    "custom": 5,
-    "builtIn": 145
-  }
+  "lastModified": "2025-09-07T14:30:00.000Z"
 }
 ```
 
-#### Cleanup Endpoint
 
-```
-POST /cleanup
-```
+### 6. Dataverse Client (`src/backend/dataverse-client.js`)
 
-**Purpose**: Removes test entities and relationships from Dataverse (primarily for development and testing).
-
-**Request Body**:
-```json
-{
-  "dataverseUrl": "https://myorg.crm.dynamics.com",
-  "tenantId": "tenant-id",
-  "clientId": "client-id", 
-  "clientSecret": "client-secret",
-  "cleanupAll": false,
-  "entityPrefixes": ["test", "demo"],
-  "preserveCDM": true
-}
-```
-
-#### Using the API with Scripts
-
-The included PowerShell scripts demonstrate how to use these endpoints programmatically:
-
-- `test-cdm-advanced.ps1`: Tests the core endpoints with comprehensive implementation including CDM entity detection.
-- `cleanup-test-entities.ps1`: Cleanup script to remove test entities and relationships from Dataverse.
-
-To use these scripts:
-
-```powershell
-# Basic usage
-./scripts/test-cdm-advanced.ps1 -erdFilePath ./examples/customer.mmd
-
-# With all options
-./scripts/test-cdm-advanced.ps1 -serverUrl "http://localhost:3000" -erdFilePath "./examples/customer.mmd" -solutionName "CustomerSolution" -solutionDisplayName "Customer Management" -envFile ".env.local"
-
-# Cleanup test entities
-./scripts/cleanup-test-entities.ps1
-```
-
-
-### 5. Dataverse Client (`src/dataverse-client.js`)
-
-**Purpose**: Handle all Microsoft Dataverse Web API interactions
+**Purpose**: Handle all Microsoft Dataverse Web API interactions with comprehensive entity, relationship, and solution management.
 
 **Key Features**:
-- Authentication via Azure managed identity
-- Publisher and solution management
-- Entity creation with metadata
-- Column and relationship creation
-- Comprehensive error handling and logging
+- **Managed Identity Authentication**: Passwordless authentication via Azure
+- **Publisher and Solution Management**: Create or use existing resources
+- **Entity Creation**: Full metadata support with proper naming conventions
+- **Column and Relationship Creation**: Complete attribute and relationship support
+- **Global Choice Management**: Create and integrate option sets
+- **Solution Introspection**: Verify deployment results and component status
+- **Comprehensive Error Handling**: Robust error recovery and logging
 
 **Main Operations**:
-- **Connection Testing**: Validates Dataverse connectivity
+- **Connection Testing**: Validates Dataverse connectivity and authentication
 - **Publisher Management**: Creates or uses existing publishers with custom prefixes
 - **Solution Management**: Creates or uses existing solutions with proper metadata
-- **Entity Creation**: Creates custom entities with proper metadata and naming
-- **Column Creation**: Adds custom columns to entities with full attribute support
-- **Relationship Creation**: Establishes one-to-many and many-to-many relationships (via junction table)
-- **Global Choice Management**: Creates and manages global choice sets
-- **Solution Introspection**: Retrieves solution components for deployment verification
-
+- **Entity Creation**: Creates custom entities with full metadata and naming conventions
+- **Column Creation**: Adds custom columns with complete attribute support
+- **Relationship Creation**: Establishes one-to-many and many-to-many relationships
+- **Global Choice Management**: Creates and manages global choice sets with solution integration
+- **Solution Component Verification**: Retrieves and validates deployment results
 
 **Authentication with Managed Identity**:
 ```javascript
-// Managed Identity authentication
+// Azure Managed Identity authentication
 const credential = clientId 
   ? new ManagedIdentityCredential(clientId)
   : new ManagedIdentityCredential();
 
 const token = await credential.getToken(`${dataverseUrl}/.default`);
+
+// HTTP client with authentication headers
+const headers = {
+  'Authorization': `Bearer ${token.token}`,
+  'Content-Type': 'application/json',
+  'OData-MaxVersion': '4.0',
+  'OData-Version': '4.0'
+};
 ```
 
 **Entity Creation Flow**:
 ```javascript
 async createEntitiesFromMermaidWithLogging(entities, options, logFunction) {
-  // 1. Create/validate publisher
+  // 1. Validate connection and authenticate
+  await this.testConnection();
+  logFunction('✅ Connected to Dataverse');
+  
+  // 2. Create/validate publisher
   const publisherResult = await this.ensurePublisher(options.publisherPrefix);
-  logFunction(`Publisher: ${publisherResult.uniqueName}`);
+  logFunction(`✅ Publisher: ${publisherResult.uniqueName}`);
   
-  // 2. Create/validate solution
+  // 3. Create/validate solution
   const solutionResult = await this.createSolution(options.solutionName);
-  logFunction(`Solution: ${solutionResult.uniqueName}`);
+  logFunction(`✅ Solution: ${solutionResult.uniqueName}`);
   
-  // 3. Create entities
+  // 4. Create entities with full metadata
   for (const entity of entities) {
-    const entityResult = await this.createEntity(entity);
-    logFunction(`Entity created: ${entityResult.LogicalName}`);
+    const entityResult = await this.createEntity(entity, publisherResult.prefix);
+    logFunction(`✅ Entity created: ${entityResult.LogicalName}`);
+    
+    // 5. Add entity to solution
+    await this.addComponentToSolution(solutionResult.solutionid, entityResult.MetadataId, 1);
   }
   
-  // 4. Create additional columns
-  // 5. Create relationships
+  // 6. Create additional columns
+  // 7. Create relationships
+  // 8. Integrate global choices if specified
 }
 ```
 
-**Solution Status Checking**:
+**Solution Status Verification**:
 ```javascript
-// New method for deployment verification
+// New method for deployment verification after timeouts
 async getSolutionComponents(solutionUniqueName) {
-  // 1. Get solution metadata
-  const solution = await this.checkSolutionExists(solutionUniqueName);
-  
-  // 2. Query solution components
-  const components = await this._req('get', 
-    `/solutioncomponents?$filter=_solutionid_value eq '${solution.solutionid}'`);
-  
-  // 3. Process each component by type
-  const entities = [], optionSets = [], others = [];
-  for (const component of components.value) {
-    switch (component.componenttype) {
-      case 1: // Entity
-        const entityMeta = await this._req('get', 
-          `/EntityDefinitions(${component.objectid})?$select=LogicalName,DisplayName`);
-        entities.push(entityMeta);
-        break;
-      case 9: // Option Set (Global Choice)
-        const optionMeta = await this._req('get', 
-          `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName`);
-        optionSets.push(optionMeta);
-        break;
+  try {
+    // 1. Get solution metadata
+    const solution = await this.checkSolutionExists(solutionUniqueName);
+    
+    // 2. Query solution components
+    const components = await this._req('get', 
+      `/solutioncomponents?$filter=_solutionid_value eq '${solution.solutionid}'&$select=componenttype,objectid`);
+    
+    // 3. Process each component by type
+    const entities = [], optionSets = [], others = [];
+    
+    for (const component of components.value) {
+      switch (component.componenttype) {
+        case 1: // Entity
+          const entityMeta = await this._req('get', 
+            `/EntityDefinitions(${component.objectid})?$select=LogicalName,DisplayName`);
+          entities.push({
+            logicalName: entityMeta.LogicalName,
+            displayName: entityMeta.DisplayName.LocalizedLabels[0]?.Label,
+            type: 'entity'
+          });
+          break;
+          
+        case 9: // Option Set (Global Choice)
+          const optionMeta = await this._req('get', 
+            `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName`);
+          optionSets.push({
+            logicalName: optionMeta.Name,
+            displayName: optionMeta.DisplayName.LocalizedLabels[0]?.Label,
+            type: 'optionset'
+          });
+          break;
+          
+        default:
+          others.push({ componenttype: component.componenttype, objectid: component.objectid });
+      }
     }
+    
+    return { 
+      success: true, 
+      solution, 
+      components: { 
+        entities, 
+        optionSets, 
+        others,
+        totalCount: entities.length + optionSets.length + others.length
+      } 
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
-  
-  return { success: true, solution, components: { entities, optionSets, others } };
 }
 ```
 
-### 6. Key Vault Configuration (`src/azure-keyvault.js`)
+### 7. Azure Key Vault Integration (`src/backend/azure-keyvault.js`)
 
-**Purpose**: Secure credential management via Azure Key Vault
+**Purpose**: Secure credential management via Azure Key Vault with Managed Identity authentication.
 
 **Key Features**:
-- **Managed Identity Integration**: No secrets in application code
-- **Fallback Support**: Environment variables for local development
-- **Secret Caching**: Efficient credential retrieval
-- **Error Handling**: Graceful degradation when Key Vault unavailable
+- **Managed Identity Integration**: Passwordless authentication with no secrets in code
+- **Fallback Environment Variables**: Graceful degradation for local development
+- **Secret Caching**: Efficient credential retrieval with intelligent caching
+- **Comprehensive Error Handling**: Robust error recovery when Key Vault unavailable
+- **Multiple Authentication Methods**: Support for both default and managed identity credentials
 
-**Required Secrets**:
-- `DATAVERSE-URL` - Dataverse environment URL
-- `CLIENT-ID` - App registration client ID
-- `CLIENT-SECRET` - App registration secret
-- `TENANT-ID` - Azure AD tenant ID
-- `SOLUTION-NAME` - Solution name
+**Required Secrets in Key Vault**:
+- `DATAVERSE-URL` - Target Dataverse environment URL
+- `CLIENT-ID` - Entra ID app registration client ID
+- `CLIENT-SECRET` - App registration client secret
+- `TENANT-ID` - Azure Active Directory tenant ID
+- `SOLUTION-NAME` - Default solution name for deployments
 
-**Secret Retrieval**:
+**Secret Retrieval Implementation**:
 ```javascript
 async getKeyVaultSecrets() {
   try {
     const keyVaultUrl = process.env.KEY_VAULT_URI;
+    if (!keyVaultUrl) {
+      throw new Error('KEY_VAULT_URI environment variable not set');
+    }
+    
+    // Determine authentication method
     const authType = process.env.AUTH_MODE || 'default';
+    const clientId = process.env.MANAGED_IDENTITY_CLIENT_ID;
     
     let credential;
-    if (authType === 'managed-identity') {
+    if (authType === 'managed-identity' && clientId) {
       credential = new ManagedIdentityCredential(clientId);
     } else {
       credential = new DefaultAzureCredential();
     }
     
     const secretClient = new SecretClient(keyVaultUrl, credential);
+    
+    // Retrieve all required secrets
     const secrets = await this.retrieveAllSecrets(secretClient);
     
     return { success: true, secrets };
   } catch (error) {
-    return { success: false, message: error.message };
+    console.warn('Key Vault access failed, falling back to environment variables:', error.message);
+    return this.getFallbackEnvironmentVariables();
   }
 }
+
+// Fallback to environment variables for local development
+getFallbackEnvironmentVariables() {
+  const secrets = {
+    'DATAVERSE-URL': process.env.DATAVERSE_URL,
+    'CLIENT-ID': process.env.CLIENT_ID,
+    'CLIENT-SECRET': process.env.CLIENT_SECRET,
+    'TENANT-ID': process.env.TENANT_ID,
+    'SOLUTION-NAME': process.env.SOLUTION_NAME
+  };
+  
+  const missing = Object.entries(secrets)
+    .filter(([key, value]) => !value)
+    .map(([key]) => key);
+    
+  if (missing.length > 0) {
+    throw new Error(`Missing required configuration: ${missing.join(', ')}`);
+  }
+  
+  return { success: true, secrets };
+}
 ```
+
+**Security Benefits**:
+- **Zero Hardcoded Secrets**: All sensitive data stored securely in Azure Key Vault
+- **Managed Identity**: No service credentials required for authentication
+- **Audit Trail**: All secret access logged through Azure monitoring
+- **RBAC Integration**: Fine-grained access control via Azure role assignments
+- **Rotation Support**: Supports secret rotation without application changes
 
 ## Advanced Features
 
@@ -725,49 +883,75 @@ const foundChoice = allChoices.value?.find(choice => choice.Name === targetName)
 **Purpose**: Provide visual diagram rendering of Mermaid ERDs after validation and correction to enhance user understanding and verification.
 
 **Key Features**:
-- **Mermaid.js Integration**: Client-side rendering using the official Mermaid.js library
+- **Mermaid.js Integration**: Client-side rendering using the official Mermaid.js library in React components
 - **Post-Correction Rendering**: Diagrams appear only after users apply corrected ERD
 - **Strategic Placement**: Positioned between validation results and parsed schema overview
 - **Clean UI Flow**: No overwhelming red/green comparisons, just clean visualization
+- **React Integration**: Seamless integration with Fluent UI components
 
 **Implementation Details**:
-- **Library**: Mermaid.js loaded via CDN in the wizard interface
+- **Library**: Mermaid.js loaded as npm dependency in React frontend
 - **Trigger**: Diagram renders when "Use Corrected ERD" button is clicked
-- **Container**: Dedicated `mainERDDiagram` section with neutral styling
+- **Container**: Dedicated React component with proper styling
 - **Error Handling**: Graceful fallback if diagram cannot be rendered
 
 **User Experience Flow**:
 1. **Upload & Validate**: User uploads ERD, sees validation results with corrections
 2. **Apply Corrections**: User clicks "Use Corrected ERD" button
-3. **Visual Confirmation**: System displays rendered Mermaid diagram above schema overview
+3. **Visual Confirmation**: React component displays rendered Mermaid diagram above schema overview
 4. **Proceed**: User can visually verify structure before deployment
 
-**Technical Implementation** (`src/wizard-ui.html`):
-```javascript
-// Mermaid diagram rendering after corrections applied
-async function renderMermaidDiagrams(originalContent, correctedContent) {
-    if (typeof mermaid !== 'undefined') {
-        mermaid.initialize({ 
+**Technical Implementation** (React + TypeScript):
+```typescript
+// ERD Diagram React Component
+import mermaid from 'mermaid';
+import { useEffect, useRef } from 'react';
+
+interface ERDDiagramProps {
+  mermaidCode: string;
+  diagramId: string;
+}
+
+export const ERDDiagram: React.FC<ERDDiagramProps> = ({ mermaidCode, diagramId }) => {
+  const diagramRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (diagramRef.current && mermaidCode) {
+        try {
+          mermaid.initialize({ 
             startOnLoad: false,
             theme: 'default',
-            flowchart: { useMaxWidth: true },
             er: { useMaxWidth: true }
-        });
-        
-        const mainContainer = document.getElementById('mainERDDiagram');
-        if (mainContainer && correctedContent && !originalContent) {
-            const { svg } = await mermaid.render('mainERD', correctedContent);
-            mainContainer.innerHTML = svg;
+          });
+          
+          const { svg } = await mermaid.render(diagramId, mermaidCode);
+          diagramRef.current.innerHTML = svg;
+        } catch (error) {
+          console.error('Failed to render diagram:', error);
+          diagramRef.current.innerHTML = '<p>Failed to render diagram</p>';
         }
-    }
-}
+      }
+    };
+
+    renderDiagram();
+  }, [mermaidCode, diagramId]);
+
+  return (
+    <div 
+      ref={diagramRef} 
+      className="erd-diagram-container"
+      style={{ textAlign: 'center', margin: '20px 0' }}
+    />
+  );
+};
 ```
 
 **Benefits**:
 - **Visual Verification**: Users can see the structure before deployment
 - **Error Detection**: Visual inconsistencies are easier to spot than text
 - **Confidence Building**: Users feel more confident about their ERD structure
-- **Professional UX**: Clean, modern interface with visual feedback
+- **Professional UX**: Clean, modern interface with visual feedback integrated into React flow
 
 ### Smart Timeout Handling & Deployment Verification
 
@@ -787,25 +971,59 @@ Instead of showing a generic timeout message, the application now:
 4. **Reports Success**: Shows detailed results of what was deployed
 
 **Implementation Flow**:
-```javascript
-// 1. Deployment starts normally
-await fetch('/upload', { method: 'POST', body: deploymentData });
-
-// 2. If timeout occurs (504 or network error), start polling
-if (response.status === 504 || error.includes('Failed to fetch')) {
-    await handleTimeoutWithPolling(solutionName, outputElement);
-}
-
-// 3. Polling checks solution status every 3 seconds for up to 30 seconds
-for (let attempt = 1; attempt <= 10; attempt++) {
-    const status = await fetch(`/api/solution-status?solution=${solutionName}`);
-    if (status.success && status.components.totalCount > 0) {
-        // Success! Show what was actually created
-        showDeploymentResults(status.components);
-        break;
+```typescript
+// React timeout handling with polling
+const handleDeployment = async (deploymentData: DeploymentRequest) => {
+  try {
+    // 1. Start normal deployment
+    const response = await fetch('/api/upload', { 
+      method: 'POST', 
+      body: JSON.stringify(deploymentData),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    await delay(3000); // Wait 3 seconds before next attempt
-}
+    
+    // Stream results normally
+    await handleStreamingResponse(response);
+    
+  } catch (error) {
+    // 2. If timeout occurs (504 or network error), start polling
+    if (error.message.includes('504') || error.message.includes('Failed to fetch')) {
+      await handleTimeoutWithPolling(deploymentData.solutionName);
+    } else {
+      throw error;
+    }
+  }
+};
+
+// 3. Polling implementation with React state updates
+const handleTimeoutWithPolling = async (solutionName: string) => {
+  setDeploymentStatus('polling');
+  setStatusMessage('Deployment timed out, checking results...');
+  
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      const status = await fetch(`/api/solution-status?solution=${solutionName}`);
+      const result = await status.json();
+      
+      if (result.success && result.components.totalCount > 0) {
+        // Success! Show what was actually created
+        setDeploymentStatus('success');
+        setDeploymentResults(result.components);
+        break;
+      }
+    } catch (pollingError) {
+      console.warn(`Polling attempt ${attempt} failed:`, pollingError);
+    }
+    
+    if (attempt < 10) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+};
 ```
 
 **User Experience Benefits**:
@@ -829,12 +1047,19 @@ created Z new global choices and integrated W already existing global choices.
 ```
 
 **Logging for Debugging**:
-```javascript
-// Clear distinction between deployment paths
+```typescript
+// Clear distinction between deployment paths in React
 console.log('🚀 DEPLOYMENT STARTED: Normal HTTP streaming');
 // OR
 console.log('⏳ POLLING AFTER TIMEOUT: Checking solution status');
 console.log('✅ POLLING SUCCESS: Found solution with components');
+
+// React state updates for user feedback
+setDeploymentLogs(prev => [...prev, { 
+  type: 'info', 
+  message: '🚀 Starting deployment...',
+  timestamp: new Date().toISOString()
+}]);
 ```
 
 ### Advanced Relationship Handling
@@ -894,63 +1119,103 @@ In this example:
 
 ```mermaid
 sequenceDiagram
-    participant User as Web Browser
-    participant Server as Azure App Service
+    participant User as React Frontend
+    participant Server as Express Server
     participant Parser as Mermaid Parser
     participant KeyVault as Azure Key Vault
     participant MI as Managed Identity
     participant Client as Dataverse Client
     participant Dataverse as Microsoft Dataverse
 
-    User->>Server: Upload Mermaid file via wizard UI
-    Server->>User: Start streaming logs
+    User->>Server: Load React application (GET /)
+    Server->>User: Serve React app bundle
+    User->>Server: Upload Mermaid file via React wizard
+    Server->>User: Start streaming logs response
     Server->>Server: Validate file format (contains erDiagram)
     Server->>Parser: Parse Mermaid ERD content
-    Parser->>Parser: Extract entities & relationships
-    Parser->>Server: Return structured data
-    Server->>User: Stream parsing results
+    Parser->>Parser: Extract entities, relationships & detect CDM matches
+    Parser->>Server: Return structured data with CDM analysis
+    Server->>User: Stream parsing results with CDM detection
     
-    Server->>KeyVault: Request Dataverse credentials
-    KeyVault->>MI: Validate managed identity
+    Server->>KeyVault: Request Dataverse credentials via Managed Identity
+    KeyVault->>MI: Validate managed identity token
     MI->>KeyVault: Return authentication token
     KeyVault->>Server: Return secrets (URL, Client ID, etc.)
     
     Server->>Client: Initialize with retrieved credentials
     Client->>MI: Authenticate with managed identity
     MI->>Dataverse: Request access token
-    Dataverse->>MI: Return Dataverse token
+    Dataverse->>MI: Return Dataverse access token
     MI->>Client: Provide authenticated context
     
-    Client->>Dataverse: Test connection
-    Dataverse->>Client: Confirm connectivity
+    Client->>Dataverse: Test connection and validate permissions
+    Dataverse->>Client: Confirm connectivity and permissions
     Client->>Server: Connection successful
-    Server->>User: Stream connection status in wizard UI
+    Server->>User: Stream connection status to React wizard
     
-    alt Dry Run Mode
+    alt Dry Run Mode (React option selected)
         Server->>User: Stream validation results only
+        User->>User: Display results in React UI without deployment
     else Live Deployment
-        Client->>Dataverse: Create/validate publisher
-        Client->>Dataverse: Create/validate solution
+        Client->>Dataverse: Create/validate publisher with custom prefix
+        Client->>Dataverse: Create/validate solution container
+        Client->>Server: Report publisher and solution status
+        Server->>User: Stream publisher/solution creation logs
         
-        loop For each entity
-            Client->>Dataverse: Create entity
-            Client->>Dataverse: Create columns
-            Dataverse->>Client: Confirm creation
-            Client->>Server: Report entity created
-            Server->>User: Stream entity creation log
+        loop For each entity (with CDM integration option)
+            alt CDM Entity Detected and User Chose CDM
+                Client->>Dataverse: Map to existing CDM entity
+                Client->>Dataverse: Add CDM entity to solution
+            else Custom Entity Creation
+                Client->>Dataverse: Create custom entity with full metadata
+                Client->>Dataverse: Create custom columns with attributes
+            end
+            
+            Dataverse->>Client: Confirm entity creation/mapping
+            Client->>Server: Report entity created/mapped
+            Server->>User: Stream entity creation log to React UI
         end
         
         loop For each relationship
-            Client->>Dataverse: Create relationship
-            Dataverse->>Client: Confirm creation
+            Client->>Dataverse: Create lookup/junction table relationships
+            Dataverse->>Client: Confirm relationship creation
             Client->>Server: Report relationship created
             Server->>User: Stream relationship creation log
         end
+        
+        opt Global Choices Integration
+            Client->>Dataverse: Create/integrate global choice sets
+            Client->>Dataverse: Add choices to solution
+            Dataverse->>Client: Confirm choice integration
+            Client->>Server: Report global choices status
+            Server->>User: Stream global choices results
+        end
     end
     
-    Server->>User: Stream final success/failure result
-    Server->>User: Close streaming connection
+    alt Normal Completion (< 230 seconds)
+        Server->>User: Stream final success/failure result
+        Server->>User: Close streaming connection
+        User->>User: Display final results in React UI
+    else Timeout Scenario (> 230 seconds)
+        Server-->>User: HTTP timeout (504 Gateway Timeout)
+        User->>Server: Start polling solution status (GET /api/solution-status)
+        Server->>Client: Query solution components
+        Client->>Dataverse: Retrieve solution component details
+        Dataverse->>Client: Return component list and metadata
+        Client->>Server: Solution status with component details
+        Server->>User: Return actual deployment results
+        User->>User: Display polling results in React UI with success message
+    end
 ```
+
+### Enhanced Data Flow Features
+
+1. **React-First Architecture**: Frontend is a modern React SPA with TypeScript and Fluent UI
+2. **Real-time Updates**: Streaming JSON responses provide live deployment feedback
+3. **CDM Integration**: Automatic detection and optional use of Common Data Model entities
+4. **Timeout Resilience**: Intelligent polling system handles Azure App Service timeouts
+5. **Secure Authentication**: Zero secrets in frontend, all credentials via Azure Key Vault
+6. **Progressive Enhancement**: Graceful degradation from streaming to polling when needed
 
 ### Enhanced Schema Generation Process
 
@@ -1105,16 +1370,45 @@ function generateColumnMetadata(attribute, publisherPrefix) {
 
 ### Error Response Strategy
 
-```javascript
-// Streaming error handling
-try {
-  // Process file
-  const result = await processMermaidFile(fileContent, options);
-  sendResult(true, result);
-} catch (error) {
-  sendLog(`Error: ${error.message}`);
-  sendResult(false, { error: error.message });
-}
+```typescript
+// React error handling with proper state management
+const handleDeployment = async (deploymentData: DeploymentRequest) => {
+  try {
+    setDeploymentStatus('deploying');
+    setErrorMessage(null);
+    
+    // Process deployment
+    const result = await deployToDataverse(deploymentData);
+    
+    setDeploymentStatus('success');
+    setDeploymentResults(result);
+    
+  } catch (error) {
+    setDeploymentStatus('error');
+    setErrorMessage(error.message);
+    
+    // Log detailed error for debugging
+    console.error('Deployment failed:', error);
+    
+    // Show user-friendly error message
+    addLogMessage({
+      type: 'error',
+      message: `Error: ${error.message}`,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// Streaming error handling for real-time updates
+const handleStreamingErrors = (error: Error) => {
+  addLogMessage({
+    type: 'error',
+    message: `Deployment error: ${error.message}`,
+    timestamp: new Date().toISOString()
+  });
+  
+  setDeploymentStatus('error');
+};
 ```
 
 ## Testing Strategy
@@ -1160,95 +1454,211 @@ GET /api/global-choices-list
 
 ### 3. Manual Testing Workflow
 
-1. **Upload Test File**: Use web interface with sample files
-2. **Live Deployment**: Test actual Dataverse creation
+1. **React Frontend Testing**: Use the modern React interface with sample files
+2. **Live Deployment**: Test actual Dataverse creation through the wizard
 3. **Timeout Testing**: Test with complex files that trigger timeout polling
 4. **Solution Verification**: Use `/api/solution-status` to verify deployment results
 5. **Error Scenarios**: Test with invalid files, wrong credentials
+6. **Browser Compatibility**: Test across different browsers (Chrome, Edge, Firefox)
+7. **Responsive Design**: Test on desktop, tablet, and mobile viewports
+8. **CDM Integration**: Test CDM entity detection and user choice functionality
 
 ## Deployment Architecture
 
-### Azure Resources
+### Two-Step Deployment Process
+
+The application uses a **robust two-step deployment process** that separates infrastructure creation from application deployment:
+
+**Step 1: Infrastructure Setup** (`scripts/setup-entra-app.ps1`)
+- Creates Entra ID App Registration with proper API permissions
+- Deploys Azure infrastructure using Bicep templates
+- Configures Managed Identity and Key Vault access
+- Sets up Dataverse application user and security roles
+- Stores all secrets securely in Key Vault
+
+**Step 2: Application Deployment** (`scripts/deploy.ps1`)
+- Builds React frontend locally using Vite for optimal performance
+- Packages only necessary backend files (excludes node_modules)
+- Deploys to Azure App Service with proper static file configuration
+- Configures runtime settings for Key Vault integration
+- Validates deployment success
+
+### Azure Resources Architecture
 
 ```mermaid
-graph LR
-    subgraph "Resource Group"
-        AS[App Service<br/>Node.js Runtime]
-        KV[Key Vault<br/>Secret Storage]
-        MI[Managed Identity<br/>Authentication]
-        ASP[App Service Plan<br/>B1 Basic]
+graph TB
+    subgraph "Azure Resource Group"
+        subgraph "Compute Resources"
+            AS[App Service<br/>Node.js 18 Runtime<br/>Serves React + API]
+            ASP[App Service Plan<br/>B1 Basic]
+        end
+        
+        subgraph "Security Resources"
+            MI[User-Assigned<br/>Managed Identity<br/>Passwordless Auth]
+            KV[Key Vault<br/>RBAC Enabled<br/>Secret Storage]
+        end
+        
+        subgraph "Identity & Access"
+            RBAC[RBAC Role Assignment<br/>Key Vault Secrets User]
+        end
     end
     
     subgraph "External Services"
+        ENTRA[Microsoft Entra ID<br/>App Registration<br/>Service Principal]
         DV[Dataverse Environment<br/>Target System]
-        ENTRA[Microsoft Entra ID<br/>Identity Provider]
+    end
+    
+    subgraph "Development"
+        BICEP[Bicep Template<br/>deploy/infrastructure.bicep<br/>Infrastructure as Code]
+        SCRIPTS[PowerShell Scripts<br/>setup-entra-app.ps1<br/>deploy.ps1]
     end
     
     AS --> MI
     MI --> KV
+    MI --> RBAC
     MI --> ENTRA
     AS --> DV
     KV --> ENTRA
+    BICEP --> AS
+    BICEP --> ASP
+    BICEP --> MI
+    BICEP --> KV
+    SCRIPTS --> BICEP
+    SCRIPTS --> ENTRA
+    SCRIPTS --> DV
 ```
 
 ### Required Azure Resources
 
-1. **App Service**: Hosts the Node.js application
-2. **App Service Plan**: Compute resources (B1 Basic or higher)
-3. **Managed Identity**: Service authentication
-4. **Key Vault**: Secure secret storage (with RBAC enabled)
-5. **RBAC Role Assignments**: Grant managed identity "Key Vault Secrets User" role
+**Core Infrastructure**:
+1. **Resource Group** - Container for all resources
+2. **App Service Plan** - Compute resources (B1 Basic or higher)
+3. **App Service** - Hosts the React + Node.js application
+4. **User-Assigned Managed Identity** - Passwordless service authentication
+5. **Key Vault** - Secure secret storage with RBAC enabled
+6. **RBAC Role Assignment** - Grants Managed Identity "Key Vault Secrets User" role
 
-### ⚡ Automated One-Click Setup
+**External Dependencies**:
+1. **Entra ID App Registration** - Service principal for Dataverse access
+2. **Dataverse Environment** - Target system for entity deployment
+3. **Dataverse Application User** - Service account with appropriate permissions
 
-**No manual Azure resource creation needed!** The entire deployment is fully automated through a single PowerShell script.
+### Automated Infrastructure Deployment
 
-### Quick Start
+**No manual Azure portal configuration required!** The entire deployment is fully automated through PowerShell scripts and Bicep templates.
+
+#### Infrastructure Setup Script (`scripts/setup-entra-app.ps1`)
 
 ```powershell
-# Clone repository
-git clone https://github.com/LuiseFreese/mermaid.git
-cd mermaid
+# Interactive setup with prompts
+.\scripts\setup-entra-app.ps1
 
-# Run automated setup (interactive prompts)
-./scripts/setup-entra-app.ps1
+# Unattended setup with parameters
+.\scripts\setup-entra-app.ps1 -Unattended `
+  -EnvironmentUrl "https://org.crm.dynamics.com" `
+  -ResourceGroup "rg-mermaid-prod" `
+  -Location "westeurope" `
+  -AppServiceName "app-mermaid-prod" `
+  -KeyVaultName "kv-mermaid-prod"
+```
+
+**What it creates automatically**:
+1. **Entra App Registration** with Dataverse API permissions
+2. **Azure Infrastructure** via Bicep template deployment
+3. **Managed Identity** with Key Vault access permissions
+4. **Key Vault secrets** with all required configuration
+5. **Dataverse Application User** with System Administrator role
+6. **End-to-end testing** to verify complete setup
+
+#### Application Deployment Script (`scripts/deploy.ps1`)
+
+```powershell
+# Deploy application to existing infrastructure
+.\scripts\deploy.ps1 -AppName "app-mermaid-prod" -ResourceGroup "rg-mermaid-prod" -KeyVaultName "kv-mermaid-prod"
 ```
 
 **What it does automatically**:
-- Creates App Registration with secret
-- Calls Bicep template* (`deploy/infrastructure.bicep`) to deploy Azure resources
-- Deploys complete Node.js application (not just empty webapp)
-- Configures managed identity & RBAC
-- Stores secrets in Key Vault
-- Creates Dataverse application user
-- Tests end-to-end functionality
+1. **Builds React frontend** with Vite for production optimization
+2. **Packages backend** with only necessary files (no source files or node_modules)
+3. **Deploys to App Service** using Azure CLI with zip deployment
+4. **Configures runtime settings** for static file serving and Key Vault integration
+5. **Tests deployment** by validating application endpoints
 
-### Interactive Setup Process
+### Infrastructure as Code (Bicep)
 
-The setup script guides you through configuration with prompts:
+All Azure resources are defined in `deploy/infrastructure.bicep` with the following key components:
 
-```powershell
-Interactive Setup for Mermaid-to-Dataverse Solution
-==================================================
+```bicep
+// App Service Plan
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: appServicePlanName
+  location: location
+  sku: {
+    name: 'B1'  // Basic tier for production workloads
+    tier: 'Basic'
+  }
+  kind: 'linux'
+  properties: {
+    reserved: true  // Linux hosting
+  }
+}
 
-Resource Group Name (or 'new' to create): rg-mermaid-prod
-Location for new resources: West Europe
-App Registration Name: MermaidToDataverse-Prod
-App Service Name: mermaid-dataverse-prod
-Key Vault Name: kv-mermaid-prod-001
-Dataverse URL: https://yourorg.crm.dynamics.com
-Solution Name: MermaidSolution
-Publisher Prefix (3-8 chars): mmrd
-Security Role Name: System Administrator
+// App Service with Node.js 18
+resource appService 'Microsoft.Web/sites@2023-01-01' = {
+  name: appServiceName
+  location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {}
+    }
+  }
+  properties: {
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'NODE|18-lts'
+      appSettings: [
+        {
+          name: 'KEY_VAULT_URI'
+          value: keyVault.properties.vaultUri
+        }
+        {
+          name: 'MANAGED_IDENTITY_CLIENT_ID'
+          value: managedIdentity.properties.clientId
+        }
+      ]
+    }
+  }
+}
 
-Step 1: Creating App Registration and secret...
-Step 2: Deploying infrastructure via Bicep template...
-Step 3: Deploying application source code to App Service...
-Step 4: Storing secrets securely in Key Vault...
-Step 5: Creating Dataverse application user...
-Step 6: Testing end-to-end functionality...
+// User-Assigned Managed Identity
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: managedIdentityName
+  location: location
+}
 
-Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsites.net
+// Key Vault with RBAC
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    enableRbacAuthorization: true  // Use RBAC instead of access policies
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    tenantId: subscription().tenantId
+  }
+}
+
+// RBAC Role Assignment for Managed Identity
+resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  properties: {
+    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+    principalId: managedIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
 ```
 
 ## Development Setup
@@ -1256,78 +1666,269 @@ Setup complete! Application ready at: https://mermaid-dataverse-prod.azurewebsit
 ### Prerequisites
 
 **For Automated Deployment:**
-- **Azure subscription** 
-- **PowerShell 7+** (includes Azure CLI integration)
-- **Appropriate permissions** in Azure AD (to create App Registrations)
+- **Azure subscription** with Contributor permissions
+- **Azure CLI** installed and logged in (`az login`)
+- **PowerShell 7+** (recommended) or Windows PowerShell 5.1
+- **Appropriate permissions** in Entra ID (to create App Registrations)
 - **Dataverse admin rights** (to create application users)
 
-**For Local Development (optional):**
-- **Node.js 20+** (for running locally)
-- **.env file** with development credentials
+**For Local Development:**
+- **Node.js 18+** (required for both frontend and backend)
+- **npm or yarn** for package management
+- **.env file** with development credentials (optional)
 
-### Local Development
+### Local Development Setup
 
-1. **Clone Repository**:
-   ```bash
-   git clone https://github.com/LuiseFreese/mermaid.git
-   cd mermaid
-   ```
+#### 1. Clone and Install Dependencies
 
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
+```bash
+# Clone repository
+git clone https://github.com/LuiseFreese/mermaid.git
+cd mermaid
 
-3. **Development Commands**:
-   ```bash
-   # Start the web server (production mode)
-   npm start
-   # → Starts the web server at http://localhost:8082
+# Install backend dependencies
+npm install
 
-   # Start with auto-restart on file changes
-   npm run dev  
-   # → Starts with auto-restart on file changes for development
+# Install frontend dependencies
+cd src/frontend
+npm install
+cd ../..
+```
 
-   # Run integration tests
-   npm test
-   # → Runs the schema generation test
+#### 2. Environment Configuration (Optional)
 
-  
-   ```
+For local development, you can create a `.env` file in the root directory:
 
-3. **Setup Environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your development credentials
-   ```
+```bash
+cp .env.example .env
+# Edit .env with your development credentials
+```
 
-4. **Start Development Server**:
-   ```bash
-   npm run dev
-   # Server runs with auto-restart on file changes
-   ```
+**Example `.env` file:**
+```bash
+# Dataverse Configuration
+DATAVERSE_URL=https://yourorg.crm.dynamics.com
+CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+CLIENT_SECRET=your-client-secret
+TENANT_ID=your-tenant-id
+SOLUTION_NAME=MermaidDevSolution
 
-5. **Access Application**:
-   ```
-   http://localhost:8082/wizard
-   ```
+# Development Settings
+NODE_ENV=development
+PORT=8082
+```
 
+#### 3. Development Commands
+
+**Frontend Development** (React + Vite):
+```bash
+# Start frontend development server with hot reload
+cd src/frontend
+npm run dev
+# → Starts Vite dev server at http://localhost:5173
+# → Includes hot module replacement and fast refresh
+
+# Build frontend for production
+npm run build
+# → Creates optimized dist/ folder
+
+# Preview production build
+npm run preview
+# → Serves production build for testing
+```
+
+**Backend Development** (Node.js + Express):
+```bash
+# Start backend server (production mode)
+npm start
+# → Starts Express server at http://localhost:8082
+
+# Start backend with auto-restart on file changes
+npm run dev
+# → Uses nodemon for automatic restart on backend changes
+
+# Run integration tests
+npm test
+# → Runs schema generation and API tests
+```
+
+**Full Stack Development:**
+```bash
+# Terminal 1: Start backend with auto-restart
+npm run dev
+
+# Terminal 2: Start frontend development server
+cd src/frontend
+npm run dev
+```
+
+This setup allows you to:
+- **Frontend**: Develop React components with hot reload at http://localhost:5173
+- **Backend**: API development with auto-restart at http://localhost:8082
+- **Vite Proxy**: Frontend automatically proxies API calls to backend during development
+
+#### 4. Production Build and Test
+
+```bash
+# Build frontend for production
+cd src/frontend
+npm run build
+cd ../..
+
+# Start production server (serves React build + API)
+npm start
+# → Complete application at http://localhost:8082
+```
+
+### Development Workflow
+
+#### Frontend Development (React + TypeScript)
+
+**Key Files:**
+- `src/frontend/src/App.tsx` - Main React application component
+- `src/frontend/src/components/` - Reusable Fluent UI components
+- `src/frontend/src/types/` - TypeScript type definitions
+- `src/frontend/src/services/` - API client services
+- `src/frontend/vite.config.ts` - Vite configuration
+
+**Development Features:**
+- **Hot Module Replacement**: Instant updates without losing component state
+- **TypeScript**: Full type checking and IntelliSense support
+- **Fluent UI Components**: Microsoft design system components
+- **ESLint + Prettier**: Code quality and formatting
+- **Vite DevTools**: Fast builds and excellent developer experience
+
+#### Backend Development (Node.js + Express)
+
+**Key Files:**
+- `src/server.js` - Main server entry point (serves React + API)
+- `src/backend/server.js` - Express server configuration
+- `src/backend/routes/` - API endpoint definitions
+- `src/backend/services/` - Business logic and Dataverse integration
+- `src/backend/dataverse-client.js` - Dataverse API client
+
+**Development Features:**
+- **Nodemon**: Automatic restart on file changes
+- **Express.js**: RESTful API with middleware support
+- **Azure SDK**: Managed Identity and Key Vault integration
+- **Comprehensive Logging**: Detailed logging for debugging
+
+### Testing and Debugging
+
+#### 1. Local Testing Workflow
+
+```bash
+# Test schema generation without deployment
+node tests/test-schema-generation.js examples/simple-sales.mmd
+
+# Test with custom publisher prefix
+node tests/test-schema-generation.js examples/simple-sales.mmd myprefix
+
+# Run full integration test suite
+npm test
+```
+
+#### 2. API Testing
+
+```bash
+# Health check
+curl http://localhost:8082/health
+
+# Test ERD validation
+curl -X POST http://localhost:8082/api/validate-erd \
+  -H "Content-Type: application/json" \
+  -d '{"mermaid": "erDiagram\n Customer { string id PK }"}'
+
+# Test publisher listing (requires valid credentials)
+curl http://localhost:8082/api/publishers
+```
+
+#### 3. Frontend Testing
+
+**React Component Testing:**
+- Use React Developer Tools browser extension
+- Vite has built-in debugging support
+- TypeScript provides compile-time error checking
+
+**Browser Testing:**
+- Access development server at http://localhost:5173 (frontend)
+- Access full application at http://localhost:8082 (production mode)
+- Use browser developer tools for debugging
+
+### Deployment Testing
+
+#### 1. Local Production Build Test
+
+```bash
+# Build everything for production
+cd src/frontend && npm run build && cd ../..
+
+# Start production server
+npm start
+
+# Test complete application
+open http://localhost:8082
+```
+
+#### 2. Deploy to Azure (Development Environment)
+
+```bash
+# Create development infrastructure
+.\scripts\setup-entra-app.ps1
+
+# Deploy application code
+.\scripts\deploy.ps1 -AppName "your-dev-app" -ResourceGroup "your-dev-rg" -KeyVaultName "your-dev-kv"
+```
 
 ### Diagnostic Tools
 
-1. **Health Check Endpoint**
-   ```
-   https://your-app-service.azurewebsites.net/health
-   ```
+#### 1. Application Health Monitoring
 
-2. **Azure Logs**
-   ```powershell
-   # Stream live logs
-   az webapp log tail --name your-app-service --resource-group your-resource-group
-   ```
+```bash
+# Local health check
+curl http://localhost:8082/health
 
-3. **Local Testing**
-   ```bash
-   # Test schema generation without deployment
-   node tests/test-schema-generation.js examples/simple-sales.mmd
-   ```
+# Azure health check
+curl https://your-app-service.azurewebsites.net/health
+```
+
+#### 2. Azure Application Logs
+
+```powershell
+# Stream live application logs
+az webapp log tail --name your-app-service --resource-group your-resource-group
+
+# Download log files
+az webapp log download --name your-app-service --resource-group your-resource-group
+```
+
+#### 3. Local Development Debugging
+
+**Backend Debugging:**
+- Use Visual Studio Code with Node.js debugging
+- Console logs appear in terminal
+- Use breakpoints in VS Code
+
+**Frontend Debugging:**
+- React Developer Tools browser extension
+- Browser developer tools
+- Vite provides excellent error messages and stack traces
+- TypeScript compiler provides detailed error information
+
+### Common Development Tasks
+
+#### Adding New API Endpoints
+
+1. **Define route** in `src/backend/routes/`
+2. **Add business logic** in `src/backend/services/`
+3. **Update TypeScript types** in `src/frontend/src/types/`
+4. **Add frontend service call** in `src/frontend/src/services/`
+5. **Test locally** with both frontend and backend running
+
+#### Adding New React Components
+
+1. **Create component** in `src/frontend/src/components/`
+2. **Define TypeScript props** interface
+3. **Use Fluent UI components** for consistency
+4. **Test with hot reload** in development mode
+5. **Build and test** production version

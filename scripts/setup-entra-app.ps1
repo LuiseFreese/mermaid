@@ -365,7 +365,7 @@ KEY_VAULT_NAME=$KeyVaultName
 
 # ---------- Deploy code ----------
 function Deploy-Application {
-    param($AppServiceName,$ResourceGroup,$AppServicePlanName,$ManagedIdentityClientId)
+    param($AppServiceName,$ResourceGroup,$KeyVaultName)
     Write-Info "Deploying application to Azure App Service..."
     if ($DryRun) { Write-Warning "[DRY RUN] Would deploy application to App Service: $AppServiceName"; return }
 
@@ -380,16 +380,27 @@ function Deploy-Application {
             throw "Deploy script not found at: $deployScript"
         }
         
-        # Call deploy.ps1 script 
-        # Secrets are retrieved from Key Vault
-        & $deployScript -ResourceGroup $ResourceGroup -AppServiceName $AppServiceName -ManagedIdentityClientId $ManagedIdentityClientId
+        # Call deploy.ps1 script with correct parameters
+        # The deploy script expects: -AppName, -ResourceGroup, -KeyVaultName
+        Write-Info "Executing: deploy.ps1 -AppName $AppServiceName -ResourceGroup $ResourceGroup -KeyVaultName $KeyVaultName"
         
-        if ($LASTEXITCODE -eq 0) {
+        # Set ErrorActionPreference to Stop to ensure script failures bubble up
+        $originalErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = "Stop"
+        
+        try {
+            & $deployScript -AppName $AppServiceName -ResourceGroup $ResourceGroup -KeyVaultName $KeyVaultName
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "deploy.ps1 failed with exit code $LASTEXITCODE"
+            }
+            
             Write-Success "Application deployed successfully!"
             Write-Info "🌐 App URL: https://$AppServiceName.azurewebsites.net/"
             Write-Info "❤️  Health: https://$AppServiceName.azurewebsites.net/health"
-        } else {
-            throw "deploy.ps1 failed with exit code $LASTEXITCODE"
+        }
+        finally {
+            $ErrorActionPreference = $originalErrorActionPreference
         }
     } catch { 
         Write-Error "Failed to deploy application: $_"
@@ -587,7 +598,7 @@ function Start-Setup {
             Write-Warning "Skipping Dataverse Application User creation as requested (-SkipDataverseUser)."
         }
 
-        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup -AppServicePlanName $infrastructure.appServicePlanName -ManagedIdentityClientId $infrastructure.managedIdentityClientId
+        Deploy-Application -AppServiceName $config.AppServiceName -ResourceGroup $config.ResourceGroup -KeyVaultName $config.KeyVaultName
 
         if (Test-Setup -KeyVaultUri $infrastructure.keyVaultUri -AppId $app.appId) {
             if ($kvGrant.AssignmentId) {

@@ -5,13 +5,10 @@ import {
   AccordionHeader,
   AccordionPanel,
   AccordionItem,
-  Checkbox,
   Card,
   CardHeader,
-  Badge,
   Button,
   Spinner,
-  ProgressBar,
   tokens
 } from '@fluentui/react-components';
 import { useWizardContext } from '../../../context/WizardContext';
@@ -28,7 +25,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
   onNext, 
   onPrevious 
 }) => {
-  const { wizardData, updateWizardData } = useWizardContext();
+  const { wizardData } = useWizardContext();
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentProgress, setDeploymentProgress] = useState<string>('');
   const [deploymentResult, setDeploymentResult] = useState<any>(null);
@@ -227,7 +224,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
                         <div className={fileUploadStyles.attributeList}>
                           {entity.attributes.map((attr, attrIndex) => (
                             <div key={attrIndex} className={fileUploadStyles.attribute}>
-                              {attr.constraint ? (
+                              {typeof attr === 'object' && attr.constraint ? (
                                 <span className={fileUploadStyles.attributeLabel}>{attr.constraint}</span>
                               ) : (
                                 <span></span>
@@ -374,7 +371,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
                                     {choice.displayName || choice.name}:
                                   </Text>
                                   <Text size={200} style={{ color: 'var(--colorNeutralForeground2)', marginLeft: '12px', display: 'block' }}>
-                                    {choice.options.map(opt => opt.label || opt.value).join(', ')}
+                                    {choice.options?.map(opt => opt.label || opt.value).join(', ')}
                                   </Text>
                                 </div>
                               ))}
