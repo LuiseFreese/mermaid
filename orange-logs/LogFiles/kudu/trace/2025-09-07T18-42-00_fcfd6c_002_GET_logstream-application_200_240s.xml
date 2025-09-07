@@ -1,5 +1,0 @@
-<step title="Incoming Request" date="2025-09-07T18:42:00.586" instance="fcfd6c" url="/logstream/application" method="GET" type="request" pid="825,1,7" Host="app-mermaid-orange.scm.azurewebsites.net" User-Agent="AZURECLI/2.76.0 (MSI)" Accept-Encoding="identity" Authorization="Bas..." x-ms-client-request-id="53ba54eb-8c1a-11f0-be36-78af083fa5e2" X-ARR-LOG-ID="53ba54eb-8c1a-11f0-be36-78af083fa5e2" CLIENT-IP="176.198.203.38:43263" X-SITE-DEPLOYMENT-ID="app-mermaid-orange" WAS-DEFAULT-HOSTNAME="app-mermaid-orange.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/logstream/application" X-Client-IP="176.198.203.38" X-Client-Port="43263" >
-  <step title="LogStreamHandlerMiddleware.Invoke" date="2025-09-07T18:42:00.607" /><!-- duration: 107ms -->
-  <step title="Error occurred" date="2025-09-07T18:46:00.716" type="error" text="LogStreamManager: ProcessRequest end" /><!-- duration: 6ms -->
-  <step title="Outgoing response" date="2025-09-07T18:46:00.735" type="response" statusCode="200" statusText="OK" /><!-- duration: 32ms -->
-</step><!-- duration: 240187ms -->
