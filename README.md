@@ -214,64 +214,12 @@ Still, I'm super hesitant to use `Agent` mode - I just love to stay in the drive
 
 ## Contributing
 
-We welcome contributions! This is an open-source project that benefits from community input:
+I welcome contributions! This is an open-source project that benefits from community input :-)
 
-### Development Setup
-```bash
-# Clone and set up for development
-git clone https://github.com/LuiseFreese/mermaid.git
-cd mermaid
-npm install
-cd src/frontend && npm install && cd ../..
-
-# Start development environment
-npm run dev                    # Backend
-cd src/frontend && npm run dev # Frontend
-```
-
-### Areas for Contribution
-- **New ERD Features**: Additional Mermaid syntax support
-- **CDM Expansion**: More Common Data Model entity mappings
-- **UI Improvements**: Enhanced React components and user experience
-- **Documentation**: Examples, guides, and tutorials
-- **Testing**: Automated tests and quality assurance
-- **Security**: Additional security features and best practices
-
-### Contribution Guidelines
-1. **Fork the repository** and create a feature branch
-2. **Follow the existing code style** (TypeScript for frontend, PowerShell for scripts)
-3. **Test your changes** locally before submitting
-4. **Update documentation** for any new features
-5. **Submit a pull request** with a clear description of changes
-
-## Roadmap
-
-### Upcoming Features
-- **Enhanced CDM Support**: More sophisticated entity matching algorithms
-- **Advanced Relationships**: Support for polymorphic and hierarchical relationships
-- **Deployment Templates**: Pre-built templates for common business scenarios
-- **Integration APIs**: REST APIs for programmatic access
-- **Multi-tenant Support**: Enhanced isolation for enterprise deployments
-
-### Long-term Vision
-- **Cross-platform Deployment**: Support for other cloud providers
-- **Visual ERD Editor**: In-browser diagram creation and editing
-- **Data Migration Tools**: Import existing data into generated entities
-- **Power Platform Integration**: Deeper integration with Power Apps and Power Automate
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Third-Party Licenses
-
-This project uses several open-source libraries and tools:
-- **React** - MIT License
-- **Fluent UI v9** - MIT License  
-- **Vite** - MIT License
-- **Express** - MIT License
-- **TypeScript** - Apache 2.0 License
-- **Mermaid** - MIT License
 
 ## Contact & Support
 
@@ -285,15 +233,8 @@ This project uses several open-source libraries and tools:
 
 ### Connect
 - **Blog**: [M365Princess.com](https://m365princess.com)
-- **Twitter**: [@LuiseFreese](https://twitter.com/LuiseFreese)
 - **LinkedIn**: [Luise Freese](https://linkedin.com/in/luisefreese)
 
 ---
 
-**Made with ❤️ for the Power Platform community** 
-
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+**Made with ❤️ for community** 
