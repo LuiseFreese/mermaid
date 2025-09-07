@@ -57,7 +57,7 @@ The Mermaid to Dataverse Converter is a Node.js web application deployed on Azur
 
 **Additional Features**:
 - **Environment Variables Integration** - Credentials passed directly in the upload request
-- **Dry Run Mode** - Validate without creating entities
+
 
 
 ### 2. Mermaid Parser (`src/mermaid-parser.js`)
@@ -172,7 +172,7 @@ erDiagram
 * Step 4: Final Review & Deployment
   - Review complete configuration summary
   - **CDM Integration Options**: Choose between using detected CDM entities or creating custom entities
-  - Dry-run option for validation-only testing
+
 
 
 ### 4. API Endpoints Reference
@@ -271,7 +271,6 @@ POST /upload
   "relationships": [...],
   "solutionName": "CustomerSolution",
   "solutionDisplayName": "Customer Management Solution",
-  "dryRun": true,
   "createPublisher": true,
   "publisherName": "My Publisher",
   "publisherPrefix": "myp",
@@ -414,7 +413,6 @@ POST /cleanup
   "tenantId": "tenant-id",
   "clientId": "client-id", 
   "clientSecret": "client-secret",
-  "dryRun": true,
   "cleanupAll": false,
   "entityPrefixes": ["test", "demo"],
   "preserveCDM": true
@@ -435,10 +433,10 @@ To use these scripts:
 ./scripts/test-cdm-advanced.ps1 -erdFilePath ./examples/customer.mmd
 
 # With all options
-./scripts/test-cdm-advanced.ps1 -serverUrl "http://localhost:3000" -erdFilePath "./examples/customer.mmd" -solutionName "CustomerSolution" -solutionDisplayName "Customer Management" -dryRun:$false -envFile ".env.local"
+./scripts/test-cdm-advanced.ps1 -serverUrl "http://localhost:3000" -erdFilePath "./examples/customer.mmd" -solutionName "CustomerSolution" -solutionDisplayName "Customer Management" -envFile ".env.local"
 
 # Cleanup test entities
-./scripts/cleanup-test-entities.ps1 -dryRun
+./scripts/cleanup-test-entities.ps1
 ```
 
 
@@ -1103,7 +1101,7 @@ function generateColumnMetadata(attribute, publisherPrefix) {
 - **Graceful Degradation**: Continue with partial functionality when possible
 - **Retry Logic**: Automatic retry for transient failures
 - **User Feedback**: Clear error messages with actionable guidance
-- **Fallback Options**: Dry-run mode for validation without creation
+
 
 ### Error Response Strategy
 
@@ -1163,11 +1161,10 @@ GET /api/global-choices-list
 ### 3. Manual Testing Workflow
 
 1. **Upload Test File**: Use web interface with sample files
-2. **Dry Run Mode**: Validate without creating entities
-3. **Live Deployment**: Test actual Dataverse creation
-4. **Timeout Testing**: Test with complex files that trigger timeout polling
-5. **Solution Verification**: Use `/api/solution-status` to verify deployment results
-6. **Error Scenarios**: Test with invalid files, wrong credentials
+2. **Live Deployment**: Test actual Dataverse creation
+3. **Timeout Testing**: Test with complex files that trigger timeout polling
+4. **Solution Verification**: Use `/api/solution-status` to verify deployment results
+5. **Error Scenarios**: Test with invalid files, wrong credentials
 
 ## Deployment Architecture
 

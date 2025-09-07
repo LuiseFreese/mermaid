@@ -1198,8 +1198,11 @@
                             <!-- Summary cards will be populated by JavaScript -->
                         </div>
                         
-                        <div class="form-group" style="margin-top: 24px; display: none;">
-                            <!-- Removed dry run mode -->
+                        <div class="form-group" style="margin-top: 24px;">
+                            <label class="form-label">
+                                <input type="checkbox" id="dryRunMode" checked>
+                                Dry Run Mode (Preview only, don't create entities)
+                            </label>
                         </div>
                     </div>
 
@@ -1369,49 +1372,10 @@
                 deploymentOutput.innerHTML = '';
             }
             
-            // Reset publisher form fields thoroughly
+            // Reset publisher form fields
             const publisherForm = document.getElementById('publisherForm');
             if (publisherForm) {
                 publisherForm.reset();
-            }
-            
-            // Clear and reset all publisher-related fields
-            const existingPublishers = document.getElementById('existingPublishers');
-            if (existingPublishers) {
-                existingPublishers.selectedIndex = 0;
-                existingPublishers.disabled = false;
-                existingPublishers.value = '';
-            }
-            
-            const publisherName = document.getElementById('publisherName');
-            if (publisherName) {
-                publisherName.value = '';
-            }
-            
-            const publisherUniqueName = document.getElementById('publisherUniqueName');
-            if (publisherUniqueName) {
-                publisherUniqueName.value = '';
-            }
-            
-            const publisherPrefix = document.getElementById('publisherPrefix');
-            if (publisherPrefix) {
-                publisherPrefix.value = '';
-            }
-            
-            // Reset radio buttons to default (existing publisher)
-            const existingRadio = document.querySelector('input[name="publisherOption"][value="existing"]');
-            const newRadio = document.querySelector('input[name="publisherOption"][value="new"]');
-            if (existingRadio) {
-                existingRadio.checked = true;
-            }
-            if (newRadio) {
-                newRadio.checked = false;
-            }
-            
-            // Hide new publisher fields
-            const newPublisherFields = document.getElementById('newPublisherFields');
-            if (newPublisherFields) {
-                newPublisherFields.classList.add('hidden');
             }
             
             // Reset solution name fields
@@ -1446,17 +1410,6 @@
             const summaryContent = document.getElementById('summaryContent');
             if (summaryContent) {
                 summaryContent.innerHTML = '';
-            }
-            
-            // Clear any file name displays
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
-            if (fileNameDisplay) {
-                fileNameDisplay.textContent = 'No file selected';
-            }
-            
-            const choicesNameDisplay = document.getElementById('choicesNameDisplay');
-            if (choicesNameDisplay) {
-                choicesNameDisplay.textContent = 'No file selected';
             }
             
             // Show the first page and update navigation
@@ -3815,16 +3768,12 @@
             uniqueNameField.value = uniqueName;
             uniqueNameField.readOnly = false; // Allow manual editing after auto-generation
             
-            // Auto-generate prefix from first 3-8 characters of unique name (lowercase, predictable)
+            // Auto-generate prefix from first 3-8 characters of unique name
             if (uniqueName) {
-                let prefix = uniqueName.substring(0, 6).toLowerCase(); // Take first 6 chars
+                let prefix = uniqueName.substring(0, 8).toLowerCase();
                 // Ensure minimum 3 characters
                 if (prefix.length < 3) {
-                    prefix = (prefix + 'pub').substring(0, 6);
-                }
-                // Ensure maximum 8 characters
-                if (prefix.length > 8) {
-                    prefix = prefix.substring(0, 8);
+                    prefix = (prefix + 'pub').substring(0, 8);
                 }
                 prefixField.value = prefix;
             } else {
@@ -4067,15 +4016,14 @@
                     relationships: wizard.stepData.validation.relationships,
                     solutionName: document.getElementById('solutionName').value,
                     solutionDisplayName: document.getElementById('solutionDisplayName').value,
+                    dryRun: document.getElementById('dryRunMode').checked,
                     includeRelatedEntities: document.getElementById('includeRelatedEntities').checked,
                     publisher: wizard.stepData.publisher.type === 'existing' && wizard.stepData.publisher.selectedPublisher ? 
                         JSON.parse(wizard.stepData.publisher.selectedPublisher) : null,
                     createPublisher: wizard.stepData.publisher.type === 'new',
                     publisherName: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.name : null,
                     publisherUniqueName: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.uniqueName : null,
-                    publisherPrefix: wizard.stepData.publisher.type === 'new' ? 
-                        wizard.stepData.publisher.newPublisher?.prefix : 
-                        (wizard.stepData.publisher.selectedPublisher ? JSON.parse(wizard.stepData.publisher.selectedPublisher).prefix : null),
+                    publisherPrefix: wizard.stepData.publisher.type === 'new' ? wizard.stepData.publisher.newPublisher?.prefix : null,
                     selectedChoices: Array.from(document.querySelectorAll('#builtinChoicesContainer input:checked, #customChoicesContainer input:checked'))
                         .map(cb => cb.value)
                         .filter(value => value && value.trim() !== '' && value !== 'undefined'),

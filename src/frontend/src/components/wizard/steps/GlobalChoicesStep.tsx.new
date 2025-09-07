@@ -1,0 +1,276 @@
+import React, { useState } from 'react';
+import {
+  Card,
+  CardHeader,
+  Text,
+  Button,
+  Field,
+  Input,
+  Accordion,
+  AccordionItem,
+  AccordionHeader,
+  AccordionPanel,
+  Checkbox,
+  MessageBar,
+  MessageBarBody,
+  Spinner,
+  tokens,
+} from '@fluentui/react-components';
+import { DocumentRegular, CloudArrowUpRegular, SettingsRegular } from '@fluentui/react-icons';
+import { useGlobalChoices } from '../../../hooks/useGlobalChoices';
+import { GlobalChoice } from '../../../services/globalChoicesService';
+import styles from './GlobalChoicesStep.module.css';
+
+interface GlobalChoicesStepProps {
+  onNext?: () => void;
+  onPrevious?: () => void;
+}
+
+export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
+  onNext,
+  onPrevious,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedChoices, setSelectedChoices] = useState<Set<string>>(new Set());
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // Use the custom hook to fetch global choices
+  const { 
+    builtInChoices, 
+    customChoices, 
+    loading, 
+    error, 
+    refetch 
+  } = useGlobalChoices();
+
+  // Debug logging
+  console.log('🔍 GlobalChoicesStep - Debug info:', {
+    builtInChoices: builtInChoices.length,
+    customChoices: customChoices.length,
+    loading,
+    error,
+    builtInChoicesData: builtInChoices.slice(0, 3),
+    customChoicesData: customChoices.slice(0, 3)
+  });
+
+  const handleChoiceSelect = (choiceId: string, checked: boolean) => {
+    const newSelected = new Set(selectedChoices);
+    if (checked) {
+      newSelected.add(choiceId);
+    } else {
+      newSelected.delete(choiceId);
+    }
+    setSelectedChoices(newSelected);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadedFile(file);
+    }
+  };
+
+  const filteredBuiltInChoices = builtInChoices.filter(choice =>
+    choice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    choice.logicalName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCustomChoices = customChoices.filter(choice =>
+    choice.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    choice.logicalName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const isValid = selectedChoices.size > 0 || uploadedFile;
+
+  return (
+    <Card style={{ boxShadow: tokens.shadow4 }}>
+      <CardHeader
+        header={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <SettingsRegular style={{ fontSize: '20px', color: tokens.colorBrandBackground }} />
+            <Text className={styles.headerText} weight="bold">Global Choice Management</Text>
+          </div>
+        }
+        description={
+          <Text size={300} style={{ color: tokens.colorNeutralForeground2 }}>
+            Add existing global choice sets or create new ones for your entities.
+          </Text>
+        }
+      />
+
+      <div className={styles.cardContent}>
+        <Accordion
+          multiple
+          defaultOpenItems={['global-choice-sets', 'upload-choices']}
+          className={styles.accordion}
+        >
+          <AccordionItem value="global-choice-sets">
+            <AccordionHeader>
+              <Text className={styles.accordionHeaderText}>
+                Global Choice Sets
+              </Text>
+            </AccordionHeader>
+            <AccordionPanel>
+              <Text size={300} style={{ color: '#6b6b6b', marginBottom: '16px' }}>
+                Select existing global choice sets from your environment.
+              </Text>
+
+              <Field label="Search">
+                <Input
+                  placeholder="Search by name, logical name, or prefix..."
+                  value={searchTerm}
+                  onChange={(_, data) => setSearchTerm(data.value)}
+                  style={{ width: '100%', marginBottom: '24px' }}
+                />
+              </Field>
+
+              {loading && (
+                <div className={styles.loadingContainer}>
+                  <Spinner size="medium" />
+                  <Text>Loading global choices...</Text>
+                </div>
+              )}
+
+              {error && (
+                <MessageBar intent="error" style={{ marginBottom: '16px' }}>
+                  <MessageBarBody>
+                    {error}
+                    <Button 
+                      appearance="transparent" 
+                      size="small" 
+                      onClick={refetch}
+                      style={{ marginLeft: '8px' }}
+                    >
+                      Retry
+                    </Button>
+                  </MessageBarBody>
+                </MessageBar>
+              )}
+
+              {!loading && !error && (
+                <Accordion multiple defaultOpenItems={['built-in']}>
+                  <AccordionItem value="built-in">
+                    <AccordionHeader>
+                      <Text size={500} weight="semibold">
+                        Built-in Global Choices ({filteredBuiltInChoices.length})
+                      </Text>
+                    </AccordionHeader>
+                    <AccordionPanel>
+                      <div className={styles.choicesList}>
+                        {filteredBuiltInChoices.slice(0, 20).map((choice) => (
+                          <div key={choice.id} className={styles.choiceItem}>
+                            <Checkbox
+                              checked={selectedChoices.has(choice.id)}
+                              onChange={(_, data) => handleChoiceSelect(choice.id, data.checked === true)}
+                              label={
+                                <div>
+                                  <Text size={300} weight="medium">{choice.displayName}</Text>
+                                  <Text size={200} style={{ color: '#6b6b6b', display: 'block' }}>
+                                    {choice.logicalName}
+                                  </Text>
+                                </div>
+                              }
+                            />
+                          </div>
+                        ))}
+                        {filteredBuiltInChoices.length > 20 && (
+                          <Text size={200} style={{ color: '#6b6b6b', fontStyle: 'italic', padding: '8px' }}>
+                            ... and {filteredBuiltInChoices.length - 20} more. Use search to find specific choices.
+                          </Text>
+                        )}
+                      </div>
+                    </AccordionPanel>
+                  </AccordionItem>
+
+                  <AccordionItem value="custom">
+                    <AccordionHeader>
+                      <Text size={500} weight="semibold">
+                        Custom Global Choices ({filteredCustomChoices.length})
+                      </Text>
+                    </AccordionHeader>
+                    <AccordionPanel>
+                      <div className={styles.choicesList}>
+                        {filteredCustomChoices.map((choice) => (
+                          <div key={choice.id} className={styles.choiceItem}>
+                            <Checkbox
+                              checked={selectedChoices.has(choice.id)}
+                              onChange={(_, data) => handleChoiceSelect(choice.id, data.checked === true)}
+                              label={
+                                <div>
+                                  <Text size={300} weight="medium">{choice.displayName}</Text>
+                                  <Text size={200} style={{ color: '#6b6b6b', display: 'block' }}>
+                                    {choice.logicalName}
+                                  </Text>
+                                </div>
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
+              )}
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem value="upload-choices">
+            <AccordionHeader>
+              <Text className={styles.accordionHeaderText}>
+                Upload Custom Choices
+              </Text>
+            </AccordionHeader>
+            <AccordionPanel>
+              <Text size={300} style={{ color: '#6b6b6b', marginBottom: '16px' }}>
+                Upload a JSON file containing custom global choice definitions.
+              </Text>
+              
+              <div className={styles.fileUpload}>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                  id="global-choices-upload"
+                />
+                <label htmlFor="global-choices-upload" className={styles.fileUploadLabel}>
+                  <CloudArrowUpRegular style={{ marginRight: '8px' }} />
+                  Choose File
+                </label>
+                
+                {uploadedFile ? (
+                  <div className={styles.uploadedFile}>
+                    <DocumentRegular style={{ marginRight: '8px' }} />
+                    <Text size={300}>{uploadedFile.name}</Text>
+                  </div>
+                ) : (
+                  <Text size={200} style={{ color: '#6b6b6b', marginTop: '8px' }}>
+                    No file selected
+                  </Text>
+                )}
+              </div>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
+
+        <div className={styles.navigationButtons}>
+          <Button 
+            appearance="secondary"
+            onClick={onPrevious}
+            className={styles.previousButton}
+          >
+            Previous
+          </Button>
+          <Button 
+            appearance="primary"
+            onClick={onNext}
+            disabled={!isValid}
+            className={styles.nextButton}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+};

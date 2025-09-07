@@ -20,7 +20,6 @@ The application supports two main approaches for working with global choices:
 - **Solution integration** - all choices (existing and new) are added to your specified solution
 - **Bulk processing** - upload JSON files with multiple choice sets
 - **Real-time feedback** - see creation progress in the web UI
-- **Dry run mode** - preview what would be created without making changes
 - **Built-in choice detection** - automatically identifies and categorizes Microsoft's built-in choices
 
 ### JSON File Format
@@ -146,7 +145,6 @@ Create a JSON file containing your global choice definitions. Example `my-choice
    - **Solution Name**: Name of the Dataverse solution
    - **Publisher**: Select an existing publisher or create a new one
    - **Publisher Prefix**: 3-8 character prefix for your organization (automatically applied to choice names)
-   - **Dry Run**: Enable to preview without creating choices
 4. **Process** - Click "Convert & Deploy" to create the global choices
 5. **Monitor progress** - Watch real-time logs showing creation status
 
@@ -242,7 +240,7 @@ curl -X GET http://localhost:8082/api/global-choices-list
 curl -X POST http://localhost:8082/api/global-choices \
   -F "globalChoicesFile=@my-choices.json" \
   -F "solutionName=MySolution" \
-  -F "dryRun=false"
+  -F "cleanupAll=false"
 ```
 
 **Response**: JSON with creation results

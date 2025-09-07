@@ -1,0 +1,19 @@
+erDiagram
+    %% CDM Entity (should be detected and integrated)
+    Contact {
+        string fullname "Full name"
+        string firstname "First name"
+        string lastname "Last name"
+        string emailaddress1 "Email address"
+    }
+
+    %% Custom Entity (will be created)
+    Event {
+        int id PK
+        string description "Event description"
+        datetime startdate "Event start date"
+
+    }
+
+    %% Simple relationship
+    Contact ||--o{ Event : "organizes"

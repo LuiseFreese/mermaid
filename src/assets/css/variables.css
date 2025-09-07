@@ -1,0 +1,52 @@
+/* CSS Variables - Design System */
+:root {
+    /* Neutral Colors */
+    --neutral-foreground-rest: #323130;
+    --neutral-foreground-hover: #201f1e;
+    --neutral-fill-rest: #faf9f8;
+    --neutral-fill-hover: #f3f2f1;
+    --neutral-fill-secondary: #f3f2f1;
+    --neutral-fill-input-alt: #f3f2f1;
+    --neutral-stroke-rest: #e1dfdd;
+    --neutral-foreground-hint: #666;
+    
+    /* Accent Colors */
+    --accent-fill-rest: #0078d4;
+    --accent-fill-hover: #106ebe;
+    
+    /* Semantic Colors */
+    --success-fill: #107c10;
+    --warning-fill: #f7c52d;
+    --error-fill: #d13438;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Typography */
+    --font-family-primary: "Segoe UI", system-ui, sans-serif;
+    --font-family-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 14px;
+    --font-size-md: 16px;
+    --font-size-lg: 18px;
+    --font-size-xl: 24px;
+    --font-size-xxl: 28px;
+    
+    /* Border Radius */
+    --border-radius-sm: 4px;
+    --border-radius-md: 6px;
+    --border-radius-lg: 8px;
+    --border-radius-round: 50%;
+    
+    /* Shadows */
+    --shadow-focus: 0 0 0 2px rgba(0, 120, 212, 0.2);
+    
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+}

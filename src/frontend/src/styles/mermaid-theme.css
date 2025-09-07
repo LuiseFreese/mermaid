@@ -1,0 +1,35 @@
+/* Mermaid ERD Diagram Custom Styling */
+/* Clean, working overrides for Mermaid SVG elements */
+
+/* Overall diagram container */
+.mermaid {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Target all rectangles (entity boxes) in the SVG */
+.mermaid svg rect {
+  stroke: #0078d4 !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Target all text elements for consistent styling */
+.mermaid svg text {
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  fill: #323130 !important;
+}
+
+/* Relationship lines */
+.mermaid svg path,
+.mermaid svg line {
+  stroke: #0078d4 !important;
+  stroke-width: 2px !important;
+}
+
+/* Entity name styling - make them stand out */
+.mermaid svg g:first-of-type text {
+  font-weight: 600 !important;
+  fill: #0078d4 !important;
+}

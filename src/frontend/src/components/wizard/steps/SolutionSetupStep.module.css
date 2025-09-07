@@ -1,0 +1,44 @@
+.headerText {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.accordionHeaderText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+}
+
+.schemaAccordion {
+  margin-bottom: 16px;
+}
+
+.radioGroup {
+  margin-bottom: 16px;
+}
+
+.publisherSection {
+  margin-left: 24px;
+  margin-top: 16px;
+}
+
+.solutionOptions {
+  margin-top: 32px;
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}
+
+.nextButton {
+  min-width: 180px;
+}
+
+.previousButton {
+  min-width: 160px;
+}

@@ -4,10 +4,19 @@
   "description": "Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "convert": "node src/index.js",
-    "dev": "node --watch src/server.js",
-    "test": "node tests/test-schema-generation.js",
+    "start": "node src/backend/server.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "node --watch src/backend/server.js",
+    "dev:frontend": "cd src/frontend && npm run dev",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd src/frontend && npm run build",
+    "install:all": "npm install && cd src/frontend && npm install",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "node tests/test-schema-generation.js",
+    "test:frontend": "cd src/frontend && npm run test",
+    "lint": "cd src/frontend && npm run lint",
+    "lint:fix": "cd src/frontend && npm run lint:fix",
+    "convert": "node src/backend/index.js",
     "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1",
     "cleanup": "powershell -ExecutionPolicy Bypass -File scripts/cleanup-repo.ps1",
     "cleanup:dry": "powershell -ExecutionPolicy Bypass -File scripts/cleanup-repo.ps1 -DryRun"
@@ -24,7 +33,8 @@
     "node": ">=20 <21"
   },
   "devDependencies": {
-    "@types/node": "^20.11.16"
+    "@types/node": "^20.11.16",
+    "concurrently": "^8.2.0"
   },
   "keywords": [
     "mermaid",

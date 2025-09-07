@@ -1,0 +1,66 @@
+erDiagram
+    Event {
+        string id PK
+        string name "Primary name conflict - will conflict with auto-generated primary name column"
+        string event_description
+        string status "Status column - will be ignored, Dataverse provides built-in status"
+        choice priority "Choice column - cannot be auto-created, must be manually created"
+        category event_type "Category column - cannot be auto-created, must be manually created"
+        datetime start_date
+        datetime end_date
+        string location_id FK
+        string organizer_id FK
+    }
+
+    Location {
+        string id PK
+        string name "Another naming conflict - will conflict with auto-generated primary name column"
+        string address
+        string city
+        string state
+        string status "Another status column - will be ignored"
+        choice venue_type "Another choice column - cannot be auto-created"
+        int capacity
+        boolean is_active
+    }
+
+    Contact {
+        string id PK
+        string first_name
+        string last_name
+        string email
+        string phone
+        string contact_status "Status column with different name - still will be ignored"
+        category contact_type "Category column - cannot be auto-created"
+        choice preferred_communication "Choice column - cannot be auto-created"
+        datetime created_date
+    }
+
+    EventAttendee {
+        string id PK
+        string event_id FK
+        string contact_id FK
+        string registration_status "Status column - will be ignored"
+        choice attendance_type "Choice column - cannot be auto-created"
+        datetime registration_date
+        boolean confirmed
+        string notes
+    }
+
+    Organization {
+        string id PK
+        string name "Yet another naming conflict"
+        string description
+        string website
+        string industry_status "Status column - will be ignored"
+        category organization_type "Category column - cannot be auto-created"
+        choice size_category "Choice column - cannot be auto-created"
+        datetime founded_date
+    }
+
+    %% Relationships demonstrating FK connections
+    Event ||--o{ EventAttendee : "has attendees"
+    Contact ||--o{ EventAttendee : "attends events"
+    Location ||--o{ Event : "hosts events"
+    Organization ||--o{ Contact : "employs contacts"
+    Organization ||--o{ Event : "sponsors events"

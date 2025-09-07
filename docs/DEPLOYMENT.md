@@ -57,11 +57,6 @@ Before running the setup:
   -SecurityRole "System Administrator"
 ```
 
-### Dry Run Mode (Test Before Deploying)
-```powershell
-# Dry run mode (test without making changes)
-.\scripts\setup-entra-app.ps1 -DryRun
-```
 
 ## What Gets Deployed
 

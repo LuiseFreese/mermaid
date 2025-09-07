@@ -28,7 +28,8 @@ erDiagram
         datetime enddate "Event end date"
         int maxattendees "Maximum attendees"
         int locationid FK "Location reference"
-   
+
+
     }
 
     Location {
@@ -55,7 +56,8 @@ erDiagram
         string status "Attendance status - SYSTEM NAME"
         datetime registrationdate "Registration date"
         string notes "Attendee notes"
-
+        datetime createdon "Created on - SYSTEM NAME"
+        datetime modifiedon "Modified on - SYSTEM NAME"
     }
 
     %% Relationships

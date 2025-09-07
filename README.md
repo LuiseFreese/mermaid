@@ -48,7 +48,6 @@ cd mermaid
 3. **Configure Options**:
    - **Solution Name**: Name for the Dataverse solution
    - **Publisher Prefix**: 3-8 character prefix for custom entities
-   - **Dry Run**: Toggle to validate without creating entities
    - **Create Publisher**: Enable to auto-create publisher if needed
 4. **Click "Convert & Deploy"** to start the process
 

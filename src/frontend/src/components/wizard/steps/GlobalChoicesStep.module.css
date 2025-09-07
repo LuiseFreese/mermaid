@@ -1,0 +1,90 @@
+.headerText {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.accordionHeaderText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+}
+
+.cardContent {
+  padding: 24px;
+}
+
+.accordion {
+  margin-bottom: 32px;
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  justify-content: center;
+}
+
+.choicesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.choiceItem {
+  padding: 8px 12px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.choiceItem:hover {
+  background-color: #f5f5f5;
+  border-color: #c7c7c7;
+}
+
+.fileUpload {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.uploadDescription {
+  margin-bottom: 0;
+  display: block;
+  color: #6b6b6b;
+}
+
+.fileUploadButton {
+  height: 32px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  padding: 0 16px !important;
+  min-width: auto !important;
+  border-radius: 4px !important;
+  width: fit-content;
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}
+
+.nextButton {
+  min-width: 180px;
+}
+
+.previousButton {
+  min-width: 160px;
+}
