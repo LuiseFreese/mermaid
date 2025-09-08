@@ -13,6 +13,10 @@ class DeploymentService extends BaseService {
         
         this.dataverseRepository = dependencies.dataverseRepository;
         this.configRepository = dependencies.configRepository;
+        this.validationService = dependencies.validationService;
+        this.publisherService = dependencies.publisherService;
+        this.solutionService = dependencies.solutionService;
+        this.globalChoicesService = dependencies.globalChoicesService;
         this.mermaidParser = dependencies.mermaidParser;
         this.cdmRegistry = dependencies.cdmRegistry;
         
@@ -29,7 +33,7 @@ class DeploymentService extends BaseService {
     async deploySolution(config, progressCallback) {
         const deploymentId = this.generateDeploymentId();
         
-        return this.executeOperation('deploySolution', async () => {
+        try {
             this.validateInput(config, ['mermaidContent', 'solutionName'], {
                 mermaidContent: 'string',
                 solutionName: 'string',
@@ -58,7 +62,19 @@ class DeploymentService extends BaseService {
                 progress('parsing', 'Parsing ERD content...');
                 const parseResult = await this.parseERDContent(config.mermaidContent);
                 
-                // Step 2: Setup Dataverse client
+                // Step 2: Validate ERD content
+                if (this.validationService) {
+                    progress('validation', 'Validating ERD');
+                    const validationResult = await this.validationService.validateERD({
+                        mermaidContent: config.mermaidContent,
+                        options: {}
+                    });
+                    if (!validationResult.success) {
+                        throw new Error(validationResult.message || 'Invalid ERD syntax');
+                    }
+                }
+                
+                // Step 3: Setup Dataverse client
                 progress('configuration', 'Connecting to Dataverse...');
                 const dataverseConfigResult = await this.configRepository.getDataverseConfig();
                 const dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
@@ -71,8 +87,8 @@ class DeploymentService extends BaseService {
                     keys: Object.keys(dataverseConfig || {})
                 });
                 
-                // Step 3: Ensure solution and publisher
-                progress('publisher', config.useExistingSolution ? 'Using existing solution publisher...' : 'Creating (or reusing) Publisher...');
+                // Step 4: Ensure solution and publisher
+                progress('publisher', config.useExistingSolution ? 'Using existing solution publisher' : 'Creating publisher');
                 const publisherResult = await this.ensurePublisher(config, dataverseConfig);
                 
                 console.log('🔧 DEBUG: publisherResult:', {
@@ -83,7 +99,7 @@ class DeploymentService extends BaseService {
                     success: publisherResult?.success
                 });
                 
-                progress('solution', config.useExistingSolution ? 'Using existing solution...' : 'Creating Solution...');
+                progress('solution', config.useExistingSolution ? 'Using existing solution' : 'Creating solution');
                 // Extract the actual publisher data from the wrapped response
                 const publisher = publisherResult?.data || publisherResult;
                 const solutionResult = await this.ensureSolution(config, publisher, dataverseConfig);
@@ -98,7 +114,7 @@ class DeploymentService extends BaseService {
                     publisher: solution?.publisherid?.uniquename || solution?.publisher?.uniquename
                 });
 
-                // Step 4: Determine entity processing strategy
+                // Step 5: Determine entity processing strategy
                 const cdmMatches = parseResult.cdmDetection?.detectedCDM || [];
                 console.log('🔧 DEBUG: CDM detection results:', {
                     hasCdmDetection: !!parseResult.cdmDetection,
@@ -129,10 +145,12 @@ class DeploymentService extends BaseService {
                     globalChoicesAdded: 0,
                     globalChoicesCreated: 0,
                     globalChoicesExistingAdded: 0,
+                    customGlobalChoicesCreated: 0,
+                    warnings: [],
                     message: 'Deployment completed successfully'
                 };
 
-                // Step 5: Process CDM entities if any
+                // Step 6: Process CDM entities if any
                 if (cdmEntities.length > 0) {
                     // If CDM entities are detected, process them as CDM entities
                     // regardless of user choice (they can't be created as custom entities anyway)
@@ -162,7 +180,7 @@ class DeploymentService extends BaseService {
                     }
                 }
 
-                // Step 6: Process custom entities if any
+                // Step 7: Process custom entities if any
                 if (customEntities.length > 0) {
                     progress('custom-entities', `Creating ${customEntities.length} Custom Tables...`);
                     results.customResults = await this.processCustomEntities(
@@ -180,18 +198,25 @@ class DeploymentService extends BaseService {
                         results.entitiesCreated += results.customResults.entitiesCreated || 0;
                         results.relationshipsCreated += results.customResults.relationshipsCreated || 0;
                         
+                        // Collect warnings from custom entities creation
+                        if (results.customResults.warnings && results.customResults.warnings.length > 0) {
+                            results.warnings.push(...results.customResults.warnings);
+                        }
+                        
                         console.log('🔍 DEBUG: Updated results after custom entities:', {
                             entitiesCreated: results.entitiesCreated,
                             relationshipsCreated: results.relationshipsCreated,
+                            warningsCount: results.warnings.length,
                             customResultsData: {
                                 entitiesCreated: results.customResults.entitiesCreated,
-                                relationshipsCreated: results.customResults.relationshipsCreated
+                                relationshipsCreated: results.customResults.relationshipsCreated,
+                                warnings: results.customResults.warnings?.length || 0
                             }
                         });
                     }
                 }
 
-                // Step 7: Process global choices
+                // Step 8: Process global choices
                 if (config.selectedChoices?.length > 0 || config.customChoices?.length > 0) {
                     progress('global-choices', 'Processing Global Choices...');
                     
@@ -223,7 +248,7 @@ class DeploymentService extends BaseService {
                     }
                 }
 
-                // Step 8: Finalize deployment
+                // Step 9: Finalize deployment
                 progress('finalizing', 'Finalizing deployment...');
                 results.summary = this.generateDeploymentSummary(results);
                 
@@ -242,7 +267,7 @@ class DeploymentService extends BaseService {
                 const errorResult = {
                     success: false,
                     deploymentId,
-                    message: 'Deployment failed',
+                    message: error.message, // Use original error message instead of generic "Deployment failed"
                     error: error.message,
                     entitiesCreated: 0,
                     relationshipsCreated: 0,
@@ -250,14 +275,24 @@ class DeploymentService extends BaseService {
                     globalChoicesAdded: 0
                 };
                 
-                return this.createError('Deployment failed', [error.message], errorResult);
+                return errorResult; // Return error result directly instead of wrapping
             } finally {
                 // Clean up active deployment after some time
                 setTimeout(() => {
                     this.activeDeployments.delete(deploymentId);
                 }, 300000); // 5 minutes
             }
-        });
+        } catch (error) {
+            // Handle deployment errors with preserved error messages
+            this.updateDeploymentStatus(deploymentId, 'failed', error.message);
+            
+            return {
+                success: false,
+                message: error.message,
+                deploymentId,
+                error: error.message
+            };
+        }
     }
 
     /**
@@ -314,6 +349,9 @@ class DeploymentService extends BaseService {
 
         console.log('🔧 DEBUG: Publisher config:', publisherConfig);
 
+        if (this.publisherService) {
+            return await this.publisherService.createPublisher(publisherConfig, dataverseConfig);
+        }
         return await this.dataverseRepository.ensurePublisher(publisherConfig, dataverseConfig);
     }
 
@@ -342,10 +380,11 @@ class DeploymentService extends BaseService {
         // For new solutions
         const solutionConfig = {
             uniqueName: config.solutionName,
-            displayName: config.solutionDisplayName,
-            publisher: publisher
+            friendlyName: config.solutionDisplayName,
+            publisherId: publisher.id || publisher.publisherid
         };
 
+        // Always use ensureSolution to get the complete solution object
         return await this.dataverseRepository.ensureSolution(solutionConfig, dataverseConfig);
     }
 
@@ -677,6 +716,101 @@ class DeploymentService extends BaseService {
      */
     generateDeploymentId() {
         return `deploy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    /**
+     * Create entities in Dataverse
+     * @param {Array} entities - Array of entity definitions
+     * @param {string} solutionName - Solution name
+     * @param {string} prefix - Entity prefix
+     * @returns {Promise<Object>} Creation result
+     */
+    async _createEntities(entities, solutionName, prefix) {
+        const results = {
+            entitiesCreated: 0,
+            entitiesFailed: 0,
+            entityMap: {},
+            errors: []
+        };
+
+        for (const entity of entities) {
+            try {
+                const logicalName = `${prefix}_${entity.name.toLowerCase()}`;
+                const entityConfig = {
+                    logicalName,
+                    displayName: entity.name,
+                    description: entity.description || `${entity.name} entity`,
+                    attributes: entity.attributes || []
+                };
+
+                const createdEntity = await this.dataverseRepository.createEntity(
+                    entityConfig,
+                    solutionName
+                );
+
+                results.entitiesCreated++;
+                results.entityMap[entity.name] = createdEntity;
+
+            } catch (error) {
+                results.entitiesFailed++;
+                results.errors.push(`Entity ${entity.name} failed: ${error.message}`);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Create relationships between entities
+     * @param {Array} relationships - Array of relationship definitions
+     * @param {Object} entityMap - Map of entity names to created entities
+     * @param {string} solutionName - Solution name
+     * @returns {Promise<Object>} Creation result
+     */
+    async _createRelationships(relationships, entityMap, solutionName) {
+        const results = {
+            relationshipsCreated: 0,
+            relationshipsFailed: 0,
+            relationshipMap: {},
+            errors: [],
+            warnings: []
+        };
+
+        for (const relationship of relationships) {
+            try {
+                // Skip if entities don't exist
+                if (!entityMap[relationship.from] || !entityMap[relationship.to]) {
+                    results.relationshipsFailed++;
+                    results.warnings.push(`Missing entity ${relationship.to} in entity map`);
+                    continue;
+                }
+
+                const relationshipConfig = {
+                    fromEntity: entityMap[relationship.from].logicalName,
+                    toEntity: entityMap[relationship.to].logicalName,
+                    type: relationship.type,
+                    schemaName: `${entityMap[relationship.from].logicalName}_${entityMap[relationship.to].logicalName}s`,
+                    label: relationship.label || `${relationship.from} to ${relationship.to}`
+                };
+
+                const createdRelationship = await this.dataverseRepository.createRelationship(
+                    relationshipConfig,
+                    solutionName
+                );
+
+                results.relationshipsCreated++;
+                results.relationshipMap[`${relationship.from}->${relationship.to}`] = createdRelationship;
+
+            } catch (error) {
+                results.relationshipsFailed++;
+                results.errors.push({
+                    relationship: `${relationship.from} -> ${relationship.to}`,
+                    error: error.message
+                });
+            }
+        }
+
+        return results;
     }
 
     /**

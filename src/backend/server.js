@@ -16,8 +16,8 @@ require('dotenv').config();
 
 // Controllers
 const { WizardController } = require('./controllers/wizard-controller');
-const { ValidationController } = require('./controllers/validation-controller');
-const { DeploymentController } = require('./controllers/deployment-controller');
+const ValidationController = require('./controllers/validation-controller');
+const DeploymentController = require('./controllers/deployment-controller');
 const { AdminController } = require('./controllers/admin-controller');
 
 // Services

@@ -126,8 +126,52 @@ class DataverseClient {
       customizationoptionvalueprefix: 10000
     };
     this._log(' POST', `${this.baseUrl}/api/data/v9.2/publishers`);
-    const res = await this._req('post', '/publishers', payload);
-    return res;
+    
+    // Use the raw HTTP request to get headers
+    await this._ensureToken();
+    const headers = {
+      Authorization: `Bearer ${this._token}`,
+      'OData-Version': '4.0',
+      'OData-MaxVersion': '4.0',
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    try {
+      const resp = await this._http.request({ 
+        method: 'post', 
+        url: '/publishers', 
+        data: payload, 
+        headers 
+      });
+
+      // Extract publisher ID from Location header
+      const locationHeader = resp.headers.location || resp.headers.Location;
+      let publisherId = null;
+      if (locationHeader) {
+        const match = locationHeader.match(/publishers\(([^)]+)\)/);
+        if (match) {
+          publisherId = match[1];
+        }
+      }
+
+      // Return publisher object with ID
+      return {
+        id: publisherId,
+        publisherid: publisherId,
+        uniquename: uniqueName,
+        friendlyname: friendlyName,
+        customizationprefix: prefix,
+        description: 'Publisher created by Mermaid to Dataverse Converter'
+      };
+    } catch (e) {
+      let dataStr = '';
+      try { dataStr = JSON.stringify(e.response?.data || { message: e.message }); } catch { dataStr = String(e.message); }
+      this._err(' Request failed:', dataStr);
+      const err = new Error(e.response?.data?.error?.message || e.response?.data?.message || e.message || 'HTTP error');
+      err.status = e.response?.status;
+      throw err;
+    }
   }
 
   async ensurePublisher({ uniqueName, friendlyName, prefix }) {
@@ -138,8 +182,14 @@ class DataverseClient {
     if (byPref) return byPref;
 
     this._log(` Creating publisher: ${friendlyName} (${uniqueName}, ${prefix})`);
-    await this.createPublisher({ uniqueName, friendlyName, prefix });
-    // small poll
+    const createdPublisher = await this.createPublisher({ uniqueName, friendlyName, prefix });
+    
+    // If we got the publisher data from createPublisher, return it
+    if (createdPublisher && createdPublisher.id) {
+      return createdPublisher;
+    }
+    
+    // Otherwise, poll to find the created publisher (fallback)
     for (let i = 1; i <= 5; i++) {
       await this.sleep(1000 * i);
       pub = await this.checkPublisherExists(uniqueName);
@@ -191,16 +241,48 @@ class DataverseClient {
   }
 
   async createSolution(uniqueName, friendlyName, { publisherId, description } = {}) {
+    // Debug logging to see what parameters we're receiving
+    console.log('🔧 DEBUG: createSolution parameters:', {
+      uniqueName: {
+        value: uniqueName,
+        type: typeof uniqueName,
+        isString: typeof uniqueName === 'string'
+      },
+      friendlyName: {
+        value: friendlyName,
+        type: typeof friendlyName,
+        isString: typeof friendlyName === 'string'
+      },
+      publisherId: {
+        value: publisherId,
+        type: typeof publisherId,
+        isString: typeof publisherId === 'string'
+      },
+      description: {
+        value: description,
+        type: typeof description,
+        isString: typeof description === 'string'
+      }
+    });
+
     const payload = {
-      uniquename: uniqueName,
-      friendlyname: friendlyName || uniqueName,
-      description: description || `Solution created by Mermaid to Dataverse Converter`
+      uniquename: String(uniqueName), // Ensure it's a string
+      friendlyname: String(friendlyName || uniqueName), // Ensure it's a string
+      description: String(description || `Solution created by Mermaid to Dataverse Converter`) // Ensure it's a string
     };
     
-    // Include publisher reference using proper OData navigation syntax
+    // Include publisher reference - try both methods
     if (publisherId) {
+      // Method 1: OData binding (preferred)
       payload['publisherid@odata.bind'] = `/publishers(${publisherId})`;
+      
+      // Method 2: Direct reference (fallback)
+      // payload['_publisherid_value'] = publisherId;
+    } else {
+      console.log('🚨 WARNING: No publisherId provided to createSolution!');
     }
+    
+    console.log('🔧 DEBUG: createSolution final payload:', JSON.stringify(payload, null, 2));
     
     this._log(' POST', `${this.baseUrl}/api/data/v9.2/solutions`);
     const res = await this._req('post', '/solutions', payload);

@@ -1722,6 +1722,320 @@ resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignme
 }
 ```
 
+## System Architecture Deep Dive
+
+This section provides a comprehensive analysis of how the frontend, backend, and middleware layers work together, based on examination of the actual codebase implementation.
+
+### Architecture Overview Diagram
+
+```mermaid
+graph TB
+    %% User Interface Layer
+    subgraph "Frontend (React + TypeScript)"
+        UI[User Interface]
+        Router[React Router]
+        Context[Wizard Context]
+        Services[API Services]
+        Components[Fluent UI Components]
+    end
+
+    %% Development Server
+    subgraph "Development Environment"
+        ViteProxy[Vite Dev Server<br/>Port 3003<br/>API Proxy]
+    end
+
+    %% Backend Server
+    subgraph "Backend Server (Port 8080)"
+        HTTP[HTTP Server]
+        
+        subgraph "Middleware Pipeline"
+            Logger[Request Logger]
+            CORS[CORS Handler]
+            Error[Error Handler]
+            Stream[Streaming Handler]
+        end
+        
+        subgraph "Controller Layer"
+            WizardCtrl[Wizard Controller<br/>Static Files & React App]
+            ValidationCtrl[Validation Controller<br/>ERD Processing]
+            DeploymentCtrl[Deployment Controller<br/>Solution Creation]
+            AdminCtrl[Admin Controller<br/>Management APIs]
+        end
+        
+        subgraph "Service Layer"
+            ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detection]
+            DeploymentSvc[Deployment Service<br/>Solution Orchestration]
+            PublisherSvc[Publisher Service<br/>Publisher Management]
+            ChoicesSvc[Global Choices Service<br/>Option Set Management]
+            SolutionSvc[Solution Service<br/>Solution Operations]
+        end
+        
+        subgraph "Repository Layer"
+            DataverseRepo[Dataverse Repository<br/>API Abstraction]
+            ConfigRepo[Configuration Repository<br/>Settings & Key Vault]
+        end
+        
+        subgraph "External Integrations"
+            Parser[Mermaid Parser<br/>ERD to Entities]
+            DataverseClient[Dataverse Client<br/>Legacy Integration]
+            KeyVault[Azure Key Vault<br/>Credential Storage]
+        end
+    end
+
+    %% External Services
+    subgraph "Microsoft Cloud"
+        Dataverse[Microsoft Dataverse<br/>Entity Storage]
+        AzureAD[Azure AD/Entra ID<br/>Authentication]
+    end
+
+    %% Request Flow Connections
+    UI --> Router
+    Router --> Components
+    Components --> Context
+    Context --> Services
+    Services --> ViteProxy
+    ViteProxy -.->|API Proxy /api/*| HTTP
+    
+    %% Backend Flow
+    HTTP --> Logger
+    Logger --> CORS
+    CORS --> Error
+    Error --> Stream
+    
+    %% Routing to Controllers
+    HTTP -.->|GET /wizard| WizardCtrl
+    HTTP -.->|POST /api/validate| ValidationCtrl
+    HTTP -.->|POST /upload| DeploymentCtrl
+    HTTP -.->|GET /api/publishers| AdminCtrl
+    
+    %% Service Dependencies
+    ValidationCtrl --> ValidationSvc
+    DeploymentCtrl --> DeploymentSvc
+    AdminCtrl --> PublisherSvc
+    AdminCtrl --> ChoicesSvc
+    AdminCtrl --> SolutionSvc
+    
+    %% Repository Dependencies
+    ValidationSvc --> DataverseRepo
+    DeploymentSvc --> DataverseRepo
+    DeploymentSvc --> ConfigRepo
+    PublisherSvc --> DataverseRepo
+    ChoicesSvc --> DataverseRepo
+    SolutionSvc --> DataverseRepo
+    
+    %% External Dependencies
+    ValidationSvc --> Parser
+    DataverseRepo --> DataverseClient
+    ConfigRepo --> KeyVault
+    DataverseClient --> Dataverse
+    DataverseClient --> AzureAD
+
+    %% Styling
+    classDef frontend fill:#e1f5fe
+    classDef backend fill:#f3e5f5
+    classDef service fill:#e8f5e8
+    classDef external fill:#fff3e0
+    
+    class UI,Router,Context,Services,Components frontend
+    class HTTP,Logger,CORS,Error,Stream backend
+    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc service
+    class Dataverse,AzureAD,KeyVault external
+```
+
+### Request Flow Analysis
+
+Based on the actual codebase implementation, here's how requests flow through the system:
+
+#### 1. Frontend Request Lifecycle
+
+**Development Mode (Local):**
+```
+User Action → React Component → Context/Hook → API Service → Vite Proxy → Backend
+```
+
+**Production Mode (Azure):**
+```
+User Action → React Component → Context/Hook → API Service → Directly to Backend
+```
+
+**Key Frontend Components:**
+- **WizardShell**: Main orchestrator with React Router for step navigation
+- **Context Provider**: Centralized state management for wizard data
+- **API Services**: TypeScript services for backend communication (apiService.ts, publisherService.ts, etc.)
+- **Fluent UI Components**: Modern Microsoft design system components
+
+#### 2. Backend Request Processing
+
+**Middleware Pipeline Applied to Every Request:**
+```javascript
+// server.js - applyMiddleware function
+req → RequestLogger → CORS → ErrorHandler → Controller
+```
+
+**Route Resolution Logic:**
+```javascript
+// From server.js routeRequest function
+if (pathname === '/') → redirect to /wizard
+if (pathname.startsWith('/wizard')) → WizardController.serveReactApp()
+if (pathname.startsWith('/api/')) → handleApiRoutes()
+if (pathname.startsWith('/static/')) → WizardController.serveStaticFile()
+```
+
+**API Route Mapping:**
+```javascript
+// From handleApiRoutes function
+POST /api/validate → ValidationController.validateERD()
+POST /upload → DeploymentController.deploySolution()
+GET /api/publishers → AdminController via handleGetPublishers()
+GET /api/global-choices-list → AdminController via handleGetGlobalChoices()
+GET /api/solution-status → AdminController.getSolutionStatus()
+```
+
+#### 3. Service Layer Architecture
+
+**Dependency Injection Pattern:**
+```javascript
+// From initializeComponents function in server.js
+const validationService = new ValidationService({
+  dataverseRepository: dataverseRepo,
+  mermaidParser: new MermaidERDParser(),
+  cdmRegistry: null,
+  logger: console
+});
+
+const deploymentService = new DeploymentService({
+  dataverseRepository: dataverseRepo,
+  configRepository: configRepo,
+  validationService,
+  globalChoicesService,
+  solutionService,
+  publisherService,
+  mermaidParser: new MermaidERDParser(),
+  logger: console
+});
+```
+
+**Service Orchestration Example - ERD Validation:**
+```
+ValidationController.validateERD() 
+  → ValidationService.validateERD()
+    → MermaidERDParser.parse()
+    → DataverseRepository.getCDMEntities()
+    → DataverseClient.authenticate()
+    → Microsoft Dataverse API
+```
+
+#### 4. Repository Layer Abstraction
+
+**Configuration Management:**
+```javascript
+// ConfigurationRepository handles multiple sources
+Key Vault (preferred) → Environment Variables (fallback) → Default Values
+```
+
+**Dataverse Integration:**
+```javascript
+// DataverseRepository wraps the legacy DataverseClient
+DataverseRepository.createEntity() 
+  → DataverseClient.createEntity()
+    → Azure AD Authentication
+    → Dataverse Web API
+```
+
+### Authentication & Security Flow
+
+**Current Implementation (No Authentication):**
+```
+React Frontend → Backend API → Azure Managed Identity → Dataverse
+```
+
+**Key Security Features:**
+- **Azure Managed Identity**: Passwordless authentication to Azure services
+- **Azure Key Vault**: Secure credential storage with RBAC
+- **CORS Configuration**: Restricts cross-origin requests
+- **Request Logging**: Comprehensive audit trail
+
+**Authentication Implementation Ready For PR 4:**
+The architecture is prepared for authentication with:
+- Controller base classes that can check authentication
+- Middleware pipeline ready for auth middleware
+- Repository pattern can handle user context
+- Service layer can implement authorization logic
+
+### Development vs Production Architecture
+
+**Development Environment:**
+```mermaid
+graph LR
+    Dev[Developer] --> Vite[Vite Dev Server<br/>:3003]
+    Vite --> Backend[Backend Server<br/>:8080]
+    Backend --> Dataverse[Dev Dataverse]
+    
+    style Vite fill:#e1f5fe
+    style Backend fill:#f3e5f5
+```
+
+**Production Environment:**
+```mermaid
+graph LR
+    User[User] --> AppService[Azure App Service<br/>Static React + Node.js]
+    AppService --> Dataverse[Production Dataverse]
+    AppService --> KeyVault[Azure Key Vault]
+    
+    style AppService fill:#fff3e0
+    style Dataverse fill:#e8f5e8
+    style KeyVault fill:#ffebee
+```
+
+**Key Differences:**
+- **Development**: Vite proxy handles API routing (`/api/*` → `http://localhost:8080`)
+- **Production**: Express serves both static React files and API endpoints
+- **Configuration**: Development uses .env files, Production uses Azure Key Vault
+- **Authentication**: Development typically uses service principal, Production uses Managed Identity
+
+### Component Interaction Patterns
+
+**1. Frontend State Management:**
+```typescript
+// WizardContext provides centralized state
+const { wizardData, updateWizardData } = useWizardContext();
+
+// API services handle backend communication
+const result = await ApiService.validateFile(fileData);
+```
+
+**2. Backend Service Coordination:**
+```javascript
+// Controllers delegate to services
+async validateERD(req, res) {
+  const result = await this.validationService.validateERD(data);
+  this.sendSuccess(res, result);
+}
+
+// Services coordinate between repositories
+async validateERD(data) {
+  const parsed = this.mermaidParser.parse(data.mermaidContent);
+  const cdmEntities = await this.dataverseRepository.getCDMEntities();
+  return this.buildValidationResult(parsed, cdmEntities);
+}
+```
+
+**3. Repository Data Access:**
+```javascript
+// Repositories abstract external API calls
+async getCDMEntities() {
+  const config = await this.configurationRepository.getDataverseConfig();
+  return this.DataverseClient.getCDMEntities(config);
+}
+```
+
+This architecture provides:
+- **Clear separation of concerns** between UI, business logic, and data access
+- **Dependency injection** for testability and flexibility
+- **Middleware pipeline** for cross-cutting concerns
+- **Service orchestration** for complex business workflows
+- **Repository abstraction** for external system integration
+
 ## Development Setup
 
 ### Prerequisites
@@ -2023,3 +2337,72 @@ az webapp log download --name your-app-service --resource-group your-resource-gr
 3. **Use Fluent UI components** for consistency
 4. **Test with hot reload** in development mode
 5. **Build and test** production version
+
+## Testing
+
+This project includes a comprehensive testing suite to ensure code quality and prevent regressions. Run tests before making changes to verify everything works correctly.
+
+### Test Structure
+
+The project uses **Jest** as the primary testing framework with organized test suites:
+
+```
+tests/
+├── unit/              # Component isolation tests
+│   ├── services/      # Business logic testing
+│   ├── controllers/   # Request/response handling
+│   ├── middleware/    # CORS, security, validation
+│   ├── clients/       # External API integration
+│   └── parsers/       # ERD parsing logic
+├── integration/       # API endpoint testing
+├── e2e/              # Full workflow testing
+└── fixtures/         # Test data and mocks
+```
+
+### Running Tests
+
+**Quick test run:**
+```bash
+npm run test:quick        # Fast unit tests only
+```
+
+**Full test suite:**
+```bash
+npm test                  # All tests with coverage
+npm run test:unit         # Unit tests with coverage
+npm run test:integration  # API integration tests
+npm run test:e2e         # End-to-end workflows
+```
+
+**Development workflow:**
+```bash
+npm run test:watch       # Auto-run tests on file changes
+npm run test:coverage    # Generate coverage reports
+```
+
+### Test Coverage
+
+The test suite includes 183 test cases covering:
+- **Services**: ERD validation, Dataverse deployment, CDM detection
+- **Controllers**: Request handling, error responses, parameter validation
+- **Integration**: Complete API workflows using Supertest
+- **E2E**: Full ERD-to-Dataverse deployment scenarios
+- **Security**: Input validation, XSS protection, error recovery
+
+### Testing Tools
+
+- **Jest**: Test framework and runner
+- **Supertest**: HTTP API testing
+- **Nock**: HTTP request mocking
+- **Sinon**: Function stubbing and spying
+
+### Writing Tests
+
+When adding new features:
+1. **Write unit tests** for new services or utilities
+2. **Add integration tests** for new API endpoints
+3. **Include error scenarios** and edge cases
+4. **Use existing test fixtures** in `tests/fixtures/test-data.js`
+5. **Follow naming convention**: `*.test.js`
+
+Tests should be readable, focused, and test one behavior per test case. The existing test files provide good examples to follow.

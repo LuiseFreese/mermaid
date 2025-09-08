@@ -1,0 +1,33 @@
+{
+  "testEnvironment": "node",
+  "testMatch": [
+    "**/tests/**/*.test.js",
+    "**/tests/**/*.test.ts"
+  ],
+  "collectCoverageFrom": [
+    "src/backend/**/*.js",
+    "!src/backend/server.js",
+    "!**/node_modules/**",
+    "!**/coverage/**"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 80,
+      "functions": 85,
+      "lines": 85,
+      "statements": 85
+    },
+    "src/backend/services/": {
+      "branches": 90,
+      "functions": 95,
+      "lines": 95,
+      "statements": 95
+    }
+  },
+  "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+  "testTimeout": 30000,
+  "verbose": true,
+  "clearMocks": true,
+  "resetMocks": true,
+  "restoreMocks": true
+}

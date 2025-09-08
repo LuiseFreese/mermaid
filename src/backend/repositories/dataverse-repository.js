@@ -9,7 +9,7 @@ class DataverseRepository extends BaseRepository {
         super(dependencies);
         
         this.DataverseClient = dependencies.DataverseClient;
-        this.configRepository = dependencies.configRepository;
+        this.configRepository = dependencies.configRepository || dependencies.configurationRepository;
         
         if (!this.DataverseClient) {
             throw new Error('DataverseRepository requires DataverseClient dependency');
@@ -86,6 +86,17 @@ class DataverseRepository extends BaseRepository {
             });
 
             // Create new client
+            console.log('🔍 DEBUG: About to create DataverseClient with credentials:', {
+                dataverseUrl: dataverseConfig.serverUrl?.substring(0, 30) + '...',
+                tenantId: dataverseConfig.tenantId?.substring(0, 10) + '...',
+                clientId: dataverseConfig.clientId?.substring(0, 10) + '...',
+                clientSecret: dataverseConfig.clientSecret?.substring(0, 10) + '...',
+                hasServerUrl: !!dataverseConfig.serverUrl,
+                hasTenantId: !!dataverseConfig.tenantId,
+                hasClientId: !!dataverseConfig.clientId,
+                hasClientSecret: !!dataverseConfig.clientSecret
+            });
+            
             const client = new this.DataverseClient({
                 dataverseUrl: dataverseConfig.serverUrl,
                 tenantId: dataverseConfig.tenantId,
@@ -141,7 +152,11 @@ class DataverseRepository extends BaseRepository {
             const client = await this.getClient(config);
             const result = await client.createPublisher(publisherData);
             
-            return this.createSuccess(result, 'Publisher created successfully');
+            console.log('🔧 DEBUG: DataverseRepository.createPublisher client result:', result);
+            const successResult = this.createSuccess(result, 'Publisher created successfully');
+            console.log('🔧 DEBUG: DataverseRepository.createPublisher final result:', successResult);
+            
+            return successResult;
         });
     }
 
@@ -364,7 +379,14 @@ class DataverseRepository extends BaseRepository {
     async createSolution(solutionData, config = null) {
         return this.executeOperation('createSolution', async () => {
             const client = await this.getClient(config);
-            const result = await client.createSolution(solutionData);
+            const result = await client.createSolution(
+                solutionData.uniqueName,
+                solutionData.friendlyName,
+                { 
+                    publisherId: solutionData.publisherId, 
+                    description: solutionData.description || `Solution for ${solutionData.uniqueName}` 
+                }
+            );
             
             return this.createSuccess(result, 'Solution created successfully');
         });
@@ -413,8 +435,8 @@ class DataverseRepository extends BaseRepository {
             const client = await this.getClient(config);
             const result = await client.ensureSolution(
                 solutionConfig.uniqueName,
-                solutionConfig.displayName,
-                solutionConfig.publisher
+                solutionConfig.friendlyName,
+                { publisherid: solutionConfig.publisherId }
             );
             
             return this.createSuccess(result, 'Solution ensured successfully');
