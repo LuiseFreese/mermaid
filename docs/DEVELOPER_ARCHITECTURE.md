@@ -68,57 +68,104 @@ npm run build  # Creates optimized dist/ folder
 
 ### 2. Node.js Backend (`src/backend/`)
 
-**Purpose**: Express.js server providing API endpoints, file processing, and Dataverse integration.
+**Purpose**: Service-oriented Express.js backend with controllers, services, repositories, and middleware layers.
+
+**Architecture Pattern**: Clean architecture with dependency injection and separation of concerns.
+
+**Technology Stack**:
+- **Express.js** for HTTP server and routing
+- **Node.js** with modern ES6+ patterns
+- **Dependency Injection** for testable components
+- **Repository Pattern** for data access abstraction
+
+**Layer Structure**:
+```
+src/backend/
+├── controllers/          # HTTP request/response handling
+│   ├── base-controller.js
+│   ├── wizard-controller.js
+│   ├── validation-controller.js
+│   ├── deployment-controller.js
+│   └── admin-controller.js
+├── services/            # Business logic layer
+│   ├── base-service.js
+│   ├── validation-service.js
+│   ├── deployment-service.js
+│   ├── publisher-service.js
+│   ├── global-choices-service.js
+│   └── solution-service.js
+├── repositories/        # Data access layer
+│   ├── base-repository.js
+│   ├── dataverse-repository.js
+│   └── configuration-repository.js
+├── middleware/          # Cross-cutting concerns
+│   ├── request-logger-middleware.js
+│   ├── error-handler-middleware.js
+│   ├── cors-middleware.js
+│   └── streaming-middleware.js
+└── server.js           # Application bootstrapping and DI container
+```
 
 **Key Features**:
-- RESTful API endpoints for frontend communication
-- File upload and processing
-- Dataverse client integration
-- Health monitoring and diagnostics
-- Streaming response support for real-time updates
+- **Controllers**: Handle HTTP requests, validate input, format responses
+- **Services**: Implement business logic and coordinate between repositories
+- **Repositories**: Abstract data access to Dataverse and configuration sources
+- **Middleware**: Provide logging, error handling, CORS, and streaming capabilities
+- **Dependency Injection**: Full IoC pattern for testable and maintainable code
 
 **Main Files**:
-- `server.js` - Express server configuration and routing
-- `routes/` - API endpoint definitions
-- `services/` - Business logic and Dataverse integration
-- `middleware/` - Authentication and request processing
+- `server.js` - Application bootstrap with dependency injection container
+- `controllers/` - HTTP layer with request/response handling
+- `services/` - Business logic and workflow orchestration
+- `repositories/` - Data access abstraction over external APIs
+- `middleware/` - Shared functionality across requests
 
-### 3. Main Server Entry (`src/server.js`)
+### 3. Application Server (`src/backend/server.js`)
 
-**Purpose**: Production server entry point that serves both the React frontend and backend API.
+**Purpose**: Application bootstrap that initializes the service-oriented architecture with dependency injection.
 
-**Key Features**:
-- Serves built React application as static files
-- Routes API requests to backend services
-- Handles file uploads and processing
-- Provides health check and diagnostic endpoints
-- Configures proper static file serving for SPA routing
+**Key Responsibilities**:
+- **Dependency Container**: Initializes and wires all services, repositories, and controllers
+- **HTTP Routing**: Routes requests to appropriate controllers
+- **Middleware Pipeline**: Applies logging, CORS, error handling, and streaming
+- **Static File Serving**: Serves React frontend and legacy wizard files
 
-**Main Endpoints**:
-
-**Frontend Routes**:
-- `GET /` - Serves React application (redirects to `/wizard`)
-- `GET /wizard` - Primary wizard interface
-- `GET /static/*` - Serves built frontend assets (CSS, JS, images)
-
-**API Endpoints**:
-- `POST /api/upload` - Primary deployment endpoint with streaming logs
-- `POST /api/validate-erd` - ERD validation with auto-corrections
-- `GET /api/publishers` - List available Dataverse publishers
-- `GET /api/global-choices` - List available global choice sets
-- `GET /api/solution-status` - Check deployment status for timeout handling
-- `GET /health` - Application health status
-
-**Static File Configuration**:
+**Architecture Pattern**:
 ```javascript
-// Serve React build files
-app.use(express.static(path.join(__dirname, 'frontend/dist')));
-
-// Handle SPA routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
-});
+// Dependency injection initialization
+const components = {
+  // Repositories
+  configRepo: new ConfigurationRepository(),
+  dataverseRepo: new DataverseRepository({ configRepo, DataverseClient }),
+  
+  // Services  
+  validationService: new ValidationService({ dataverseRepo, mermaidParser }),
+  deploymentService: new DeploymentService({ dataverseRepo, validationService }),
+  
+  // Controllers
+  wizardController: new WizardController(),
+  validationController: new ValidationController(validationService),
+  deploymentController: new DeploymentController(deploymentService),
+  
+  // Middleware
+  requestLogger: new RequestLoggerMiddleware(),
+  errorHandler: new ErrorHandlerMiddleware(),
+  corsHandler: CorsMiddleware.createWebAppCors()
+};
 ```
+
+**Main Routes**:
+- `GET /` - Redirects to React wizard
+- `GET /wizard` - Serves React application
+- `GET /legacy/wizard` - Serves legacy HTML wizard (backup)
+- `POST /api/*` - API endpoints routed to controllers
+- `GET /health` - Health check endpoint
+
+**Service Architecture Benefits**:
+- **Testability**: Services can be unit tested independently of HTTP layer
+- **Maintainability**: Clear separation of concerns with single responsibility
+- **Scalability**: Services can be moved to separate processes or containers
+- **Dependency Injection**: Easy mocking and configuration for different environments
 
 
 
@@ -272,20 +319,34 @@ export const App: React.FC = () => {
 
 ### 8. API Endpoints Reference
 
-This section provides detailed documentation for all available API endpoints that support the React frontend and enable programmatic access.
+This section provides detailed documentation for all available API endpoints implemented through the controller-based architecture.
 
 #### Core Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `GET /` | GET | Serves React application (redirects to `/wizard`) |
-| `GET /wizard` | GET | Primary wizard interface (serves React app) |
-| `GET /health` | GET | Application health status and diagnostics |
-| `POST /api/upload` | POST | Primary deployment endpoint with streaming response |
-| `POST /api/validate-erd` | POST | ERD validation with auto-corrections and CDM detection |
-| `GET /api/publishers` | GET | Lists available publishers in Dataverse |
-| `GET /api/global-choices` | GET | Lists available global choice sets |
-| `GET /api/solution-status` | GET | Solution component status for deployment verification |
+| Endpoint | Method | Controller | Description |
+|----------|--------|------------|-------------|
+| `GET /` | GET | WizardController | Redirects to React wizard interface |
+| `GET /wizard` | GET | WizardController | Serves React application |
+| `GET /legacy/wizard` | GET | WizardController | Serves legacy HTML wizard (backup) |
+| `GET /health` | GET | AdminController | Application health status and diagnostics |
+| `POST /upload` | POST | DeploymentController | Primary deployment with streaming response |
+| `POST /api/validate-erd` | POST | ValidationController | ERD validation with auto-corrections |
+| `GET /api/publishers` | GET | AdminController | Lists available publishers in Dataverse |
+| `GET /api/global-choices-list` | GET | AdminController | Lists available global choice sets |
+| `GET /api/solution-status` | GET | AdminController | Solution component status verification |
+| `GET /api/health-detailed` | GET | AdminController | Detailed health check with components |
+| `GET /api/logs` | GET | AdminController | Recent application logs |
+
+#### Architecture Implementation
+
+**Request Flow**:
+1. **Middleware Pipeline**: Request logging, CORS handling
+2. **Controller Layer**: HTTP request/response handling
+3. **Service Layer**: Business logic execution
+4. **Repository Layer**: Data access to Dataverse/configuration
+5. **Response**: Formatted JSON or streaming data
+
+**Error Handling**: Centralized through ErrorHandlerMiddleware with proper HTTP status codes and structured error responses.
 
 #### Frontend Routes
 
@@ -1715,57 +1776,64 @@ SOLUTION_NAME=MermaidDevSolution
 
 # Development Settings
 NODE_ENV=development
-PORT=8082
+PORT=8080
 ```
 
 #### 3. Development Commands
 
+**Full Stack Development (Recommended):**
+```bash
+# Start both frontend and backend concurrently
+npm run dev
+# → Backend: http://localhost:8080 (Express server)
+# → Frontend: http://localhost:3003 (Vite dev server with API proxy)
+```
+
 **Frontend Development** (React + Vite):
 ```bash
-# Start frontend development server with hot reload
+# Start frontend development server only
+npm run dev:frontend
+# → Starts Vite dev server at http://localhost:3003
+# → Includes hot module replacement and React fast refresh
+# → Proxy configuration routes /api calls to backend
+
+# Build frontend for production (from root)
 cd src/frontend
-npm run dev
-# → Starts Vite dev server at http://localhost:5173
-# → Includes hot module replacement and fast refresh
-
-# Build frontend for production
 npm run build
-# → Creates optimized dist/ folder
+# → Creates optimized dist/ folder with React bundles
 
-# Preview production build
+# Preview production build (from frontend dir)
 npm run preview
 # → Serves production build for testing
+
+# Lint and fix code (from frontend dir)
+npm run lint
+npm run lint:fix
 ```
 
 **Backend Development** (Node.js + Express):
 ```bash
-# Start backend server (production mode)
-npm start
-# → Starts Express server at http://localhost:8082
+# Start backend server only
+npm run dev:backend
+# → Starts Express server at http://localhost:8080
+# → Serves React build + API endpoints
 
-# Start backend with auto-restart on file changes
-npm run dev
-# → Uses nodemon for automatic restart on backend changes
+# Alternative: Direct server start
+cd src/backend
+node server.js
+# → Production mode start
 
-# Run integration tests
-npm test
-# → Runs schema generation and API tests
+# Run backend tests
+npm run test:backend
+# → Runs integration and schema generation tests
 ```
 
-**Full Stack Development:**
-```bash
-# Terminal 1: Start backend with auto-restart
-npm run dev
-
-# Terminal 2: Start frontend development server
-cd src/frontend
-npm run dev
-```
-
-This setup allows you to:
-- **Frontend**: Develop React components with hot reload at http://localhost:5173
-- **Backend**: API development with auto-restart at http://localhost:8082
-- **Vite Proxy**: Frontend automatically proxies API calls to backend during development
+**Development Workflow:**
+1. **Concurrent Development**: Use `npm run dev` to run both frontend and backend
+2. **Frontend**: React dev server with hot reload on port 3003
+3. **Backend**: Express server with service architecture on port 8080
+4. **API Integration**: Vite proxy automatically routes `/api` calls to backend
+5. **Production Testing**: Build frontend and test full integration
 
 #### 4. Production Build and Test
 
@@ -1777,7 +1845,7 @@ cd ../..
 
 # Start production server (serves React build + API)
 npm start
-# → Complete application at http://localhost:8082
+# → Complete application at http://localhost:8080
 ```
 
 ### Development Workflow
@@ -1798,20 +1866,27 @@ npm start
 - **ESLint + Prettier**: Code quality and formatting
 - **Vite DevTools**: Fast builds and excellent developer experience
 
-#### Backend Development (Node.js + Express)
+#### Backend Development (Service-Oriented Architecture)
 
 **Key Files:**
-- `src/server.js` - Main server entry point (serves React + API)
-- `src/backend/server.js` - Express server configuration
-- `src/backend/routes/` - API endpoint definitions
-- `src/backend/services/` - Business logic and Dataverse integration
-- `src/backend/dataverse-client.js` - Dataverse API client
+- `src/backend/server.js` - Application bootstrap with dependency injection
+- `src/backend/controllers/` - HTTP request/response handling layer
+- `src/backend/services/` - Business logic and workflow orchestration
+- `src/backend/repositories/` - Data access abstraction layer
+- `src/backend/middleware/` - Cross-cutting concerns (logging, CORS, errors)
+
+**Architecture Benefits:**
+- **Separation of Concerns**: Clear layer boundaries with single responsibilities
+- **Dependency Injection**: Testable components with proper IoC pattern
+- **Repository Pattern**: Abstracted data access with consistent interfaces
+- **Service Layer**: Business logic isolated from HTTP and data concerns
+- **Middleware Pipeline**: Reusable request processing components
 
 **Development Features:**
-- **Nodemon**: Automatic restart on file changes
-- **Express.js**: RESTful API with middleware support
-- **Azure SDK**: Managed Identity and Key Vault integration
-- **Comprehensive Logging**: Detailed logging for debugging
+- **Clean Architecture**: Controllers → Services → Repositories pattern
+- **Error Handling**: Centralized error handling with proper HTTP status codes
+- **Request Logging**: Comprehensive request/response logging middleware
+- **Health Monitoring**: Component-level health checks and diagnostics
 
 ### Testing and Debugging
 
@@ -1832,15 +1907,31 @@ npm test
 
 ```bash
 # Health check
-curl http://localhost:8082/health
+curl http://localhost:8080/health
 
-# Test ERD validation
-curl -X POST http://localhost:8082/api/validate-erd \
+# Detailed health check with component status
+curl http://localhost:8080/api/health-detailed
+
+# Test ERD validation endpoint
+curl -X POST http://localhost:8080/api/validate-erd \
+  -H "Content-Type: application/json" \
+  -d '{"mermaidContent": "erDiagram\n    Customer { string name }"}'
+
+# Test publishers endpoint
+curl http://localhost:8080/api/publishers
+
+# Test global choices list
+curl http://localhost:8080/api/global-choices-list
+
+# Test solution status
+curl "http://localhost:8080/api/solution-status?solution=TestSolution"
+```
+curl -X POST http://localhost:8080/api/validate-erd \
   -H "Content-Type: application/json" \
   -d '{"mermaid": "erDiagram\n Customer { string id PK }"}'
 
 # Test publisher listing (requires valid credentials)
-curl http://localhost:8082/api/publishers
+curl http://localhost:8080/api/publishers
 ```
 
 #### 3. Frontend Testing
@@ -1851,8 +1942,8 @@ curl http://localhost:8082/api/publishers
 - TypeScript provides compile-time error checking
 
 **Browser Testing:**
-- Access development server at http://localhost:5173 (frontend)
-- Access full application at http://localhost:8082 (production mode)
+- Access development server at http://localhost:3003 (frontend)
+- Access full application at http://localhost:8080 (production mode)
 - Use browser developer tools for debugging
 
 ### Deployment Testing
@@ -1867,7 +1958,7 @@ cd src/frontend && npm run build && cd ../..
 npm start
 
 # Test complete application
-open http://localhost:8082
+open http://localhost:8080
 ```
 
 #### 2. Deploy to Azure (Development Environment)
@@ -1886,7 +1977,7 @@ open http://localhost:8082
 
 ```bash
 # Local health check
-curl http://localhost:8082/health
+curl http://localhost:8080/health
 
 # Azure health check
 curl https://your-app-service.azurewebsites.net/health

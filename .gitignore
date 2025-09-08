@@ -10,6 +10,7 @@ src/logs/
 .vscode/
 dist/
 coverage/
+.github
 
 # Backup files
 *.backup

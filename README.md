@@ -154,8 +154,10 @@ npm install                    # Install backend dependencies
 cd src/frontend && npm install # Install frontend dependencies
 
 # Start development servers
-npm run dev                    # Backend with auto-restart
-cd src/frontend && npm run dev # Frontend with hot reload
+npm run dev                    # Both frontend and backend concurrently
+# OR separately:
+npm run dev:backend           # Backend only (port 8080)
+npm run dev:frontend          # Frontend only (port 3003)
 ```
 
 ### Getting Help
@@ -193,7 +195,6 @@ cd src/frontend && npm run dev # Frontend with hot reload
 - **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
 - **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax reference
 - **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Supported relationship patterns
-- **[Security Improvements](docs/SECURITY-IMPROVEMENTS.md)** - Security best practices and implementation
 - See the `examples/` directory for sample Mermaid ERD files
 
 
