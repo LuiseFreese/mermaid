@@ -143,18 +143,34 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   const hasStatusIssues = correctedErdContent.includes('string status') || correctedErdContent.includes('status ');
   const hasChoiceIssues = /\w+\s+(choice|category)\s+\w+/g.test(correctedErdContent);
   
-  // Detect individual naming conflicts per entity
+  // Detect individual naming conflicts per entity - exclude CDM entities
   const namingConflicts = useMemo(() => {
     const conflicts: string[] = [];
+    const cdmEntities = [
+      'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
+      'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
+      'User', 'Team', 'BusinessUnit', 'SystemUser',
+      'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
+      'Campaign', 'MarketingList', 'Competitor'
+    ];
+    
     const entityMatches = correctedErdContent.match(/(\w+)\s*\{[^}]*\}/g);
     if (entityMatches) {
       entityMatches.forEach(entityMatch => {
         const nameMatch = entityMatch.match(/(\w+)\s*\{/);
         if (nameMatch) {
           const entityName = nameMatch[1];
-          // Check if this entity has a non-PK column named 'name'
-          if (entityMatch.match(/string\s+name(?!\w)/) && !entityMatch.match(/string\s+name\s+PK/)) {
-            conflicts.push(entityName);
+          
+          // Skip CDM entities - they are untouchable
+          const isCdmEntity = cdmEntities.some(cdmEntity => 
+            cdmEntity.toLowerCase() === entityName.toLowerCase()
+          );
+          
+          if (!isCdmEntity) {
+            // Check if this entity has a non-PK column named 'name'
+            if (entityMatch.match(/string\s+name(?!\w)/) && !entityMatch.match(/string\s+name\s+PK/)) {
+              conflicts.push(entityName);
+            }
           }
         }
       });

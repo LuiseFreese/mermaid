@@ -1016,6 +1016,56 @@ async function routeRequest(pathname, req, res, components, query) {
 async function handleApiRoutes(pathname, req, res, components) {
   const route = pathname.replace('/api/', '');
 
+  // Validation routes
+  if (route.startsWith('validation/')) {
+    const validationRoute = route.replace('validation/', '');
+    switch (validationRoute) {
+      case 'validate':
+        if (req.method === 'POST') {
+          return components.validationController.validateERD(req, res);
+        }
+        break;
+      case 'cleanup':
+        if (req.method === 'POST') {
+          return handleCleanup(req, res);
+        }
+        break;
+    }
+  }
+
+  // Deployment routes
+  if (route.startsWith('deployment/')) {
+    const deploymentRoute = route.replace('deployment/', '');
+    switch (deploymentRoute) {
+      case 'publishers':
+        if (req.method === 'GET') {
+          return handleGetPublishers(req, res);
+        }
+        break;
+      case 'solutions':
+        if (req.method === 'GET') {
+          return handleGetSolutions(req, res);
+        }
+        break;
+      case 'global-choices':
+        if (req.method === 'GET') {
+          return handleGetGlobalChoices(req, res);
+        }
+        break;
+      case 'deploy':
+        if (req.method === 'POST') {
+          return components.deploymentController.deploySolution(req, res);
+        }
+        break;
+      case 'test-connection':
+        if (req.method === 'POST') {
+          return components.deploymentController.testConnection(req, res);
+        }
+        break;
+    }
+  }
+
+  // Legacy routes (for backward compatibility)
   switch (route) {
     case 'validate':
     case 'validate-erd':

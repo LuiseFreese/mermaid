@@ -130,42 +130,13 @@ src/backend/
 - **Middleware Pipeline**: Applies logging, CORS, error handling, and streaming
 - **Static File Serving**: Serves React frontend and legacy wizard files
 
-**Architecture Pattern**:
-```javascript
-// Dependency injection initialization
-const components = {
-  // Repositories
-  configRepo: new ConfigurationRepository(),
-  dataverseRepo: new DataverseRepository({ configRepo, DataverseClient }),
-  
-  // Services  
-  validationService: new ValidationService({ dataverseRepo, mermaidParser }),
-  deploymentService: new DeploymentService({ dataverseRepo, validationService }),
-  
-  // Controllers
-  wizardController: new WizardController(),
-  validationController: new ValidationController(validationService),
-  deploymentController: new DeploymentController(deploymentService),
-  
-  // Middleware
-  requestLogger: new RequestLoggerMiddleware(),
-  errorHandler: new ErrorHandlerMiddleware(),
-  corsHandler: CorsMiddleware.createWebAppCors()
-};
-```
+**Architecture Pattern**: Uses dependency injection with repositories → services → controllers pattern
 
 **Main Routes**:
 - `GET /` - Redirects to React wizard
-- `GET /wizard` - Serves React application
-- `GET /legacy/wizard` - Serves legacy HTML wizard (backup)
+- `GET /wizard` - Serves React application  
 - `POST /api/*` - API endpoints routed to controllers
 - `GET /health` - Health check endpoint
-
-**Service Architecture Benefits**:
-- **Testability**: Services can be unit tested independently of HTTP layer
-- **Maintainability**: Clear separation of concerns with single responsibility
-- **Scalability**: Services can be moved to separate processes or containers
-- **Dependency Injection**: Easy mocking and configuration for different environments
 
 
 
@@ -203,7 +174,6 @@ erDiagram
     
     %% One-to-many relationships (directly supported)
     Customer ||--o{ Order : "places"
-    Customer ||--o{ Contact : "has"
     
     %% Note: Many-to-many relationships require explicit junction tables
     %% See the "Advanced Relationship Handling" section for examples
@@ -215,33 +185,7 @@ erDiagram
 - Suggests proper naming conventions
 - Detects Common Data Model (CDM) entities
 
-**Output Format**:
-```javascript
-{
-  entities: [
-    {
-      name: "Customer",
-      displayName: "Customer",
-      attributes: [
-        {
-          name: "customer_id",
-          type: "String",
-          isPrimaryKey: true,
-          isForeignKey: false,
-          displayName: "Customer Id"
-        }
-      ]
-    }
-  ],
-  relationships: [
-    {
-      fromEntity: "Customer",
-      toEntity: "Order",
-      cardinality: { type: "one-to-many" },
-      label: "places"
-    }
-  ]
-}
+**Output Format**: Structured JavaScript objects with entities (name, attributes, types) and relationships (cardinality, labels)
 ```
 
 ### 5. React Wizard Interface (`src/frontend/src/App.tsx`)
@@ -397,34 +341,8 @@ POST /api/upload
 
 **Purpose**: Deploys entities and relationships to Dataverse with real-time streaming progress updates.
 
-**Request Body**:
-```json
-{
-  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }",
-  "entities": [...],
-  "relationships": [...],
-  "solutionName": "CustomerSolution",
-  "solutionDisplayName": "Customer Management Solution",
-  "createPublisher": true,
-  "publisherName": "My Publisher",
-  "publisherPrefix": "myp",
-  "globalChoices": [...],
-  "deploymentOptions": {
-    "useCDMEntities": true,
-    "dryRun": false
-  }
-}
-```
-
-**Response**: Streaming JSON response with real-time progress updates:
-
-```json
-{"type": "log", "message": "✅ Connected to Dataverse", "timestamp": "..."}
-{"type": "log", "message": "✅ Publisher: MyPublisher (myp)", "timestamp": "..."}
-{"type": "log", "message": "✅ Solution: CustomerSolution created", "timestamp": "..."}
-{"type": "log", "message": "✅ Entity created: myp_customer", "timestamp": "..."}
-{"type": "result", "success": true, "summary": "Successfully created 1 entity, 0 relationships", "entitiesCreated": 1, "relationshipsCreated": 0}
-```
+**Request**: JSON with mermaidContent, entities, relationships, solutionName, publisherInfo, and deploymentOptions
+**Response**: Streaming JSON with real-time progress updates and final deployment results
 
 #### ERD Validation Endpoint
 
@@ -434,44 +352,8 @@ POST /api/validate-erd
 
 **Purpose**: Validates Mermaid ERD syntax, provides auto-corrections, and detects CDM entities.
 
-**Request Body**:
-```json
-{
-  "mermaid": "erDiagram\n    Customer {\n        string customer_id PK\n        string name\n    }"
-}
-```
-
-**Response**:
-```json
-{
-  "valid": true,
-  "entities": [
-    {
-      "name": "Customer",
-      "displayName": "Customer",
-      "attributes": [
-        {
-          "name": "customer_id",
-          "dataType": "string",
-          "isPrimaryKey": true,
-          "displayName": "Customer Id"
-        }
-      ],
-      "cdmMatch": {
-        "detected": true,
-        "entity": "account",
-        "confidence": 0.85,
-        "reason": "Entity name 'Customer' matches CDM 'account' entity"
-      }
-    }
-  ],
-  "relationships": [],
-  "corrections": {
-    "applied": ["Added missing primary key to Order entity"],
-    "suggestions": ["Consider using CDM 'account' entity instead of custom 'Customer'"]
-  }
-}
-```
+**Request**: JSON with mermaid ERD content
+**Response**: JSON with validation results, entities, relationships, CDM matches, and corrections
 
 #### Publishers Endpoint
 
@@ -479,24 +361,7 @@ POST /api/validate-erd
 GET /api/publishers
 ```
 
-**Purpose**: Retrieves all available publishers from Dataverse for React frontend selection.
-
-**Response**:
-```json
-{
-  "success": true,
-  "publishers": [
-    {
-      "id": "f30ac77a-6a86-f011-b4cc-000d3a66881e",
-      "uniqueName": "MermaidPublisher",
-      "friendlyName": "Mermaid Publisher",
-      "prefix": "mdv",
-      "isDefault": false,
-      "canUse": true
-    }
-  ]
-}
-```
+**Purpose**: Retrieves available publishers from Dataverse for frontend selection.
 
 #### Global Choices Endpoint
 
@@ -505,31 +370,6 @@ GET /api/global-choices
 ```
 
 **Purpose**: Retrieves available global choice sets with grouping and filtering support.
-
-**Query Parameters**:
-- `filter` (optional): Filter by name or type
-- `type` (optional): 'custom' or 'builtin'
-
-**Response**:
-```json
-{
-  "success": true,
-  "choices": [
-    {
-      "name": "custom_priority_level",
-      "displayName": "Priority Level",
-      "isCustom": true,
-      "isManaged": false,
-      "options": [
-        {"value": 1, "label": "High"},
-        {"value": 2, "label": "Medium"},
-        {"value": 3, "label": "Low"}
-      ]
-    }
-  ],
-  "summary": {
-    "total": 150,
-    "custom": 5,
     "builtin": 145
   }
 }
@@ -601,83 +441,11 @@ GET /api/solution-status?solution=SolutionName
 - **Global Choice Management**: Creates and manages global choice sets with solution integration
 - **Solution Component Verification**: Retrieves and validates deployment results
 
-**Authentication with Managed Identity**:
-```javascript
-// Azure Managed Identity authentication
-const credential = clientId 
-  ? new ManagedIdentityCredential(clientId)
-  : new ManagedIdentityCredential();
+**Authentication**: Uses Azure Managed Identity for passwordless authentication with proper headers and token management
 
-const token = await credential.getToken(`${dataverseUrl}/.default`);
+**Entity Creation Flow**: Validates connection → Creates/validates publisher → Creates/validates solution → Creates entities with metadata → Adds to solution → Creates columns and relationships
 
-// HTTP client with authentication headers
-const headers = {
-  'Authorization': `Bearer ${token.token}`,
-  'Content-Type': 'application/json',
-  'OData-MaxVersion': '4.0',
-  'OData-Version': '4.0'
-};
-```
-
-**Entity Creation Flow**:
-```javascript
-async createEntitiesFromMermaidWithLogging(entities, options, logFunction) {
-  // 1. Validate connection and authenticate
-  await this.testConnection();
-  logFunction('✅ Connected to Dataverse');
-  
-  // 2. Create/validate publisher
-  const publisherResult = await this.ensurePublisher(options.publisherPrefix);
-  logFunction(`✅ Publisher: ${publisherResult.uniqueName}`);
-  
-  // 3. Create/validate solution
-  const solutionResult = await this.createSolution(options.solutionName);
-  logFunction(`✅ Solution: ${solutionResult.uniqueName}`);
-  
-  // 4. Create entities with full metadata
-  for (const entity of entities) {
-    const entityResult = await this.createEntity(entity, publisherResult.prefix);
-    logFunction(`✅ Entity created: ${entityResult.LogicalName}`);
-    
-    // 5. Add entity to solution
-    await this.addComponentToSolution(solutionResult.solutionid, entityResult.MetadataId, 1);
-  }
-  
-  // 6. Create additional columns
-  // 7. Create relationships
-  // 8. Integrate global choices if specified
-}
-```
-
-**Solution Status Verification**:
-```javascript
-// New method for deployment verification after timeouts
-async getSolutionComponents(solutionUniqueName) {
-  try {
-    // 1. Get solution metadata
-    const solution = await this.checkSolutionExists(solutionUniqueName);
-    
-    // 2. Query solution components
-    const components = await this._req('get', 
-      `/solutioncomponents?$filter=_solutionid_value eq '${solution.solutionid}'&$select=componenttype,objectid`);
-    
-    // 3. Process each component by type
-    const entities = [], optionSets = [], others = [];
-    
-    for (const component of components.value) {
-      switch (component.componenttype) {
-        case 1: // Entity
-          const entityMeta = await this._req('get', 
-            `/EntityDefinitions(${component.objectid})?$select=LogicalName,DisplayName`);
-          entities.push({
-            logicalName: entityMeta.LogicalName,
-            displayName: entityMeta.DisplayName.LocalizedLabels[0]?.Label,
-            type: 'entity'
-          });
-          break;
-          
-        case 9: // Option Set (Global Choice)
-          const optionMeta = await this._req('get', 
+**Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
             `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName`);
           optionSets.push({
             logicalName: optionMeta.Name,
@@ -888,42 +656,8 @@ The Dataverse API has several limitations that required specific workarounds:
 | **Property Limitations** | `IsCustom` property not available on `OptionSetMetadataBase` | Use `IsManaged` property instead |
 | **Caching Delays** | Created choices may not be immediately discoverable | Progressive retry with increasing delays |
 
-**Fixed Query Examples**:
 
-❌ **Unsupported (causes API errors)**:
-```javascript
-// These queries will fail
-`GlobalOptionSetDefinitions?$filter=Name eq '${choiceName}'`
-`GlobalOptionSetDefinitions?$select=MetadataId,Name,IsCustom`
-```
-
-✅ **Supported (working queries)**:
-```javascript
-// Get all choices and filter client-side
-`GlobalOptionSetDefinitions?$select=MetadataId,Name,DisplayName`
-const foundChoice = allChoices.value?.find(choice => choice.Name === targetName);
-
-// Use IsManaged instead of IsCustom
-`GlobalOptionSetDefinitions?$select=MetadataId,Name,IsManaged`
-```
-
-**Error Handling**:
-- **API Limitations**: Handle unsupported `$filter` operations gracefully
-- **Timing Issues**: Account for Dataverse caching with retry mechanisms
-- **Non-Fatal Failures**: Treat verification failures as warnings when choices likely exist
-
-**Implementation Details** (`src/dataverse-client.js`):
-- **Method**: `createAndAddCustomGlobalChoices()`
-- **Lines**: ~1100-1320
-- **Key Functions**: Duplicate detection, multi-attempt verification, solution integration
-
-**Status Messages**:
-- `✅ Created and added`: Choice successfully created and added to solution
-- `⚠️ Skipped`: Choice already exists, attempted to add to solution
-- `❌ Failed`: Choice creation failed with error details
-
-
-### Enhanced ERD Validation
+### ERD Validation
 
 **Purpose**: Provide comprehensive validation with auto-correction capabilities.
 
@@ -1107,31 +841,16 @@ Successfully created X tables, integrated Y CDM tables,
 created Z new global choices and integrated W already existing global choices.
 ```
 
-**Logging for Debugging**:
-```typescript
-// Clear distinction between deployment paths in React
-console.log('🚀 DEPLOYMENT STARTED: Normal HTTP streaming');
-// OR
-console.log('⏳ POLLING AFTER TIMEOUT: Checking solution status');
-console.log('✅ POLLING SUCCESS: Found solution with components');
-
-// React state updates for user feedback
-setDeploymentLogs(prev => [...prev, { 
-  type: 'info', 
-  message: '🚀 Starting deployment...',
-  timestamp: new Date().toISOString()
-}]);
-```
 
 ### Advanced Relationship Handling
 
 The parser supports the following relationship scenarios:
 
 #### Relationship Types
-- **One-to-Many (1:M)**: `||--o{` syntax ✅ **Directly supported**
-- **Many-to-One (M:1)**: `}o--||` syntax ✅ **Directly supported** (inverse of one-to-many)
-- **Many-to-Many (M:M)**: ❌ **NOT directly supported** - Use explicit junction tables instead
-- **Self-Referencing**: ✅ **Supported** - Tables with relationships to themselves
+- **One-to-Many (1:M)**: `||--o{` syntax **Directly supported**
+- **Many-to-One (M:1)**: `}o--||` syntax **Directly supported** (inverse of one-to-many)
+- **Many-to-Many (M:M)**: **NOT directly supported** - Use explicit junction tables instead
+- **Self-Referencing**: **Supported** - Tables with relationships to themselves
 
 #### Relationship Implementation
 - **One-to-Many**: Directly supported with Dataverse lookup fields
@@ -1472,58 +1191,6 @@ const handleStreamingErrors = (error: Error) => {
 };
 ```
 
-## Testing Strategy
-
-### 1. Integration Testing
-
-**Test File**: `tests/test-schema-generation.js`
-
-```bash
-# Run integration tests
-npm test
-
-# Test with specific file
-node tests/test-schema-generation.js examples/simple-sales.mmd
-
-# Test with custom prefix
-node tests/test-schema-generation.js examples/simple-sales.mmd myprefix
-```
-
-**What It Tests**:
-- Mermaid file parsing
-- Entity extraction and validation
-- Relationship detection
-- Dataverse naming conventions
-- Primary key validation
-
-### 2. API Testing
-
-**Built-in Endpoints**:
-```bash
-# Health check
-GET /health
-
-# Solution status check (for deployment verification)
-GET /api/solution-status?solution=YourSolutionName
-
-# Publishers list
-GET /api/publishers
-
-# Global choices list  
-GET /api/global-choices-list
-```
-
-### 3. Manual Testing Workflow
-
-1. **React Frontend Testing**: Use the modern React interface with sample files
-2. **Live Deployment**: Test actual Dataverse creation through the wizard
-3. **Timeout Testing**: Test with complex files that trigger timeout polling
-4. **Solution Verification**: Use `/api/solution-status` to verify deployment results
-5. **Error Scenarios**: Test with invalid files, wrong credentials
-6. **Browser Compatibility**: Test across different browsers (Chrome, Edge, Firefox)
-7. **Responsive Design**: Test on desktop, tablet, and mobile viewports
-8. **CDM Integration**: Test CDM entity detection and user choice functionality
-
 ## Deployment Architecture
 
 ### Two-Step Deployment Process
@@ -1546,141 +1213,21 @@ The application uses a **robust two-step deployment process** that separates inf
 
 ### Azure Resources Architecture
 
-```mermaid
-graph TB
-    subgraph "Azure Resource Group"
-        subgraph "Compute Resources"
-            AS[App Service<br/>Node.js 18 Runtime<br/>Serves React + API]
-            ASP[App Service Plan<br/>B1 Basic]
-        end
-        
-        subgraph "Security Resources"
-            MI[User-Assigned<br/>Managed Identity<br/>Passwordless Auth]
-            KV[Key Vault<br/>RBAC Enabled<br/>Secret Storage]
-        end
-        
-        subgraph "Identity & Access"
-            RBAC[RBAC Role Assignment<br/>Key Vault Secrets User]
-        end
-    end
-    
-    subgraph "External Services"
-        ENTRA[Microsoft Entra ID<br/>App Registration<br/>Service Principal]
-        DV[Dataverse Environment<br/>Target System]
-    end
-    
-    subgraph "Development"
-        BICEP[Bicep Template<br/>deploy/infrastructure.bicep<br/>Infrastructure as Code]
-        SCRIPTS[PowerShell Scripts<br/>setup-entra-app.ps1<br/>deploy.ps1]
-    end
-    
-    AS --> MI
-    MI --> KV
-    MI --> RBAC
-    MI --> ENTRA
-    AS --> DV
-    KV --> ENTRA
-    BICEP --> AS
-    BICEP --> ASP
-    BICEP --> MI
-    BICEP --> KV
-    SCRIPTS --> BICEP
-    SCRIPTS --> ENTRA
-    SCRIPTS --> DV
-```
+**Core Infrastructure**: Resource Group, App Service Plan, App Service, User-Assigned Managed Identity, Key Vault with RBAC
 
-### Required Azure Resources
-
-**Core Infrastructure**:
-1. **Resource Group** - Container for all resources
-2. **App Service Plan** - Compute resources (B1 Basic or higher)
-3. **App Service** - Hosts the React + Node.js application
-4. **User-Assigned Managed Identity** - Passwordless service authentication
-5. **Key Vault** - Secure secret storage with RBAC enabled
-6. **RBAC Role Assignment** - Grants Managed Identity "Key Vault Secrets User" role
-
-**External Dependencies**:
-1. **Entra ID App Registration** - Service principal for Dataverse access
-2. **Dataverse Environment** - Target system for entity deployment
-3. **Dataverse Application User** - Service account with appropriate permissions
+**External Dependencies**: Entra ID App Registration, Dataverse Environment, Dataverse Application User
 
 ### Automated Infrastructure Deployment
 
-**No manual Azure portal configuration required!** The entire deployment is fully automated through PowerShell scripts and Bicep templates.
+The entire deployment is fully automated through PowerShell scripts and Bicep templates:
 
-#### Infrastructure Setup Script (`scripts/setup-entra-app.ps1`)
+**Infrastructure Setup**: `.\scripts\setup-entra-app.ps1` - Creates Entra app, Azure infrastructure, managed identity, Key Vault secrets, and Dataverse application user
 
-```powershell
-# Interactive setup with prompts
-.\scripts\setup-entra-app.ps1
-
-# Unattended setup with parameters
-.\scripts\setup-entra-app.ps1 -Unattended `
-  -EnvironmentUrl "https://org.crm.dynamics.com" `
-  -ResourceGroup "rg-mermaid-prod" `
-  -Location "westeurope" `
-  -AppServiceName "app-mermaid-prod" `
-  -KeyVaultName "kv-mermaid-prod"
-```
-
-**What it creates automatically**:
-1. **Entra App Registration** with Dataverse API permissions
-2. **Azure Infrastructure** via Bicep template deployment
-3. **Managed Identity** with Key Vault access permissions
-4. **Key Vault secrets** with all required configuration
-5. **Dataverse Application User** with System Administrator role
-6. **End-to-end testing** to verify complete setup
-
-#### Application Deployment Script (`scripts/deploy.ps1`)
-
-```powershell
-# Deploy application to existing infrastructure
-.\scripts\deploy.ps1 -AppName "app-mermaid-prod" -ResourceGroup "rg-mermaid-prod" -KeyVaultName "kv-mermaid-prod"
-```
-
-**What it does automatically**:
-1. **Builds React frontend** with Vite for production optimization
-2. **Packages backend** with only necessary files (no source files or node_modules)
-3. **Deploys to App Service** using Azure CLI with zip deployment
-4. **Configures runtime settings** for static file serving and Key Vault integration
-5. **Tests deployment** by validating application endpoints
+**Application Deployment**: `.\scripts\deploy.ps1` - Builds React frontend, packages backend, deploys to App Service with proper configuration
 
 ### Infrastructure as Code (Bicep)
 
-All Azure resources are defined in `deploy/infrastructure.bicep` with the following key components:
-
-```bicep
-// App Service Plan
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
-  name: appServicePlanName
-  location: location
-  sku: {
-    name: 'B1'  // Basic tier for production workloads
-    tier: 'Basic'
-  }
-  kind: 'linux'
-  properties: {
-    reserved: true  // Linux hosting
-  }
-}
-
-// App Service with Node.js 18
-resource appService 'Microsoft.Web/sites@2023-01-01' = {
-  name: appServiceName
-  location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${managedIdentity.id}': {}
-    }
-  }
-  properties: {
-    serverFarmId: appServicePlan.id
-    siteConfig: {
-      linuxFxVersion: 'NODE|18-lts'
-      appSettings: [
-        {
-          name: 'KEY_VAULT_URI'
+All Azure resources are defined in `deploy/infrastructure.bicep` with App Service Plan, App Service with Node.js 18, Managed Identity, and Key Vault integration
           value: keyVault.properties.vaultUri
         }
         {
@@ -1844,63 +1391,19 @@ graph TB
 
 ### Request Flow Analysis
 
-Based on the actual codebase implementation, here's how requests flow through the system:
+#### Frontend Flow
+- **Development**: User Action → React Component → API Service → Vite Proxy → Backend
+- **Production**: User Action → React Component → API Service → Backend
 
-#### 1. Frontend Request Lifecycle
+#### Backend Processing
+- **Middleware**: Request Logger → CORS → Error Handler → Controller
+- **Routes**: 
+  - Root/wizard → WizardController
+  - /api/ endpoints → ValidationController, DeploymentController, AdminController
+  - Static files → Static file serving
 
-**Development Mode (Local):**
-```
-User Action → React Component → Context/Hook → API Service → Vite Proxy → Backend
-```
-
-**Production Mode (Azure):**
-```
-User Action → React Component → Context/Hook → API Service → Directly to Backend
-```
-
-**Key Frontend Components:**
-- **WizardShell**: Main orchestrator with React Router for step navigation
-- **Context Provider**: Centralized state management for wizard data
-- **API Services**: TypeScript services for backend communication (apiService.ts, publisherService.ts, etc.)
-- **Fluent UI Components**: Modern Microsoft design system components
-
-#### 2. Backend Request Processing
-
-**Middleware Pipeline Applied to Every Request:**
-```javascript
-// server.js - applyMiddleware function
-req → RequestLogger → CORS → ErrorHandler → Controller
-```
-
-**Route Resolution Logic:**
-```javascript
-// From server.js routeRequest function
-if (pathname === '/') → redirect to /wizard
-if (pathname.startsWith('/wizard')) → WizardController.serveReactApp()
-if (pathname.startsWith('/api/')) → handleApiRoutes()
-if (pathname.startsWith('/static/')) → WizardController.serveStaticFile()
-```
-
-**API Route Mapping:**
-```javascript
-// From handleApiRoutes function
-POST /api/validate → ValidationController.validateERD()
-POST /upload → DeploymentController.deploySolution()
-GET /api/publishers → AdminController via handleGetPublishers()
-GET /api/global-choices-list → AdminController via handleGetGlobalChoices()
-GET /api/solution-status → AdminController.getSolutionStatus()
-```
-
-#### 3. Service Layer Architecture
-
-**Dependency Injection Pattern:**
-```javascript
-// From initializeComponents function in server.js
-const validationService = new ValidationService({
-  dataverseRepository: dataverseRepo,
-  mermaidParser: new MermaidERDParser(),
-  cdmRegistry: null,
-  logger: console
+#### Service Layer
+Services use dependency injection pattern with repositories for data access.
 });
 
 const deploymentService = new DeploymentService({
@@ -1964,445 +1467,34 @@ The architecture is prepared for authentication with:
 
 ### Development vs Production Architecture
 
-**Development Environment:**
-```mermaid
-graph LR
-    Dev[Developer] --> Vite[Vite Dev Server<br/>:3003]
-    Vite --> Backend[Backend Server<br/>:8080]
-    Backend --> Dataverse[Dev Dataverse]
-    
-    style Vite fill:#e1f5fe
-    style Backend fill:#f3e5f5
-```
-
-**Production Environment:**
-```mermaid
-graph LR
-    User[User] --> AppService[Azure App Service<br/>Static React + Node.js]
-    AppService --> Dataverse[Production Dataverse]
-    AppService --> KeyVault[Azure Key Vault]
-    
-    style AppService fill:#fff3e0
-    style Dataverse fill:#e8f5e8
-    style KeyVault fill:#ffebee
-```
-
-**Key Differences:**
-- **Development**: Vite proxy handles API routing (`/api/*` → `http://localhost:8080`)
-- **Production**: Express serves both static React files and API endpoints
-- **Configuration**: Development uses .env files, Production uses Azure Key Vault
-- **Authentication**: Development typically uses service principal, Production uses Managed Identity
-
-### Component Interaction Patterns
-
-**1. Frontend State Management:**
-```typescript
-// WizardContext provides centralized state
-const { wizardData, updateWizardData } = useWizardContext();
-
-// API services handle backend communication
-const result = await ApiService.validateFile(fileData);
-```
-
-**2. Backend Service Coordination:**
-```javascript
-// Controllers delegate to services
-async validateERD(req, res) {
-  const result = await this.validationService.validateERD(data);
-  this.sendSuccess(res, result);
-}
-
-// Services coordinate between repositories
-async validateERD(data) {
-  const parsed = this.mermaidParser.parse(data.mermaidContent);
-  const cdmEntities = await this.dataverseRepository.getCDMEntities();
-  return this.buildValidationResult(parsed, cdmEntities);
-}
-```
-
-**3. Repository Data Access:**
-```javascript
-// Repositories abstract external API calls
-async getCDMEntities() {
-  const config = await this.configurationRepository.getDataverseConfig();
-  return this.DataverseClient.getCDMEntities(config);
-}
-```
-
-This architecture provides:
-- **Clear separation of concerns** between UI, business logic, and data access
-- **Dependency injection** for testability and flexibility
-- **Middleware pipeline** for cross-cutting concerns
-- **Service orchestration** for complex business workflows
-- **Repository abstraction** for external system integration
+**Development**: Vite proxy routes `/api/*` to backend on port 8080  
+**Production**: Express serves both static React files and API endpoints  
+**Configuration**: Development uses .env files, Production uses Azure Key Vault
 
 ## Development Setup
 
 ### Prerequisites
 
 **For Automated Deployment:**
-- **Azure subscription** with Contributor permissions
-- **Azure CLI** installed and logged in (`az login`)
-- **PowerShell 7+** (recommended) or Windows PowerShell 5.1
-- **Appropriate permissions** in Entra ID (to create App Registrations)
-- **Dataverse admin rights** (to create application users)
+- Azure subscription with Contributor permissions
+- Azure CLI installed and logged in
+- PowerShell 7+ recommended
+- Dataverse admin rights
 
 **For Local Development:**
-- **Node.js 18+** (required for both frontend and backend)
-- **npm or yarn** for package management
-- **.env file** with development credentials (optional)
+- Node.js 18+
+- npm or yarn
 
-### Local Development Setup
+### Local Development
 
-#### 1. Clone and Install Dependencies
+1. **Install**: `npm install` (root), then `cd src/frontend && npm install`
+2. **Start**: `npm run dev` (starts both frontend and backend)
+3. **Frontend**: http://localhost:3003 (Vite with hot reload)
+4. **Backend**: http://localhost:8080 (Express server)
 
-```bash
-# Clone repository
-git clone https://github.com/LuiseFreese/mermaid.git
-cd mermaid
+### Common Tasks
 
-# Install backend dependencies
-npm install
+**Add API Endpoint**: Route → Service → Frontend Type → Frontend Service → Test  
+**Add React Component**: Component → Props Interface → Fluent UI → Test
 
-# Install frontend dependencies
-cd src/frontend
-npm install
-cd ../..
-```
-
-#### 2. Environment Configuration (Optional)
-
-For local development, you can create a `.env` file in the root directory:
-
-```bash
-cp .env.example .env
-# Edit .env with your development credentials
-```
-
-**Example `.env` file:**
-```bash
-# Dataverse Configuration
-DATAVERSE_URL=https://yourorg.crm.dynamics.com
-CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-CLIENT_SECRET=your-client-secret
-TENANT_ID=your-tenant-id
-SOLUTION_NAME=MermaidDevSolution
-
-# Development Settings
-NODE_ENV=development
-PORT=8080
-```
-
-#### 3. Development Commands
-
-**Full Stack Development (Recommended):**
-```bash
-# Start both frontend and backend concurrently
-npm run dev
-# → Backend: http://localhost:8080 (Express server)
-# → Frontend: http://localhost:3003 (Vite dev server with API proxy)
-```
-
-**Frontend Development** (React + Vite):
-```bash
-# Start frontend development server only
-npm run dev:frontend
-# → Starts Vite dev server at http://localhost:3003
-# → Includes hot module replacement and React fast refresh
-# → Proxy configuration routes /api calls to backend
-
-# Build frontend for production (from root)
-cd src/frontend
-npm run build
-# → Creates optimized dist/ folder with React bundles
-
-# Preview production build (from frontend dir)
-npm run preview
-# → Serves production build for testing
-
-# Lint and fix code (from frontend dir)
-npm run lint
-npm run lint:fix
-```
-
-**Backend Development** (Node.js + Express):
-```bash
-# Start backend server only
-npm run dev:backend
-# → Starts Express server at http://localhost:8080
-# → Serves React build + API endpoints
-
-# Alternative: Direct server start
-cd src/backend
-node server.js
-# → Production mode start
-
-# Run backend tests
-npm run test:backend
-# → Runs integration and schema generation tests
-```
-
-**Development Workflow:**
-1. **Concurrent Development**: Use `npm run dev` to run both frontend and backend
-2. **Frontend**: React dev server with hot reload on port 3003
-3. **Backend**: Express server with service architecture on port 8080
-4. **API Integration**: Vite proxy automatically routes `/api` calls to backend
-5. **Production Testing**: Build frontend and test full integration
-
-#### 4. Production Build and Test
-
-```bash
-# Build frontend for production
-cd src/frontend
-npm run build
-cd ../..
-
-# Start production server (serves React build + API)
-npm start
-# → Complete application at http://localhost:8080
-```
-
-### Development Workflow
-
-#### Frontend Development (React + TypeScript)
-
-**Key Files:**
-- `src/frontend/src/App.tsx` - Main React application component
-- `src/frontend/src/components/` - Reusable Fluent UI components
-- `src/frontend/src/types/` - TypeScript type definitions
-- `src/frontend/src/services/` - API client services
-- `src/frontend/vite.config.ts` - Vite configuration
-
-**Development Features:**
-- **Hot Module Replacement**: Instant updates without losing component state
-- **TypeScript**: Full type checking and IntelliSense support
-- **Fluent UI Components**: Microsoft design system components
-- **ESLint + Prettier**: Code quality and formatting
-- **Vite DevTools**: Fast builds and excellent developer experience
-
-#### Backend Development (Service-Oriented Architecture)
-
-**Key Files:**
-- `src/backend/server.js` - Application bootstrap with dependency injection
-- `src/backend/controllers/` - HTTP request/response handling layer
-- `src/backend/services/` - Business logic and workflow orchestration
-- `src/backend/repositories/` - Data access abstraction layer
-- `src/backend/middleware/` - Cross-cutting concerns (logging, CORS, errors)
-
-**Architecture Benefits:**
-- **Separation of Concerns**: Clear layer boundaries with single responsibilities
-- **Dependency Injection**: Testable components with proper IoC pattern
-- **Repository Pattern**: Abstracted data access with consistent interfaces
-- **Service Layer**: Business logic isolated from HTTP and data concerns
-- **Middleware Pipeline**: Reusable request processing components
-
-**Development Features:**
-- **Clean Architecture**: Controllers → Services → Repositories pattern
-- **Error Handling**: Centralized error handling with proper HTTP status codes
-- **Request Logging**: Comprehensive request/response logging middleware
-- **Health Monitoring**: Component-level health checks and diagnostics
-
-### Testing and Debugging
-
-#### 1. Local Testing Workflow
-
-```bash
-# Test schema generation without deployment
-node tests/test-schema-generation.js examples/simple-sales.mmd
-
-# Test with custom publisher prefix
-node tests/test-schema-generation.js examples/simple-sales.mmd myprefix
-
-# Run full integration test suite
-npm test
-```
-
-#### 2. API Testing
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Detailed health check with component status
-curl http://localhost:8080/api/health-detailed
-
-# Test ERD validation endpoint
-curl -X POST http://localhost:8080/api/validate-erd \
-  -H "Content-Type: application/json" \
-  -d '{"mermaidContent": "erDiagram\n    Customer { string name }"}'
-
-# Test publishers endpoint
-curl http://localhost:8080/api/publishers
-
-# Test global choices list
-curl http://localhost:8080/api/global-choices-list
-
-# Test solution status
-curl "http://localhost:8080/api/solution-status?solution=TestSolution"
-```
-curl -X POST http://localhost:8080/api/validate-erd \
-  -H "Content-Type: application/json" \
-  -d '{"mermaid": "erDiagram\n Customer { string id PK }"}'
-
-# Test publisher listing (requires valid credentials)
-curl http://localhost:8080/api/publishers
-```
-
-#### 3. Frontend Testing
-
-**React Component Testing:**
-- Use React Developer Tools browser extension
-- Vite has built-in debugging support
-- TypeScript provides compile-time error checking
-
-**Browser Testing:**
-- Access development server at http://localhost:3003 (frontend)
-- Access full application at http://localhost:8080 (production mode)
-- Use browser developer tools for debugging
-
-### Deployment Testing
-
-#### 1. Local Production Build Test
-
-```bash
-# Build everything for production
-cd src/frontend && npm run build && cd ../..
-
-# Start production server
-npm start
-
-# Test complete application
-open http://localhost:8080
-```
-
-#### 2. Deploy to Azure (Development Environment)
-
-```bash
-# Create development infrastructure
-.\scripts\setup-entra-app.ps1
-
-# Deploy application code
-.\scripts\deploy.ps1 -AppName "your-dev-app" -ResourceGroup "your-dev-rg" -KeyVaultName "your-dev-kv"
-```
-
-### Diagnostic Tools
-
-#### 1. Application Health Monitoring
-
-```bash
-# Local health check
-curl http://localhost:8080/health
-
-# Azure health check
-curl https://your-app-service.azurewebsites.net/health
-```
-
-#### 2. Azure Application Logs
-
-```powershell
-# Stream live application logs
-az webapp log tail --name your-app-service --resource-group your-resource-group
-
-# Download log files
-az webapp log download --name your-app-service --resource-group your-resource-group
-```
-
-#### 3. Local Development Debugging
-
-**Backend Debugging:**
-- Use Visual Studio Code with Node.js debugging
-- Console logs appear in terminal
-- Use breakpoints in VS Code
-
-**Frontend Debugging:**
-- React Developer Tools browser extension
-- Browser developer tools
-- Vite provides excellent error messages and stack traces
-- TypeScript compiler provides detailed error information
-
-### Common Development Tasks
-
-#### Adding New API Endpoints
-
-1. **Define route** in `src/backend/routes/`
-2. **Add business logic** in `src/backend/services/`
-3. **Update TypeScript types** in `src/frontend/src/types/`
-4. **Add frontend service call** in `src/frontend/src/services/`
-5. **Test locally** with both frontend and backend running
-
-#### Adding New React Components
-
-1. **Create component** in `src/frontend/src/components/`
-2. **Define TypeScript props** interface
-3. **Use Fluent UI components** for consistency
-4. **Test with hot reload** in development mode
-5. **Build and test** production version
-
-## Testing
-
-This project includes a comprehensive testing suite to ensure code quality and prevent regressions. Run tests before making changes to verify everything works correctly.
-
-### Test Structure
-
-The project uses **Jest** as the primary testing framework with organized test suites:
-
-```
-tests/
-├── unit/              # Component isolation tests
-│   ├── services/      # Business logic testing
-│   ├── controllers/   # Request/response handling
-│   ├── middleware/    # CORS, security, validation
-│   ├── clients/       # External API integration
-│   └── parsers/       # ERD parsing logic
-├── integration/       # API endpoint testing
-├── e2e/              # Full workflow testing
-└── fixtures/         # Test data and mocks
-```
-
-### Running Tests
-
-**Quick test run:**
-```bash
-npm run test:quick        # Fast unit tests only
-```
-
-**Full test suite:**
-```bash
-npm test                  # All tests with coverage
-npm run test:unit         # Unit tests with coverage
-npm run test:integration  # API integration tests
-npm run test:e2e         # End-to-end workflows
-```
-
-**Development workflow:**
-```bash
-npm run test:watch       # Auto-run tests on file changes
-npm run test:coverage    # Generate coverage reports
-```
-
-### Test Coverage
-
-The test suite includes 183 test cases covering:
-- **Services**: ERD validation, Dataverse deployment, CDM detection
-- **Controllers**: Request handling, error responses, parameter validation
-- **Integration**: Complete API workflows using Supertest
-- **E2E**: Full ERD-to-Dataverse deployment scenarios
-- **Security**: Input validation, XSS protection, error recovery
-
-### Testing Tools
-
-- **Jest**: Test framework and runner
-- **Supertest**: HTTP API testing
-- **Nock**: HTTP request mocking
-- **Sinon**: Function stubbing and spying
-
-### Writing Tests
-
-When adding new features:
-1. **Write unit tests** for new services or utilities
-2. **Add integration tests** for new API endpoints
-3. **Include error scenarios** and edge cases
-4. **Use existing test fixtures** in `tests/fixtures/test-data.js`
-5. **Follow naming convention**: `*.test.js`
-
-Tests should be readable, focused, and test one behavior per test case. The existing test files provide good examples to follow.
+For comprehensive testing information, see [`TESTING.md`](TESTING.md).

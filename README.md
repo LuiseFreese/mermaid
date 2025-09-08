@@ -190,6 +190,7 @@ npm run dev:frontend          # Frontend only (port 3003)
 ## Documentation
 
 - **[Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md)** - System architecture and development setup
+- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing strategies, tools, and workflows
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Detailed deployment instructions and troubleshooting
 - **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
 - **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
@@ -211,20 +212,7 @@ GitHub Copilot has been incredibly helpful in this project - especially for:
 * **React development** - TypeScript interfaces, component structure, and modern patterns
 * **Azure integration** - Bicep templates, PowerShell scripts, and security configurations
 
-Still, I'm super hesitant to use `Agent` mode - I just love to stay in the driver's seat! This project demonstrates how AI can be a powerful **co-pilot** (pun intended) while keeping human judgment and creativity at the center of the development process.
-
-## Contributing
-
-I welcome contributions! This is an open-source project that benefits from community input :-)
-
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact & Support
-
-**Project Maintainer**: [Luise Freese](https://github.com/LuiseFreese)
+Still, I'm super hesitant to use `Agent` mode - I just love to stay in the driver's seat! 
 
 ### Getting Help
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/LuiseFreese/mermaid/issues)
@@ -232,10 +220,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: Check the comprehensive guides in the `docs/` directory
 - **Examples**: Review sample files in the `examples/` directory
 
-### Connect
-- **Blog**: [M365Princess.com](https://m365princess.com)
-- **LinkedIn**: [Luise Freese](https://linkedin.com/in/luisefreese)
+## Contributing
+
+I welcome contributions! This is an open-source project that benefits from community input :-)
 
 ---
 
-**Made with ❤️ for community** 
+**Made with ❤️ by [Luise Freese](https://linkedin.com/in/luisefreese) → Read my blog at [m365princess.com](https://m365princess.com)**

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Text,
   Accordion,
@@ -25,11 +26,19 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
   onNext, 
   onPrevious 
 }) => {
-  const { wizardData } = useWizardContext();
+  const { wizardData, resetWizard } = useWizardContext();
+  const navigate = useNavigate();
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentProgress, setDeploymentProgress] = useState<string>('');
   const [deploymentResult, setDeploymentResult] = useState<any>(null);
   const [deploymentError, setDeploymentError] = useState<string>('');
+  const [deploymentSuccess, setDeploymentSuccess] = useState<boolean>(false);
+  
+  const handleBackToStart = () => {
+    // Reset wizard data and navigate back to start
+    resetWizard();
+    navigate('/wizard');
+  };
   
   const handleDeploy = async () => {
     console.log('Deploying with data:', wizardData);
@@ -38,6 +47,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
     setDeploymentProgress('Preparing deployment...');
     setDeploymentResult(null);
     setDeploymentError('');
+    setDeploymentSuccess(false);
 
     try {
       // Prepare deployment data based on wizardData structure
@@ -93,6 +103,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
       
       if (result.success) {
         setDeploymentProgress('Deployment completed successfully!');
+        setDeploymentSuccess(true);
         // Optionally navigate to next step after successful deployment
         setTimeout(() => {
           if (onNext) onNext();
@@ -156,8 +167,12 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
                       <span className={fileUploadStyles.customBadge}>SOLUTION</span>
                     </div>
                   </div>
-                  <div className={fileUploadStyles.entityDescription}>
-                    <Text className={fileUploadStyles.cdmDescription}>Internal Name: {wizardData.solutionInternalName || 'MynewSolution'}</Text>
+                  <div className={fileUploadStyles.attributeList}>
+                    <div className={fileUploadStyles.attribute}>
+                      <span></span>
+                      <span className={fileUploadStyles.attributeName}>Internal Name</span>
+                      <span className={fileUploadStyles.attributeType}>{wizardData.solutionInternalName || 'MynewSolution'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -509,25 +524,36 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
             onClick={onPrevious}
             className={styles.previousButton}
             disabled={isDeploying}
+            style={{ display: deploymentSuccess ? 'none' : 'block' }}
           >
             Previous
           </Button>
           
-          <Button 
-            appearance="primary" 
-            onClick={handleDeploy}
-            className={styles.deployButton}
-            disabled={isDeploying}
-          >
-            {isDeploying ? (
-              <>
-                <Spinner size="tiny" style={{ marginRight: '8px' }} />
-                Deploying...
-              </>
-            ) : (
-              'Deploy to Dataverse'
-            )}
-          </Button>
+          {deploymentSuccess ? (
+            <Button 
+              appearance="primary" 
+              onClick={handleBackToStart}
+              className={styles.deployButton}
+            >
+              Back to Start
+            </Button>
+          ) : (
+            <Button 
+              appearance="primary" 
+              onClick={handleDeploy}
+              className={styles.deployButton}
+              disabled={isDeploying}
+            >
+              {isDeploying ? (
+                <>
+                  <Spinner size="tiny" style={{ marginRight: '8px' }} />
+                  Deploying...
+                </>
+              ) : (
+                'Deploy to Dataverse'
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </Card>
