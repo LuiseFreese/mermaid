@@ -226,4 +226,4 @@ I welcome contributions! This is an open-source project that benefits from commu
 
 ---
 
-**Made with ❤️ by [Luise Freese](https://linkedin.com/in/luisefreese) → Read my blog at [m365princess.com](https://m365princess.com)**
+**Made with ❤️ by [Luise Freese](https://linkedin.com/in/luisefreese) → Read my blog at [m365princess.com](https://m365princess.com)** 👑

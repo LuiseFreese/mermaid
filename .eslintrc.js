@@ -19,8 +19,19 @@ module.exports = {
   },
   overrides: [
     {
-      // For test files and CommonJS files
-      files: ['tests/**/*.js', 'scripts/**/*.js', 'src/**/*.js'],
+      // For test files - enable Jest environment
+      files: ['tests/**/*.js'],
+      env: {
+        node: true,
+        jest: true
+      },
+      parserOptions: {
+        sourceType: 'script'
+      }
+    },
+    {
+      // For other files and CommonJS files
+      files: ['scripts/**/*.js', 'src/**/*.js'],
       env: {
         node: true
       },

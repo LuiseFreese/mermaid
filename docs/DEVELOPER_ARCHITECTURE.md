@@ -185,8 +185,6 @@ erDiagram
 - Suggests proper naming conventions
 - Detects Common Data Model (CDM) entities
 
-**Output Format**: Structured JavaScript objects with entities (name, attributes, types) and relationships (cardinality, labels)
-```
 
 ### 5. React Wizard Interface (`src/frontend/src/App.tsx`)
 
@@ -235,6 +233,7 @@ erDiagram
 - Success/error handling with detailed feedback
 
 **Component Structure**:
+
 ```typescript
 // Main application component
 export const App: React.FC = () => {
@@ -446,34 +445,7 @@ GET /api/solution-status?solution=SolutionName
 **Entity Creation Flow**: Validates connection → Creates/validates publisher → Creates/validates solution → Creates entities with metadata → Adds to solution → Creates columns and relationships
 
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
-            `/GlobalOptionSetDefinitions(${component.objectid})?$select=Name,DisplayName`);
-          optionSets.push({
-            logicalName: optionMeta.Name,
-            displayName: optionMeta.DisplayName.LocalizedLabels[0]?.Label,
-            type: 'optionset'
-          });
-          break;
-          
-        default:
-          others.push({ componenttype: component.componenttype, objectid: component.objectid });
-      }
-    }
-    
-    return { 
-      success: true, 
-      solution, 
-      components: { 
-        entities, 
-        optionSets, 
-        others,
-        totalCount: entities.length + optionSets.length + others.length
-      } 
-    };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-```
+           
 
 ### 7. Azure Key Vault Integration (`src/backend/azure-keyvault.js`)
 
@@ -494,6 +466,7 @@ GET /api/solution-status?solution=SolutionName
 - `SOLUTION-NAME` - Default solution name for deployments
 
 **Secret Retrieval Implementation**:
+
 ```javascript
 async getKeyVaultSecrets() {
   try {
@@ -748,99 +721,6 @@ export const ERDDiagram: React.FC<ERDDiagramProps> = ({ mermaidCode, diagramId }
 - **Confidence Building**: Users feel more confident about their ERD structure
 - **Professional UX**: Clean, modern interface with visual feedback integrated into React flow
 
-### Smart Timeout Handling & Deployment Verification
-
-**Purpose**: Handle Azure App Service HTTP timeouts (230 seconds) while ensuring deployment results are properly verified and displayed to users.
-
-**The Challenge**:
-- Azure App Service has a 230-second HTTP timeout limit
-- Complex Dataverse deployments (especially with CDM entities) can take 4-6 minutes
-- Traditional timeout messages left users uncertain about deployment success
-
-**The Solution - Intelligent Polling**:
-Instead of showing a generic timeout message, the application now:
-
-1. **Detects Timeout**: Catches 504 Gateway Timeout or network fetch failures
-2. **Starts Polling**: Automatically begins checking solution status via `/api/solution-status`
-3. **Verifies Results**: Queries Dataverse to see what was actually created
-4. **Reports Success**: Shows detailed results of what was deployed
-
-**Implementation Flow**:
-```typescript
-// React timeout handling with polling
-const handleDeployment = async (deploymentData: DeploymentRequest) => {
-  try {
-    // 1. Start normal deployment
-    const response = await fetch('/api/upload', { 
-      method: 'POST', 
-      body: JSON.stringify(deploymentData),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    // Stream results normally
-    await handleStreamingResponse(response);
-    
-  } catch (error) {
-    // 2. If timeout occurs (504 or network error), start polling
-    if (error.message.includes('504') || error.message.includes('Failed to fetch')) {
-      await handleTimeoutWithPolling(deploymentData.solutionName);
-    } else {
-      throw error;
-    }
-  }
-};
-
-// 3. Polling implementation with React state updates
-const handleTimeoutWithPolling = async (solutionName: string) => {
-  setDeploymentStatus('polling');
-  setStatusMessage('Deployment timed out, checking results...');
-  
-  for (let attempt = 1; attempt <= 10; attempt++) {
-    try {
-      const status = await fetch(`/api/solution-status?solution=${solutionName}`);
-      const result = await status.json();
-      
-      if (result.success && result.components.totalCount > 0) {
-        // Success! Show what was actually created
-        setDeploymentStatus('success');
-        setDeploymentResults(result.components);
-        break;
-      }
-    } catch (pollingError) {
-      console.warn(`Polling attempt ${attempt} failed:`, pollingError);
-    }
-    
-    if (attempt < 10) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-  }
-};
-```
-
-**User Experience Benefits**:
-- **No uncertainty**: Users see actual deployment results instead of timeout warnings
-- **Detailed feedback**: Exact counts of entities, CDM integrations, and global choices
-- **Clear messaging**: Distinguishes between normal completion and polling after timeout
-- **Professional UX**: Eliminates confusing "may have completed" messages
-
-**Technical Benefits**:
-- **Deployment verification**: Confirms what was actually created in Dataverse
-- **Solution introspection**: Uses Dataverse APIs to validate deployment success
-- **Comprehensive logging**: Console logs clearly indicate deployment path taken
-- **Fallback handling**: Graceful degradation if polling also fails
-
-**Success Message Format**:
-```
-Deployment completed successfully
-
-Successfully created X tables, integrated Y CDM tables, 
-created Z new global choices and integrated W already existing global choices.
-```
-
 
 ### Advanced Relationship Handling
 
@@ -895,7 +775,7 @@ In this example:
 - The many-to-many relationship is implemented using two one-to-many relationships
 - Additional attributes like `assigned_date` and `role` can be added to the junction table
 
-## Data Flow
+## Data Flow (pls use CTRL + or CMD +)
 
 ```mermaid
 sequenceDiagram
@@ -987,43 +867,6 @@ sequenceDiagram
         User->>User: Display polling results in React UI with success message
     end
 ```
-
-### Enhanced Data Flow Features
-
-1. **React-First Architecture**: Frontend is a modern React SPA with TypeScript and Fluent UI
-2. **Real-time Updates**: Streaming JSON responses provide live deployment feedback
-3. **CDM Integration**: Automatic detection and optional use of Common Data Model entities
-4. **Timeout Resilience**: Intelligent polling system handles Azure App Service timeouts
-5. **Secure Authentication**: Zero secrets in frontend, all credentials via Azure Key Vault
-6. **Progressive Enhancement**: Graceful degradation from streaming to polling when needed
-
-### Enhanced Schema Generation Process
-
-1. **ERD Validation**: Real-time syntax checking with auto-corrections
-2. **Parsing**: Extract entities, relationships, and attributes from Mermaid ERD
-3. **Global Choices**: Process custom global choice definitions
-4. **Publisher Management**: Create or validate publisher with custom prefix
-5. **Solution Management**: Create or validate solution container
-6. **Entity Creation**: Create custom entities with proper naming conventions
-7. **Column Creation**: Add custom columns for each attribute with metadata
-8. **Relationship Creation**: Establish lookup relationships between entities
-9. **Global Choice Integration**: Add global choices to solution if specified
-10. **Logging**: Record detailed logs of all operations
-
-## Security Architecture
-
-### Authentication & Authorization
-
-- **Azure Managed Identity**: No secrets stored in application code
-- **Key Vault Integration**: All sensitive configuration in Azure Key Vault
-- **Least Privilege**: Managed identity has minimal required permissions
-
-### Security Layers
-
-1. **Transport Security**: HTTPS for all communications
-2. **Identity Security**: Managed identity for Azure service authentication
-3. **Secret Management**: Azure Key Vault for credential storage
-4. **API Security**: Authentication required for Dataverse operations
 
 ### Permission Model
 
@@ -1147,50 +990,6 @@ function generateColumnMetadata(attribute, publisherPrefix) {
 - **Retry Logic**: Automatic retry for transient failures
 - **User Feedback**: Clear error messages with actionable guidance
 
-
-### Error Response Strategy
-
-```typescript
-// React error handling with proper state management
-const handleDeployment = async (deploymentData: DeploymentRequest) => {
-  try {
-    setDeploymentStatus('deploying');
-    setErrorMessage(null);
-    
-    // Process deployment
-    const result = await deployToDataverse(deploymentData);
-    
-    setDeploymentStatus('success');
-    setDeploymentResults(result);
-    
-  } catch (error) {
-    setDeploymentStatus('error');
-    setErrorMessage(error.message);
-    
-    // Log detailed error for debugging
-    console.error('Deployment failed:', error);
-    
-    // Show user-friendly error message
-    addLogMessage({
-      type: 'error',
-      message: `Error: ${error.message}`,
-      timestamp: new Date().toISOString()
-    });
-  }
-};
-
-// Streaming error handling for real-time updates
-const handleStreamingErrors = (error: Error) => {
-  addLogMessage({
-    type: 'error',
-    message: `Deployment error: ${error.message}`,
-    timestamp: new Date().toISOString()
-  });
-  
-  setDeploymentStatus('error');
-};
-```
-
 ## Deployment Architecture
 
 ### Two-Step Deployment Process
@@ -1228,46 +1027,6 @@ The entire deployment is fully automated through PowerShell scripts and Bicep te
 ### Infrastructure as Code (Bicep)
 
 All Azure resources are defined in `deploy/infrastructure.bicep` with App Service Plan, App Service with Node.js 18, Managed Identity, and Key Vault integration
-          value: keyVault.properties.vaultUri
-        }
-        {
-          name: 'MANAGED_IDENTITY_CLIENT_ID'
-          value: managedIdentity.properties.clientId
-        }
-      ]
-    }
-  }
-}
-
-// User-Assigned Managed Identity
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: managedIdentityName
-  location: location
-}
-
-// Key Vault with RBAC
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: keyVaultName
-  location: location
-  properties: {
-    enableRbacAuthorization: true  // Use RBAC instead of access policies
-    sku: {
-      family: 'A'
-      name: 'standard'
-    }
-    tenantId: subscription().tenantId
-  }
-}
-
-// RBAC Role Assignment for Managed Identity
-resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  properties: {
-    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
-    principalId: managedIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-```
 
 ## System Architecture Deep Dive
 

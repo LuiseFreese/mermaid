@@ -35,6 +35,10 @@ class CorsMiddleware {
             res.setHeader('Access-Control-Allow-Origin', '*');
         }
 
+        // Always set basic CORS headers for all requests
+        res.setHeader('Access-Control-Allow-Methods', this.allowedMethods.join(', '));
+        res.setHeader('Access-Control-Allow-Headers', this.allowedHeaders.join(', '));
+
         // Set credentials header
         if (this.credentials) {
             res.setHeader('Access-Control-Allow-Credentials', 'true');

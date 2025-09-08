@@ -36,6 +36,7 @@ const { RequestLoggerMiddleware } = require('./middleware/request-logger-middlew
 const { ErrorHandlerMiddleware } = require('./middleware/error-handler-middleware');
 const { CorsMiddleware } = require('./middleware/cors-middleware');
 const { StreamingMiddleware } = require('./middleware/streaming-middleware');
+const { SecurityMiddleware } = require('./middleware/security-middleware');
 
 // Legacy modules (for backward compatibility during transition)
 let MermaidERDParser = null;
@@ -164,6 +165,8 @@ async function initializeComponents() {
 
     const corsHandler = CorsMiddleware.createWebAppCors();
     
+    const securityHandler = SecurityMiddleware.createWebAppSecurity();
+    
     const streamingHandler = new StreamingMiddleware({
       logger: console,
       chunkSize: parseInt(process.env.STREAM_CHUNK_SIZE) || 8192
@@ -204,6 +207,7 @@ async function initializeComponents() {
       requestLogger,
       errorHandler,
       corsHandler,
+      securityHandler,
       streamingHandler,
       
       // Controllers
@@ -933,10 +937,13 @@ async function applyMiddleware(req, res, components, next) {
   
   // Request logging
   await components.requestLogger.handle(req, res, () => {
-    // CORS handling
-    components.corsHandler.handle(req, res, () => {
-      // Continue to routing
-      next();
+    // Security headers
+    components.securityHandler.handle(req, res, () => {
+      // CORS handling
+      components.corsHandler.handle(req, res, () => {
+        // Continue to routing
+        next();
+      });
     });
   });
 }

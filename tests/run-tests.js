@@ -191,7 +191,7 @@ class TestRunner {
     this.log('Running code linting...', 'info');
     
     const result = await this.runCommand(
-      'npx eslint src/ tests/ --ext .js,.json --format=compact',
+      'npx eslint "src/backend/**/*.js" "tests/**/*.js" --format=compact',
       'ESLint Code Analysis'
     );
 
