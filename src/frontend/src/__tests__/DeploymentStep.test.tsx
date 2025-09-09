@@ -1,43 +1,77 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { WizardProvider } from '../context/WizardContext';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { DeploymentStep } from '../components/wizard/steps/DeploymentStep';
+import { WizardProvider } from '../context/WizardContext';
 
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
-    <MemoryRouter>
-      <WizardProvider>
-        {component}
-      </WizardProvider>
-    </MemoryRouter>
+    <FluentProvider theme={webLightTheme}>
+      <MemoryRouter>
+        <WizardProvider>
+          {component}
+        </WizardProvider>
+      </MemoryRouter>
+    </FluentProvider>
   );
 };
 
 describe('DeploymentStep', () => {
-  it('renders without crashing', () => {
-    renderWithProviders(<DeploymentStep />);
-    
-    // Check for deployment-related content - use queryAllByText to handle multiple matches
-    const deployTexts = screen.queryAllByText(/deploy/i);
-    expect(deployTexts.length).toBeGreaterThan(0);
+  const mockOnPrevious = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('shows deployment controls', () => {
-    renderWithProviders(<DeploymentStep />);
+  it('renders the deployment interface', () => {
+    renderWithProviders(
+      <DeploymentStep onPrevious={mockOnPrevious} />
+    );
     
-    // Should have deployment button or progress area
-    const buttons = screen.queryAllByRole('button');
+    // Should render deployment elements - use more specific query
+    expect(screen.getByText('Deployment Summary & Options')).toBeInTheDocument();
+  });
+
+  it('calls onPrevious when previous button is clicked', () => {
+    renderWithProviders(
+      <DeploymentStep onPrevious={mockOnPrevious} />
+    );
     
-    // Should have at least some buttons
+    // Look for any button containing "Previous"
+    const previousButton = screen.getByText(/Previous/);
+    if (previousButton) {
+      fireEvent.click(previousButton);
+      expect(mockOnPrevious).toHaveBeenCalled();
+    }
+  });
+
+  it('renders navigation buttons', () => {
+    renderWithProviders(
+      <DeploymentStep onPrevious={mockOnPrevious} />
+    );
+    
+    // Should have at least a previous button
+    const buttons = screen.getAllByRole('button');
     expect(buttons.length).toBeGreaterThan(0);
   });
 
-  it('has back to start functionality', () => {
-    renderWithProviders(<DeploymentStep />);
+  it('displays deployment summary information', () => {
+    renderWithProviders(
+      <DeploymentStep onPrevious={mockOnPrevious} />
+    );
     
-    // Should have some way to go back or restart - check for any button
-    const buttons = screen.queryAllByRole('button');
-    expect(buttons.length).toBeGreaterThan(0);
+    // Should display summary or deployment-related content
+    expect(screen.getByText('Deployment Summary & Options')).toBeInTheDocument();
+  });
+
+  it('handles deployment process', () => {
+    renderWithProviders(
+      <DeploymentStep onPrevious={mockOnPrevious} />
+    );
+    
+    // This is the final step, so it should handle the deployment
+    // This is a placeholder test that ensures the component renders
+    expect(screen.getByText('Deployment Summary & Options')).toBeInTheDocument();
   });
 });

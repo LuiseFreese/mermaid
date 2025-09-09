@@ -157,7 +157,7 @@ describe('Backend Routes', () => {
       });
 
       test('should handle publisher fetch errors', async () => {
-        DeploymentController.prototype.getPublishers.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: false,
           message: 'Failed to connect to Dataverse'
         });
@@ -173,7 +173,7 @@ describe('Backend Routes', () => {
 
     describe('GET /api/deployment/solutions', () => {
       test('should fetch solutions successfully', async () => {
-        DeploymentController.prototype.getSolutions.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: true,
           data: testData.apiResponses.solutions
         });
@@ -189,7 +189,7 @@ describe('Backend Routes', () => {
 
     describe('GET /api/deployment/global-choices', () => {
       test('should fetch global choices successfully', async () => {
-        DeploymentController.prototype.getGlobalChoices.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: true,
           data: testData.apiResponses.globalChoices
         });
@@ -205,7 +205,7 @@ describe('Backend Routes', () => {
       });
 
       test('should handle global choices fetch errors', async () => {
-        DeploymentController.prototype.getGlobalChoices.mockRejectedValue(
+        DeploymentController.mock.instances[0].mockRejectedValue(
           new Error('Dataverse connection failed')
         );
 
@@ -220,7 +220,7 @@ describe('Backend Routes', () => {
 
     describe('POST /api/deployment/deploy', () => {
       test('should deploy solution successfully', async () => {
-        DeploymentController.prototype.deploySolution.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: true,
           data: testData.mockResponses.deploymentService.deploySolution
         });
@@ -235,7 +235,7 @@ describe('Backend Routes', () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data.entitiesCreated).toBeDefined();
         expect(response.body.data.relationshipsCreated).toBeDefined();
-        expect(DeploymentController.prototype.deploySolution).toHaveBeenCalledWith(deploymentRequest);
+        expect(DeploymentController.mock.instances[0].deploySolution).toHaveBeenCalledWith(deploymentRequest);
       });
 
       test('should validate required deployment parameters', async () => {
@@ -254,7 +254,7 @@ describe('Backend Routes', () => {
       });
 
       test('should handle deployment failures', async () => {
-        DeploymentController.prototype.deploySolution.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: false,
           message: 'Entity creation failed',
           errors: ['Invalid entity definition']
@@ -272,7 +272,7 @@ describe('Backend Routes', () => {
 
     describe('POST /api/deployment/test-connection', () => {
       test('should test connection successfully', async () => {
-        DeploymentController.prototype.testConnection.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: true,
           data: { message: 'Connected successfully' }
         });
@@ -290,7 +290,7 @@ describe('Backend Routes', () => {
       });
 
       test('should handle connection failures', async () => {
-        DeploymentController.prototype.testConnection.mockResolvedValue({
+        DeploymentController.mock.instances[0].mockResolvedValue({
           success: false,
           message: 'Authentication failed'
         });
@@ -366,7 +366,7 @@ describe('Backend Routes', () => {
   describe('Response Headers', () => {
     test.skip('should include CORS headers', async () => {
       // Skipping: CORS headers are applied by server middleware, not route modules
-      ValidationController.prototype.validateERD.mockResolvedValue({
+      ValidationController.mock.instances[0].validateERDData.mockResolvedValue({
         success: true,
         data: testData.validationResults.success
       });
@@ -402,7 +402,7 @@ describe('Backend Routes', () => {
   describe('Request Logging', () => {
     test.skip('should log request details', async () => {
       // Skipping: Request logging is handled by server middleware, not route modules
-      ValidationController.prototype.validateERD.mockResolvedValue({
+      ValidationController.mock.instances[0].validateERDData.mockResolvedValue({
         success: true,
         data: testData.validationResults.success
       });
@@ -416,7 +416,7 @@ describe('Backend Routes', () => {
     });
 
     test('should log errors with stack traces', async () => {
-      ValidationController.prototype.validateERD.mockRejectedValue(
+      ValidationController.mock.instances[0].validateERDData.mockRejectedValue(
         new Error('Test error with stack')
       );
 

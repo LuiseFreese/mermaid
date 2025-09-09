@@ -1,42 +1,82 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { WizardProvider } from '../context/WizardContext';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { WizardShell } from '../components/wizard/WizardShell';
 
-const renderWithProviders = (component: React.ReactElement) => {
+// Mock the child components
+vi.mock('../components/wizard/steps/FileUploadStep', () => ({
+  FileUploadStep: ({ onNext }: { onNext: () => void }) => (
+    <div data-testid="file-upload-step">
+      <button onClick={onNext}>Next</button>
+    </div>
+  ),
+}));
+
+vi.mock('../components/wizard/steps/SolutionSetupStep', () => ({
+  SolutionSetupStep: ({ onNext, onPrevious }: { onNext: () => void; onPrevious: () => void }) => (
+    <div data-testid="solution-setup-step">
+      <button onClick={onPrevious}>Previous</button>
+      <button onClick={onNext}>Next</button>
+    </div>
+  ),
+}));
+
+vi.mock('../components/wizard/steps/GlobalChoicesStep', () => ({
+  GlobalChoicesStep: ({ onNext, onPrevious }: { onNext: () => void; onPrevious: () => void }) => (
+    <div data-testid="global-choices-step">
+      <button onClick={onPrevious}>Previous</button>
+      <button onClick={onNext}>Next</button>
+    </div>
+  ),
+}));
+
+vi.mock('../components/wizard/steps/DeploymentStep', () => ({
+  DeploymentStep: ({ onPrevious }: { onPrevious: () => void }) => (
+    <div data-testid="deployment-step">
+      <button onClick={onPrevious}>Previous</button>
+    </div>
+  ),
+}));
+
+const renderWithProviders = (component: React.ReactElement, initialRoute = '/wizard') => {
   return render(
-    <MemoryRouter>
-      <WizardProvider>
+    <FluentProvider theme={webLightTheme}>
+      <MemoryRouter initialEntries={[initialRoute]}>
         {component}
-      </WizardProvider>
-    </MemoryRouter>
+      </MemoryRouter>
+    </FluentProvider>
   );
 };
 
 describe('WizardShell', () => {
-  it('renders without crashing', () => {
+  it('renders the main title and description', () => {
     renderWithProviders(<WizardShell />);
     
-    // Should render some content - look for any meaningful element
-    const container = screen.getByRole('group') || document.body.firstChild;
-    expect(container).toBeTruthy();
+    expect(screen.getByText('Mermaid to Dataverse Converter')).toBeInTheDocument();
+    expect(screen.getByText('Transform your Mermaid ERD diagrams into Microsoft Dataverse solutions')).toBeInTheDocument();
   });
 
-  it('shows wizard steps or navigation', () => {
+  it('shows correct progress for step 1', () => {
     renderWithProviders(<WizardShell />);
     
-    // Should have some form of step indicator or navigation
-    const stepText = screen.queryByText(/step/i);
-    const progressBar = screen.queryByRole('progressbar');
-    
-    expect(stepText || progressBar).toBeTruthy();
+    expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
+    // The component shows step 1 by default, so we should see File Upload in the route
+    expect(screen.getByText('File Upload')).toBeInTheDocument();
   });
 
-  it('contains wizard content area', () => {
-    const { container } = renderWithProviders(<WizardShell />);
+  it('displays all step labels in the progress section', () => {
+    renderWithProviders(<WizardShell />);
     
-    // Should have a content area for wizard steps
-    expect(container.firstChild).not.toBeNull();
+    expect(screen.getByText('File Upload')).toBeInTheDocument();
+    expect(screen.getByText('Solution & Publisher')).toBeInTheDocument();
+    expect(screen.getByText('Global Choices')).toBeInTheDocument();
+    expect(screen.getByText('Deployment Summary')).toBeInTheDocument();
+  });
+
+  it('shows the conversion process title', () => {
+    renderWithProviders(<WizardShell />);
+    
+    expect(screen.getByText('Conversion Process')).toBeInTheDocument();
   });
 });

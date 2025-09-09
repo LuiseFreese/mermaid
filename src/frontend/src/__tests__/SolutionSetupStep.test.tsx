@@ -1,46 +1,86 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { WizardProvider } from '../context/WizardContext';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { SolutionSetupStep } from '../components/wizard/steps/SolutionSetupStep';
+import { WizardProvider } from '../context/WizardContext';
 
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
-    <MemoryRouter>
+    <FluentProvider theme={webLightTheme}>
       <WizardProvider>
         {component}
       </WizardProvider>
-    </MemoryRouter>
+    </FluentProvider>
   );
 };
 
 describe('SolutionSetupStep', () => {
-  it('renders without crashing', () => {
-    renderWithProviders(<SolutionSetupStep />);
-    
-    // Check for solution setup content - use queryAllByText to handle multiple matches
-    const solutionTexts = screen.queryAllByText(/solution/i);
-    expect(solutionTexts.length).toBeGreaterThan(0);
+  const mockOnNext = vi.fn();
+  const mockOnPrevious = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('shows setup configuration options', () => {
-    renderWithProviders(<SolutionSetupStep />);
+  it('renders the solution setup interface', () => {
+    renderWithProviders(
+      <SolutionSetupStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
     
-    // Should have form fields - count what we can find
-    const textboxes = screen.queryAllByRole('textbox');
-    const buttons = screen.queryAllByRole('button');
-    const radios = screen.queryAllByRole('radio');
-    
-    // Should have at least some interactive elements
-    const totalElements = textboxes.length + buttons.length + radios.length;
-    expect(totalElements).toBeGreaterThan(0);
+    // Should render setup elements - use more specific query
+    expect(screen.getByText('Solution & Publisher Setup')).toBeInTheDocument();
   });
 
-  it('has navigation controls', () => {
-    renderWithProviders(<SolutionSetupStep />);
+  it('calls onPrevious when previous button is clicked', () => {
+    renderWithProviders(
+      <SolutionSetupStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
     
-    // Should have next/continue button
-    const nextButton = screen.queryByRole('button', { name: /next/i });
-    expect(nextButton).toBeTruthy();
+    // Look for any button containing "Previous"
+    const previousButton = screen.getByText(/Previous/);
+    if (previousButton) {
+      fireEvent.click(previousButton);
+      expect(mockOnPrevious).toHaveBeenCalled();
+    }
+  });
+
+  it('calls onNext when next button is clicked', async () => {
+    renderWithProviders(
+      <SolutionSetupStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
+    
+    // Fill out the form to make the Next button enabled
+    // First, select "Create New Solution"
+    const newSolutionRadio = screen.getByLabelText(/Create New Solution/i);
+    fireEvent.click(newSolutionRadio);
+    
+    // Fill in solution name
+    const solutionNameInput = screen.getByPlaceholderText(/e\.g\., Customer Management Solution/i);
+    fireEvent.change(solutionNameInput, { target: { value: 'Test Solution' } });
+    
+    // Select "Create New Publisher"
+    const newPublisherRadio = screen.getByLabelText(/Create New Publisher/i);
+    fireEvent.click(newPublisherRadio);
+    
+    // Fill in publisher details
+    const publisherNameInput = screen.getByPlaceholderText(/e\.g\., Fancy New Publisher/i);
+    fireEvent.change(publisherNameInput, { target: { value: 'Test Publisher' } });
+    
+    // Now the Next button should be enabled
+    const nextButton = screen.getByText(/Next/);
+    expect(nextButton).not.toBeDisabled();
+    
+    fireEvent.click(nextButton);
+    expect(mockOnNext).toHaveBeenCalled();
+  });
+
+  it('renders navigation buttons', () => {
+    renderWithProviders(
+      <SolutionSetupStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
+    
+    // Should have navigation buttons or similar elements
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(0);
   });
 });

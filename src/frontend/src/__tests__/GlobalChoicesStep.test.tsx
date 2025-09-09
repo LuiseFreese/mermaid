@@ -1,46 +1,79 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { WizardProvider } from '../context/WizardContext';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { GlobalChoicesStep } from '../components/wizard/steps/GlobalChoicesStep';
+import { WizardProvider } from '../context/WizardContext';
 
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
-    <MemoryRouter>
+    <FluentProvider theme={webLightTheme}>
       <WizardProvider>
         {component}
       </WizardProvider>
-    </MemoryRouter>
+    </FluentProvider>
   );
 };
 
 describe('GlobalChoicesStep', () => {
-  it('renders without crashing', () => {
-    renderWithProviders(<GlobalChoicesStep />);
-    
-    // Check for global choices content
-    const globalTexts = screen.queryAllByText(/global|choice/i);
-    expect(globalTexts.length).toBeGreaterThan(0);
+  const mockOnNext = vi.fn();
+  const mockOnPrevious = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('shows choice selection interface', () => {
-    renderWithProviders(<GlobalChoicesStep />);
+  it('renders the global choices interface', () => {
+    renderWithProviders(
+      <GlobalChoicesStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
     
-    // Should have some form of selection mechanism - count what exists
-    const buttons = screen.queryAllByRole('button');
-    const radios = screen.queryAllByRole('radio');
-    const checkboxes = screen.queryAllByRole('checkbox');
-    
-    // Should have interactive elements for choices
-    const totalElements = buttons.length + radios.length + checkboxes.length;
-    expect(totalElements).toBeGreaterThan(0);
+    // Should render choices elements - use more specific query
+    expect(screen.getByText('Global Choice Management')).toBeInTheDocument();
   });
 
-  it('has navigation controls', () => {
-    renderWithProviders(<GlobalChoicesStep />);
+  it('calls onPrevious when previous button is clicked', () => {
+    renderWithProviders(
+      <GlobalChoicesStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
     
-    // Should have next/back buttons
-    const navButtons = screen.queryByRole('button', { name: /next|back|continue/i });
-    expect(navButtons).toBeTruthy();
+    // Look for any button containing "Previous"
+    const previousButton = screen.getByText(/Previous/);
+    if (previousButton) {
+      fireEvent.click(previousButton);
+      expect(mockOnPrevious).toHaveBeenCalled();
+    }
+  });
+
+  it('calls onNext when next button is clicked', () => {
+    renderWithProviders(
+      <GlobalChoicesStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
+    
+    // Look for any button containing "Next"
+    const nextButton = screen.getByText(/Next/);
+    if (nextButton) {
+      fireEvent.click(nextButton);
+      expect(mockOnNext).toHaveBeenCalled();
+    }
+  });
+
+  it('renders navigation buttons', () => {
+    renderWithProviders(
+      <GlobalChoicesStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
+    
+    // Should have navigation buttons or similar elements
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(0);
+  });
+
+  it('handles global choices configuration', () => {
+    renderWithProviders(
+      <GlobalChoicesStep onNext={mockOnNext} onPrevious={mockOnPrevious} />
+    );
+    
+    // Test should verify that global choices can be configured
+    // This is a placeholder test that ensures the component renders
+    expect(screen.getByText('Global Choice Management')).toBeInTheDocument();
   });
 });

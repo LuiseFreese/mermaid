@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/backend/server.js",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:backend": "node --watch src/backend/server.js",
+    "dev:backend": "cross-env NODE_ENV=development node --watch src/backend/server.js",
     "dev:frontend": "cd src/frontend && npm run dev",
     "build": "npm run build:frontend",
     "build:frontend": "cd src/frontend && npm run build",

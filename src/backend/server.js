@@ -46,35 +46,24 @@ try {
   const { DataverseClient: Client }  = require('./dataverse-client.js');
   MermaidERDParser = Parser;
   DataverseClient  = Client;
-  console.log('Legacy modules loaded for backward compatibility');
-  console.log('DataverseClient available:', typeof DataverseClient, DataverseClient !== null);
 } catch (e) {
-  console.error('❌ Failed to load legacy modules:', e.message);
-  console.error('Stack trace:', e.stack);
+  console.error('Failed to load legacy modules:', e.message);
 }
 
 // Optional KeyVault helper
 let keyVaultConfig = null;
 try {
   keyVaultConfig = require('../azure-keyvault.js');
-  console.log('Azure SDK + Key Vault config loaded');
   
   // Test Key Vault connection at startup
   if (process.env.KEY_VAULT_URI && process.env.AUTH_MODE) {
-    console.log('🔧 Testing Key Vault connection at startup...');
     keyVaultConfig.getKeyVaultSecrets()
-      .then(result => {
-        console.log('✅ Key Vault startup test successful:', {
-          success: result.success,
-          secretCount: result.secretCount,
-          authType: result.authType
-        });
+      .then(() => {
+        console.log('Key Vault startup test successful');
       })
       .catch(error => {
-        console.error('❌ Key Vault startup test failed:', error.message);
+        console.error('Key Vault startup test failed:', error.message);
       });
-  } else {
-    console.log('⚠️ Key Vault environment variables not set, skipping startup test');
   }
 } catch (error) {
   console.log('Azure SDK not configured; falling back to env. Error:', error.message);
@@ -100,7 +89,7 @@ console.getLastLogs = () => [...recentLogs];
 let appComponents = null;
 
 async function initializeComponents() {
-  console.log('🔧 Initializing application components...');
+  console.log('Initializing application components...');
   
   try {
     // Initialize repositories
@@ -109,7 +98,6 @@ async function initializeComponents() {
       logger: console
     });
     
-    console.log('🔧 Initializing DataverseRepository with DataverseClient:', typeof DataverseClient);
     const dataverseRepo = new DataverseRepository({
       configurationRepository: configRepo,
       DataverseClient, // Legacy client for backward compatibility
@@ -217,11 +205,11 @@ async function initializeComponents() {
       adminController
     };
 
-    console.log('✅ Application components initialized successfully');
+    console.log('Application components initialized successfully');
     return appComponents;
     
   } catch (error) {
-    console.error('❌ Failed to initialize components:', error);
+    console.error('Failed to initialize components:', error);
     throw error;
   }
 }
@@ -250,7 +238,7 @@ function writeProgress(res, step, message, details = {}) {
     ...details
   };
   res.write(JSON.stringify(progressData) + '\n');
-  console.log(`📋 ${step}: ${message}`);
+  console.log(`${step}: ${message}`);
 }
 
 function writeFinal(res, obj) {
@@ -276,7 +264,6 @@ async function getDataverseConfig() {
   // Prefer Key Vault when available
   if (keyVaultConfig && process.env.KEY_VAULT_URI) {
     try {
-      console.log('Getting Dataverse configuration from Key Vault...');
       const cfg = await keyVaultConfig.getDataverseConfig();
       if (cfg?.serverUrl && cfg?.tenantId && cfg?.clientId && cfg?.clientSecret) {
         return { source: 'key_vault', ...cfg };
@@ -293,12 +280,6 @@ async function getDataverseConfig() {
     clientId:   process.env.CLIENT_ID || process.env.DATAVERSE_CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET || process.env.DATAVERSE_CLIENT_SECRET
   };
-  console.log('Local fallback config:', {
-    hasServerUrl: !!env.serverUrl,
-    hasTenantId: !!env.tenantId,
-    hasClientId: !!env.clientId,
-    hasClientSecret: !!env.clientSecret
-  });
   return { source:'env', ...env };
 }
 
@@ -319,9 +300,8 @@ async function handleValidateErd(req, res) {
       if (result.warnings && result.warnings.length > 0) {
         try {
           correctedERD = parser.generateCorrectedERD();
-          console.log('✅ Generated corrected ERD:', correctedERD ? 'Success' : 'Failed');
         } catch (e) {
-          console.warn('⚠️ Could not generate corrected ERD:', e.message);
+          console.warn('Could not generate corrected ERD:', e.message);
         }
       }
       
@@ -339,12 +319,10 @@ async function handleValidateErd(req, res) {
         }
       };
       
-      console.log('🔍 Validation response:', JSON.stringify(response, null, 2));  // Debug log
-      
       res.writeHead(200, {'Content-Type':'application/json'});
       res.end(JSON.stringify(response));
     } catch (e) {
-      console.error('❌ Validation error:', e);
+      console.error('Validation error:', e);
       const errorResponse = { success:false, error: e.message };
       res.writeHead(500, {'Content-Type':'application/json'});
       res.end(JSON.stringify(errorResponse));
@@ -359,7 +337,6 @@ async function handleUpload(req, res) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked' });
     try {
       const data = JSON.parse(body || '{}');
-      console.log('POST /upload payload keys:', Object.keys(data));
 
  // Parse ERD if provided
       let erdEntities = [];
@@ -370,7 +347,6 @@ async function handleUpload(req, res) {
         const pr = parser.parse(data.mermaidContent);
         erdEntities = pr.entities || [];
         erdRelationships = pr.relationships || []; // Extract relationships
-        console.log(`Parsed ERD: ${erdEntities.length} entities, ${erdRelationships.length} relationships`);
       } else if (Array.isArray(data.entities)) {
         erdEntities = data.entities;
         // If client provided relationships directly
@@ -394,7 +370,6 @@ async function handleUpload(req, res) {
       // If a publisher was selected (data.publisher), get its details
       if (data.publisher && typeof data.publisher === 'string') {
         try {
-          console.log(`🔍 Looking up selected publisher: ${data.publisher}`);
           const publishers = await client.getPublishers();
           const selectedPublisher = publishers.find(p => 
             p.uniqueName === data.publisher || 
@@ -404,12 +379,11 @@ async function handleUpload(req, res) {
           if (selectedPublisher) {
             publisherPrefix = selectedPublisher.prefix;
             publisherName = selectedPublisher.friendlyName;
-            console.log(`✅ Using selected publisher: ${publisherName} (prefix: ${publisherPrefix})`);
           } else {
-            console.warn(`⚠️ Selected publisher '${data.publisher}' not found, using default prefix`);
+            console.warn(`Selected publisher '${data.publisher}' not found, using default prefix`);
           }
         } catch (error) {
-          console.warn(`⚠️ Failed to lookup publisher '${data.publisher}':`, error.message);
+          console.warn(`Failed to lookup publisher '${data.publisher}':`, error.message);
         }
       }
 
@@ -421,8 +395,6 @@ async function handleUpload(req, res) {
       let customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
       const hasCDMEntities = cdmMatches.length > 0;
       let hasCustomEntities = customEntities.length > 0;
-
-      console.log(`📊 Deployment Analysis: ${cdmMatches.length} CDM entities, ${customEntities.length} custom entities`);
 
       let results = {
         success: true,
@@ -450,8 +422,6 @@ async function handleUpload(req, res) {
         // Then create/ensure solution with the publisher
         writeProgress(res, 'solution', 'Creating Solution...');
         solInfo = await client.ensureSolution(solutionUnique, friendly, pub);
-        console.log(`Solution ready: ${solInfo.uniquename} (${solInfo.solutionid})`);
-      console.log(`DEBUG: solInfo object:`, JSON.stringify(solInfo, null, 2));
       } catch (e) {
         console.warn('ensureSolution warning:', e.message);
         const check = await client.checkSolutionExists(solutionUnique);
@@ -465,7 +435,6 @@ async function handleUpload(req, res) {
       // Process CDM entities if any
       if (hasCDMEntities && cdmChoice === 'cdm') {
         writeProgress(res, 'cdm', 'Adding CDM Tables...');
-        console.log(`🔄 Processing ${cdmMatches.length} CDM entities...`);
         
         // ensure we have matches with logicalName; fallback to server-side detection if needed
         if (!cdmMatches.length || cdmMatches.some(m => !m?.cdmEntity?.logicalName)) {
@@ -474,14 +443,12 @@ async function handleUpload(req, res) {
             const reg = new CDMEntityRegistry();
             const det = reg.detectCDMEntities(erdEntities);
             cdmMatches = det.detectedCDM || det.matches || [];
-            console.log(`Server-side CDM detection produced ${cdmMatches.length} matches`);
             
             // Recalculate entity separation after fallback detection
             if (cdmMatches.length > 0) {
               cdmEntityNames = cdmMatches.map(m => m?.originalEntity?.name || m?.entity || '').filter(n => n);
               customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
               hasCustomEntities = customEntities.length > 0;
-              console.log(`📊 Updated Analysis: ${cdmMatches.length} CDM entities, ${customEntities.length} custom entities`);
             }
           } catch (e) {
             console.warn('CDM detection unavailable:', e.message);
@@ -489,20 +456,11 @@ async function handleUpload(req, res) {
         }
 
         if (cdmMatches.length > 0) {
-          console.log(`🔍 DEBUG: CDM matches before integration:`, {
-            count: cdmMatches.length,
-            matches: cdmMatches.map(m => ({
-              originalEntity: m?.originalEntity?.name,
-              cdmEntity: m?.cdmEntity?.logicalName
-            }))
-          });
-          
           results.cdmResults = await client.integrateCDMEntities(cdmMatches, solInfo.uniquename, data.includeRelatedEntities);
           if (results.cdmResults.success) {
             results.cdmEntitiesIntegrated = results.cdmResults.integratedEntities || [];
-            console.log(`✅ CDM integration: ${results.cdmResults.summary?.successfulIntegrations || 0} entities integrated`);
           } else {
-            console.warn(`⚠️ CDM integration failed: ${results.cdmResults.error}`);
+            console.warn(`CDM integration failed: ${results.cdmResults.error}`);
             results.success = false;
           }
         }
@@ -511,16 +469,6 @@ async function handleUpload(req, res) {
       // Process custom entities if any
 if (hasCustomEntities) {
   writeProgress(res, 'custom-entities', `Creating ${customEntities.length} Custom Tables...`);
-  console.log(`🔄 Processing ${customEntities.length} custom entities...`);
-  console.log(`DEBUG: Passing solutionUniqueName: "${solInfo.uniquename}"`);
-  
-  console.log(`🔍 DEBUG: About to create custom entities with CDM entities:`, {
-    cdmMatchesCount: cdmMatches.length,
-    cdmMatches: cdmMatches.map(m => ({
-      originalEntity: m?.originalEntity?.name,
-      cdmEntity: m?.cdmEntity?.logicalName
-    }))
-  });
   
   try {
     results.customResults = await client.createCustomEntities(
@@ -541,9 +489,8 @@ if (hasCustomEntities) {
     if (results.customResults.success) {
       results.entitiesCreated += results.customResults.entitiesCreated || 0;
       results.relationshipsCreated += results.customResults.relationshipsCreated || 0;
-      console.log(`✅ Custom entities: ${results.customResults.entitiesCreated} entities created, ${results.customResults.relationshipsCreated || 0} relationships created`);
     } else {
-      console.warn(`⚠️ Custom entity creation failed: ${results.customResults.error}`);
+      console.warn(`Custom entity creation failed: ${results.customResults.error}`);
       // Don't mark overall deployment as failed if CDM succeeded and custom partially failed
       if (!results.cdmResults?.success) {
         results.success = false;
@@ -575,12 +522,8 @@ if (hasCustomEntities) {
           return true;
         });
         
-        console.log(`🎨 Processing ${validChoices.length} selected global choices (filtered from ${data.selectedChoices.length})...`);
-        console.log(`🔍 DEBUG: selectedChoices array:`, JSON.stringify(data.selectedChoices, null, 2));
-        console.log(`🔍 DEBUG: validChoices array:`, JSON.stringify(validChoices, null, 2));
         
         if (validChoices.length === 0) {
-          console.log('⚠️ No valid global choices to add to solution');
           results.globalChoicesAdded = 0;
           results.globalChoicesFailed = 0;
           results.globalChoicesErrors = ['No valid choices after filtering'];
@@ -590,9 +533,7 @@ if (hasCustomEntities) {
             
             // Resolve choice names properly
             const choiceNames = validChoices.map(choice => {
-              const choiceName = choice?.LogicalName || choice?.Name || choice?.name || choice;
-              console.log(`🔍 Resolved choice: ${JSON.stringify(choice)} → ${choiceName}`);
-              return choiceName;
+              return choice?.LogicalName || choice?.Name || choice?.name || choice;
             });
             
             const choicesResult = await client.addGlobalChoicesToSolution(choiceNames, solInfo.uniquename);
@@ -600,11 +541,8 @@ if (hasCustomEntities) {
             results.globalChoicesFailed = choicesResult.failed || 0;
             results.globalChoicesErrors = choicesResult.errors || [];
             
-            if (choicesResult.added > 0) {
-              console.log(`✅ Global choices: ${choicesResult.added} choice sets added to solution`);
-            }
             if (choicesResult.failed > 0) {
-              console.warn(`⚠️ Global choices: ${choicesResult.failed} choice sets failed to add`);
+              console.warn(`Global choices: ${choicesResult.failed} choice sets failed to add`);
             }
           } catch (error) {
             console.error('Global choices processing error:', error);
@@ -614,12 +552,9 @@ if (hasCustomEntities) {
           }
         }
       } else if (data.selectedChoices && data.selectedChoices.length > 0) {
-        console.log(`⚠️ Warning: ${data.selectedChoices.length} global choices provided but no solution name - skipping`);
         results.globalChoicesAdded = 0;
         results.globalChoicesFailed = 0;
         results.globalChoicesErrors = ['No solution name provided for global choices'];
-      } else {
-        console.log('📋 No global choices selected to add to solution');
       }
 
       // Process custom uploaded global choices if any
@@ -632,12 +567,8 @@ if (hasCustomEntities) {
           return true;
         });
         
-        console.log(`🎨 Processing ${validCustomChoices.length} custom uploaded global choices (filtered from ${data.customChoices.length})...`);
-        console.log(`🔍 DEBUG: customChoices array:`, JSON.stringify(data.customChoices, null, 2));
-        console.log(`🔍 DEBUG: validCustomChoices array:`, JSON.stringify(validCustomChoices, null, 2));
         
         if (validCustomChoices.length === 0) {
-          console.log('⚠️ No valid custom global choices to create');
           results.customGlobalChoicesCreated = 0;
           results.customGlobalChoicesFailed = 0;
           results.customGlobalChoicesErrors = ['No valid custom choices after filtering'];
@@ -653,12 +584,8 @@ if (hasCustomEntities) {
             results.customGlobalChoicesFailed = customChoicesResult.failed || 0;
             results.customGlobalChoicesErrors = customChoicesResult.errors || [];
             
-            if (customChoicesResult.created > 0) {
-              console.log(`✅ Custom global choices: ${customChoicesResult.created} choice sets created and added to solution`);
-            }
             if (customChoicesResult.failed > 0) {
-              console.warn(`⚠️ Custom global choices: ${customChoicesResult.failed} choice sets failed to create`);
-              console.log(`🔍 Custom choice errors:`, customChoicesResult.errors);
+              console.warn(`Custom global choices: ${customChoicesResult.failed} choice sets failed to create`);
             }
           } catch (error) {
             console.error('Custom global choices processing error:', error);
@@ -667,8 +594,6 @@ if (hasCustomEntities) {
             results.customGlobalChoicesErrors = [error.message];
           }
         }
-      } else {
-        console.log('📋 No custom global choices to create');
       }
 
       // Build summary message - always positive for successful deployments
@@ -685,7 +610,7 @@ if (hasCustomEntities) {
       return writeFinal(res, results);
 
     } catch (e) {
-      console.error('❌ /upload error:', e);
+      console.error('/upload error:', e);
       streamLogs(res);
       return writeFinal(res, { success:false, message:'Internal error', error: e.message });
     }
@@ -694,21 +619,15 @@ if (hasCustomEntities) {
 
 // --- cleanup endpoint handler ------------------------------------------
 async function handleCleanup(req, res) {
-  console.log('🧹 Starting cleanup request...');
-  
   try {
     const body = await readRequestBody(req);
     const data = JSON.parse(body);
     
     if (!data) {
-      console.error('❌ No cleanup data received');
+      console.error('No cleanup data received');
       res.writeHead(400, {'Content-Type':'application/json'});
       return res.end(JSON.stringify({ success: false, error: 'No data received' }));
     }
-
-    console.log('POST /cleanup payload keys:', Object.keys(data));
-    
-    console.log('🔍 Cleanup mode: ACTUAL DELETION');
 
     // Initialize Dataverse client
     const cfg = { 
@@ -722,8 +641,6 @@ async function handleCleanup(req, res) {
     const client = new DataverseClient(cfg);
     
     // Start the cleanup process
-    console.log('🔍 Discovering test entities and relationships...');
-    
     const cleanupOptions = {
       cleanupAll: data.cleanupAll || false,
       entityPrefixes: data.entityPrefixes || [],
@@ -745,12 +662,11 @@ async function handleCleanup(req, res) {
       summary: results.summary || 'Cleanup completed'
     };
     
-    console.log('✅ Cleanup completed successfully');
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify(response));
     
   } catch (e) {
-    console.error('❌ /cleanup error:', e);
+    console.error('/cleanup error:', e);
     res.writeHead(500, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: false, 
@@ -761,8 +677,6 @@ async function handleCleanup(req, res) {
 
 // --- publishers endpoint handler ---------------------------------------
 async function handleGetPublishers(req, res) {
-  console.log('📋 Getting publishers list...');
-  
   try {
     const cfg = await getDataverseConfig();
     const client = new DataverseClient({
@@ -778,7 +692,7 @@ async function handleGetPublishers(req, res) {
     res.end(JSON.stringify({ success: true, publishers }));
     
   } catch (error) {
-    console.error('❌ Failed to get publishers:', error);
+    console.error('Failed to get publishers:', error);
     res.writeHead(500, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: false, 
@@ -789,8 +703,6 @@ async function handleGetPublishers(req, res) {
 }
 
 async function handleGetSolutions(req, res) {
-  console.log('📋 Getting solutions list...');
-  
   try {
     const cfg = await getDataverseConfig();
     const client = new DataverseClient({
@@ -806,7 +718,7 @@ async function handleGetSolutions(req, res) {
     res.end(JSON.stringify({ success: true, solutions }));
     
   } catch (error) {
-    console.error('❌ Failed to get solutions:', error);
+    console.error('Failed to get solutions:', error);
     res.writeHead(500, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: false, 
@@ -818,8 +730,6 @@ async function handleGetSolutions(req, res) {
 
 // --- global choices endpoint handler -----------------------------------
 async function handleGetGlobalChoices(req, res) {
-  console.log('📋 Getting global choices list...');
-  
   try {
     // Get Dataverse configuration
     const cfg = await getDataverseConfig();
@@ -832,12 +742,6 @@ async function handleGetGlobalChoices(req, res) {
     
     const choicesResult = await client.getGlobalChoiceSets();
     
-    console.log('📋 Retrieved global choices:', {
-      total: choicesResult.all?.length || 0,
-      builtIn: choicesResult.grouped?.builtIn?.length || 0,
-      custom: choicesResult.grouped?.custom?.length || 0
-    });
-    
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: true, 
@@ -845,7 +749,7 @@ async function handleGetGlobalChoices(req, res) {
     }));
     
   } catch (error) {
-    console.error('❌ Failed to get global choices:', error);
+    console.error('Failed to get global choices:', error);
     res.writeHead(500, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: false, 
@@ -859,8 +763,6 @@ async function handleGetGlobalChoices(req, res) {
 
 // --- solution status endpoint handler ----------------------------------
 async function handleGetSolutionStatus(req, res) {
-  console.log('🔍 Getting solution status...');
-  
   try {
     const urlParts = url.parse(req.url, true);
     const solutionName = urlParts.query.solution;
@@ -886,20 +788,11 @@ async function handleGetSolutionStatus(req, res) {
     // Get solution components
     const result = await client.getSolutionComponents(solutionName);
     
-    if (result.success) {
-      console.log(`✅ Found solution '${solutionName}' with ${result.components.totalCount} components`);
-      console.log(`   - ${result.components.entities.length} entities`);
-      console.log(`   - ${result.components.optionSets.length} global choices`);
-      console.log(`   - ${result.components.others.length} other components`);
-    } else {
-      console.log(`❌ Failed to get solution status: ${result.error}`);
-    }
-
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify(result));
     
   } catch (error) {
-    console.error('❌ Failed to get solution status:', error);
+    console.error('Failed to get solution status:', error);
     res.writeHead(500, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: false, 
@@ -910,7 +803,7 @@ async function handleGetSolutionStatus(req, res) {
 
 // --- Server Creation with Layered Architecture -------------------------
 async function createLayeredServer() {
-  console.log('🚀 Starting Dataverse ERD-to-Solution Wizard Server...');
+  console.log('Starting Dataverse ERD-to-Solution Wizard Server...');
   
   // Initialize components
   const components = await initializeComponents();
@@ -949,8 +842,6 @@ async function applyMiddleware(req, res, components, next) {
 }
 
 async function routeRequest(pathname, req, res, components, query) {
-  console.log(`${req.method} ${pathname}`);
-
   // Root redirect
   if (req.method === 'GET' && pathname === '/') {
     return components.wizardController.redirectToWizard(req, res);
@@ -1158,32 +1049,33 @@ async function startServer() {
     const port = Number(process.env.PORT) || 8080;
     
     server.listen(port, '0.0.0.0', () => {
-      console.log(`✅ Dataverse ERD-to-Solution Wizard Server running on port ${port}`);
-      console.log(`🌐 Access the wizard at: http://localhost:${port}/wizard`);
-      console.log(`🔍 Health check at: http://localhost:${port}/health`);
-      console.log(`⚙️  Admin panel at: http://localhost:${port}/api/admin/health`);
-      console.log('🏗️  Layered architecture initialized successfully');
+      console.log(`Dataverse ERD-to-Solution Wizard Server running on port ${port}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Start frontend server and access wizard at: http://localhost:3003/wizard`);
+      } else {
+        console.log(`Access the wizard at: http://localhost:${port}/wizard`);
+      }
     });
 
     // Graceful shutdown handling
     process.on('SIGINT', () => {
-      console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+      console.log('\nShutting down gracefully...');
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log('Server closed');
         process.exit(0);
       });
     });
 
     process.on('SIGTERM', () => {
-      console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+      console.log('\nShutting down gracefully...');
       server.close(() => {
-        console.log('✅ Server closed');
+        console.log('Server closed');
         process.exit(0);
       });
     });
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
