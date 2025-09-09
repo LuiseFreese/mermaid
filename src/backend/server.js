@@ -222,28 +222,6 @@ function readRequestBody(req) {
   });
 }
 
-function streamLogs(res) {
-  const logs = console.getLastLogs().map(l => JSON.stringify({ type: 'log', message: l }) + '\n');
-  for (const line of logs) res.write(line);
-}
-
-function writeProgress(res, step, message, details = {}) {
-  const progressData = {
-    type: 'progress',
-    step: step,
-    message: message,
-    timestamp: new Date().toISOString(),
-    ...details
-  };
-  res.write(JSON.stringify(progressData) + '\n');
-  console.log(`${step}: ${message}`);
-}
-
-function writeFinal(res, obj) {
-  res.write(JSON.stringify({ type: 'result', ...obj }) + '\n');
-  res.end();
-}
-
 // Utility functions
 // Configuration management function
 
@@ -268,294 +246,6 @@ async function getDataverseConfig() {
     clientSecret: process.env.CLIENT_SECRET || process.env.DATAVERSE_CLIENT_SECRET
   };
   return { source:'env', ...env };
-}
-
-// --- cleanup endpoint handler ------------------------------------------
-async function handleCleanup(req, res) {
-  let body = '';
-  req.on('data', ch => body += ch);
-  req.on('end', async () => {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked' });
-    try {
-      const data = JSON.parse(body || '{}');
-
- // Parse ERD if provided
-      let erdEntities = [];
-      let erdRelationships = []; // Add this line to store relationships
-
-      if (data.mermaidContent && MermaidERDParser) {
-        const parser = new MermaidERDParser();
-        const pr = parser.parse(data.mermaidContent);
-        erdEntities = pr.entities || [];
-        erdRelationships = pr.relationships || []; // Extract relationships
-      } else if (Array.isArray(data.entities)) {
-        erdEntities = data.entities;
-        // If client provided relationships directly
-        erdRelationships = Array.isArray(data.relationships) ? data.relationships : [];
-      }
-
-      // Dataverse client
-      const cfg = await getDataverseConfig();
-      const client = new DataverseClient({
-        dataverseUrl: cfg.serverUrl,
-        tenantId:     cfg.tenantId,
-        clientId:     cfg.clientId,
-        clientSecret: cfg.clientSecret
-      });
-
-      const solutionUnique = (data.solutionName || 'MermaidSolution').trim();
-      const friendly       = (data.solutionDisplayName || solutionUnique).trim();
-  let publisherName    = data.publisherName || 'Mermaid Publisher';
-  let publisherPrefix  = (typeof data.publisherPrefix === 'string' && data.publisherPrefix.length > 0) ? data.publisherPrefix : undefined;
-
-      // If a publisher was selected (data.publisher), get its details
-      if (data.publisher && typeof data.publisher === 'string') {
-        try {
-          const publishers = await client.getPublishers();
-          const selectedPublisher = publishers.find(p => 
-            p.uniqueName === data.publisher || 
-            p.id === data.publisher
-          );
-          
-          if (selectedPublisher) {
-            publisherPrefix = selectedPublisher.prefix;
-            publisherName = selectedPublisher.friendlyName;
-          } else {
-            console.warn(`Selected publisher '${data.publisher}' not found, using default prefix`);
-          }
-        } catch (error) {
-          console.warn(`Failed to lookup publisher '${data.publisher}':`, error.message);
-        }
-      }
-
-      const cdmChoice = data.cdmChoice;
-      let cdmMatches = Array.isArray(data.cdmMatches) ? data.cdmMatches : [];
-
-      // Determine which entities are CDM vs custom (initial calculation)
-      let cdmEntityNames = cdmMatches.map(m => m?.originalEntity?.name || m?.entity || '').filter(n => n);
-      let customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
-      const hasCDMEntities = cdmMatches.length > 0;
-      let hasCustomEntities = customEntities.length > 0;
-
-      let results = {
-        success: true,
-        cdmResults: null,
-        customResults: null,
-        summary: '',
-        message: 'Deployment completed successfully',
-        entitiesCreated: 0,
-        relationshipsCreated: 0,
-        cdmEntitiesIntegrated: [],
-        error: null
-      };
-
-      // Ensure solution exists
-      let solInfo;
-      try {
-        // First, ensure publisher exists
-        writeProgress(res, 'publisher', 'Creating Publisher...');
-        const pub = await client.ensurePublisher({
-          uniqueName: (publisherName || 'MermaidPublisher').replace(/\s+/g, ''),
-          friendlyName: publisherName || 'Mermaid Publisher',
-          prefix: publisherPrefix || 'mmd'
-        });
-        
-        // Then create/ensure solution with the publisher
-        writeProgress(res, 'solution', 'Creating Solution...');
-        solInfo = await client.ensureSolution(solutionUnique, friendly, pub);
-      } catch (e) {
-        console.warn('ensureSolution warning:', e.message);
-        const check = await client.checkSolutionExists(solutionUnique);
-        if (!check || !check.solutionid) {
-          streamLogs(res);
-          return writeFinal(res, { success:false, summary:'Failed to create or locate solution', message:'Deployment failed', error:e.message });
-        }
-        solInfo = check;
-      }
-
-      // Process CDM entities if any
-      if (hasCDMEntities && cdmChoice === 'cdm') {
-        writeProgress(res, 'cdm', 'Adding CDM Tables...');
-        
-        // ensure we have matches with logicalName; fallback to server-side detection if needed
-        if (!cdmMatches.length || cdmMatches.some(m => !m?.cdmEntity?.logicalName)) {
-          try {
-            const CDMEntityRegistry = require('./cdm/cdm-entity-registry.js');
-            const reg = new CDMEntityRegistry();
-            const det = reg.detectCDMEntities(erdEntities);
-            cdmMatches = det.detectedCDM || det.matches || [];
-            
-            // Recalculate entity separation after fallback detection
-            if (cdmMatches.length > 0) {
-              cdmEntityNames = cdmMatches.map(m => m?.originalEntity?.name || m?.entity || '').filter(n => n);
-              customEntities = erdEntities.filter(entity => !cdmEntityNames.includes(entity.name));
-              hasCustomEntities = customEntities.length > 0;
-            }
-          } catch (e) {
-            console.warn('CDM detection unavailable:', e.message);
-          }
-        }
-
-        if (cdmMatches.length > 0) {
-          results.cdmResults = await client.integrateCDMEntities(cdmMatches, solInfo.uniquename, data.includeRelatedEntities);
-          if (results.cdmResults.success) {
-            results.cdmEntitiesIntegrated = results.cdmResults.integratedEntities || [];
-          } else {
-            console.warn(`CDM integration failed: ${results.cdmResults.error}`);
-            results.success = false;
-          }
-        }
-      }
-
-      // Process custom entities if any
-if (hasCustomEntities) {
-  writeProgress(res, 'custom-entities', `Creating ${customEntities.length} Custom Tables...`);
-  
-  try {
-    results.customResults = await client.createCustomEntities(
-      customEntities, 
-      { 
-        publisherPrefix,
-        publisherName,
-        publisherUniqueName: (publisherName || '').replace(/\s+/g, ''),
-        solutionUniqueName: solInfo.uniquename,  // Note: lowercase 'uniquename' from Dataverse API
-        solutionFriendlyName: friendly,
-        relationships: erdRelationships, // Pass relationships
-        cdmEntities: cdmMatches || [],   // Pass CDM entities for mixed relationships
-        includeRelatedEntities: data.includeRelatedEntities, // Pass the user choice
-        progressCallback: (step, message, details) => writeProgress(res, step, message, details)
-      }
-    );
-    
-    if (results.customResults.success) {
-      results.entitiesCreated += results.customResults.entitiesCreated || 0;
-      results.relationshipsCreated += results.customResults.relationshipsCreated || 0;
-    } else {
-      console.warn(`Custom entity creation failed: ${results.customResults.error}`);
-      // Don't mark overall deployment as failed if CDM succeeded and custom partially failed
-      if (!results.cdmResults?.success) {
-        results.success = false;
-      }
-    }
-  } catch (error) {
-    console.error('Custom entity creation error:', error);
-    results.customResults = {
-      success: false,
-      entitiesCreated: 0,
-      relationshipsCreated: 0,
-      error: error.message,
-      customEntitiesFound: customEntities.map(e => e.name)
-    };
-    // Don't mark overall deployment as failed if CDM succeeded
-    if (!results.cdmResults?.success) {
-      results.success = false;
-    }
-  }
-}
-
-      // Process global choices if any selected
-      if (data.selectedChoices && Array.isArray(data.selectedChoices) && data.selectedChoices.length > 0) {
-        // Filter out undefined, null, and empty values
-        const validChoices = data.selectedChoices.filter(choice => {
-          if (!choice) return false;
-          if (typeof choice === 'string' && choice.trim() === '') return false;
-          if (typeof choice === 'object' && !choice.LogicalName && !choice.Name && !choice.name) return false;
-          return true;
-        });
-        
-        
-        if (validChoices.length === 0) {
-          results.globalChoicesAdded = 0;
-          results.globalChoicesFailed = 0;
-          results.globalChoicesErrors = ['No valid choices after filtering'];
-        } else {
-          try {
-            writeProgress(res, 'global-choices-solution', 'Adding Global Choices to Solution...', { choiceCount: validChoices.length });
-            
-            // Resolve choice names properly
-            const choiceNames = validChoices.map(choice => {
-              return choice?.LogicalName || choice?.Name || choice?.name || choice;
-            });
-            
-            const choicesResult = await client.addGlobalChoicesToSolution(choiceNames, solInfo.uniquename);
-            results.globalChoicesAdded = choicesResult.added || 0;
-            results.globalChoicesFailed = choicesResult.failed || 0;
-            results.globalChoicesErrors = choicesResult.errors || [];
-            
-            if (choicesResult.failed > 0) {
-              console.warn(`Global choices: ${choicesResult.failed} choice sets failed to add`);
-            }
-          } catch (error) {
-            console.error('Global choices processing error:', error);
-            results.globalChoicesAdded = 0;
-            results.globalChoicesFailed = validChoices.length;
-            results.globalChoicesErrors = [error.message];
-          }
-        }
-      } else if (data.selectedChoices && data.selectedChoices.length > 0) {
-        results.globalChoicesAdded = 0;
-        results.globalChoicesFailed = 0;
-        results.globalChoicesErrors = ['No solution name provided for global choices'];
-      }
-
-      // Process custom uploaded global choices if any
-      if (data.customChoices && Array.isArray(data.customChoices) && data.customChoices.length > 0) {
-        // Filter out invalid custom choices
-        const validCustomChoices = data.customChoices.filter(choice => {
-          if (!choice) return false;
-          if (!choice.name && !choice.logicalName) return false;
-          if (!choice.options || !Array.isArray(choice.options) || choice.options.length === 0) return false;
-          return true;
-        });
-        
-        
-        if (validCustomChoices.length === 0) {
-          results.customGlobalChoicesCreated = 0;
-          results.customGlobalChoicesFailed = 0;
-          results.customGlobalChoicesErrors = ['No valid custom choices after filtering'];
-        } else {
-          try {
-            const customChoicesResult = await client.createAndAddCustomGlobalChoices(
-              validCustomChoices, 
-              solInfo.uniquename, 
-              publisherPrefix,
-              (step, message, details) => writeProgress(res, step, message, details)
-            );
-            results.customGlobalChoicesCreated = customChoicesResult.created || 0;
-            results.customGlobalChoicesFailed = customChoicesResult.failed || 0;
-            results.customGlobalChoicesErrors = customChoicesResult.errors || [];
-            
-            if (customChoicesResult.failed > 0) {
-              console.warn(`Custom global choices: ${customChoicesResult.failed} choice sets failed to create`);
-            }
-          } catch (error) {
-            console.error('Custom global choices processing error:', error);
-            results.customGlobalChoicesCreated = 0;
-            results.customGlobalChoicesFailed = validCustomChoices.length;
-            results.customGlobalChoicesErrors = [error.message];
-          }
-        }
-      }
-
-      // Build summary message - always positive for successful deployments
-      results.summary = 'Deployment completed successfully';
-
-      // Map to frontend expected field names
-      results.globalChoicesCreated = (results.customGlobalChoicesCreated || 0);
-      results.selectedGlobalChoicesAdded = (results.globalChoicesAdded || 0);
-
-      // Final progress update
-      writeProgress(res, 'complete', 'Finishing...', { completed: true });
-
-      streamLogs(res);
-      return writeFinal(res, results);
-
-    } catch (e) {
-      console.error('/upload error:', e);
-      streamLogs(res);
-      return writeFinal(res, { success:false, message:'Internal error', error: e.message });
-    }
-  });
 }
 
 // --- cleanup endpoint handler ------------------------------------------
@@ -723,46 +413,6 @@ async function handleGetGlobalChoices(req, res) {
 }
 
 // --- Server Creation with Layered Architecture -------------------------
-async function handleGetSolutionStatus(req, res) {
-  try {
-    const urlParts = url.parse(req.url, true);
-    const solutionName = urlParts.query.solution;
-    
-    if (!solutionName) {
-      res.writeHead(400, {'Content-Type':'application/json'});
-      return res.end(JSON.stringify({ 
-        success: false, 
-        error: 'Solution name is required as query parameter: ?solution=SolutionName'
-      }));
-    }
-
-    // Get Dataverse configuration
-    const cfg = await getDataverseConfig();
-    const client = new DataverseClient({
-      dataverseUrl: cfg.serverUrl,
-      tenantId: cfg.tenantId,
-      clientId: cfg.clientId,
-      clientSecret: cfg.clientSecret,
-      verbose: true
-    });
-
-    // Get solution components
-    const result = await client.getSolutionComponents(solutionName);
-    
-    res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify(result));
-    
-  } catch (error) {
-    console.error('Failed to get solution status:', error);
-    res.writeHead(500, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ 
-      success: false, 
-      error: error.message
-    }));
-  }
-}
-
-// --- Server Creation with Layered Architecture -------------------------
 async function createLayeredServer() {
   console.log('Starting Dataverse ERD-to-Solution Wizard Server...');
   
@@ -813,11 +463,6 @@ async function routeRequest(pathname, req, res, components) {
     return components.wizardController.serveReactApp(req, res);
   }
 
-  // Legacy Wizard UI (Backup)
-  if (req.method === 'GET' && pathname === '/legacy/wizard') {
-    return components.wizardController.serveLegacyWizard(req, res);
-  }
-
   // Root redirect to wizard
   if (req.method === 'GET' && pathname === '/') {
     res.writeHead(302, { 'Location': '/wizard' });
@@ -847,7 +492,6 @@ async function routeRequest(pathname, req, res, components) {
     return handleApiRoutes(pathname, req, res, components);
   }
 
-  // Legacy upload routes (for backward compatibility)
   if (req.method === 'POST' && pathname === '/upload') {
     return components.deploymentController.deploySolution(req, res);
   }
@@ -937,7 +581,7 @@ async function handleApiRoutes(pathname, req, res, components) {
     }
   }
 
-  // Legacy routes (for backward compatibility)
+  // API routes
   switch (route) {
     case 'validate':
     case 'validate-erd':

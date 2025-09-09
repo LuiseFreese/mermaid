@@ -12,7 +12,6 @@ class WizardController extends BaseController {
         
         this.staticFilesPath = dependencies.staticFilesPath || path.join(__dirname, '../../');
         this.reactDistPath = path.join(__dirname, '../../frontend/dist');
-        this.legacyPath = path.join(__dirname, '../../legacy');
     }
 
     /**
@@ -46,7 +45,6 @@ class WizardController extends BaseController {
                                 <li>Run: <code>cd src/frontend && npm run build</code></li>
                                 <li>Or start development mode: <code>cd src/frontend && npm run dev</code> (port 3000)</li>
                             </ol>
-                            <p><a href="/legacy/wizard">Use Legacy Wizard (HTML)</a></p>
                         </div>
                     </body>
                     </html>
@@ -71,41 +69,6 @@ class WizardController extends BaseController {
         }
     }
 
-    /**
-     * Serve the legacy wizard (Backup)
-     * GET /legacy/wizard
-     */
-    async serveLegacyWizard(req, res) {
-        this.log('serveLegacyWizard', { method: req.method, url: req.url });
-
-        try {
-            const legacyWizardPath = path.join(this.legacyPath, 'wizard-ui.html');
-            
-            // Check if legacy file exists
-            if (!fs.existsSync(legacyWizardPath)) {
-                return this.sendError(res, 404, 'Legacy wizard UI file not found', {
-                    filePath: legacyWizardPath
-                });
-            }
-
-            // Read and serve the legacy file
-            const content = fs.readFileSync(legacyWizardPath, 'utf8');
-            
-            res.writeHead(200, { 
-                'Content-Type': 'text/html',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            });
-            res.end(content);
-
-        } catch (error) {
-            this.sendInternalError(res, 'Failed to serve legacy wizard UI', error);
-        }
-    }
-
-    /**
-     * Serve the wizard UI
     /**
      * Serve static files (JS, CSS, etc.)
      * GET /static/*

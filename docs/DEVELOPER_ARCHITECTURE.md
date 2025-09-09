@@ -128,7 +128,7 @@ src/backend/
 - **Dependency Container**: Initializes and wires all services, repositories, and controllers
 - **HTTP Routing**: Routes requests to appropriate controllers
 - **Middleware Pipeline**: Applies logging, CORS, error handling, and streaming
-- **Static File Serving**: Serves React frontend and legacy wizard files
+- **Static File Serving**: Serves React frontend files
 
 **Architecture Pattern**: Uses dependency injection with repositories → services → controllers pattern
 
@@ -270,7 +270,6 @@ This section provides detailed documentation for all available API endpoints imp
 |----------|--------|------------|-------------|
 | `GET /` | GET | WizardController | Redirects to React wizard interface |
 | `GET /wizard` | GET | WizardController | Serves React application |
-| `GET /legacy/wizard` | GET | WizardController | Serves legacy HTML wizard (backup) |
 | `GET /health` | GET | AdminController | Application health status and diagnostics |
 | `POST /upload` | POST | DeploymentController | Primary deployment with streaming response |
 | `POST /api/validate-erd` | POST | ValidationController | ERD validation with auto-corrections |
