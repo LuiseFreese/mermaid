@@ -193,6 +193,40 @@ The test suite includes 183 test cases covering:
 - **E2E**: Full ERD-to-Dataverse deployment scenarios
 - **Security**: Input validation, XSS protection, error recovery
 
+### End-to-End (E2E) Testing
+
+**New E2E test suite** provides browser automation testing using Jest + Puppeteer:
+
+```bash
+npm run test:e2e                              # Run all E2E tests
+npm run test:e2e tests/e2e/basic-wizard.test.js  # Run specific test file
+```
+
+**E2E Test Coverage** (11 tests across 4 suites):
+- **basic-connection.test.js**: Frontend server connectivity
+- **basic-wizard.test.js**: Wizard navigation and accessibility
+- **page-inspection.test.js**: UI structure and element detection  
+- **wizard-workflow-simple.test.js**: Complete wizard workflow testing
+  - File upload interface validation
+  - Step navigation (steps 1-4)
+  - UI component structure
+  - Data-testid attributes for automation
+  - FluentUI semantic structure
+
+**E2E Infrastructure:**
+- Cross-platform setup (Windows PowerShell compatible)
+- Automatic backend/frontend server startup
+- Dynamic port detection and management
+- Screenshot capture for debugging
+- Comprehensive cleanup and teardown
+
+**Key Features Tested:**
+- React wizard interface loading
+- File upload functionality (`data-testid="upload-trigger"`)
+- Step progression badges (`data-testid="step-1"` through `step-4`)
+- Wizard container structure (`data-testid="wizard-container"`)
+- FluentUI component rendering and accessibility
+
 ### Testing Tools
 
 - **Jest**: Test framework and runner
