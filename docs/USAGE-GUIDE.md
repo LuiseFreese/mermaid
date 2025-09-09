@@ -256,8 +256,8 @@ erDiagram
     Account {
         string account_id PK "Account identifier"
         string account_name "Account name"
-        string website_url "Company website"  // Auto-detected as URL
-        string main_phone "Main phone"        // Auto-detected as phone
+        string website_url "Company website"  
+        string main_phone "Main phone" 
         decimal annual_revenue "Annual revenue"
     }
     
@@ -265,8 +265,8 @@ erDiagram
         string contact_id PK "Contact identifier"
         string first_name "First name"
         string last_name "Last name" 
-        string business_email "Business email"  // Auto-detected as email
-        string mobile_phone "Mobile phone"      // Auto-detected as phone
+        string business_email "Business email"
+        string mobile_phone "Mobile phone" 
         string account_id FK "Associated account"
     }
     

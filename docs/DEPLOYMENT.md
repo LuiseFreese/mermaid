@@ -30,15 +30,6 @@ cd mermaid
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
 
-## What You Get
-
-After setup, you'll have a **complete working application** that:
-- ✅ Converts Mermaid ERD files to Dataverse entities
-- ✅ Provides a web interface for file uploads
-- ✅ Shows real-time processing logs
-- ✅ Supports dry-run mode for validation
-- ✅ Uses enterprise-grade security (Managed Identity + Key Vault)
-
 ## Prerequisites
 
 Before running the setup:
@@ -249,35 +240,3 @@ Both scripts are **idempotent** and can be run multiple times safely:
 - Rebuild frontend for latest changes
 - Update runtime configuration
 - Ensure optimal performance
-
-## Using Your Deployed Application
-
-After the automated setup completes, you can start using the application:
-
-### 1. Access Your Application
-Visit the URL provided by the setup script:
-```
-https://your-app-name.azurewebsites.net
-```
-
-### 2. Upload Mermaid Files
-- Use the web interface to upload `.mmd` files
-- Start with **dry-run mode** to validate your files
-- Review the real-time processing logs
-- Switch to **live mode** to create actual Dataverse entities
-
-### 3. Monitor and Manage
-- Check the status dashboard for system health
-- Use diagnostic endpoints to troubleshoot issues
-- View created entities in your Dataverse environment
-
-## Next Steps
-
-After successful deployment:
-
-1. **Read the Usage Guide**: See [USAGE-GUIDE.md](USAGE-GUIDE.md) for how to use the application
-2. **Try Examples**: Test with sample files in the `examples/` folder
-3. **Understand Mermaid Syntax**: Review [MERMAID-GUIDE.md](MERMAID-GUIDE.md) for supported ERD syntax
-4. **Learn About Relationships**: See [RELATIONSHIP_TYPES.md](RELATIONSHIP_TYPES.md) for relationship modeling
-
-For technical details about the application architecture, see [DEVELOPER.md](DEVELOPER.md).

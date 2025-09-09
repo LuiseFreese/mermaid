@@ -43,42 +43,47 @@ erDiagram
 
 > **🎯 Smart Detection**: The system will identify these as CDM entities and offer to use the existing `contact` and `account` entities instead of creating custom ones.
 
-### 🛠️ **Primary Column Validation**
+### Primary Column Validation
 Dataverse automatically creates a primary name column for each entity. The validator detects conflicts:
 
 **Problem detected:**
 
-```mermaid
+```bash
 erDiagram
     Customer {
         string customer_id PK "Customer identifier"
-        string name "Customer name"  // Conflicts with auto-generated primary column
+        string name "Customer name"  
+        string email "Email address"
+    }
+```
+> Note: The `name` column may conflict with auto-generated primary column naming.
+
+**Auto-suggested fix:**
+```bash
+erDiagram
+    Customer {
+        string customer_id PK "Customer identifier"
+        string name "Customer name"
         string email "Email address"
     }
 ```
 
-**Auto-suggested fix:**
-```mermaid
-erDiagram
-    Customer {
-        string customer_id PK "Customer identifier" 
-        string customer_name "Customer name"  // Renamed to avoid conflict
-        string email "Email address"
-    }
-```
+> Note: Renamed to avoid conflict
 
 ### 🚫 **Status Column Handling**
 Dataverse has built-in status management via `statecode` and `statuscode`. Status columns are automatically ignored:
 
 **Original ERD:**
-```mermaid
+```bash
 erDiagram
     Order {
         string order_id PK "Order identifier"
         decimal total_amount "Order total"
-        string status "Order status"  // Will be ignored
+        string status "Order status"
     }
+
 ```
+Note: Removed inline comment to avoid parse error.
 
 **System behavior:**
 - Status columns are automatically filtered out during entity creation
@@ -95,14 +100,16 @@ Prevents conflicts with Dataverse system columns:
 
 **Auto-suggested renaming pattern:**
 
-```mermaid
+```bash
 erDiagram
     Task {
         string task_id PK "Task identifier"
-        string task_ownerid FK "Task owner reference"  // Prefixed to avoid conflict
+        string task_ownerid FK "Task owner reference" 
         string description "Task description"
     }
 ```
+
+>Note: Prefixed to avoid conflict
 
 ## Basic Mermaid ERD Syntax
 
@@ -161,31 +168,35 @@ The system supports a comprehensive range of Dataverse column types with smart t
 The system includes intelligent type detection that automatically improves data types based on field names:
 
 **Automatic Email Detection:**
-```mermaid
+```bash
 erDiagram
     Contact {
-        string user_email "Email address"  // Automatically becomes 'email' type
-        string contact_email "Contact email"  // Automatically becomes 'email' type
+        string user_email "Email address"
+        string contact_email "Contact email"  
     }
 ```
+>Note: Automatically becomes 'email' type
 
 **Automatic Phone Detection:**
-```mermaid
+```bash
 erDiagram
     Contact {
-        string mobile_phone "Mobile number"  // Automatically becomes 'phone' type
-        string office_tel "Office telephone"  // Automatically becomes 'phone' type
+        string mobile_phone "Mobile number" 
+        string office_tel "Office telephone"  
+    }
+```
+> Note: Automatically becomes 'phone' type
+
+**Automatic URL Detection:**
+```bash
+erDiagram
+    Company {
+        string website_url "Company website" 
+        string homepage "Company homepage"
     }
 ```
 
-**Automatic URL Detection:**
-```mermaid
-erDiagram
-    Company {
-        string website_url "Company website"  // Automatically becomes 'url' type
-        string homepage "Company homepage"  // Automatically becomes 'url' type
-    }
-```
+> Note: Automatically becomes 'url' type
 
 ### Type Aliases
 
@@ -200,7 +211,7 @@ Multiple Mermaid type names map to the same Dataverse type for flexibility:
 
 ### Complete Example with All Data Types
 
-```mermaid
+```bash
 erDiagram
     DataTypeShowcase {
         string showcase_id PK "Primary identifier"

@@ -150,10 +150,9 @@ graph TB
 **Purpose**: Modern React 18 application providing the primary user interface with step-by-step wizard functionality.
 
 **Technology Stack**:
-- **React 18** with TypeScript for type safety
-- **Fluent UI v9** for Microsoft-consistent design system
+- **React 18** with TypeScript
+- **Fluent UI v9** 
 - **Vite** for fast development and optimized production builds
-- **Modern CSS** with responsive design
 
 **Key Features**:
 - Multi-step wizard interface with progress tracking
@@ -1047,23 +1046,6 @@ function generateColumnMetadata(attribute, publisherPrefix) {
   }
 }
 ```
-
-## Error Handling
-
-### Error Categories
-
-1. **Validation Errors**: Invalid Mermaid syntax or missing required fields
-2. **Authentication Errors**: Key Vault or Dataverse authentication failures
-3. **Network Errors**: Connectivity issues with external services
-4. **Business Logic Errors**: Dataverse entity creation conflicts
-5. **File Upload Errors**: Invalid files, size limits, format issues
-6. **API Errors**: Dataverse operation failures
-
-### Recovery Strategies
-
-- **Graceful Degradation**: Continue with partial functionality when possible
-- **Retry Logic**: Automatic retry for transient failures
-- **User Feedback**: Clear error messages with actionable guidance
 
 ## Deployment Architecture
 
