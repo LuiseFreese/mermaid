@@ -58,7 +58,7 @@ export const WizardShell: React.FC = () => {
         backgroundColor: tokens.colorNeutralBackground1,
       }}>
         {/* Blue Header Section */}
-        <div style={{
+        <header style={{
           backgroundColor: tokens.colorBrandBackground,
           color: tokens.colorNeutralForegroundOnBrand,
           padding: '32px 24px',
@@ -71,7 +71,7 @@ export const WizardShell: React.FC = () => {
             flexDirection: 'column',
             gap: '8px',
           }}>
-            <Title1 style={{ 
+            <Title1 as="h1" style={{ 
               color: tokens.colorNeutralForegroundOnBrand 
             }}>
               Mermaid to Dataverse Converter
@@ -83,9 +83,9 @@ export const WizardShell: React.FC = () => {
               Transform your Mermaid ERD diagrams into Microsoft Dataverse solutions
             </Text>
           </div>
-        </div>
+        </header>
 
-        <div style={{
+        <main style={{
           maxWidth: '1000px',
           margin: '0 auto',
           paddingLeft: '24px',
@@ -94,14 +94,14 @@ export const WizardShell: React.FC = () => {
           paddingBottom: '40px'
         }}>
           {/* Progress Section */}
-          <div style={{ marginBottom: '32px' }}>
+          <nav aria-label="Wizard progress" style={{ marginBottom: '32px' }}>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'space-between',
               marginBottom: '16px' 
             }}>
-              <Title2>Conversion Process</Title2>
+              <Title2 as="h2">Conversion Process</Title2>
               <Badge 
                 appearance="filled" 
                 color="brand"
@@ -113,6 +113,7 @@ export const WizardShell: React.FC = () => {
             <ProgressBar 
               value={currentStep / totalSteps} 
               style={{ marginBottom: '16px' }}
+              aria-label={`Conversion progress: step ${currentStep} of ${totalSteps}`}
             />
             
             <div style={{ 
@@ -134,7 +135,7 @@ export const WizardShell: React.FC = () => {
               <Badge data-testid="step-4" appearance={currentStep >= 4 ? "filled" : "outline"} color="brand">4</Badge>
               <Text size={300}>Deployment Summary</Text>
             </div>
-          </div>
+          </nav>
 
           {/* Main Content */}
           <div data-testid="wizard-content" style={{
@@ -149,7 +150,7 @@ export const WizardShell: React.FC = () => {
               <Route path="deploy" element={<div data-testid="step-4-content"><DeploymentStep onPrevious={handlePrevious} /></div>} />
             </Routes>
           </div>
-        </div>
+        </main>
       </div>
     </WizardProvider>
   );
