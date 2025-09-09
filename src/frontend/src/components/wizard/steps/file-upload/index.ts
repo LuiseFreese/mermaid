@@ -45,5 +45,4 @@ export type {
 
 // Utilities
 export { CDM_ENTITIES } from './utils/cdmEntityList';
-export { parseERDContent } from './utils/erdParser';
-export { validateERDStructure } from './utils/validationRules';
+export { validateERDContent } from './utils/validationRules';

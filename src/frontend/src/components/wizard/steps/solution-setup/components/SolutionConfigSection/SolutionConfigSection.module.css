@@ -1,0 +1,278 @@
+/**
+ * SolutionConfigSection Styles
+ * Layout and styling for solution configuration
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerContent {
+  flex: 1;
+  min-width: 200px;
+}
+
+.headerDescription {
+  color: var(--colorNeutralForeground3);
+  margin-top: 4px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sectionContent {
+  width: 100%;
+}
+
+/* Solution Item Styling */
+.solutionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.solutionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.solutionName {
+  flex: 1;
+  min-width: 0;
+}
+
+.solutionBadges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.solutionDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.solutionDescription {
+  color: var(--colorNeutralForeground2);
+  line-height: 1.4;
+}
+
+.solutionMeta {
+  color: var(--colorNeutralForeground3);
+  font-family: var(--fontFamilyMonospace);
+}
+
+/* Selected Solution Card */
+.selectedSolutionCard {
+  padding: 20px;
+  border: 1px solid var(--colorNeutralStroke2);
+  background-color: var(--colorNeutralBackground1);
+}
+
+.selectedSolutionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.selectedSolutionInfo {
+  flex: 1;
+  min-width: 200px;
+}
+
+.selectedSolutionBadges {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.selectedSolutionActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.selectedSolutionDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--colorNeutralBackground2);
+  border-radius: var(--borderRadiusMedium);
+}
+
+.managedWarning {
+  margin-top: 16px;
+}
+
+.warningIcon {
+  margin-right: 8px;
+}
+
+/* New Solution Card */
+.newSolutionCard {
+  padding: 20px;
+  border: 1px solid var(--colorNeutralStroke2);
+  background-color: var(--colorNeutralBackground1);
+}
+
+.newSolutionHeader {
+  margin-bottom: 20px;
+}
+
+.newSolutionDescription {
+  color: var(--colorNeutralForeground3);
+  margin-top: 4px;
+}
+
+.newSolutionForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.descriptionTextarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 12px;
+  border: 1px solid var(--colorNeutralStroke1);
+  border-radius: var(--borderRadiusMedium);
+  font-family: var(--fontFamilyBase);
+  font-size: var(--fontSizeBase300);
+  line-height: 1.4;
+  background-color: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+  resize: vertical;
+}
+
+.descriptionTextarea:focus {
+  outline: 2px solid var(--colorStrokeFocus2);
+  outline-offset: -2px;
+  border-color: var(--colorStrokeFocus1);
+}
+
+.descriptionTextarea::placeholder {
+  color: var(--colorNeutralForeground3);
+}
+
+/* Status Indicator */
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: var(--borderRadiusMedium);
+  border: 1px solid;
+}
+
+.statusSuccess {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--colorPaletteGreenForeground1);
+  background-color: var(--colorPaletteGreenBackground1);
+  border-color: var(--colorPaletteGreenBorder1);
+}
+
+.statusInProgress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--colorPaletteBlueForeground1);
+  background-color: var(--colorPaletteBlueBackground1);
+  border-color: var(--colorPaletteBlueBorder1);
+}
+
+.statusPending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--colorPaletteYellowForeground1);
+  background-color: var(--colorPaletteYellowBackground1);
+  border-color: var(--colorPaletteYellowBorder1);
+}
+
+.statusIcon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .headerActions {
+    justify-content: flex-start;
+  }
+  
+  .selectedSolutionHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .selectedSolutionActions {
+    justify-content: flex-start;
+  }
+  
+  .solutionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    gap: 16px;
+  }
+  
+  .selectedSolutionCard,
+  .newSolutionCard {
+    padding: 16px;
+  }
+  
+  .newSolutionForm {
+    gap: 12px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .selectedSolutionCard,
+  .newSolutionCard {
+    border-width: 2px;
+  }
+  
+  .selectedSolutionDetails {
+    border: 1px solid var(--colorNeutralStroke2);
+  }
+  
+  .descriptionTextarea {
+    border-width: 2px;
+  }
+}

@@ -10,8 +10,7 @@ import {
   Text,
   Button,
   MessageBar,
-  MessageBarBody,
-  tokens
+  MessageBarBody
 } from '@fluentui/react-components';
 import type { CDMDetectionCardProps } from '../types/file-upload.types';
 import styles from './CDMDetectionCard.module.css';

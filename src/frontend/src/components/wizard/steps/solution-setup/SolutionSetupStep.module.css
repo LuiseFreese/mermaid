@@ -1,0 +1,267 @@
+/**
+ * SolutionSetupStep Styles
+ * Main component layout and styling
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Header Section */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+  flex-wrap: wrap;
+}
+
+.headerContent {
+  flex: 1;
+  min-width: 300px;
+}
+
+.headerDescription {
+  color: var(--colorNeutralForeground3);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* Error Display */
+.globalError {
+  width: 100%;
+}
+
+.errorIcon {
+  margin-right: 8px;
+  color: var(--colorPaletteRedForeground1);
+}
+
+/* Loading State */
+.loadingCard {
+  padding: 40px;
+  text-align: center;
+  border: 1px solid var(--colorNeutralStroke2);
+  background-color: var(--colorNeutralBackground1);
+}
+
+.loadingContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Main Content */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section {
+  width: 100%;
+}
+
+.sectionDivider {
+  margin: 16px 0;
+}
+
+/* Status Summary Card */
+.statusCard {
+  padding: 24px;
+  border: 2px solid;
+  background-color: var(--colorNeutralBackground1);
+  margin-top: 16px;
+}
+
+.statusContent {
+  width: 100%;
+}
+
+.statusSuccess {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  color: var(--colorPaletteGreenForeground1);
+  border-color: var(--colorPaletteGreenBorder1);
+}
+
+.statusError {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  color: var(--colorPaletteRedForeground1);
+  border-color: var(--colorPaletteRedBorder1);
+}
+
+.statusPending {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  color: var(--colorPaletteYellowForeground1);
+  border-color: var(--colorPaletteYellowBorder1);
+}
+
+.statusIcon {
+  flex-shrink: 0;
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.statusDetails {
+  color: var(--colorNeutralForeground2);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Status Card Color Variants */
+.statusCard:has(.statusSuccess) {
+  border-color: var(--colorPaletteGreenBorder1);
+  background-color: var(--colorPaletteGreenBackground1);
+}
+
+.statusCard:has(.statusError) {
+  border-color: var(--colorPaletteRedBorder1);
+  background-color: var(--colorPaletteRedBackground1);
+}
+
+.statusCard:has(.statusPending) {
+  border-color: var(--colorPaletteYellowBorder1);
+  background-color: var(--colorPaletteYellowBackground1);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    max-width: 100%;
+    padding: 20px;
+  }
+  
+  .header {
+    gap: 16px;
+  }
+  
+  .content {
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+    gap: 24px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .headerContent {
+    min-width: auto;
+  }
+  
+  .headerActions {
+    justify-content: flex-start;
+  }
+  
+  .statusCard {
+    padding: 20px;
+  }
+  
+  .statusSuccess,
+  .statusError,
+  .statusPending {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .statusIcon {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+    gap: 20px;
+  }
+  
+  .loadingCard {
+    padding: 24px;
+  }
+  
+  .statusCard {
+    padding: 16px;
+  }
+  
+  .content {
+    gap: 16px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .header {
+    border-bottom-width: 2px;
+  }
+  
+  .statusCard {
+    border-width: 3px;
+  }
+  
+  .loadingCard {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .container {
+    transition: none;
+  }
+  
+  .statusCard {
+    transition: none;
+  }
+}
+
+/* Focus management */
+.container:focus-within {
+  outline: none;
+}
+
+/* Print styles */
+@media print {
+  .container {
+    max-width: none;
+    padding: 0;
+    gap: 16px;
+  }
+  
+  .headerActions {
+    display: none;
+  }
+  
+  .loadingCard {
+    display: none;
+  }
+}

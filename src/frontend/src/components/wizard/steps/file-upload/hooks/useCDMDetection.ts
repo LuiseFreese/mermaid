@@ -4,12 +4,14 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { detectCDMEntitiesInContent, isCDMEntity } from '../utils/cdmEntityList';
+import { findCDMEntitiesInContent } from '../utils/cdmEntityList';
 import type { CDMDetectionResult } from '../types/file-upload.types';
 
 export interface UseCDMDetectionResult {
   detectionResult: CDMDetectionResult;
+  cdmDetection: CDMDetectionResult;
   detectCDMEntities: (content: string) => void;
+  setCDMChoice: (choice: 'cdm' | 'custom' | null) => void;
   setEntityChoice: (choice: 'cdm' | 'custom' | null) => void;
   resetDetection: () => void;
   hasCDMEntities: boolean;
@@ -32,11 +34,11 @@ export const useCDMDetection = (initialContent?: string): UseCDMDetectionResult 
    * Detect CDM entities in the provided content
    */
   const detectCDMEntities = useCallback((content: string) => {
-    const detection = detectCDMEntitiesInContent(content);
+    const entities = findCDMEntitiesInContent(content);
     
     setDetectionResult({
-      detected: detection.detected,
-      entities: detection.entities,
+      detected: entities.length > 0,
+      entities: entities,
       choice: null // Reset choice when new content is analyzed
     });
   }, []);
@@ -84,7 +86,9 @@ export const useCDMDetection = (initialContent?: string): UseCDMDetectionResult 
 
   return {
     detectionResult,
+    cdmDetection: detectionResult, // Alias for compatibility
     detectCDMEntities,
+    setCDMChoice: setEntityChoice, // Alias for compatibility
     setEntityChoice,
     resetDetection,
     hasCDMEntities,

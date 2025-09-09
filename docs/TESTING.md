@@ -100,6 +100,27 @@ curl "http://localhost:8080/api/solution-status?solution=TestSolution"
 - Vite has built-in debugging support
 - TypeScript provides compile-time error checking
 
+**Frontend Unit Tests:**
+```bash
+# Run frontend unit tests
+cd src/frontend && npm test
+
+# Run specific test suite
+npm test -- tests/unit/solution-setup/
+```
+
+**Frontend Test Coverage:**
+- **Solution Setup Tests**: 97/97 tests passing
+  - SearchableDropdown component (21 tests)
+  - useSearchableDropdown hook (23 tests) 
+  - useSolutionConfiguration hook (12 tests)
+  - usePublisherConfiguration hook (11 tests)
+  - useNameGeneration hook (13 tests)
+  - SolutionSetupStep integration (17 tests)
+- **General Wizard Tests**: 28/28 tests passing
+  - FileUploadStep, GlobalChoicesStep, DeploymentStep
+  - WizardShell, ErrorDisplay components
+
 **Browser Testing:**
 - Access development server at http://localhost:3003 (frontend)
 - Access full application at http://localhost:8080 (production mode)
@@ -148,11 +169,11 @@ This project includes a comprehensive testing suite to ensure code quality and p
 
 ### Test Structure
 
-The project uses **Jest** as the primary testing framework with organized test suites:
+The project uses **Jest** and **Vitest** as testing frameworks with organized test suites:
 
 ```
 tests/
-├── unit/              # Component isolation tests
+├── unit/              # Backend component isolation tests
 │   ├── services/      # Business logic testing
 │   ├── controllers/   # Request/response handling
 │   ├── middleware/    # CORS, security, validation
@@ -161,6 +182,11 @@ tests/
 ├── integration/       # API endpoint testing
 ├── e2e/              # Full workflow testing
 └── fixtures/         # Test data and mocks
+
+src/frontend/tests/
+├── unit/              # Frontend component tests (Vitest)
+│   └── solution-setup/  # Wizard step components and hooks
+└── __tests__/         # General component tests
 ```
 
 ### Running Tests

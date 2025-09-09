@@ -3,12 +3,13 @@
  * Handles Mermaid initialization, theming, and diagram rendering with retry logic
  */
 
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import mermaid from 'mermaid';
 import type { MermaidRenderResult } from '../types/file-upload.types';
 
 export interface UseMermaidRendererResult {
   renderDiagram: (content: string, elementRef: React.RefObject<HTMLDivElement>) => Promise<MermaidRenderResult>;
+  renderResult: MermaidRenderResult | null;
   isRendering: boolean;
   renderError: string | null;
   lastRenderedContent: string | null;
@@ -23,6 +24,7 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [lastRenderedContent, setLastRenderedContent] = useState<string | null>(null);
+  const [renderResult, setRenderResult] = useState<MermaidRenderResult | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   /**
@@ -120,6 +122,7 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
       };
 
       const result = await attemptRender();
+      setRenderResult(result);
       return result;
 
     } catch (error) {
@@ -136,10 +139,12 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
         `;
       }
 
-      return {
+      const errorResult = {
         success: false,
         error: errorMessage
       };
+      setRenderResult(errorResult);
+      return errorResult;
     } finally {
       setIsRendering(false);
     }
@@ -152,6 +157,7 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
 
   return {
     renderDiagram,
+    renderResult,
     isRendering,
     renderError,
     lastRenderedContent,

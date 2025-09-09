@@ -4,13 +4,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { detectCDMEntitiesInContent } from '../utils/cdmEntityList';
+import { findCDMEntitiesInContent } from '../utils/cdmEntityList';
 import { validateERDContent } from '../utils/validationRules';
 import type { FileProcessingResult, CDMDetectionResult } from '../types/file-upload.types';
 import type { ValidationResult } from '../types/validation.types';
 
 export interface UseFileProcessingResult {
   isProcessing: boolean;
+  isLoading: boolean; // Alias for compatibility
   processingError: string | null;
   lastProcessedFile: File | null;
   lastProcessingResult: FileProcessingResult | null;
@@ -61,10 +62,10 @@ export const useFileProcessing = (): UseFileProcessingResult => {
       }
 
       // Step 6: Perform CDM detection
-      const cdmDetection = detectCDMEntitiesInContent(content);
+      const cdmEntities = findCDMEntitiesInContent(content);
       const cdmDetectionResult: CDMDetectionResult = {
-        detected: cdmDetection.detected,
-        entities: cdmDetection.entities,
+        detected: cdmEntities.length > 0,
+        entities: cdmEntities,
         choice: null // Will be set by user interaction
       };
 
@@ -122,6 +123,7 @@ export const useFileProcessing = (): UseFileProcessingResult => {
 
   return {
     isProcessing,
+    isLoading: isProcessing, // Alias for compatibility
     processingError,
     lastProcessedFile,
     lastProcessingResult,

@@ -6,10 +6,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { 
   validateERDContent, 
-  hasNamingIssues, 
-  hasChoiceIssues, 
-  hasStatusIssues, 
-  hasPrimaryKeyIssues,
   getIssuesByType
 } from '../utils/validationRules';
 import type { ValidationResult, ValidationIssue } from '../types/validation.types';
@@ -17,6 +13,7 @@ import type { ValidationResult, ValidationIssue } from '../types/validation.type
 export interface UseERDValidationResult {
   validationResult: ValidationResult | null;
   validateContent: (content: string) => void;
+  validateERD: (content: string, isCDM?: boolean) => void;
   resetValidation: () => void;
   isValid: boolean;
   hasWarnings: boolean;
@@ -79,7 +76,7 @@ export const useERDValidation = (initialContent?: string): UseERDValidationResul
   );
 
   const hasErrors = useMemo(() => 
-    validationResult?.summary.errors ?? 0 > 0, 
+    (validationResult?.summary.errors ?? 0) > 0, 
     [validationResult]
   );
 
@@ -146,6 +143,7 @@ export const useERDValidation = (initialContent?: string): UseERDValidationResul
   return {
     validationResult,
     validateContent,
+    validateERD: validateContent, // Alias for compatibility
     resetValidation,
     isValid,
     hasWarnings,

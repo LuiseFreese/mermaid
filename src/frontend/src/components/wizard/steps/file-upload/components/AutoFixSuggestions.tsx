@@ -17,7 +17,7 @@ import {
   tokens
 } from '@fluentui/react-components';
 import { 
-  AutoFix20Regular,
+  WrenchRegular,
   PlayRegular,
   CheckmarkCircleRegular,
   InfoRegular
@@ -50,7 +50,7 @@ export const AutoFixSuggestions: React.FC<AutoFixSuggestionsProps> = ({
         header={
           <div className={styles.headerContent}>
             <div className={styles.titleSection}>
-              <AutoFix20Regular className={styles.titleIcon} />
+              <WrenchRegular className={styles.titleIcon} />
               <Text weight="semibold" size={500}>
                 Auto-Fix Suggestions
               </Text>

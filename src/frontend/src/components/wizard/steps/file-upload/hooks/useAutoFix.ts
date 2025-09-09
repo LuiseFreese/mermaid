@@ -14,8 +14,12 @@ import type { ValidationIssue } from '../types/validation.types';
 export interface UseAutoFixResult {
   fixedIssues: Set<string>;
   isFixing: boolean;
+  isApplying: boolean; // Alias for compatibility
   lastFixError: string | null;
+  autoFixes: any[]; // Array of available fixes
+  generateAutoFixes: (content: string, issues: ValidationIssue[]) => any[];
   applyFix: (content: string, fixType: string, entityName?: string) => string;
+  applyAllFixes: (content: string, fixes: any[]) => string;
   applyAllAvailableFixes: (content: string) => string;
   markIssueAsFixed: (issueKey: string) => void;
   resetFixedIssues: () => void;
@@ -30,6 +34,7 @@ export const useAutoFix = (): UseAutoFixResult => {
   const [fixedIssues, setFixedIssues] = useState<Set<string>>(new Set());
   const [isFixing, setIsFixing] = useState(false);
   const [lastFixError, setLastFixError] = useState<string | null>(null);
+  const [autoFixes, setAutoFixes] = useState<any[]>([]);
 
   /**
    * Apply a specific fix to the content
@@ -139,11 +144,60 @@ export const useAutoFix = (): UseAutoFixResult => {
     return fixedIssues.has(issueKey);
   }, [fixedIssues]);
 
+  /**
+   * Generate auto-fixes for given issues
+   */
+  const generateAutoFixes = useCallback((_content: string, issues: ValidationIssue[]): any[] => {
+    const fixes: any[] = [];
+    
+    issues.forEach(issue => {
+      switch (issue.type) {
+        case 'naming':
+          fixes.push({
+            type: 'naming',
+            description: 'Fix naming conflict',
+            entityName: issue.entityName
+          });
+          break;
+        case 'choice':
+          fixes.push({
+            type: 'choice',
+            description: 'Fix choice column'
+          });
+          break;
+      }
+    });
+    
+    setAutoFixes(fixes);
+    return fixes;
+  }, []);
+
+  /**
+   * Apply all provided fixes
+   */
+  const applyAllFixesFromArray = useCallback((content: string, fixes: any[]): string => {
+    let fixedContent = content;
+    
+    fixes.forEach(fix => {
+      try {
+        fixedContent = applyFix(fixedContent, fix.type, fix.entityName);
+      } catch (error) {
+        console.error('Failed to apply fix:', fix, error);
+      }
+    });
+    
+    return fixedContent;
+  }, [applyFix]);
+
   return {
     fixedIssues,
     isFixing,
+    isApplying: isFixing, // Alias for compatibility
     lastFixError,
+    autoFixes,
+    generateAutoFixes,
     applyFix,
+    applyAllFixes: applyAllFixesFromArray,
     applyAllAvailableFixes,
     markIssueAsFixed,
     resetFixedIssues,

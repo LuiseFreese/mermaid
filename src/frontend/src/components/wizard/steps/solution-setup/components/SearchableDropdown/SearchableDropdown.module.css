@@ -1,0 +1,213 @@
+/**
+ * SearchableDropdown Styles
+ * Responsive dropdown with smooth animations
+ */
+
+.field {
+  width: 100%;
+  max-width: 600px;
+}
+
+.dropdownContainer {
+  position: relative;
+  width: 100%;
+}
+
+.inputContainer {
+  position: relative;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  padding-right: 40px; /* Space for icon/button */
+}
+
+.inputIcon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--colorNeutralForeground3);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clearButton {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  color: var(--colorNeutralForeground3);
+}
+
+.clearButton:hover {
+  color: var(--colorNeutralForeground1);
+  background-color: var(--colorNeutralBackground1Hover);
+}
+
+.selectedItem {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  background-color: var(--colorNeutralBackground1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selectedContent {
+  flex: 1;
+  min-width: 0; /* Allow flex item to shrink */
+}
+
+.changeButton {
+  flex-shrink: 0;
+  color: var(--colorBrandForeground1);
+}
+
+.changeButton:hover {
+  color: var(--colorBrandForeground1Hover);
+  background-color: var(--colorBrandBackground1Hover);
+}
+
+.errorMessage {
+  margin-top: 8px;
+}
+
+.retryButton {
+  margin-left: 8px;
+  color: var(--colorPaletteRedForeground1);
+}
+
+.retryButton:hover {
+  color: var(--colorPaletteRedForeground1);
+  background-color: var(--colorPaletteRedBackground1Hover);
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: var(--colorNeutralBackground1);
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: var(--borderRadiusMedium);
+  box-shadow: var(--shadow16);
+  margin-top: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: slideDown 150ms ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdownItem {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+  transition: background-color 150ms ease;
+}
+
+.dropdownItem:last-child {
+  border-bottom: none;
+}
+
+.dropdownItem:hover {
+  background-color: var(--colorNeutralBackground1Hover);
+}
+
+.dropdownItem:focus {
+  outline: 2px solid var(--colorStrokeFocus2);
+  outline-offset: -2px;
+  background-color: var(--colorNeutralBackground1Pressed);
+}
+
+.moreItemsIndicator {
+  padding: 12px 16px;
+  font-size: var(--fontSizeBase200);
+  color: var(--colorNeutralForeground3);
+  font-style: italic;
+  background-color: var(--colorNeutralBackground2);
+  border-top: 1px solid var(--colorNeutralStroke3);
+  text-align: center;
+}
+
+.noResults {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--colorNeutralForeground3);
+  font-style: italic;
+}
+
+/* Focus and accessibility improvements */
+.input:focus-within {
+  outline: 2px solid var(--colorStrokeFocus2);
+  outline-offset: -2px;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--colorStrokeFocus2);
+  outline-offset: -2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .selectedItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .changeButton {
+    align-self: flex-end;
+  }
+  
+  .dropdown {
+    max-height: 300px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dropdown {
+    border-width: 2px;
+  }
+  
+  .dropdownItem {
+    border-bottom-width: 2px;
+  }
+  
+  .dropdownItem:hover {
+    outline: 2px solid;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .dropdown {
+    animation: none;
+  }
+  
+  .dropdownItem {
+    transition: none;
+  }
+}

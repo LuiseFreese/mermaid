@@ -4,6 +4,9 @@
     "**/tests/**/*.test.js",
     "**/tests/**/*.test.ts"
   ],
+  "testPathIgnorePatterns": [
+    "src/frontend/"
+  ],
   "collectCoverageFrom": [
     "src/backend/**/*.js",
     "!src/backend/server.js",

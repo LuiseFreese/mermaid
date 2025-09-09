@@ -4,7 +4,6 @@
  */
 
 import type { ValidationIssue, ValidationResult } from '../types/validation.types';
-import { isCDMEntity } from './cdmEntityList';
 import { parseERDEntities } from './erdParser';
 
 /**

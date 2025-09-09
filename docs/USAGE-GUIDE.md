@@ -29,37 +29,63 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 
 ### Step 1: ERD Upload & Intelligent Validation
 - **Browse**: Upload your Mermaid ERD file (`.mmd` extension) using the modern file upload component
+
+![Step 1 Upload](media/step-1-a-upload-file.png)
+
 - **Real-time Parsing**: Immediate ERD structure analysis and entity detection
+
+
 - **Smart Validation**: Comprehensive validation with automatic error detection:
   - **CDM Detection**: Identifies entities matching Common Data Model (e.g., Account, Contact)
+
+![CDM detection](media/step-1-b-cdm-choices.png)
+
   - **Naming Conflicts**: Detects conflicts with Dataverse system columns
   - **Status Columns**: Automatically filters out status columns (uses Dataverse built-in status)
   - **Primary Key Issues**: Validates primary key structure
   - **Data Type Mapping**: Smart type detection based on field names
 - **Auto-Corrections**: View suggested fixes with side-by-side comparison
-- **CDM Integration Choice**: Option to use detected CDM entities or create custom ones
-- Click **"Next"** to proceed
+
+![warnings and fixes](media/step-1-c-warnings-and-fix.png)
+
+- Select **Next** to proceed
+
+![](media/step-1-d-complete-ERD.png)
 
 ### Step 2: Solution & Publisher Configuration
-- **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management")
+- **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management") or choose from an existing solution
 - **Publisher Selection**: Choose existing publisher or create new one with the React interface
 - **Publisher Prefix**: 3-8 character prefix (e.g., "cmgt") with real-time validation
-- **CDM Decision**: Final choice on which entities to use as CDM vs. custom
-- Click **"Next"** to continue
+- Select **Next** to continue
+
+![Solution and Publisher](media/step-2-solution-and-publisher.png)
+
 
 ### Step 3: Global Choices Integration
+
 - **Upload JSON**: Upload JSON file with global choice definitions
+- 
+![upload global choices](media/step-3-upload-global-choices-via-json.png)
+
 - **Browse Existing**: View and select from existing Dataverse global choices
+
+![built-in global choices](media/step-3-builtin-global-choices.png)
+
 - **Preview Choices**: Real-time preview of choice sets before deployment
 - **Combined Selection**: Mix new and existing choices in a single deployment
 - See [Global Choices Guide](GLOBAL-CHOICES-GUIDE.md) for detailed documentation
-- Click **"Next"** to continue
+- Select **Next** to continue
 
 ### Step 4: Review & Deploy
 - **Configuration Summary**: Complete review of all settings with modern UI
+
+![Summary](media/step-4-deployment-summary.png)
+
 - **CDM Integration Summary**: Clear display of CDM vs. custom entity choices
 - **Real-time Validation**: Final validation before deployment
-- **Deploy**: Click **"Convert & Deploy"** to create your solution with live progress tracking
+- **Deploy**: Click **Deploy to Dataverse** to create your solution with live progress tracking
+
+![Deployment progress](media/step-4-deploying.png)
 
 ## Intelligent Validation & Auto-Corrections
 

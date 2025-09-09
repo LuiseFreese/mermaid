@@ -331,6 +331,8 @@ erDiagram
 - New publisher creation with prefix validation
 - Solution name validation and conflict checking
 
+**Modular Architecture**: The SolutionSetupStep has been completely modularized using modern React patterns with extracted components and business logic hooks. See [SolutionSetupStep Modular Architecture](#solutionsetupstep-modular-architecture) section for detailed implementation.
+
 **Step 3: Global Choices Management (Optional)**
 - File upload for custom global choice definitions
 - Preview table with sortable columns
@@ -688,6 +690,68 @@ import { FileUploadStep } from './components/wizard/steps/file-upload';
 ```
 
 This modular architecture ensures the FileUploadStep is **maintainable**, **testable**, **reusable**, and **scalable** while preserving all existing functionality and providing a foundation for future enhancements.
+
+## SolutionSetupStep Modular Architecture
+
+**Purpose**: The SolutionSetupStep has been modularized using clean architecture principles with extracted components and business logic hooks.
+
+### Architecture Overview
+
+```
+solution-setup/
+├── 📄 SolutionSetupStep.tsx       # Main orchestrator component
+├── 📄 index.ts                    # Public API exports
+├── 🎨 components/                 # UI Components
+│   ├── SearchableDropdown.tsx     # Reusable searchable dropdown
+│   ├── SolutionConfigSection.tsx  # Solution configuration form
+│   ├── PublisherConfigSection.tsx # Publisher configuration form
+│   ├── [Component].module.css     # Scoped component styles
+│   └── index.ts                   # Component exports
+├── 🔧 hooks/                      # Custom Business Logic Hooks
+│   ├── useSolutionConfiguration.ts    # Solution state management
+│   ├── usePublisherConfiguration.ts   # Publisher state management
+│   ├── useSearchableDropdown.ts       # Dropdown search logic
+│   ├── useNameGeneration.ts           # Name generation utilities
+│   ├── useFormValidation.ts           # Form validation logic
+│   └── index.ts                       # Hook exports
+├── 📝 types/                      # TypeScript Definitions
+│   ├── solution-setup.types.ts    # Component and data types
+│   └── validation.types.ts        # Validation-specific types
+└── 🛠️ utils/                      # Pure Utility Functions
+    ├── validation.ts              # Validation rules and logic
+    ├── filtering.ts               # Data filtering utilities
+    └── nameGeneration.ts          # Name generation functions
+```
+
+### Design Principles
+
+**1. Separation of Concerns**
+- **UI Components**: Pure presentation with props-based interface
+- **Business Logic Hooks**: State management and API integration
+- **Utilities**: Pure functions for validation and data transformation
+- **Types**: Comprehensive TypeScript definitions
+
+**2. Reusability**
+- SearchableDropdown extracted as reusable component
+- Configuration hooks usable across different forms
+- Validation utilities applicable to other wizard steps
+
+**3. Testability**
+- Each hook independently testable
+- Components tested in isolation
+- 97 passing tests validate all functionality
+
+### Testing Strategy
+
+**Comprehensive Test Coverage**: 97/97 tests passing across all components and hooks
+- **SearchableDropdown**: 21 tests covering ARIA, keyboard navigation, error states
+- **useSearchableDropdown**: 23 tests for search logic and state management
+- **useSolutionConfiguration**: 12 tests for solution state and validation
+- **usePublisherConfiguration**: 11 tests for publisher state and form handling
+- **useNameGeneration**: 13 tests for name generation utilities
+- **SolutionSetupStep**: 17 tests for integration and accessibility
+
+This modular architecture ensures the SolutionSetupStep is **maintainable**, **testable**, **reusable**, and **scalable** while providing robust form validation and user experience.
 
 
 

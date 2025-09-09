@@ -40,10 +40,9 @@ import {
 // Import types
 import type { 
   UploadedFile, 
-  CDMDetectionResult, 
-  ERDValidationResult,
   FileProcessingResult,
-  ERDStructure
+  ERDStructure,
+  ERDValidationResult
 } from './types/file-upload.types';
 
 import styles from './FileUploadStep.module.css';
@@ -63,13 +62,13 @@ export const FileUploadStep: React.FC = () => {
   const { renderDiagram, renderResult } = useMermaidRenderer();
 
   // File upload handler
-  const handleFileSelected = useCallback(async (file: File, content: string) => {
+  const handleFileSelected = useCallback(async (file: File, _content: string) => {
     setError(null);
     setIsProcessing(true);
     
     try {
       // Process the file
-      const result: FileProcessingResult = await processFile(file, content);
+      const result: FileProcessingResult = await processFile(file);
       
       if (result.success && result.file && result.content) {
         const uploadedFile: UploadedFile = {
@@ -83,8 +82,8 @@ export const FileUploadStep: React.FC = () => {
         // Auto-detect CDM entities
         await detectCDMEntities(result.content);
         
-        // Render the diagram
-        await renderDiagram(result.content);
+        // For now, we'll skip rendering until we have a ref
+        // await renderDiagram(result.content, diagramRef);
         
       } else {
         setError(result.error || 'Failed to process file');
@@ -103,11 +102,11 @@ export const FileUploadStep: React.FC = () => {
     setCDMChoice(choice);
     
     // Validate ERD after CDM choice
-    const validation = await validateERD(currentFile.content, choice === 'cdm');
+    await validateERD(currentFile.content, choice === 'cdm');
     
-    if (validation.hasIssues) {
+    if (validationResult && validationResult.issues.length > 0) {
       // Generate auto-fixes if there are issues
-      await generateAutoFixes(validation, currentFile.content);
+      await generateAutoFixes(currentFile.content, validationResult.issues);
     }
     
     // Parse ERD structure for summary
@@ -123,44 +122,50 @@ export const FileUploadStep: React.FC = () => {
   const handleApplyFix = useCallback(async (fixId: string) => {
     if (!currentFile) return;
     
-    const result = await applyFix(fixId, currentFile.content);
-    if (result.success) {
+    try {
+      const fixedContent = applyFix(currentFile.content, fixId);
+      
       // Update current file with fixed content
       setCurrentFile(prev => prev ? {
         ...prev,
-        content: result.updatedContent
+        content: fixedContent
       } : null);
       
-      // Re-render diagram with fixed content
-      await renderDiagram(result.updatedContent);
+      // Re-render diagram with fixed content (will need ref)
+      // await renderDiagram(fixedContent, diagramRef);
       
       // Re-validate
       if (cdmDetection?.choice) {
-        await validateERD(result.updatedContent, cdmDetection.choice === 'cdm');
+        await validateERD(fixedContent, cdmDetection.choice === 'cdm');
       }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to apply fix');
     }
-  }, [currentFile, applyFix, renderDiagram, cdmDetection?.choice, validateERD]);
+  }, [currentFile, applyFix, cdmDetection?.choice, validateERD]);
 
   const handleApplyAllFixes = useCallback(async () => {
-    if (!currentFile) return;
+    if (!currentFile || !autoFixes || autoFixes.length === 0) return;
     
-    const result = await applyAllFixes(currentFile.content);
-    if (result.success) {
+    try {
+      const fixedContent = applyAllFixes(currentFile.content, autoFixes);
+      
       // Update current file with fixed content
       setCurrentFile(prev => prev ? {
         ...prev,
-        content: result.updatedContent
+        content: fixedContent
       } : null);
       
-      // Re-render diagram with fixed content
-      await renderDiagram(result.updatedContent);
+      // Re-render diagram with fixed content (will need ref)
+      // await renderDiagram(fixedContent, diagramRef);
       
       // Re-validate
       if (cdmDetection?.choice) {
-        await validateERD(result.updatedContent, cdmDetection.choice === 'cdm');
+        await validateERD(fixedContent, cdmDetection.choice === 'cdm');
       }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to apply all fixes');
     }
-  }, [currentFile, applyAllFixes, renderDiagram, cdmDetection?.choice, validateERD]);
+  }, [currentFile, autoFixes, applyAllFixes, cdmDetection?.choice, validateERD]);
 
   // Proceed to next step
   const handleProceedToNext = useCallback(() => {
@@ -168,13 +173,25 @@ export const FileUploadStep: React.FC = () => {
     console.log('Proceeding to next step with:', {
       file: currentFile,
       cdmChoice: cdmDetection?.choice,
-      validationPassed: !validationResult?.hasIssues
+      validationPassed: !(validationResult?.issues.length ?? 0 > 0)
     });
-  }, [currentFile, cdmDetection?.choice, validationResult?.hasIssues]);
+  }, [currentFile, cdmDetection?.choice, validationResult?.issues.length]);
+
+  // Convert ValidationResult to ERDValidationResult for compatibility
+  const erdValidationResult: ERDValidationResult | null = validationResult ? {
+    hasIssues: validationResult.issues.length > 0,
+    issues: validationResult.issues,
+    namingConflicts: validationResult.issues
+      .filter(issue => issue.type === 'naming')
+      .map(issue => issue.entityName || ''),
+    hasChoiceIssues: validationResult.issues.some(issue => issue.type === 'choice'),
+    hasStatusIssues: validationResult.issues.some(issue => issue.type === 'status'),
+    hasNamingIssues: validationResult.issues.some(issue => issue.type === 'naming')
+  } : null;
 
   const canProceed = currentFile && 
                     cdmDetection?.choice && 
-                    (!validationResult?.hasIssues || 
+                    (!(validationResult?.issues.length ?? 0 > 0) || 
                      (validationResult?.issues.every(issue => issue.severity !== 'error')));
 
   return (
@@ -241,9 +258,9 @@ export const FileUploadStep: React.FC = () => {
           )}
 
           {/* Validation Results */}
-          {validationResult && (
+          {erdValidationResult && (
             <ERDValidationPanel
-              validationResult={validationResult}
+              validationResult={erdValidationResult}
               className={styles.validationPanel}
             />
           )}

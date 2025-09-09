@@ -28,7 +28,7 @@ import {
   KeyRegular,
   LinkRegular
 } from '@fluentui/react-icons';
-import type { ERDSummaryAccordionProps, ERDEntity, ERDRelationship } from '../types/file-upload.types';
+import type { ERDSummaryAccordionProps } from '../types/file-upload.types';
 import styles from './ERDSummaryAccordion.module.css';
 
 interface EntitySummary {

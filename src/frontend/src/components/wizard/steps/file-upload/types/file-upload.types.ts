@@ -15,7 +15,7 @@ export interface CDMDetectionResult {
 }
 
 export interface ValidationIssue {
-  type: 'naming' | 'choice' | 'status' | 'primary-key';
+  type: 'naming' | 'choice' | 'status' | 'primary-key' | 'syntax';
   severity: 'error' | 'warning' | 'info';
   entityName?: string;
   description: string;
