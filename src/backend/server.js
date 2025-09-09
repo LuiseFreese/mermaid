@@ -8,7 +8,6 @@
 
 const http = require('http');
 const url  = require('url');
-const fs   = require('fs');
 const path = require('path');
 require('dotenv').config();
 
@@ -38,7 +37,7 @@ const { CorsMiddleware } = require('./middleware/cors-middleware');
 const { StreamingMiddleware } = require('./middleware/streaming-middleware');
 const { SecurityMiddleware } = require('./middleware/security-middleware');
 
-// Legacy modules (for backward compatibility during transition)
+// Core modules
 let MermaidERDParser = null;
 let DataverseClient  = null;
 try {
@@ -47,7 +46,7 @@ try {
   MermaidERDParser = Parser;
   DataverseClient  = Client;
 } catch (e) {
-  console.error('Failed to load legacy modules:', e.message);
+  console.error('Failed to load core modules:', e.message);
 }
 
 // Optional KeyVault helper
@@ -100,7 +99,7 @@ async function initializeComponents() {
     
     const dataverseRepo = new DataverseRepository({
       configurationRepository: configRepo,
-      DataverseClient, // Legacy client for backward compatibility
+      DataverseClient, // Core Dataverse client
       logger: console
     });
 
@@ -245,8 +244,8 @@ function writeFinal(res, obj) {
   res.end();
 }
 
-// Legacy functions - kept for backward compatibility during transition
-// These will be removed once full migration to layered architecture is complete
+// Utility functions
+// Configuration management function
 
 async function getDataverseConfig() {
   // Prefer Key Vault when available
@@ -271,54 +270,8 @@ async function getDataverseConfig() {
   return { source:'env', ...env };
 }
 
-// Legacy API handlers - kept for backward compatibility during transition
-/* eslint-disable no-unused-vars */
-async function handleValidateErd(req, res) {
-  let body = '';
-  req.on('data', ch => body += ch);
-  req.on('end', () => {
-    try {
-      const data = JSON.parse(body || '{}');
-      if (!MermaidERDParser) throw new Error('MermaidERDParser not available');
-      const parser = new MermaidERDParser();
-      const result = parser.parse(data.mermaidContent || '');
-      
-      // Generate corrected ERD if there are warnings
-      let correctedERD = null;
-      if (result.warnings && result.warnings.length > 0) {
-        try {
-          correctedERD = parser.generateCorrectedERD();
-        } catch (e) {
-          console.warn('Could not generate corrected ERD:', e.message);
-        }
-      }
-      
-      const response = {
-        success: true, // Request succeeded, validation details are in the validation field
-        entities: result.entities || [],
-        relationships: result.relationships || [],
-        warnings: result.warnings || [],
-        validation: result.validation || { isValid:false },
-        cdmDetection: result.cdmDetection || {},
-        correctedERD: correctedERD,
-        summary: {
-          entityCount: result.entities?.length || 0,
-          relationshipCount: result.relationships?.length || 0
-        }
-      };
-      
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify(response));
-    } catch (e) {
-      console.error('Validation error:', e);
-      const errorResponse = { success:false, error: e.message };
-      res.writeHead(500, {'Content-Type':'application/json'});
-      res.end(JSON.stringify(errorResponse));
-    }
-  });
-}
-
-async function handleUpload(req, res) {
+// --- cleanup endpoint handler ------------------------------------------
+async function handleCleanup(req, res) {
   let body = '';
   req.on('data', ch => body += ch);
   req.on('end', async () => {
@@ -769,7 +722,7 @@ async function handleGetGlobalChoices(req, res) {
   }
 }
 
-// --- solution status endpoint handler ----------------------------------
+// --- Server Creation with Layered Architecture -------------------------
 async function handleGetSolutionStatus(req, res) {
   try {
     const urlParts = url.parse(req.url, true);
@@ -849,7 +802,7 @@ async function applyMiddleware(req, res, components, next) {
   });
 }
 
-async function routeRequest(pathname, req, res, components, query) {
+async function routeRequest(pathname, req, res, components) {
   // Root redirect
   if (req.method === 'GET' && pathname === '/') {
     return components.wizardController.redirectToWizard(req, res);

@@ -167,7 +167,7 @@ erDiagram
 
 ```
 
-**Result**: Creates `Event` and `Location` tables with `Eventattendee` as a junction table in Dataverse with proper relationships and all specified columns in their respective data types.
+**Result**: Creates `Event` and `Location` tables with `Eventattendee` table as a junction table and adds the `Contact` and `Account` table to the solution. Will automatically create all relationships as defined.
 
 ## Documentation
 
