@@ -32,6 +32,122 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 4. **Global Choices Integration**: Optional upload of global choice definitions
 5. **Secure Deployment**: Managed identity for passwordless Azure service access
 
+### Architecture Overview Diagram
+
+```mermaid
+graph TB
+    %% User Interface Layer
+    subgraph "Frontend (React + TS)"
+        UI[User Interface]
+        Router[React Router]
+        Context[Wizard Context]
+        Services[API Services]
+        Components[Fluent UI Components]
+    end
+
+    %% Development Server
+    subgraph "Development Environment"
+        ViteProxy[Vite Dev Server<br/>Port 3003<br/>API Proxy]
+    end
+
+    %% Backend Server
+    subgraph "Backend Server (Port 8080)"
+        HTTP[HTTP Server]
+        
+        subgraph "Middleware Pipeline"
+            Logger[Request Logger]
+            CORS[CORS Handler]
+            Error[Error Handler]
+            Stream[Streaming Handler]
+        end
+        
+        subgraph "Controller Layer"
+            WizardCtrl[Wizard Controller<br/>Static Files & React App]
+            ValidationCtrl[Validation Controller<br/>ERD Processing]
+            DeploymentCtrl[Deployment Controller<br/>Solution Creation]
+            AdminCtrl[Admin Controller<br/>Management APIs]
+        end
+        
+        subgraph "Service Layer"
+            ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detect]
+            DeploymentSvc[Deployment Service<br/>Solution Orchestration]
+            PublisherSvc[Publisher Service<br/>Publisher Management]
+            ChoicesSvc[Global Choices Service<br/>Option Set Management]
+            SolutionSvc[Solution Service<br/>Solution Operations]
+        end
+        
+        subgraph "Repository Layer"
+            DataverseRepo[Dataverse Repository<br/>API Abstraction]
+            ConfigRepo[Configuration Repository<br/>Settings & Key Vault]
+        end
+        
+        subgraph "External Integrations"
+            Parser[Mermaid Parser<br/>ERD to Entities]
+            DataverseClient[Dataverse Client<br/>API Integration]
+            KeyVault[Azure Key Vault<br/>Credential Storage]
+        end
+    end
+
+    %% External Services
+    subgraph "Microsoft Cloud"
+        Dataverse[Microsoft Dataverse]
+        EntraID[Microsoft Entra ID<br/>Authentication]
+    end
+
+    %% Frontend Flow (simplified to reduce crossing)
+    UI --> Router
+    Router --> Components
+    Components --> Context
+    Context --> Services
+    Services --> ViteProxy
+    ViteProxy -.->|API Proxy /api/*| HTTP
+    
+    %% Backend Middleware Flow
+    HTTP --> Logger
+    Logger --> CORS
+    CORS --> Error
+    Error --> Stream
+    
+    %% Controller Routing (organized to minimize crossings)
+    Stream --> WizardCtrl
+    Stream --> ValidationCtrl  
+    Stream --> DeploymentCtrl
+    Stream --> AdminCtrl
+    
+    %% Service Dependencies (grouped by controller)
+    ValidationCtrl --> ValidationSvc
+    ValidationSvc --> Parser
+    ValidationSvc --> DataverseRepo
+    
+    DeploymentCtrl --> DeploymentSvc
+    DeploymentSvc --> DataverseRepo
+    DeploymentSvc --> ConfigRepo
+    
+    AdminCtrl --> PublisherSvc
+    AdminCtrl --> ChoicesSvc
+    AdminCtrl --> SolutionSvc
+    PublisherSvc --> DataverseRepo
+    ChoicesSvc --> DataverseRepo
+    SolutionSvc --> DataverseRepo
+    
+    %% External Connections (simplified)
+    DataverseRepo --> DataverseClient
+    ConfigRepo --> KeyVault
+    DataverseClient --> Dataverse
+    DataverseClient --> EntraID
+
+    %% Styling
+    classDef frontend fill:#e1f5fe
+    classDef backend fill:#f3e5f5
+    classDef service fill:#e8f5e8
+    classDef external fill:#fff3e0
+    
+    class UI,Router,Context,Services,Components frontend
+    class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl backend
+    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
+    class Dataverse,EntraID,KeyVault,Parser,DataverseClient external
+```
+
 
 ## Core Components
 
@@ -371,7 +487,7 @@ GET /api/global-choices
     "builtin": 145
   }
 }
-```
+
 
 #### Solution Status Endpoint (Timeout Handling)
 
@@ -385,6 +501,7 @@ GET /api/solution-status?solution=SolutionName
 - `solution` (required): The unique name of the solution to check
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -738,43 +855,8 @@ The parser supports the following relationship scenarios:
 
 > **Important**: Direct many-to-many syntax like `}o--o{` is not supported. Always use explicit junction tables for many-to-many relationships.
 
-#### Example of Many-to-Many with Junction Table
-```mermaid
-erDiagram
-    EMPLOYEE {
-        string employee_id PK
-        string name
-        string department_id FK
-    }
-    DEPARTMENT {
-        string department_id PK
-        string name
-        string manager_id FK
-    }
-    PROJECT {
-        string project_id PK
-        string name
-    }
-    EMPLOYEE_PROJECT {
-        string assignment_id PK
-        string employee_id FK
-        string project_id FK
-        datetime assigned_date
-        string role
-    }
-    
-    DEPARTMENT ||--o{ EMPLOYEE : "employs"
-    EMPLOYEE ||--o{ DEPARTMENT : "manages"
-    EMPLOYEE ||--o{ EMPLOYEE_PROJECT : "assigned to"
-    PROJECT ||--o{ EMPLOYEE_PROJECT : "staffed by"
-```
 
-In this example:
-- `EMPLOYEE_PROJECT` is an explicitly defined junction table with foreign keys to both EMPLOYEE and PROJECT
-- The many-to-many relationship is implemented using two one-to-many relationships
-- Additional attributes like `assigned_date` and `role` can be added to the junction table
-
-## Data Flow (pls use CTRL + or CMD +)
+## Data Flow (please use CTRL + or CMD + ) 🙈
 
 ```mermaid
 sequenceDiagram
@@ -1030,122 +1112,6 @@ All Azure resources are defined in `deploy/infrastructure.bicep` with App Servic
 ## System Architecture Deep Dive
 
 This section provides a comprehensive analysis of how the frontend, backend, and middleware layers work together, based on examination of the actual codebase implementation.
-
-### Architecture Overview Diagram
-
-```mermaid
-graph TB
-    %% User Interface Layer
-    subgraph "Frontend (React + TS)"
-        UI[User Interface]
-        Router[React Router]
-        Context[Wizard Context]
-        Services[API Services]
-        Components[Fluent UI Components]
-    end
-
-    %% Development Server
-    subgraph "Development Environment"
-        ViteProxy[Vite Dev Server<br/>Port 3003<br/>API Proxy]
-    end
-
-    %% Backend Server
-    subgraph "Backend Server (Port 8080)"
-        HTTP[HTTP Server]
-        
-        subgraph "Middleware Pipeline"
-            Logger[Request Logger]
-            CORS[CORS Handler]
-            Error[Error Handler]
-            Stream[Streaming Handler]
-        end
-        
-        subgraph "Controller Layer"
-            WizardCtrl[Wizard Controller<br/>Static Files & React App]
-            ValidationCtrl[Validation Controller<br/>ERD Processing]
-            DeploymentCtrl[Deployment Controller<br/>Solution Creation]
-            AdminCtrl[Admin Controller<br/>Management APIs]
-        end
-        
-        subgraph "Service Layer"
-            ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detect]
-            DeploymentSvc[Deployment Service<br/>Solution Orchestration]
-            PublisherSvc[Publisher Service<br/>Publisher Management]
-            ChoicesSvc[Global Choices Service<br/>Option Set Management]
-            SolutionSvc[Solution Service<br/>Solution Operations]
-        end
-        
-        subgraph "Repository Layer"
-            DataverseRepo[Dataverse Repository<br/>API Abstraction]
-            ConfigRepo[Configuration Repository<br/>Settings & Key Vault]
-        end
-        
-        subgraph "External Integrations"
-            Parser[Mermaid Parser<br/>ERD to Entities]
-            DataverseClient[Dataverse Client<br/>API Integration]
-            KeyVault[Azure Key Vault<br/>Credential Storage]
-        end
-    end
-
-    %% External Services
-    subgraph "Microsoft Cloud"
-        Dataverse[Microsoft Dataverse]
-        EntraID[Microsoft Entra ID<br/>Authentication]
-    end
-
-    %% Frontend Flow (simplified to reduce crossing)
-    UI --> Router
-    Router --> Components
-    Components --> Context
-    Context --> Services
-    Services --> ViteProxy
-    ViteProxy -.->|API Proxy /api/*| HTTP
-    
-    %% Backend Middleware Flow
-    HTTP --> Logger
-    Logger --> CORS
-    CORS --> Error
-    Error --> Stream
-    
-    %% Controller Routing (organized to minimize crossings)
-    Stream --> WizardCtrl
-    Stream --> ValidationCtrl  
-    Stream --> DeploymentCtrl
-    Stream --> AdminCtrl
-    
-    %% Service Dependencies (grouped by controller)
-    ValidationCtrl --> ValidationSvc
-    ValidationSvc --> Parser
-    ValidationSvc --> DataverseRepo
-    
-    DeploymentCtrl --> DeploymentSvc
-    DeploymentSvc --> DataverseRepo
-    DeploymentSvc --> ConfigRepo
-    
-    AdminCtrl --> PublisherSvc
-    AdminCtrl --> ChoicesSvc
-    AdminCtrl --> SolutionSvc
-    PublisherSvc --> DataverseRepo
-    ChoicesSvc --> DataverseRepo
-    SolutionSvc --> DataverseRepo
-    
-    %% External Connections (simplified)
-    DataverseRepo --> DataverseClient
-    ConfigRepo --> KeyVault
-    DataverseClient --> Dataverse
-    DataverseClient --> EntraID
-
-    %% Styling
-    classDef frontend fill:#e1f5fe
-    classDef backend fill:#f3e5f5
-    classDef service fill:#e8f5e8
-    classDef external fill:#fff3e0
-    
-    class UI,Router,Context,Services,Components frontend
-    class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl backend
-    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
-    class Dataverse,EntraID,KeyVault,Parser,DataverseClient external
-```
 
 ### Request Flow Analysis
 

@@ -74,7 +74,7 @@ cd mermaid
 ### Step-by-Step Process
 
 #### Step 1: Upload ERD File
-- **Drag & Drop or Browse**: Upload your `.mmd` file containing an ERD diagram
+- **Browse**: Upload your `.mmd` file containing an ERD diagram
 - **Real-time Validation**: Get immediate feedback on syntax and structure
 - **Auto-corrections**: Review and apply suggested improvements
 - **CDM Detection**: See if your entities match Common Data Model standards

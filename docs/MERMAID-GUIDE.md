@@ -47,11 +47,12 @@ erDiagram
 Dataverse automatically creates a primary name column for each entity. The validator detects conflicts:
 
 **Problem detected:**
+
 ```mermaid
 erDiagram
     Customer {
         string customer_id PK "Customer identifier"
-        string name "Customer name"  // ⚠️ Conflicts with auto-generated primary column
+        string name "Customer name"  // Conflicts with auto-generated primary column
         string email "Email address"
     }
 ```
@@ -61,7 +62,7 @@ erDiagram
 erDiagram
     Customer {
         string customer_id PK "Customer identifier" 
-        string customer_name "Customer name"  // ✅ Renamed to avoid conflict
+        string customer_name "Customer name"  // Renamed to avoid conflict
         string email "Email address"
     }
 ```
@@ -75,7 +76,7 @@ erDiagram
     Order {
         string order_id PK "Order identifier"
         decimal total_amount "Order total"
-        string status "Order status"  // ⚠️ Will be ignored
+        string status "Order status"  // Will be ignored
     }
 ```
 
@@ -93,11 +94,12 @@ Prevents conflicts with Dataverse system columns:
 - `statuscode` - Conflicts with built-in status reason
 
 **Auto-suggested renaming pattern:**
+
 ```mermaid
 erDiagram
     Task {
         string task_id PK "Task identifier"
-        string task_ownerid FK "Task owner reference"  // ✅ Prefixed to avoid conflict
+        string task_ownerid FK "Task owner reference"  // Prefixed to avoid conflict
         string description "Task description"
     }
 ```
@@ -154,7 +156,7 @@ The system supports a comprehensive range of Dataverse column types with smart t
 | `file` | File | File storage (blob) | N/A |
 | `image` | Image | Image blob storage | N/A |
 
-### 🧠 Smart Type Detection
+### Smart Type Detection
 
 The system includes intelligent type detection that automatically improves data types based on field names:
 
@@ -224,7 +226,7 @@ erDiagram
     }
 ```
 
-> **💡 Pro Tip**: Use descriptive field names that include type hints (email, phone, url, etc.) to leverage automatic type detection and get the most appropriate Dataverse column types.
+> **Pro Tip**: Use descriptive field names that include type hints (email, phone, url, etc.) to leverage automatic type detection and get the most appropriate Dataverse column types.
 
 ### Relationships
 
@@ -357,118 +359,3 @@ erDiagram
 ```
 
 > **Note**: The application automatically creates lookup relationships based on FK fields and relationship definitions. You don't need special syntax beyond marking fields as FK.
-
-## Best Practices
-
-### 1. **Field Descriptions**
-- Always include descriptions in quotes
-- Be clear and concise
-- Explain the purpose, not just repeat the field name
-- Good: `"Customer's preferred contact method"`
-- Poor: `"Contact method"`
-
-### 2. **Field Naming**
-- Use clear, descriptive names
-- Avoid abbreviations unless they're widely understood
-- Be consistent with naming conventions across entities
-- Consider CDM compatibility for common business entities
-
-### 3. **Relationships**
-- Keep relationship names descriptive
-- Use present tense verbs ("has", "contains", "manages")
-- Model many-to-many as junction entities with additional attributes
-
-### 4. **CDM Integration Strategy**
-- **Review CDM suggestions**: When the system detects CDM matches, consider using them
-- **Mix and match**: Use CDM entities for standard business objects, custom for specialized needs
-- **Preserve relationships**: CDM entities can still relate to your custom entities
-- **Standard naming**: Use CDM-compatible naming when possible
-
-### 5. **Avoiding Common Issues**
-- **Don't use "name" columns**: Let Dataverse auto-generate the primary name column
-- **Skip status columns**: Use Dataverse built-in status instead
-- **Avoid system column names**: ownerid, statecode, statuscode are reserved
-- **One primary key per entity**: Dataverse requires exactly one primary key
-- **Use choice columns for status**: Create choice columns manually after deployment for custom status values
-
-## Advanced Features
-
-### 1. **CDM Entity Detection**
-The system uses advanced algorithms to detect CDM entities:
-- **Exact name matching**: Direct CDM entity name matches
-- **Attribute analysis**: Compares your attributes with CDM schemas
-- **Confidence scoring**: Rates the likelihood of CDM compatibility
-- **Recommendation engine**: Suggests best practices for CDM integration
-
-### 2. **Intelligent Validation**
-- **Context-aware suggestions**: Fixes consider your entire data model
-- **Relationship preservation**: Auto-corrections maintain ERD integrity
-- **Performance optimization**: Suggests database design improvements
-- **Security considerations**: Identifies potential security implications
-
-### 3. **Auto-Correction Features**
-- **Bulk renaming**: Applies naming conventions across multiple entities
-- **System compatibility**: Ensures all entities work with Dataverse constraints
-- **Relationship optimization**: Suggests junction tables for complex relationships
-- **Choice column guidance**: Recommends when to use global choices vs. custom columns
-
-
-## Validation and Error Prevention
-
-The React wizard provides comprehensive validation before deployment:
-
-### 1. **Real-time Syntax Checking**
-- **Mermaid syntax validation**: Ensures proper ERD format
-- **Relationship validation**: Verifies all FK references exist
-- **Data type checking**: Confirms supported Dataverse types
-
-### 2. **Smart Auto-Corrections**
-- **CDM Integration**: Offers to use existing CDM entities when detected
-- **Naming Conflicts**: Automatically suggests fixes for system column conflicts
-- **Primary Key Issues**: Detects missing or multiple primary keys
-- **Status Column Filtering**: Removes status columns that conflict with Dataverse built-ins
-
-### 3. **Validation Categories**
-
-| Category | Severity | Description | Auto-Fix |
-|----------|----------|-------------|----------|
-| **CDM Detection** | Info | Entity matches Common Data Model | Suggest CDM entity usage |
-| **Naming Conflicts** | Warning | Conflicts with Dataverse system columns | Auto-rename with entity prefix |
-| **Status Columns** | Info | Status columns will be ignored | Filter out, suggest choice columns |
-| **Primary Keys** | Error | Missing or multiple primary keys | Highlight required fixes |
-| **Relationships** | Warning | Missing foreign key relationships | Suggest FK additions |
-
-### 4. **Validation Examples**
-
-**Before validation:**
-```mermaid
-erDiagram
-    Event {
-        string id PK
-        string name "Primary name conflict"
-        string status "Will be ignored"
-        datetime start_date
-        string ownerid FK "System conflict"
-    }
-```
-
-**After validation & auto-fixes:**
-```mermaid
-erDiagram
-    Event {
-        string id PK  
-        string event_name "Renamed to avoid conflict"
-        datetime start_date
-        string event_ownerid FK "Prefixed to avoid system conflict"
-        // Status column removed - use Dataverse built-in status
-    }
-```
-
-### 5. **CDM Integration Workflow**
-
-1. **Upload ERD**: React wizard analyzes entity structure
-2. **CDM Detection**: System identifies potential CDM matches
-3. **User Choice**: Option to use CDM entities or create custom ones
-4. **Relationship Preservation**: Maintains relationships between CDM and custom entities
-5. **Deployment**: Creates optimal mix of CDM and custom entities
-

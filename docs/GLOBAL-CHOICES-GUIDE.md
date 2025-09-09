@@ -143,7 +143,7 @@ Create a JSON file containing your global choice definitions. Example `my-choice
 
 1. **Open the React Application** - Navigate to your deployed Azure App Service URL (e.g., `https://your-app-name.azurewebsites.net`)
 2. **Global Choices Upload Step** - Use the "Global Choices File" section in the React wizard
-3. **Drag & Drop or Browse** - Upload your JSON file using the modern file upload component
+3. **Browse** - Upload your JSON file using the modern file upload component
 4. **Configure solution settings** in the wizard interface:
    - **Solution Name**: Name of the Dataverse solution
    - **Publisher**: Select an existing publisher or create a new one
@@ -151,15 +151,6 @@ Create a JSON file containing your global choice definitions. Example `my-choice
 5. **Real-time Validation** - The React interface provides immediate feedback on JSON format and content
 6. **Process Deployment** - Continue through the wizard to deploy global choices as part of your complete solution
 7. **Monitor progress** - Watch real-time logs in the React interface showing creation status
-
-#### Step 3: Verify in Dataverse
-
-After processing, verify your global choices in Dataverse:
-
-1. Navigate to **Power Apps** → **Data** → **Choice Sets**  
-2. Find your newly created choice sets by name
-3. Verify they are assigned to your specified solution
-4. Check that all options and labels are correct
 
 ### Combining Both Methods
 
@@ -171,124 +162,3 @@ You can use both approaches in a single deployment through the React wizard:
 This hybrid approach lets you leverage existing organizational standards while adding custom choices specific to your project.
 
 As Mermaid does not support choice fields, you can later enhance your tables with choice columns and pull the values from the global choices that we already added to the solution.
-
-## Best Practices
-
-### Naming Conventions
-
-- **Display names**: Use Title Case (e.g., "Order Status", "Customer Type")
-- **Option labels**: Use clear, concise text (e.g., "In Progress", not "in_progress")
-
-### Value Ranges
-- **Start at 100000000** - Dataverse standard for custom option values
-- **Sequential values** - Increment by 1 for each option
-- **Consistent numbering** - Don't skip numbers within a choice set
-
-### File Organization
-- **Group related choices** - Put related choice sets in the same JSON file
-- **Logical file names** - Use descriptive names like `sales-choices.json`
-- **Version control** - Store JSON files in source control with your Mermaid files
-
-### React Wizard Integration
-- **Step-by-step guidance** - The React wizard interface walks you through global choice selection
-- **Visual choice browser** - Browse existing choices with modern search and filtering components
-- **Real-time validation** - Immediate feedback on JSON file format and content using Fluent UI validation
-- **Combined deployment** - Include global choices as part of your complete solution deployment workflow
-- **Modern UX** - Drag & drop file uploads, interactive checkboxes, and responsive design
-- **Progress tracking** - Real-time deployment progress with detailed status updates
-
-### Solution Management
-- **Use consistent solution names** - Same solution for related entities and choices
-- **Publisher prefixes** - Use your organization's standard prefix
-- **Environment strategy** - Test in development before production deployment
-
-## API Reference
-
-### List Available Global Choices
-
-**Endpoint**: `GET /api/global-choices-list`
-
-Retrieves all global choice sets available in the Dataverse environment, categorized as built-in or custom.
-
-**Azure Deployment Example**:
-```bash
-curl -X GET https://your-app-name.azurewebsites.net/api/global-choices-list
-```
-
-**Local Development Example**:
-```bash
-curl -X GET http://localhost:8082/api/global-choices-list
-```
-
-**Response**: JSON with categorized choice sets
-
-```json
-{
-  "success": true,
-  "choiceSets": [
-    {
-      "MetadataId": "guid-here",
-      "Name": "pink_priority_level",
-      "DisplayName": "Priority Level",
-      "IsBuiltIn": false,
-      "OptionCount": 5
-    }
-  ],
-  "summary": {
-    "total": 150,
-    "custom": 25,
-    "builtIn": 125
-  }
-}
-```
-
-### Create New Global Choices
-
-**Endpoint**: `POST /api/global-choices`
-
-**Request**: Multipart form data with JSON file
-
-**Azure Deployment Example**:
-```bash
-curl -X POST https://your-app-name.azurewebsites.net/api/global-choices \
-  -F "globalChoicesFile=@my-choices.json" \
-  -F "solutionName=MySolution" \
-  -F "cleanupAll=false"
-```
-
-**Local Development Example**:
-```bash
-curl -X POST http://localhost:8082/api/global-choices \
-  -F "globalChoicesFile=@my-choices.json" \
-  -F "solutionName=MySolution" \
-  -F "cleanupAll=false"
-```
-
-**Response**: JSON with creation results
-
-```json
-{
-  "success": true,
-  "created": 2,
-  "skipped": 0,
-  "errors": [],
-  "choiceSets": [
-    {
-      "success": true,
-      "created": true,
-      "choiceSet": { "name": "pink_priority_level", "displayName": "Priority Level" }
-    }
-  ]
-}
-```
-
-
-## Limitations
-
-### Current Limitations
-- **No automatic field linking** - Mermaid enum fields and global choices are not automatically linked
-- **No deletion support** - Cannot remove choice sets or options through the interface
-- **Name-only existence check** - Only checks choice set names, not option values for new choices
-- **No validation of option values** - Application trusts your value assignments in JSON uploads
-
-
