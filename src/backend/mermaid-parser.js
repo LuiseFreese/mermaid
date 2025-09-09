@@ -772,6 +772,7 @@ class MermaidERDParser {
     this.cdmDetectionResults = {
       matches,
       detectedCDM: matches, // same shape, so it works everywhere
+      customEntities: this.entities.size - matches.length, // Add top-level customEntities property
       recommendations: [],
       report: {
         totalEntitiesAnalyzed: this.entities.size,

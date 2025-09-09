@@ -60,15 +60,28 @@ class ValidationController extends BaseController {
                     cdmDetection: result.cdmDetection
                 });
             } else {
-                this.sendError(res, 422, result.message, {
+                // Return 422 for validation failures with message field
+                this.sendJson(res, 422, {
+                    success: false,
+                    message: result.message,
                     errors: result.errors,
                     validation: result.validation
                 });
             }
 
         } catch (error) {
-            if (error.message.includes('Missing required')) {
-                this.sendBadRequest(res, error.message);
+            if (error.message.includes('Missing required') || error.message.includes('is required')) {
+                // Return 422 for missing required fields with message field
+                this.sendJson(res, 422, {
+                    success: false,
+                    message: error.message
+                });
+            } else if (error.message.includes('Invalid JSON')) {
+                // Return 400 for malformed JSON with message field
+                this.sendJson(res, 400, {
+                    success: false,
+                    message: error.message
+                });
             } else {
                 this.sendInternalError(res, 'ERD validation failed', error);
             }

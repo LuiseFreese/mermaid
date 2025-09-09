@@ -1037,7 +1037,7 @@ This section provides a comprehensive analysis of how the frontend, backend, and
 ```mermaid
 graph TB
     %% User Interface Layer
-    subgraph "Frontend (React + TypeScript)"
+    subgraph "Frontend (React + TS)
         UI[User Interface]
         Router[React Router]
         Context[Wizard Context]
@@ -1069,7 +1069,7 @@ graph TB
         end
         
         subgraph "Service Layer"
-            ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detection]
+            ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detect]
             DeploymentSvc[Deployment Service<br/>Solution Orchestration]
             PublisherSvc[Publisher Service<br/>Publisher Management]
             ChoicesSvc[Global Choices Service<br/>Option Set Management]

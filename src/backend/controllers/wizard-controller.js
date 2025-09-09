@@ -216,13 +216,13 @@ class WizardController extends BaseController {
                 });
                 res.end(content);
             } else {
-                // Return empty response for missing favicon
-                res.writeHead(204);
-                res.end();
+                // Return 404 for missing favicon
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Favicon not found');
             }
         } catch (error) {
-            res.writeHead(204);
-            res.end();
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Favicon not found');
         }
     }
 

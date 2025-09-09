@@ -455,6 +455,9 @@ class AdminController extends BaseController {
             health.services.globalChoices = await this.checkServiceHealth(this.globalChoicesService);
             health.services.solution = await this.checkServiceHealth(this.solutionService);
 
+            // Include services as components for API compatibility
+            health.components = health.services;
+
             // Check overall health
             const unhealthyServices = Object.values(health.services)
                 .filter(service => service.status === 'unhealthy');

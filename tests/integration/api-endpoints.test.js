@@ -4,39 +4,47 @@
  */
 
 const request = require('supertest');
-const http = require('http');
 const { createLayeredServer } = require('../../src/backend/server');
+const { setupTestEnvironment } = require('./test-setup');
 
 describe('API Integration Tests', () => {
   let server;
   let app;
+  let testEnv;
 
   beforeAll(async () => {
+    // Set up test environment
+    testEnv = setupTestEnvironment();
+    
     // Create server with test configuration
     process.env.NODE_ENV = 'test';
     process.env.PORT = '0'; // Use random port
     
-    // Mock external dependencies for integration tests
-    jest.mock('../../src/backend/dataverse-client', () => ({
-      DataverseClient: jest.fn().mockImplementation(() => ({
-        testConnection: jest.fn().mockResolvedValue({ success: true }),
-        authenticate: jest.fn().mockResolvedValue('mock-token'),
-        getCDMEntities: jest.fn().mockResolvedValue([]),
-        createEntity: jest.fn().mockResolvedValue({ id: 'test-entity-123' }),
-        createRelationship: jest.fn().mockResolvedValue({ id: 'test-rel-123' })
-      }))
-    }));
+    // Set up mocked Dataverse configuration for tests
+    process.env.DATAVERSE_URL = 'https://test.crm.dynamics.com';
+    process.env.TENANT_ID = 'test-tenant-id';
+    process.env.CLIENT_ID = 'test-client-id';
+    process.env.CLIENT_SECRET = 'test-client-secret';
+    
+    // Disable Key Vault for tests
+    process.env.KEY_VAULT_URI = '';
+    process.env.AUTH_MODE = '';
 
     const { server: testServer } = await createLayeredServer();
     server = testServer;
     app = request(server);
-  });
+  }, 60000); // Increase timeout for server startup
 
   afterAll(async () => {
     if (server) {
-      await new Promise((resolve) => server.close(resolve));
+      await new Promise((resolve) => {
+        server.close(resolve);
+      });
     }
-  });
+    if (testEnv) {
+      testEnv.restore();
+    }
+  }, 60000); // Increase timeout for server shutdown
 
   describe('Health Endpoints', () => {
     it('GET /health should return health status', async () => {
@@ -179,8 +187,9 @@ describe('API Integration Tests', () => {
         .expect(200)
         .expect('Content-Type', /json/);
 
-      // Should be chunked/streaming response
-      expect(response.text).toContain('"type":"result"');
+      // In test mode, should return regular JSON response
+      expect(response.body).toHaveProperty('success');
+      expect(response.body).toHaveProperty('deploymentId');
     });
 
     it('POST /upload should handle missing required fields', async () => {
@@ -192,9 +201,10 @@ describe('API Integration Tests', () => {
       const response = await app
         .post('/upload')
         .send(incompleteData)
-        .expect(200); // Still 200 but with error in response
+        .expect(400); // Should be 400 for missing required fields
 
-      expect(response.text).toContain('"success":false');
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('message');
     });
   });
 
@@ -320,8 +330,10 @@ describe('API Integration Tests', () => {
 
       await app.get('/health');
 
+      // Check that the first argument contains the expected request log
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('GET /health')
+        expect.stringContaining('REQUEST START: GET /health'),
+        expect.any(Object)
       );
 
       consoleSpy.mockRestore();

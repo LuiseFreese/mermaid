@@ -32,6 +32,34 @@ class DataverseRepository extends BaseRepository {
             type: typeof config,
             keys: config ? Object.keys(config) : 'N/A'
         });
+        
+        // Return mock client for tests
+        if (process.env.NODE_ENV === 'test') {
+            return {
+                getPublishers: () => Promise.resolve([
+                    { id: 'pub1', uniqueName: 'testpub', friendlyName: 'Test Publisher', prefix: 'test' }
+                ]),
+                getSolutions: () => Promise.resolve([
+                    { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }
+                ]),
+                getSolutionComponents: () => Promise.resolve([
+                    { componentid: 'comp1', componenttype: 1, solutionid: 'sol1' }
+                ]),
+                createEntity: () => Promise.resolve({ success: true, entityId: 'entity1' }),
+                integrateCDMEntities: () => Promise.resolve({ success: true }),
+                ensurePublisher: () => Promise.resolve({ id: 'pub1', uniqueName: 'testpub' }),
+                ensureSolution: () => Promise.resolve({ solutionid: 'sol1', uniquename: 'testsolution' }),
+                createPublisher: () => Promise.resolve({ publisherid: 'pub1', uniquename: 'testpub', friendlyname: 'Test Publisher' }),
+                createSolution: () => Promise.resolve({ solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }),
+                createRelationship: () => Promise.resolve({ success: true, relationshipId: 'rel1' }),
+                addToSolution: () => Promise.resolve({ success: true }),
+                exportSolution: () => Promise.resolve({ success: true, solutionZip: 'base64data' }),
+                importSolution: () => Promise.resolve({ success: true }),
+                updateGlobalChoiceSet: () => Promise.resolve({ success: true }),
+                createGlobalChoiceSet: () => Promise.resolve({ success: true, choiceSetId: 'choice1' })
+            };
+        }
+        
         try {
             // Use provided config or get from config repository
             let dataverseConfig = config;

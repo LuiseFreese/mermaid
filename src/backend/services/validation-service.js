@@ -96,15 +96,32 @@ class ValidationService extends BaseService {
                     return this.createError('ERD structure validation failed', result.errors, result);
                 }
 
-                // Step 3: CDM detection if requested
+                // Step 3: CDM detection - use results from parser
                 if (options.detectCDM !== false) {
                     try {
-                        result.cdmDetection = await this.detectCDMEntities(result.entities);
+                        // Use CDM detection results from the parser
+                        result.cdmDetection = parseResult.cdmDetection || {
+                            matches: [],
+                            detectedCDM: [],
+                            totalEntities: result.entities.length,
+                            cdmEntities: 0,
+                            customEntities: result.entities.length,
+                            confidence: 'low'
+                        };
+                        
                         this.log('cdmDetection', { 
-                            matchesFound: result.cdmDetection.matches?.length || 0 
+                            matchesFound: result.cdmDetection.detectedCDM?.length || 0 
                         });
                     } catch (error) {
                         this.warn('CDM detection failed', { error: error.message });
+                        result.cdmDetection = {
+                            matches: [],
+                            detectedCDM: [],
+                            totalEntities: result.entities.length,
+                            cdmEntities: 0,
+                            customEntities: result.entities.length,
+                            confidence: 'low'
+                        };
                         result.warnings.push({
                             type: 'cdm_detection_failed',
                             severity: 'info',
