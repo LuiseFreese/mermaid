@@ -101,7 +101,8 @@ erDiagram
 #### Primary Column Conflicts
 
 **Problem detected:**
-```mermaid
+
+```bash
 Customer {
     string customer_id PK
     string name "Customer name"  // Conflicts with auto-generated primary column
@@ -109,7 +110,9 @@ Customer {
 ```
 
 **Auto-suggested fix:**
-```mermaid
+
+```bash
+ERD
 Customer {
     string customer_id PK
     string customer_name "Customer name"  // Renamed to avoid conflict
@@ -118,7 +121,7 @@ Customer {
 
 #### Status Column Filtering
 **Original ERD:**
-```mermaid
+```bash
 Order {
     string order_id PK
     string status "Order status"  // Will be automatically ignored
@@ -132,7 +135,7 @@ Order {
 
 #### System Column Conflicts
 **Problem detected:**
-```mermaid
+```bash
 Task {
     string task_id PK
     string ownerid FK "Task owner"  // Conflicts with Dataverse system column
@@ -140,7 +143,7 @@ Task {
 ```
 
 **Auto-suggested fix:**
-```mermaid
+```bash
 Task {
     string task_id PK
     string task_ownerid FK "Task owner reference"  // Prefixed to avoid conflict
@@ -153,7 +156,7 @@ The system includes intelligent field name analysis for automatic type improveme
 
 **Email Detection:**
 
-```mermaid
+```bash
 Contact {
     string user_email "User email"      // → Automatically becomes 'email' type
     string contact_email "Contact email" // → Automatically becomes 'email' type
@@ -162,7 +165,7 @@ Contact {
 
 **Phone Detection:**
 
-```mermaid
+```bash
 Contact {
     string mobile_phone "Mobile number"  // → Automatically becomes 'phone' type
     string office_tel "Office telephone" // → Automatically becomes 'phone' type
@@ -171,7 +174,7 @@ Contact {
 
 **URL Detection:**
 
-```mermaid
+```bash
 Company {
     string website_url "Company website" // → Automatically becomes 'url' type
     string homepage "Company homepage"    // → Automatically becomes 'url' type

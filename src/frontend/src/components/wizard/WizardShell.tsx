@@ -53,7 +53,7 @@ export const WizardShell: React.FC = () => {
 
   return (
     <WizardProvider>
-      <div style={{
+      <div data-testid="wizard-container" style={{
         minHeight: '100vh',
         backgroundColor: tokens.colorNeutralBackground1,
       }}>
@@ -122,31 +122,31 @@ export const WizardShell: React.FC = () => {
               fontSize: '14px',
               color: tokens.colorNeutralForeground2
             }}>
-              <Badge appearance={currentStep >= 1 ? "filled" : "outline"} color="brand">1</Badge>
+              <Badge data-testid="step-1" appearance={currentStep >= 1 ? "filled" : "outline"} color="brand">1</Badge>
               <Text size={300}>File Upload</Text>
               <ChevronRightRegular />
-              <Badge appearance={currentStep >= 2 ? "filled" : "outline"} color="brand">2</Badge>
+              <Badge data-testid="step-2" appearance={currentStep >= 2 ? "filled" : "outline"} color="brand">2</Badge>
               <Text size={300}>Solution & Publisher</Text>
               <ChevronRightRegular />
-              <Badge appearance={currentStep >= 3 ? "filled" : "outline"} color="brand">3</Badge>
+              <Badge data-testid="step-3" appearance={currentStep >= 3 ? "filled" : "outline"} color="brand">3</Badge>
               <Text size={300}>Global Choices</Text>
               <ChevronRightRegular />
-              <Badge appearance={currentStep >= 4 ? "filled" : "outline"} color="brand">4</Badge>
+              <Badge data-testid="step-4" appearance={currentStep >= 4 ? "filled" : "outline"} color="brand">4</Badge>
               <Text size={300}>Deployment Summary</Text>
             </div>
           </div>
 
           {/* Main Content */}
-          <div style={{
+          <div data-testid="wizard-content" style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '24px',
           }}>
             <Routes>
-              <Route index element={<FileUploadStep onNext={handleNext} />} />
-              <Route path="solution-setup" element={<SolutionSetupStep onNext={handleNext} onPrevious={handlePrevious} />} />
-              <Route path="global-choices" element={<GlobalChoicesStep onNext={handleNext} onPrevious={handlePrevious} />} />
-              <Route path="deploy" element={<DeploymentStep onPrevious={handlePrevious} />} />
+              <Route index element={<div data-testid="step-1-content"><FileUploadStep onNext={handleNext} /></div>} />
+              <Route path="solution-setup" element={<div data-testid="step-2-content"><SolutionSetupStep onNext={handleNext} onPrevious={handlePrevious} /></div>} />
+              <Route path="global-choices" element={<div data-testid="step-3-content"><GlobalChoicesStep onNext={handleNext} onPrevious={handlePrevious} /></div>} />
+              <Route path="deploy" element={<div data-testid="step-4-content"><DeploymentStep onPrevious={handlePrevious} /></div>} />
             </Routes>
           </div>
         </div>

@@ -1,0 +1,14 @@
+erDiagram
+    Customer {
+        string customer_id PK "Customer identifier"
+        string name "Customer name"
+        string status "Customer status"
+    }
+    
+    Order {
+        string order_id PK "Order identifier"
+        string ownerid FK "Order owner"
+        string customer_id FK "Associated customer"
+    }
+    
+    Customer ||--o{ Order : "places"

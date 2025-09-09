@@ -442,6 +442,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                       className={styles.fileInputField}
                     />
                     <Button 
+                      data-testid="upload-trigger"
                       appearance="primary"
                       onClick={handleBrowseClick}
                       className={styles.fileUploadButtonPrimary}

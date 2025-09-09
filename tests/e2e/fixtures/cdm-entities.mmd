@@ -1,0 +1,19 @@
+erDiagram
+    Contact {
+        string contact_id PK "Contact identifier"
+        string first_name "First name"
+        string last_name "Last name" 
+        string business_email "Business email"
+        string mobile_phone "Mobile phone"
+        string account_id FK "Associated account"
+    }
+    
+    Account {
+        string account_id PK "Account identifier"
+        string account_name "Account name"
+        string website_url "Company website"
+        string main_phone "Main phone"
+        decimal annual_revenue "Annual revenue"
+    }
+    
+    Account ||--o{ Contact : "has_contacts"
