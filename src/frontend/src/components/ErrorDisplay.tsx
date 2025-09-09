@@ -1,6 +1,6 @@
 import React from 'react';
-import { MessageBar, MessageBarBody, Text } from '@fluentui/react-components';
-import { ErrorCircleRegular } from '@fluentui/react-icons';
+import { MessageBar, MessageBarBody, MessageBarActions, Button, Text } from '@fluentui/react-components';
+import { ErrorCircleRegular, DismissRegular } from '@fluentui/react-icons';
 
 interface ErrorDisplayProps {
   error?: string | Error;
@@ -20,7 +20,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   const errorMessage = typeof error === 'string' ? error : error.message;
 
   return (
-    <MessageBar intent="error" onDismiss={onDismiss}>
+    <MessageBar intent="error">
       <MessageBarBody>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ErrorCircleRegular />
@@ -30,6 +30,16 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
           </div>
         </div>
       </MessageBarBody>
+      {onDismiss && (
+        <MessageBarActions>
+          <Button
+            appearance="transparent"
+            icon={<DismissRegular />}
+            onClick={onDismiss}
+            size="small"
+          />
+        </MessageBarActions>
+      )}
     </MessageBar>
   );
 };
