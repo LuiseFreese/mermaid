@@ -25,12 +25,6 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **Security**: Azure Key Vault for credential storage
 - **Infrastructure**: Azure Bicep templates for repeatable deployments
 
-### High-Level Flow
-1. **Modern React Wizard**: Step-by-step guided interface built with Fluent UI components
-2. **ERD Upload & Validation**: Real-time syntax checking with auto-corrections
-3. **Publisher Configuration**: Select existing or create new publisher with custom prefix
-4. **Global Choices Integration**: Optional upload of global choice definitions
-5. **Secure Deployment**: Managed identity for passwordless Azure service access
 
 ### Architecture Overview Diagram
 
@@ -1096,6 +1090,8 @@ The application uses a **robust two-step deployment process** that separates inf
 **Core Infrastructure**: Resource Group, App Service Plan, App Service, User-Assigned Managed Identity, Key Vault with RBAC
 
 **External Dependencies**: Entra ID App Registration, Dataverse Environment, Dataverse Application User
+
+![Architecture in Azure Diagram](media/mermaid-to-dataverse.drawio.png)
 
 ### Automated Infrastructure Deployment
 

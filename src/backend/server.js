@@ -475,11 +475,9 @@ async function routeRequest(pathname, req, res, components) {
     return components.wizardController.serveStaticFile(req, res);
   }
 
-  // Assets files (for modular frontend)
+  // Assets files (for React frontend)
   if (req.method === 'GET' && pathname.startsWith('/assets/')) {
-    // Modify the URL to work with the static file handler
-    req.url = req.url.replace('/assets/', '/static/assets/');
-    return components.wizardController.serveStaticFile(req, res);
+    return components.wizardController.serveReactAsset(req, res);
   }
 
   // Favicon

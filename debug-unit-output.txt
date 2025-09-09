@@ -1,0 +1,428 @@
+  console.error
+    ❌ ValidationController Error: ERD validation failed { originalError: 'Service unavailable' }
+
+    [0m [90m 36 |[39m [90m     */[39m
+     [90m 37 |[39m     sendError(res[33m,[39m statusCode[33m,[39m message[33m,[39m details [33m=[39m {}) {
+    [31m[1m>[22m[39m[90m 38 |[39m         console[33m.[39merror([32m`❌ ${this.name} Error:`[39m[33m,[39m message[33m,[39m details)[33m;[39m
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 39 |[39m         [36mthis[39m[33m.[39msendJson(res[33m,[39m statusCode[33m,[39m { 
+     [90m 40 |[39m             success[33m:[39m [36mfalse[39m[33m,[39m 
+     [90m 41 |[39m             error[33m:[39m message[33m,[39m [0m
+
+      at ValidationController.error [as sendError] (src/backend/controllers/base-controller.js:38:17)
+      at ValidationController.sendError [as sendInternalError] (src/backend/controllers/base-controller.js:63:14)
+      at ValidationController.sendInternalError [as validateERD] (src/backend/controllers/validation-controller.js:86:22)
+      at Object.<anonymous> (tests/unit/controllers/validation-controller.test.js:149:7)
+
+---------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------
+File                             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                               
+---------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------
+All files                        |   22.84 |    25.05 |   20.33 |   23.27 |                                                                                                 
+ backend                         |       0 |        0 |       0 |       0 |                                                                                                 
+  dataverse-client.js            |       0 |        0 |       0 |       0 | 5-1980                                                                                          
+  mermaid-parser.js              |       0 |        0 |       0 |       0 | 8-1011                                                                                          
+ backend/cdm                     |       0 |        0 |       0 |       0 |                                                                                                 
+  cdm-entity-registry.js         |       0 |        0 |       0 |       0 | 8-119                                                                                           
+ backend/clients                 |   66.45 |       60 |   86.36 |   66.66 |                                                                                                 
+  dataverse-client.js            |   66.45 |       60 |   86.36 |   66.66 | 17,91,176-273,302-303,317,352,366,410,424,448-449,463,487-488,502,526-527,569-570,584,608-609   
+ backend/controllers             |    7.57 |     9.01 |   14.28 |    7.61 |                                                                                                 
+  admin-controller.js            |       0 |        0 |       0 |       0 | 5-512                                                                                           
+  base-controller.js             |    37.2 |    47.36 |    42.1 |   38.09 | 52,72-126,148,167-173                                                                           
+  deployment-controller.js       |       0 |        0 |       0 |       0 | 5-278                                                                                           
+  validation-controller-fixed.js |       0 |        0 |       0 |       0 | 5-180                                                                                           
+  validation-controller.js       |   38.46 |    54.16 |   33.33 |   38.46 | 27-35,96-184                                                                                    
+  wizard-controller.js           |       0 |        0 |       0 |       0 | 5-274                                                                                           
+ backend/middleware              |   57.14 |    58.88 |   43.13 |   57.08 |                                                                                                 
+  cors-middleware.js             |   88.46 |    82.92 |    90.9 |   88.23 | 35,49,104,114-115,162                                                                           
+  error-handler-middleware.js    |   79.31 |    86.44 |    37.5 |   79.31 | 136-194                                                                                         
+  request-logger-middleware.js   |       0 |        0 |       0 |       0 | 24-153                                                                                          
+  security-middleware.js         |       0 |        0 |       0 |       0 | 8-67                                                                                            
+  streaming-middleware.js        |   59.77 |     57.4 |   47.36 |   60.24 | 53,113,137-148,159,166,170,175-183,198-240,266                                                  
+ backend/parsers                 |      75 |    77.67 |      75 |   74.44 |                                                                                                 
+  erd-parser.js                  |      75 |    77.67 |      75 |   74.44 | 33,39,220-228,263,315-318,323,333-373                                                           
+ backend/repositories            |       0 |        0 |       0 |       0 |                                                                                                 
+  base-repository.js             |       0 |        0 |       0 |       0 | 7-231                                                                                           
+  configuration-repository.js    |       0 |        0 |       0 |       0 | 5-365                                                                                           
+  dataverse-repository.js        |       0 |        0 |       0 |       0 | 5-588                                                                                           
+ backend/services                |   50.44 |    44.95 |   38.25 |   50.45 |                                                                                                 
+  base-service.js                |   73.46 |    66.66 |      80 |   76.08 | 162-196                                                                                         
+  deployment-service.js          |   81.66 |     65.1 |   72.72 |   81.66 | 178,229-230,282,305,311,331-332,355,368-374,443-444,500-506,539-543,566-570,601,646-704,805-806 
+  global-choices-service.js      |   28.84 |    20.19 |   23.33 |   29.12 | 100-365                                                                                         
+  publisher-service.js           |    28.2 |     28.2 |   21.73 |    28.2 | 56,61,81-231                                                                                    
+  solution-service.js            |       0 |        0 |       0 |       0 | 5-372                                                                                           
+  validation-service.js          |   57.29 |    60.27 |      60 |   56.38 | 26-36,90-96,116-125,154-160,177-178,185,191,195,232,237,240,258-330                             
+ backend/utils                   |     100 |     92.3 |     100 |     100 |                                                                                                 
+  logger.js                      |     100 |     92.3 |     100 |     100 | 41,50                                                                                           
+---------------------------------|---------|----------|---------|---------|-------------------------------------------------------------------------------------------------
+
+PASS tests/unit/utils/logger.test.js
+  Logger
+    constructor
+      √ should initialize with name and level (7 ms)
+      √ should use default values (2 ms)
+      √ should respect LOG_LEVEL environment variable (2 ms)
+      √ should fall back to constructor level when LOG_LEVEL is undefined (3 ms)
+    formatMessage
+      √ should format message with timestamp and level (2 ms)
+      √ should include context when provided (2 ms)
+      √ should handle empty context (2 ms)
+    shouldLog
+      √ should respect log levels - debug level (3 ms)
+      √ should respect log levels - info level (6 ms)
+      √ should respect log levels - error level (1 ms)
+    logging methods
+      √ should log error messages (4 ms)
+      √ should log warning messages (3 ms)
+      √ should log info messages (3 ms)
+      √ should log debug messages (3 ms)
+      √ should use log as alias for info (2 ms)
+    log level filtering
+      √ should not log messages below threshold (3 ms)
+      √ should log messages at or above threshold (2 ms)
+    createLogger function
+      √ should create logger instance (2 ms)
+    edge cases
+      √ should handle unknown log level (8 ms)
+      √ should handle null/undefined context (4 ms)
+
+PASS tests/unit/clients/dataverse-client.test.js
+  DataverseClient
+    Constructor and Initialization
+      √ should initialize with correct configuration (6 ms)
+      √ should throw error for missing configuration (26 ms)
+      √ should throw error for invalid URL (6 ms)
+    Authentication
+      √ should acquire token successfully (2 ms)
+      √ should handle authentication failure (2 ms)
+      √ should cache and reuse valid tokens (2 ms)
+    Connection Testing
+      √ should test connection successfully (1 ms)
+      √ should handle connection failure (1 ms)
+      √ should handle HTTP error responses (1 ms)
+    Publisher Operations
+      √ should fetch publishers successfully (3 ms)
+      √ should handle empty publishers response (2 ms)
+      √ should handle publishers fetch error (1 ms)
+    Solution Operations
+      √ should fetch solutions successfully (2 ms)
+      √ should create solution successfully (1 ms)
+      √ should handle solution creation conflict (1 ms)
+    Entity Operations
+      √ should create entity successfully (1 ms)
+      √ should handle entity creation validation error (5 ms)
+      √ should create attribute successfully (3 ms)
+    Relationship Operations
+      √ should create one-to-many relationship successfully (1 ms)
+      √ should create many-to-many relationship successfully (2 ms)
+    Global Choice Operations
+      √ should fetch global choices successfully (2 ms)
+      √ should create global choice successfully (1 ms)
+    Error Handling
+      √ should handle network timeouts (1 ms)
+      √ should handle rate limiting (1 ms)
+      √ should handle service unavailable (2 ms)
+    Request Configuration
+      √ should include proper headers in requests (1 ms)
+      √ should handle request timeout configuration (1 ms)
+    Utility Methods
+      √ should build API URLs correctly (2 ms)
+      √ should extract entity ID from OData response (2 ms)
+      √ should validate GUID format (2 ms)
+
+PASS tests/unit/services/deployment-service.test.js
+  DeploymentService
+    constructor
+      √ should initialize with required dependencies (3 ms)
+      √ should throw error if required dependencies are missing (31 ms)
+    deploySolution
+      √ should successfully deploy a complete solution (31 ms)
+      √ should handle validation failures (3 ms)
+      √ should handle missing required fields (2 ms)
+      √ should handle publisher creation failures (3 ms)
+      √ should handle solution creation failures (3 ms)
+      √ should handle entity creation failures gracefully (4 ms)
+      √ should handle CDM entity deployment (7 ms)
+      √ should handle global choices integration (4 ms)
+      √ should handle custom global choices creation (3 ms)
+      √ should track progress with callback (5 ms)
+    _createEntities
+      √ should create entities with proper naming conventions (2 ms)
+      √ should handle entity creation errors individually (1 ms)
+    _createRelationships
+      √ should create relationships between entities (1 ms)
+      √ should skip relationships with missing entities (2 ms)
+
+PASS tests/unit/parsers/erd-parser.test.js
+  ERDParser
+    Basic Parsing
+      √ should parse simple ERD successfully (5 ms)
+      √ should parse complex ERD with multiple entities (4 ms)
+      √ should handle empty ERD diagram (1 ms)
+    Entity Parsing
+      √ should extract entity attributes correctly (1 ms)
+      √ should detect primary keys correctly (1 ms)
+      √ should detect foreign keys correctly (1 ms)
+      √ should handle different data types (2 ms)
+    Relationship Parsing
+      √ should parse one-to-many relationships (2 ms)
+      √ should parse different relationship types (2 ms)
+      √ should handle relationships without labels (1 ms)
+    Error Handling
+      √ should handle invalid ERD syntax (1 ms)
+      √ should handle missing erDiagram declaration (1 ms)
+      √ should handle malformed entity definitions (1 ms)
+      √ should handle null or undefined input (21 ms)
+    CDM Detection
+      √ should detect CDM entities (2 ms)
+      √ should identify standard CDM field patterns (2 ms)
+    Validation Rules
+      √ should identify missing primary keys (1 ms)
+      √ should identify naming convention issues (2 ms)
+      √ should identify orphaned entities (1 ms)
+    Line-by-Line Parsing
+      √ should track line numbers for errors (1 ms)
+      √ should handle comments and empty lines (1 ms)
+    Performance and Memory
+      √ should handle large ERD diagrams efficiently (1 ms)
+      √ should not consume excessive memory (2 ms)
+
+PASS tests/unit/controllers/validation-controller.test.js
+  ValidationController
+    constructor
+      √ should initialize with validation service (2 ms)
+      √ should throw error if validation service is missing (16 ms)
+    validateERD
+      √ should successfully validate ERD and return formatted response (2 ms)
+      √ should handle missing mermaidContent (2 ms)
+      √ should handle validation service failures (2 ms)
+      √ should handle service exceptions (22 ms)
+      √ should handle malformed JSON requests (3 ms)
+      √ should pass options to validation service (1 ms)
+      √ should include corrected ERD in response when available (2 ms)
+      √ should include CDM detection results (1 ms)
+    HTTP method validation
+      ○ skipped should reject non-POST requests
+    Request timeout handling
+      ○ skipped should handle request timeouts gracefully
+
+PASS tests/unit/services/base-service.test.js
+  BaseService
+    constructor
+      √ should initialize with dependencies (4 ms)
+      √ should use console as default logger (1 ms)
+      √ should handle empty dependencies (1 ms)
+    logging methods
+      √ should log actions with service name (2 ms)
+      √ should log warnings with service name (1 ms)
+      √ should log errors with service name (2 ms)
+      √ should handle error logging without error object (1 ms)
+    validateDependencies
+      √ should pass validation when all dependencies are present (2 ms)
+      √ should throw error when dependencies are missing (16 ms)
+      √ should handle empty required dependencies array (2 ms)
+    executeOperation
+      √ should execute operation successfully and log timing (2 ms)
+      √ should handle operation failures and log errors (2 ms)
+      √ should handle operations with success=false as successful completion (4 ms)
+    result creation methods
+      √ should create standardized result object (2 ms)
+      √ should create success result (2 ms)
+      √ should create success result with default message (1 ms)
+      √ should create error result (2 ms)
+    validateInput
+      √ should pass validation with all required fields present (1 ms)
+      √ should throw error for missing required fields (1 ms)
+      √ should treat empty string as missing (2 ms)
+      √ should validate parameter types when schema provided (1 ms)
+      √ should allow optional parameters in schema (1 ms)
+      √ should handle empty input and no requirements (1 ms)
+    error handling
+      √ should preserve original error context in executeOperation (1 ms)
+
+PASS tests/unit/middleware/error-handler-middleware.test.js
+  ErrorHandlerMiddleware
+    constructor
+      √ should initialize with default values (2 ms)
+      √ should initialize with custom dependencies (1 ms)
+    handle
+      √ should handle generic errors with 500 status (2 ms)
+      √ should handle ValidationError with 400 status (1 ms)
+      √ should handle UnauthorizedError with 401 status (1 ms)
+      √ should handle NotFoundError with 404 status (1 ms)
+      √ should use custom status code when provided (1 ms)
+      √ should not send response if headers already sent (1 ms)
+      √ should handle missing request ID (1 ms)
+      √ should log error details (4 ms)
+      √ should include additional details in development environment (12 ms)
+      √ should include stack trace when enabled (2 ms)
+      √ should handle response sending errors gracefully (2 ms)
+    error status code mapping
+      √ should map ValidationError to 400 status (1 ms)
+      √ should map UnauthorizedError to 401 status (1 ms)
+      √ should map ForbiddenError to 403 status (1 ms)
+      √ should map NotFoundError to 404 status (2 ms)
+      √ should map ConflictError to 409 status (1 ms)
+      √ should map TooManyRequestsError to 429 status (2 ms)
+    safe error messages
+      √ should sanitize error messages for production (1 ms)
+      √ should preserve error messages in development (2 ms)
+
+PASS tests/unit/services/global-choices-service.test.js
+  GlobalChoicesService
+    constructor
+      √ should initialize with dataverse repository (2 ms)
+      √ should throw error if dataverse repository is missing (18 ms)
+    getGlobalChoices
+      √ should retrieve global choices with default options (2 ms)
+      √ should handle custom query options (1 ms)
+      √ should handle repository failures (1 ms)
+    createCustomGlobalChoice
+      √ should create custom global choice successfully (5 ms)
+      √ should validate required fields (2 ms)
+      √ should validate options array (1 ms)
+      √ should validate empty options array (1 ms)
+      √ should validate option structure (1 ms)
+      √ should validate option value type (1 ms)
+      √ should check for duplicate choice names (1 ms)
+      √ should handle creation failures (2 ms)
+    error handling
+      √ should handle repository connection errors (1 ms)
+      √ should log operation failures (1 ms)
+    input validation
+      √ should handle undefined input gracefully (2 ms)
+      √ should handle null input gracefully (3 ms)
+
+PASS tests/unit/middleware/cors-middleware.test.js
+  CorsMiddleware
+    constructor
+      √ should initialize with default options (2 ms)
+      √ should initialize with custom options (1 ms)
+    handle
+      √ should set CORS headers for allowed origin (2 ms)
+      √ should reject disallowed origins (1 ms)
+      √ should handle wildcard origins (1 ms)
+      √ should handle same-origin requests (2 ms)
+    handlePreflight
+      √ should handle OPTIONS preflight requests (2 ms)
+      √ should handle requested headers in preflight (2 ms)
+      √ should set max age for preflight cache (2 ms)
+    isOriginAllowed
+      √ should allow exact origin matches (2 ms)
+      √ should reject non-matching origins (1 ms)
+      √ should handle null/undefined origins (1 ms)
+    isHeaderAllowed
+      √ should allow configured headers (1 ms)
+      √ should reject non-configured headers (1 ms)
+    createWebAppCors
+      √ should create CORS middleware for web apps (2 ms)
+    createApiCors
+      √ should not have createApiCors method (not implemented) (1 ms)
+    error handling
+      √ should handle middleware errors gracefully (14 ms)
+    security considerations
+      √ should not allow credentials with wildcard origin (5 ms)
+      √ should properly validate origin format (1 ms)
+
+PASS tests/unit/middleware/streaming-middleware.test.js
+  StreamingMiddleware
+    constructor
+      √ should initialize with default values (2 ms)
+      √ should initialize with custom dependencies (1 ms)
+    streamJson
+      √ should stream small JSON response directly (2 ms)
+      √ should stream large JSON response in chunks (2 ms)
+      √ should handle pretty formatting option (3 ms)
+      √ should handle missing request ID gracefully (1 ms)
+      √ should handle already sent headers (1 ms)
+    createEventStream
+      √ should initialize event stream with proper headers (2 ms)
+      √ should send event data through stream (1 ms)
+      √ should send event with ID (2 ms)
+      √ should close event stream (2 ms)
+      √ should handle progress updates (3 ms)
+    shouldStream
+      √ should return true for large objects (1 ms)
+      √ should return false for small objects (1 ms)
+      √ should respect forceStream option (1 ms)
+      √ should respect noStream option (1 ms)
+    error handling
+      √ should handle connection errors gracefully (3 ms)
+      √ should handle write errors during chunked streaming (2 ms)
+
+PASS tests/unit/services/publisher-service.test.js
+  PublisherService
+    constructor
+      √ should initialize with dataverse repository (2 ms)
+      √ should throw error if dataverse repository is missing (17 ms)
+    getPublishers
+      √ should retrieve publishers successfully (2 ms)
+      √ should handle empty publishers list (4 ms)
+      √ should handle repository failures (1 ms)
+      √ should handle repository exceptions (3 ms)
+    createPublisher
+      √ should create publisher successfully (2 ms)
+      √ should validate required fields (1 ms)
+      √ should validate prefix format - too short (1 ms)
+      √ should validate prefix format - too long (1 ms)
+      √ should validate prefix format - uppercase letters (1 ms)
+      √ should validate prefix format - numbers and special chars (2 ms)
+      √ should handle creation failures (1 ms)
+    input validation
+      √ should handle undefined input gracefully (1 ms)
+      √ should handle null input gracefully (2 ms)
+      √ should validate parameter types (1 ms)
+    error handling
+      √ should log operation failures (5 ms)
+
+PASS tests/unit/utils/simple-logger.test.js
+  Logger
+    constructor
+      √ should initialize with name and level (1 ms)
+      √ should use default values (2 ms)
+      √ should respect LOG_LEVEL environment variable (1 ms)
+      √ should fall back to constructor level when LOG_LEVEL is undefined (1 ms)
+    formatMessage
+      √ should format message with timestamp and level (1 ms)
+      √ should include context when provided (1 ms)
+      √ should handle empty context (4 ms)
+    shouldLog
+      √ should respect log levels - debug level (2 ms)
+      √ should respect log levels - info level (1 ms)
+      √ should respect log levels - error level (1 ms)
+    logging methods
+      √ should log error messages (3 ms)
+      √ should log warning messages (2 ms)
+      √ should log info messages (2 ms)
+      √ should log debug messages (1 ms)
+      √ should use log as alias for info (2 ms)
+    log level filtering
+      √ should not log messages below threshold (2 ms)
+      √ should log messages at or above threshold (2 ms)
+    createLogger function
+      √ should create logger instance (1 ms)
+    edge cases
+      √ should handle unknown log level (4 ms)
+      √ should handle null/undefined context (2 ms)
+
+PASS tests/unit/services/validation-service.test.js
+  ValidationService
+    constructor
+      √ should initialize with required dependencies (2 ms)
+      √ should initialize correctly with optional dataverseRepository (2 ms)
+      √ should throw error if mermaidParser is missing (23 ms)
+    validateERD
+      √ should successfully validate valid ERD content (5 ms)
+      √ should handle missing mermaidContent (1 ms)
+      √ should handle parser errors gracefully (2 ms)
+      √ should detect CDM entities when available (2 ms)
+      √ should handle CDM detection failures gracefully (5 ms)
+      √ should handle options parameter correctly (2 ms)
+      ○ skipped should validate entity naming conventions
+      ○ skipped should detect primary key issues
+      ○ skipped should validate relationship integrity
+
+Test Suites: 13 passed, 13 total
+Tests:       5 skipped, 244 passed, 249 total
+Snapshots:   0 total
+Time:        4.419 s
+Ran all test suites matching /tests\\unit/i.

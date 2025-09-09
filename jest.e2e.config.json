@@ -1,0 +1,14 @@
+{
+    "preset": "jest-puppeteer",
+    "testEnvironment": "jest-environment-puppeteer",
+    "testMatch": [
+        "**/tests/e2e/**/*.test.js"
+    ],
+    "setupFilesAfterEnv": [
+        "<rootDir>/tests/e2e-setup.js"
+    ],
+    "testTimeout": 120000,
+    "verbose": true,
+    "globalSetup": "jest-environment-puppeteer/setup",
+    "globalTeardown": "jest-environment-puppeteer/teardown"
+}

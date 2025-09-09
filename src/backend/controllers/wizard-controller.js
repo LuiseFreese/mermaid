@@ -118,6 +118,58 @@ class WizardController extends BaseController {
     }
 
     /**
+     * Serve React build assets
+     * GET /assets/*
+     */
+    async serveReactAsset(req, res) {
+        try {
+            // Extract asset path from URL
+            const assetPath = req.url.replace(/^\/assets\//, '');
+            const filePath = path.join(this.reactDistPath, 'assets', assetPath);
+            
+            // Security check: prevent directory traversal
+            const resolvedPath = path.resolve(filePath);
+            const basePath = path.resolve(this.reactDistPath);
+            
+            if (!resolvedPath.startsWith(basePath)) {
+                this.logError('serveReactAsset', 'Access denied', { resolvedPath, basePath });
+                return this.sendError(res, 403, 'Access denied');
+            }
+
+            // Check if file exists
+            if (!fs.existsSync(resolvedPath)) {
+                this.logError('serveReactAsset', 'File not found', { filePath: resolvedPath });
+                return this.sendError(res, 404, 'Asset not found');
+            }
+
+            // Get file stats
+            const stats = fs.statSync(resolvedPath);
+            if (!stats.isFile()) {
+                this.logError('serveReactAsset', 'Not a file', { filePath: resolvedPath });
+                return this.sendError(res, 403, 'Not a file');
+            }
+
+            // Determine content type
+            const contentType = this.getContentType(path.extname(resolvedPath));
+            
+            // Set headers with longer cache for production assets
+            res.writeHead(200, {
+                'Content-Type': contentType,
+                'Content-Length': stats.size,
+                'Cache-Control': 'public, max-age=31536000', // 1 year cache for hashed assets
+                'ETag': `"${stats.mtime.getTime()}-${stats.size}"`
+            });
+
+            // Stream file
+            const readStream = fs.createReadStream(resolvedPath);
+            readStream.pipe(res);
+
+        } catch (error) {
+            this.sendInternalError(res, 'Failed to serve React asset', error);
+        }
+    }
+
+    /**
      * Redirect root to wizard
      * GET /
      */
