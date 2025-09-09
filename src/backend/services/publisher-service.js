@@ -34,10 +34,9 @@ class PublisherService extends BaseService {
     /**
      * Create a new publisher
      * @param {Object} publisherData - Publisher configuration
-     * @param {Object} dataverseConfig - Dataverse configuration
      * @returns {Promise<Object>} Creation result
      */
-    async createPublisher(publisherData, dataverseConfig = null) {
+    async createPublisher(publisherData) {
         return this.executeOperation('createPublisher', async () => {
             this.validateInput(publisherData, ['uniqueName', 'friendlyName', 'prefix'], {
                 uniqueName: 'string',

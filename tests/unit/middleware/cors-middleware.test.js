@@ -216,7 +216,7 @@ describe('CorsMiddleware', () => {
         'http://192.168.1.100:8080'
       ];
 
-      origins.forEach(origin => {
+      origins.forEach(() => {
         expect(corsMiddleware.isOriginAllowed).toBeDefined();
       });
     });

@@ -5,7 +5,6 @@
 
 const ERDParser = require('../../../src/backend/parsers/erd-parser');
 const testData = require('../../fixtures/test-data');
-const logger = require('../../../src/backend/utils/logger');
 
 // Mock logger
 jest.mock('../../../src/backend/utils/logger');

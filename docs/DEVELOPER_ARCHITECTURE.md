@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the Mermaid to Dataverse Conv
 
 ## System Overview
 
-The Mermaid to Dataverse Converter is a modern React-based web application deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships. The application features a React 18 frontend with Fluent UI v9 components and a Node.js Express backend.
+The Mermaid to Dataverse Converter is a modern React-based web application deployed on Azure App Service that converts Mermaid ERD diagrams into Microsoft Dataverse entities, columns, and relationships. The application features a React 18 frontend with Fluent UI v9 components and a custom Node.js HTTP server backend.
 
 ### Key Features
 
@@ -19,7 +19,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 ### Architecture Overview
 
 - **Frontend**: React 18 + TypeScript + Fluent UI v9 (built with Vite)
-- **Backend**: Node.js + Express
+- **Backend**: Node.js + Custom HTTP Server
 - **Build System**: Vite for frontend, npm for backend
 - **Deployment**: Azure App Service with Managed Identity
 - **Security**: Azure Key Vault for credential storage
@@ -68,12 +68,12 @@ npm run build  # Creates optimized dist/ folder
 
 ### 2. Node.js Backend (`src/backend/`)
 
-**Purpose**: Service-oriented Express.js backend with controllers, services, repositories, and middleware layers.
+**Purpose**: Service-oriented Node.js HTTP server with controllers, services, repositories, and middleware layers.
 
 **Architecture Pattern**: Clean architecture with dependency injection and separation of concerns.
 
 **Technology Stack**:
-- **Express.js** for HTTP server and routing
+- **Node.js HTTP Server** for HTTP handling and custom routing
 - **Node.js** with modern ES6+ patterns
 - **Dependency Injection** for testable components
 - **Repository Pattern** for data access abstraction
@@ -779,7 +779,7 @@ In this example:
 ```mermaid
 sequenceDiagram
     participant User as React Frontend
-    participant Server as Express Server
+    participant Server as HTTP Server
     participant Parser as Mermaid Parser
     participant KeyVault as Azure Key Vault
     participant MI as Managed Identity
@@ -1036,7 +1036,7 @@ This section provides a comprehensive analysis of how the frontend, backend, and
 ```mermaid
 graph TB
     %% User Interface Layer
-    subgraph "Frontend (React + TS)
+    subgraph "Frontend (React + TS)"
         UI[User Interface]
         Router[React Router]
         Context[Wizard Context]
@@ -1082,18 +1082,18 @@ graph TB
         
         subgraph "External Integrations"
             Parser[Mermaid Parser<br/>ERD to Entities]
-            DataverseClient[Dataverse Client<br/>Legacy Integration]
+            DataverseClient[Dataverse Client<br/>API Integration]
             KeyVault[Azure Key Vault<br/>Credential Storage]
         end
     end
 
     %% External Services
     subgraph "Microsoft Cloud"
-        Dataverse[Microsoft Dataverse<br/>Entity Storage]
-        AzureAD[Azure AD/Entra ID<br/>Authentication]
+        Dataverse[Microsoft Dataverse]
+        EntraID[Microsoft Entra ID<br/>Authentication]
     end
 
-    %% Request Flow Connections
+    %% Frontend Flow (simplified to reduce crossing)
     UI --> Router
     Router --> Components
     Components --> Context
@@ -1101,39 +1101,39 @@ graph TB
     Services --> ViteProxy
     ViteProxy -.->|API Proxy /api/*| HTTP
     
-    %% Backend Flow
+    %% Backend Middleware Flow
     HTTP --> Logger
     Logger --> CORS
     CORS --> Error
     Error --> Stream
     
-    %% Routing to Controllers
-    HTTP -.->|GET /wizard| WizardCtrl
-    HTTP -.->|POST /api/validate| ValidationCtrl
-    HTTP -.->|POST /upload| DeploymentCtrl
-    HTTP -.->|GET /api/publishers| AdminCtrl
+    %% Controller Routing (organized to minimize crossings)
+    Stream --> WizardCtrl
+    Stream --> ValidationCtrl  
+    Stream --> DeploymentCtrl
+    Stream --> AdminCtrl
     
-    %% Service Dependencies
+    %% Service Dependencies (grouped by controller)
     ValidationCtrl --> ValidationSvc
+    ValidationSvc --> Parser
+    ValidationSvc --> DataverseRepo
+    
     DeploymentCtrl --> DeploymentSvc
+    DeploymentSvc --> DataverseRepo
+    DeploymentSvc --> ConfigRepo
+    
     AdminCtrl --> PublisherSvc
     AdminCtrl --> ChoicesSvc
     AdminCtrl --> SolutionSvc
-    
-    %% Repository Dependencies
-    ValidationSvc --> DataverseRepo
-    DeploymentSvc --> DataverseRepo
-    DeploymentSvc --> ConfigRepo
     PublisherSvc --> DataverseRepo
     ChoicesSvc --> DataverseRepo
     SolutionSvc --> DataverseRepo
     
-    %% External Dependencies
-    ValidationSvc --> Parser
+    %% External Connections (simplified)
     DataverseRepo --> DataverseClient
     ConfigRepo --> KeyVault
     DataverseClient --> Dataverse
-    DataverseClient --> AzureAD
+    DataverseClient --> EntraID
 
     %% Styling
     classDef frontend fill:#e1f5fe
@@ -1142,9 +1142,9 @@ graph TB
     classDef external fill:#fff3e0
     
     class UI,Router,Context,Services,Components frontend
-    class HTTP,Logger,CORS,Error,Stream backend
-    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc service
-    class Dataverse,AzureAD,KeyVault external
+    class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl backend
+    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
+    class Dataverse,EntraID,KeyVault,Parser,DataverseClient external
 ```
 
 ### Request Flow Analysis
@@ -1154,10 +1154,22 @@ graph TB
 - **Production**: User Action → React Component → API Service → Backend
 
 #### Backend Processing
-- **Middleware**: Request Logger → CORS → Error Handler → Controller
-- **Routes**: 
-  - Root/wizard → WizardController
-  - /api/ endpoints → ValidationController, DeploymentController, AdminController
+- **Middleware Pipeline**: Request Logger → CORS → Error Handler → Streaming Handler → Controllers
+- **Controller Routing**: 
+  - Root/wizard → WizardController (serves React app)
+  - /api/validate → ValidationController (ERD processing)
+  - /api/deployment → DeploymentController (solution creation)
+  - /api/admin → AdminController (management APIs)
+
+#### Service Architecture
+- **Validation Flow**: ValidationController → ValidationService → Mermaid Parser + Dataverse Repository
+- **Deployment Flow**: DeploymentController → DeploymentService → Dataverse Repository + Configuration Repository  
+- **Admin Flow**: AdminController → Publisher/Choices/Solution Services → Dataverse Repository
+
+#### External Integration
+- **Authentication**: All Dataverse operations authenticate via Microsoft Entra ID
+- **Configuration**: Sensitive settings stored in Azure Key Vault
+- **Data Storage**: All entities and metadata stored in Microsoft Dataverse
   - Static files → Static file serving
 
 #### Service Layer
@@ -1226,7 +1238,7 @@ The architecture is prepared for authentication with:
 ### Development vs Production Architecture
 
 **Development**: Vite proxy routes `/api/*` to backend on port 8080  
-**Production**: Express serves both static React files and API endpoints  
+**Production**: Custom HTTP server serves both static React files and API endpoints  
 **Configuration**: Development uses .env files, Production uses Azure Key Vault
 
 ## Development Setup
@@ -1248,7 +1260,7 @@ The architecture is prepared for authentication with:
 1. **Install**: `npm install` (root), then `cd src/frontend && npm install`
 2. **Start**: `npm run dev` (starts both frontend and backend)
 3. **Frontend**: http://localhost:3003 (Vite with hot reload)
-4. **Backend**: http://localhost:8080 (Express server)
+4. **Backend**: http://localhost:8080 (Custom Node.js HTTP server)
 
 ### Common Tasks
 

@@ -359,7 +359,7 @@ describe('DeploymentService', () => {
       
       // Verify the method was called with the correct global choices data
       expect(mockDataverseRepo.addGlobalChoicesToSolution).toHaveBeenCalledTimes(1);
-      const [choices, solutionName, dataverseConfig] = mockDataverseRepo.addGlobalChoicesToSolution.mock.calls[0];
+      const [choices, , dataverseConfig] = mockDataverseRepo.addGlobalChoicesToSolution.mock.calls[0];
       expect(choices).toEqual([
         { LogicalName: 'test_choice_1' },
         { LogicalName: 'test_choice_2' }
@@ -399,7 +399,7 @@ describe('DeploymentService', () => {
       
       // Verify the method was called with the correct custom choices data
       expect(mockDataverseRepo.createAndAddCustomGlobalChoices).toHaveBeenCalledTimes(1);
-      const [choices, solutionName, prefix, dataverseConfig, progressCallback] = mockDataverseRepo.createAndAddCustomGlobalChoices.mock.calls[0];
+      const [choices, , , dataverseConfig, progressCallback] = mockDataverseRepo.createAndAddCustomGlobalChoices.mock.calls[0];
       expect(choices).toEqual([expect.objectContaining({
         name: 'Custom Choice 1',
         logicalName: 'test_custom_choice_1'

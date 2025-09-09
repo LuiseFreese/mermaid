@@ -1449,9 +1449,10 @@ class DataverseClient {
     const errors = [];
     
     for (const choice of selectedChoices) {
+      let choiceName;
       try {
         // Extract the choice name - handle both string and object formats
-        const choiceName = typeof choice === 'string' ? choice : (choice.name || choice.value || choice);
+        choiceName = typeof choice === 'string' ? choice : (choice.name || choice.value || choice);
         console.log(`🔍 DEBUG: Processing choice:`, { originalChoice: choice, extractedName: choiceName });
         
         // Get the MetadataId of the global choice set by name

@@ -536,7 +536,7 @@ class MermaidERDParser {
    * Validate relationships
    */
   validateRelationships() {
-    this.relationships.forEach((relationship, index) => {
+    this.relationships.forEach((relationship) => {
       // Check if entities exist
       if (!this.entities.has(relationship.fromEntity)) {
         this.warnings.push({

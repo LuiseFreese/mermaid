@@ -317,9 +317,9 @@ class TestRunner {
       }
       
       // Run test suites
-      const unitSuccess = await this.runUnitTests();
-      const integrationSuccess = await this.runIntegrationTests();
-      const e2eSuccess = await this.runE2ETests();
+      await this.runUnitTests();
+      await this.runIntegrationTests();
+      await this.runE2ETests();
       
       // Generate coverage report
       await this.generateCoverageReport();

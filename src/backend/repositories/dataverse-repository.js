@@ -365,10 +365,9 @@ class DataverseRepository extends BaseRepository {
     /**
      * Check global choice usage
      * @param {string} choiceName - Choice set name
-     * @param {Object} config - Optional Dataverse configuration (unused in placeholder)
      * @returns {Promise<Object>} Usage check result
      */
-    async checkGlobalChoiceUsage(choiceName, config = null) {
+    async checkGlobalChoiceUsage(choiceName) {
         return this.executeOperation('checkGlobalChoiceUsage', async () => {
             // Note: This would need to be implemented in DataverseClient
             // For now, return placeholder indicating usage check is not implemented

@@ -13,9 +13,7 @@ module.exports = {
   },
   rules: {
     // Allow console.log in Node.js scripts
-    'no-console': 'off',
-    // Allow require() in CommonJS files
-    '@typescript-eslint/no-var-requires': 'off'
+    'no-console': 'off'
   },
   overrides: [
     {
