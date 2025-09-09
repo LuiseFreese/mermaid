@@ -100,25 +100,74 @@ cd mermaid
 
 ```mermaid
 erDiagram
-    Customer {
-        string customer_id PK "Unique identifier"
-        string first_name "Customer first name"
-        string last_name "Customer last name"
-        string email "Email address"
-        boolean is_active "Active status"
+    %% CDM Entities (will be detected and integrated - attributes will be ignored)
+    Account {
+        string name "Company name"
+        string description "Company description"
+        string accountnumber "Account number"
+        string phone "Primary phone"
+        string emailaddress1 "Primary email"
+        string websiteurl "Website URL"
     }
-    
-    Order {
-        string order_id PK
-        string customer_id FK
-        decimal total_amount
-        datetime order_date
+
+    Contact {
+        string fullname "Full name"
+        string firstname "First name"
+        string lastname "Last name"
+        string emailaddress1 "Email address"
+        string mobilephone "Mobile phone"
+        string jobtitle "Job title"
     }
-    
-    Customer ||--o{ Order : "places"
+
+    %% Custom Entities (will be created)
+    Event {
+        int id PK
+        string name "Event name"
+        string description "Event description"
+        string status "Event status"
+        datetime startdate "Event start date"
+        datetime enddate "Event end date"
+        int maxattendees "Maximum attendees"
+        int locationid FK "Location reference"
+   
+    }
+
+    Location {
+        int id PK
+        string name "Location name"
+        string description "Location description"
+        string address "Street address"
+        string city "City"
+        string state "State/Province"
+        string zipcode "ZIP/Postal code"
+        string country "Country"
+        int capacity "Maximum capacity"
+        string status "Location status"
+
+    }
+
+    %% Intersection/Junction Table (Many-to-Many)
+    EventAttendee {
+        int id PK
+        int eventid FK "Event reference"
+        string attendeetype "Type: Account or Contact"
+        int accountid FK "Account attendee"
+        int contactid FK "Contact attendee"
+        string status "Attendance status"
+        datetime registrationdate "Registration date"
+        string notes "Attendee notes"
+
+    }
+
+    %% Relationships
+    Account ||--o{ EventAttendee : "attends events"
+    Contact ||--o{ EventAttendee : "attends events"
+    Event ||--o{ EventAttendee : "has attendees"
+    Location ||--o{ Event : "hosts events"
+
 ```
 
-**Result**: Creates `Customer` and `Order` entities in Dataverse with proper relationships and all specified columns.
+**Result**: Creates `Event` and `Location` tables with `Eventattendee` as a junction table in Dataverse with proper relationships and all specified columns in their respective data types.
 
 ## Documentation
 

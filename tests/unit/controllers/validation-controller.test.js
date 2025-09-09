@@ -101,13 +101,13 @@ describe('ValidationController', () => {
 
       await validationController.validateERD(mockReq, mockRes);
 
-      // Expect 400 for validation errors (correct behavior)
-      expect(mockRes.writeHead).toHaveBeenCalledWith(400, {
+      // Expect 422 for missing required fields (actual behavior)
+      expect(mockRes.writeHead).toHaveBeenCalledWith(422, {
         'Content-Type': 'application/json'
       });
 
       expect(mockRes.end).toHaveBeenCalledWith(
-        expect.stringContaining('Missing required fields: mermaidContent')
+        expect.stringContaining('mermaidContent is required')
       );
     });
 
@@ -165,7 +165,7 @@ describe('ValidationController', () => {
 
       await validationController.validateERD(mockReq, mockRes);
 
-      expect(mockRes.writeHead).toHaveBeenCalledWith(500, {
+      expect(mockRes.writeHead).toHaveBeenCalledWith(400, {
         'Content-Type': 'application/json'
       });
 

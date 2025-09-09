@@ -162,8 +162,7 @@ async function initializeComponents() {
 
     // Initialize controllers
     const wizardController = new WizardController({
-      staticFilesPath: process.env.STATIC_FILES_PATH || path.join(__dirname),
-      wizardFile: 'wizard-app.html'
+      staticFilesPath: process.env.STATIC_FILES_PATH || path.join(__dirname)
     });
 
     const validationController = new ValidationController(validationService);
@@ -248,17 +247,6 @@ function writeFinal(res, obj) {
 
 // Legacy functions - kept for backward compatibility during transition
 // These will be removed once full migration to layered architecture is complete
-
-/* eslint-disable no-unused-vars */
-function serveWizard(res) {
-  const p = path.join(__dirname, 'wizard-ui.html');
-  if (!fs.existsSync(p)) {
-    res.writeHead(404, {'Content-Type':'text/html'});
-    return res.end('<h1>Wizard UI not found</h1>');
-  }
-  res.writeHead(200, {'Content-Type':'text/html'});
-  res.end(fs.readFileSync(p, 'utf8'));
-}
 
 async function getDataverseConfig() {
   // Prefer Key Vault when available
@@ -893,13 +881,6 @@ async function routeRequest(pathname, req, res, components, query) {
   if (req.method === 'GET' && pathname.startsWith('/assets/')) {
     // Modify the URL to work with the static file handler
     req.url = req.url.replace('/assets/', '/static/assets/');
-    return components.wizardController.serveStaticFile(req, res);
-  }
-
-  // Main JS files (for modular frontend)
-  if (req.method === 'GET' && (pathname === '/wizard-app.js' || pathname.endsWith('.js'))) {
-    // Modify the URL to work with the static file handler
-    req.url = '/static' + req.url;
     return components.wizardController.serveStaticFile(req, res);
   }
 

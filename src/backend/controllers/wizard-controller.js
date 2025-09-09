@@ -11,8 +11,7 @@ class WizardController extends BaseController {
         super();
         
         this.staticFilesPath = dependencies.staticFilesPath || path.join(__dirname, '../../');
-        this.wizardFile = dependencies.wizardFile || 'wizard-app.html';
-        this.reactDistPath = path.join(__dirname, '../../dist/frontend');
+        this.reactDistPath = path.join(__dirname, '../../frontend/dist');
         this.legacyPath = path.join(__dirname, '../../legacy');
     }
 
@@ -107,37 +106,6 @@ class WizardController extends BaseController {
 
     /**
      * Serve the wizard UI
-     * GET /wizard
-     */
-    async serveWizard(req, res) {
-        this.log('serveWizard', { method: req.method, url: req.url });
-
-        try {
-            const wizardPath = path.join(this.staticFilesPath, this.wizardFile);
-            
-            // Check if file exists
-            if (!fs.existsSync(wizardPath)) {
-                return this.sendError(res, 404, 'Wizard UI file not found', {
-                    filePath: wizardPath
-                });
-            }
-
-            // Read and serve the file
-            const content = fs.readFileSync(wizardPath, 'utf8');
-            
-            res.writeHead(200, { 
-                'Content-Type': 'text/html',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            });
-            res.end(content);
-
-        } catch (error) {
-            this.sendInternalError(res, 'Failed to serve wizard UI', error);
-        }
-    }
-
     /**
      * Serve static files (JS, CSS, etc.)
      * GET /static/*
@@ -256,35 +224,14 @@ class WizardController extends BaseController {
      */
     async getWizardHealth() {
         try {
-            const wizardPath = path.join(this.staticFilesPath, this.wizardFile);
-            const wizardExists = fs.existsSync(wizardPath);
-            
             const health = {
-                status: wizardExists ? 'healthy' : 'unhealthy',
-                wizardFile: {
-                    path: wizardPath,
-                    exists: wizardExists,
-                    readable: false,
-                    size: 0
-                },
+                status: 'healthy',
                 staticFilesPath: {
                     path: this.staticFilesPath,
                     exists: fs.existsSync(this.staticFilesPath),
                     readable: false
                 }
             };
-
-            // Check wizard file details
-            if (wizardExists) {
-                try {
-                    const stats = fs.statSync(wizardPath);
-                    health.wizardFile.readable = true;
-                    health.wizardFile.size = stats.size;
-                    health.wizardFile.lastModified = stats.mtime.toISOString();
-                } catch (error) {
-                    health.wizardFile.error = error.message;
-                }
-            }
 
             // Check static files directory
             if (health.staticFilesPath.exists) {
@@ -293,7 +240,10 @@ class WizardController extends BaseController {
                     health.staticFilesPath.readable = true;
                 } catch (error) {
                     health.staticFilesPath.error = error.message;
+                    health.status = 'unhealthy';
                 }
+            } else {
+                health.status = 'unhealthy';
             }
 
             return health;
