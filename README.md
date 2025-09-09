@@ -30,7 +30,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Automated Deployment**: PowerShell scripts for repeatable infrastructure and code deployment
 - **Modern UI**: Accessible, responsive design with Microsoft Fluent UI components
 
-## 🚀 Quick Start
+## Quick Start
 
 **Two steps to deploy everything:**
 

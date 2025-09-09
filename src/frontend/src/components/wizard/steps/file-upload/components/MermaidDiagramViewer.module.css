@@ -1,0 +1,93 @@
+/* MermaidDiagramViewer Component Styles */
+
+.diagramCard {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.diagramContainer {
+  position: relative;
+  min-height: 300px;
+  max-height: 600px;
+  overflow: auto;
+  background-color: var(--colorNeutralBackground1);
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.mermaidContainer {
+  width: 100%;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.mermaidContainer.hidden {
+  display: none;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  padding: 16px;
+}
+
+.errorContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  padding: 16px;
+  background-color: var(--colorPaletteRedBackground2);
+  border: 1px solid var(--colorPaletteRedBorder2);
+  border-radius: 8px;
+  margin: 16px;
+}
+
+/* Mermaid diagram styling overrides */
+.mermaidContainer :global(.mermaid) {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaidContainer :global(svg) {
+  max-width: 100%;
+  height: auto;
+  background-color: white;
+  border-radius: 4px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .diagramContainer {
+    max-height: 400px;
+  }
+  
+  .mermaidContainer {
+    padding: 8px;
+    min-height: 250px;
+  }
+  
+  .loadingContainer,
+  .errorContainer {
+    min-height: 150px;
+    padding: 12px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .diagramContainer {
+    max-height: none;
+    overflow: visible;
+  }
+  
+  .mermaidContainer {
+    min-height: auto;
+  }
+}

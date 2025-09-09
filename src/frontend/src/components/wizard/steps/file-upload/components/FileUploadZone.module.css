@@ -1,0 +1,85 @@
+/* FileUploadZone Component Styles */
+
+.uploadCard {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.uploadZone {
+  border: 2px dashed var(--colorNeutralStroke2);
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  background-color: var(--colorNeutralBackground1);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.uploadZone:hover {
+  border-color: var(--colorBrandStroke1);
+  background-color: var(--colorNeutralBackground1Hover);
+}
+
+.uploadZone.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.uploadContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.uploadIcon {
+  color: var(--colorNeutralForeground3);
+  margin-bottom: 8px;
+}
+
+.uploadTitle {
+  color: var(--colorNeutralForeground1);
+  margin: 0;
+}
+
+.uploadSubtitle {
+  color: var(--colorNeutralForeground3);
+  margin: 4px 0;
+}
+
+.browseButton {
+  margin: 8px 0;
+  min-width: 140px;
+}
+
+.buttonIcon {
+  margin-right: 8px;
+}
+
+.uploadHint {
+  color: var(--colorNeutralForeground3);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* Drag states */
+.uploadZone[data-drag-active="true"] {
+  border-color: var(--colorBrandStroke1);
+  background-color: var(--colorBrandBackground2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .uploadZone {
+    padding: 32px 16px;
+  }
+  
+  .uploadIcon {
+    font-size: 36px;
+  }
+  
+  .browseButton {
+    min-width: 120px;
+  }
+}

@@ -1,0 +1,143 @@
+.validationCard {
+  width: 100%;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.validationContent {
+  padding: 16px;
+  background-color: var(--colorNeutralBackground1);
+}
+
+.successMessage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.successIcon {
+  color: var(--colorPaletteGreenForeground1);
+  font-size: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.errorIcon {
+  color: var(--colorPaletteRedForeground1);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.warningIcon {
+  color: var(--colorPaletteYellowForeground1);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.infoIcon {
+  color: var(--colorPaletteBlueForeground1);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.messageBar {
+  margin-bottom: 8px;
+}
+
+.messageBar:last-child {
+  margin-bottom: 0;
+}
+
+.issuesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issueItem {
+  border-radius: 6px;
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.issueContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.issueDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.issueTitle {
+  color: var(--colorNeutralForeground1);
+  line-height: 1.3;
+}
+
+.issueDescription {
+  color: var(--colorNeutralForeground2);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.fixableBadge {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .headerContent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .badges {
+    margin-top: 4px;
+  }
+  
+  .validationContent {
+    padding: 12px;
+  }
+  
+  .issueContent {
+    gap: 8px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .validationCard {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .issueItem {
+    border-width: 2px;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .validationCard {
+    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+  }
+}

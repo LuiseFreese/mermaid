@@ -1,0 +1,152 @@
+.summaryContainer {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.accordion {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.headerIcon {
+  color: var(--colorPaletteBlueForeground1);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.panelContent {
+  padding: 16px;
+  background-color: var(--colorNeutralBackground1);
+}
+
+.dataGrid {
+  width: 100%;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* DataGrid styling adjustments */
+.dataGrid [role="grid"] {
+  background-color: var(--colorNeutralBackground1);
+}
+
+.dataGrid [role="columnheader"] {
+  background-color: var(--colorNeutralBackground2);
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  border-bottom: 2px solid var(--colorNeutralStroke2);
+}
+
+.dataGrid [role="row"]:nth-child(even) {
+  background-color: var(--colorNeutralBackground1);
+}
+
+.dataGrid [role="row"]:nth-child(odd) {
+  background-color: var(--colorSubtleBackground);
+}
+
+.dataGrid [role="row"]:hover {
+  background-color: var(--colorNeutralBackground1Hover);
+}
+
+.dataGrid [role="gridcell"] {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--colorNeutralStroke3);
+}
+
+/* Badge spacing in grid cells */
+.dataGrid [role="gridcell"] .fui-Badge {
+  margin: 0;
+}
+
+/* Icon alignment in grid cells */
+.dataGrid [role="gridcell"] .fui-TableCellLayout__media {
+  margin-right: 8px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .accordionHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .panelContent {
+    padding: 12px;
+  }
+  
+  .dataGrid {
+    font-size: 14px;
+  }
+  
+  .dataGrid [role="gridcell"] {
+    padding: 8px 6px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .accordion {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .dataGrid {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .dataGrid [role="columnheader"] {
+    border-bottom: 3px solid var(--colorNeutralStroke1);
+  }
+  
+  .dataGrid [role="gridcell"] {
+    border-bottom: 1px solid var(--colorNeutralStroke1);
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .accordion {
+    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Animation for accordion expansion */
+.accordion [data-state="open"] .panelContent {
+  animation: accordionSlideDown 200ms ease-out;
+}
+
+.accordion [data-state="closed"] .panelContent {
+  animation: accordionSlideUp 200ms ease-out;
+}
+
+@keyframes accordionSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes accordionSlideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}

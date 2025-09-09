@@ -8,7 +8,7 @@ This guide explains how to create Mermaid Entity Relationship Diagrams (ERDs) th
 
 The React application includes intelligent validation that automatically detects and helps fix common issues:
 
-### 🔍 **Common Data Model (CDM) Detection**
+### Common Data Model (CDM) Detection
 The system automatically identifies entities that match Microsoft's Common Data Model:
 
 **What it detects:**
@@ -90,7 +90,7 @@ Note: Removed inline comment to avoid parse error.
 - Built-in Dataverse status fields (Active/Inactive) are used instead
 - Suggestion provided to use choice columns for custom status values
 
-### 🔧 **System Column Conflict Detection**
+### System Column Conflict Detection
 Prevents conflicts with Dataverse system columns:
 
 **Detected conflicts:**

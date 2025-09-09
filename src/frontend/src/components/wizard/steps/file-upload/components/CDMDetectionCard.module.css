@@ -1,0 +1,116 @@
+/* CDMDetectionCard Component Styles */
+
+.cdmCard {
+  width: 100%;
+  margin-bottom: 16px;
+  border: 2px solid var(--colorBrandBackground2);
+  background: linear-gradient(135deg, var(--colorBrandBackground2) 0%, var(--colorNeutralBackground1) 100%);
+}
+
+.cdmContent {
+  padding: 20px;
+}
+
+.cdmTitle {
+  color: var(--colorBrandForeground1);
+  margin-bottom: 12px;
+  display: block;
+}
+
+.cdmDescription {
+  color: var(--colorNeutralForeground2);
+  margin-bottom: 16px;
+  display: block;
+  line-height: 1.4;
+}
+
+.entityList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.entityBadge {
+  background-color: var(--colorBrandBackground1);
+  color: var(--colorBrandForeground1);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.choiceSection {
+  border-top: 1px solid var(--colorNeutralStroke2);
+  padding-top: 16px;
+}
+
+.choiceTitle {
+  color: var(--colorNeutralForeground1);
+  margin-bottom: 16px;
+  display: block;
+}
+
+.choiceButtons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.cdmChoiceButton {
+  min-width: 180px;
+  padding: 12px 24px;
+}
+
+.choiceHelp {
+  color: var(--colorNeutralForeground3);
+  font-style: italic;
+  display: block;
+  margin-top: 8px;
+  line-height: 1.3;
+}
+
+.selectedChoice {
+  border-top: 1px solid var(--colorNeutralStroke2);
+  padding-top: 16px;
+}
+
+.messageBar {
+  margin-bottom: 0;
+}
+
+.changeButton {
+  margin-left: 12px;
+  color: var(--colorNeutralForeground2);
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.changeButton:hover {
+  color: var(--colorNeutralForeground1);
+  background-color: var(--colorNeutralBackground1);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .choiceButtons {
+    flex-direction: column;
+  }
+  
+  .cdmChoiceButton {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .entityList {
+    gap: 6px;
+  }
+  
+  .entityBadge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}

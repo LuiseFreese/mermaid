@@ -1,0 +1,159 @@
+.fileUploadStep {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.stepCard {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.stepContent {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.errorMessage {
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.errorContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.errorIcon {
+  color: var(--colorPaletteRedForeground1);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.uploadZone {
+  margin-bottom: 0;
+}
+
+.processingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: var(--colorNeutralBackground2);
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.cdmCard {
+  margin-bottom: 0;
+}
+
+.diagramViewer {
+  margin-bottom: 0;
+}
+
+.validationPanel {
+  margin-bottom: 0;
+}
+
+.autoFixSuggestions {
+  margin-bottom: 0;
+}
+
+.erdSummary {
+  margin-bottom: 0;
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 24px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  margin-top: 8px;
+}
+
+.nextButton {
+  padding: 12px 24px;
+  font-weight: 600;
+}
+
+.successIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.successIcon {
+  color: var(--colorPaletteGreenForeground1);
+  font-size: 18px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .fileUploadStep {
+    padding: 16px;
+  }
+  
+  .stepContent {
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .actionButtons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding-top: 16px;
+  }
+  
+  .successIndicator {
+    justify-content: center;
+  }
+}
+
+/* Animation for smooth transitions */
+.stepContent > * {
+  animation: fadeInUp 300ms ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading states */
+.stepContent:has(.processingIndicator) .uploadZone {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .stepCard {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .actionButtons {
+    border-top: 2px solid var(--colorNeutralStroke1);
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .stepCard {
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+  }
+}
