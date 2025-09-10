@@ -13,6 +13,7 @@ import {
   tokens
 } from '@fluentui/react-components';
 import { useMermaidRenderer } from '../hooks/useMermaidRenderer';
+import { useTheme } from '../../../../../context/ThemeContext';
 import type { MermaidDiagramViewerProps } from '../types/file-upload.types';
 import styles from './MermaidDiagramViewer.module.css';
 
@@ -23,19 +24,21 @@ export const MermaidDiagramViewer: React.FC<MermaidDiagramViewerProps> = ({
 }) => {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const { renderDiagram, isRendering, renderError } = useMermaidRenderer();
+  const { effectiveTheme } = useTheme();
 
   /**
-   * Render diagram when content changes
+   * Render diagram when content changes OR when theme changes
    */
   useEffect(() => {
     if (content && mermaidRef.current) {
+      console.log('🎨 MermaidDiagramViewer: Re-rendering for theme:', effectiveTheme);
       renderDiagram(content, mermaidRef).then(result => {
         if (!result.success && result.error) {
           onRenderError?.(result.error);
         }
       });
     }
-  }, [content, renderDiagram, onRenderError]);
+  }, [content, renderDiagram, onRenderError, effectiveTheme]);
 
   /**
    * Notify parent of render errors

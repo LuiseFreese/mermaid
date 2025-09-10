@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { WizardShell } from '../components/wizard/WizardShell';
+import { ThemeProvider } from '../context/ThemeContext';
 
 // Mock the child components
 vi.mock('../components/wizard/steps/FileUploadStep', () => ({
@@ -41,11 +42,13 @@ vi.mock('../components/wizard/steps/deployment', () => ({
 
 const renderWithProviders = (component: React.ReactElement, initialRoute = '/wizard') => {
   return render(
-    <FluentProvider theme={webLightTheme}>
-      <MemoryRouter initialEntries={[initialRoute]}>
-        {component}
-      </MemoryRouter>
-    </FluentProvider>
+    <ThemeProvider>
+      <FluentProvider theme={webLightTheme}>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          {component}
+        </MemoryRouter>
+      </FluentProvider>
+    </ThemeProvider>
   );
 };
 

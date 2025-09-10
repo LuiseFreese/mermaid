@@ -1,0 +1,119 @@
+/* Theme System - CSS Custom Properties */
+
+:root {
+  /* Light theme (default) */
+  --color-background: #ffffff;
+  --color-surface: #f8f9fa;
+  --color-surface-variant: #e3f2fd;
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-border: #dee2e6;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  
+  /* Brand colors */
+  --color-primary: #0078d4;
+  --color-primary-variant: #106ebe;
+  --color-secondary: #5c2d91;
+  
+  /* Status colors - aligned with Fluent UI Light Theme */
+  --color-success: #107C10;
+  --color-success-background: #DFF6DD;
+  --color-success-border: #9FD89F;
+  
+  --color-warning: #8E562E;
+  --color-warning-background: #FFF4CE;
+  --color-warning-border: #F7D22D;
+  
+  --color-error: #D13438;
+  --color-error-background: #FDF3F4;
+  --color-error-border: #F3B3B3;
+  
+  /* Semantic colors */
+  --color-info: #0078d4;
+  --color-muted: #f8f9fa;
+  --color-accent: #e3f2fd;
+  
+  /* Interactive states */
+  --color-hover: rgba(0, 120, 212, 0.1);
+  --color-focus: rgba(0, 120, 212, 0.2);
+  --color-active: rgba(0, 120, 212, 0.15);
+}
+
+[data-theme="dark"] {
+  /* Dark theme */
+  --color-background: #1e1e1e;
+  --color-surface: #2d2d30;
+  --color-surface-variant: #3e3e42;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #cccccc;
+  --color-border: #4a4a4a; /* Improved from #464647 for better contrast */
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  
+  /* Adjusted brand colors for dark mode with better contrast */
+  --color-primary: #0078d4; /* Changed back to darker blue for better contrast */
+  --color-primary-variant: #106ebe;
+  --color-secondary: #ba68c8;
+  
+  /* Status colors - aligned with Fluent UI Dark Theme */
+  --color-success: #54B054;
+  --color-success-background: #0F2B0F;
+  --color-success-border: #359635;
+  
+  --color-warning: #F7630C;
+  --color-warning-background: #2E1B05;
+  --color-warning-border: #8E562E;
+  
+  --color-error: #F7630C;
+  --color-error-background: #32040B;
+  --color-error-border: #A4262C;
+  
+  /* Semantic colors */
+  --color-info: #0078d4; /* Updated to match primary */
+  --color-muted: #3e3e42;
+  --color-accent: #2d2d30;
+  
+  /* Interactive states */
+  --color-hover: rgba(0, 120, 212, 0.15); /* Updated to match new primary */
+  --color-focus: rgba(0, 120, 212, 0.25);
+  --color-active: rgba(0, 120, 212, 0.2);
+  
+  /* Banner/Header specific colors - better contrast for dark mode */
+  --color-banner-background: var(--color-primary);
+  --color-banner-text: #ffffff;
+  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Prevent transitions on page load */
+.no-transition * {
+  transition: none !important;
+}
+
+/* Base styling using custom properties */
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+/* Override default scrollbar for better dark mode experience */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}

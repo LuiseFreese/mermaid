@@ -14,6 +14,7 @@ import { SolutionSetupStep } from './steps/SolutionSetupStep';
 import { GlobalChoicesStep } from './steps/global-choices';
 import { DeploymentStep } from './steps/deployment';
 import { WizardProvider } from '../../context/WizardContext';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export const WizardShell: React.FC = () => {
   const navigate = useNavigate();
@@ -55,15 +56,26 @@ export const WizardShell: React.FC = () => {
     <WizardProvider>
       <div data-testid="wizard-container" style={{
         minHeight: '100vh',
-        backgroundColor: tokens.colorNeutralBackground1,
+        backgroundColor: 'var(--color-background)',
+        color: 'var(--color-text-primary)',
       }}>
-        {/* Blue Header Section */}
+        {/* Header Section with proper banner theme variables */}
         <header style={{
-          backgroundColor: tokens.colorBrandBackground,
-          color: tokens.colorNeutralForegroundOnBrand,
+          backgroundColor: 'var(--color-banner-background)',
+          color: 'var(--color-banner-text)',
           padding: '32px 24px',
           textAlign: 'center',
+          position: 'relative',
         }}>
+          {/* Theme Toggle in top-right corner */}
+          <div style={{
+            position: 'absolute',
+            top: '16px',
+            right: '24px',
+          }}>
+            <ThemeToggle />
+          </div>
+          
           <div style={{
             maxWidth: '1000px',
             margin: '0 auto',
@@ -72,13 +84,12 @@ export const WizardShell: React.FC = () => {
             gap: '8px',
           }}>
             <Title1 as="h1" style={{ 
-              color: tokens.colorNeutralForegroundOnBrand 
+              color: 'var(--color-banner-text)'
             }}>
               Mermaid to Dataverse Converter
             </Title1>
             <Text size={400} style={{ 
-              color: tokens.colorNeutralForegroundOnBrand,
-              opacity: 0.9
+              color: 'var(--color-banner-text-secondary)'
             }}>
               Transform your Mermaid ERD diagrams into Microsoft Dataverse solutions
             </Text>

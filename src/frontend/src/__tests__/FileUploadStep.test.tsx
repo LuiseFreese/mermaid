@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { FileUploadStep } from '../components/wizard/steps/FileUploadStep';
 import { WizardProvider } from '../context/WizardContext';
+import { ThemeProvider } from '../context/ThemeContext';
 
 // Mock mermaid
 vi.mock('mermaid', () => ({
@@ -57,9 +58,11 @@ const uploadFile = (fileInput: HTMLInputElement, file: File) => {
 describe('FileUploadStep', () => {
   const TestWrapper = ({ children }: { children: React.ReactNode }) => (
     <FluentProvider theme={webLightTheme}>
-      <WizardProvider>
-        {children}
-      </WizardProvider>
+      <ThemeProvider>
+        <WizardProvider>
+          {children}
+        </WizardProvider>
+      </ThemeProvider>
     </FluentProvider>
   );
 

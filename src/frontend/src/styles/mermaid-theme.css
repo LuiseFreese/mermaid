@@ -1,35 +1,87 @@
 /* Mermaid ERD Diagram Custom Styling */
-/* Clean, working overrides for Mermaid SVG elements */
+/* Theme-aware overrides for Mermaid SVG elements */
 
-/* Overall diagram container */
+/* Overall diagram container - Light theme */
 .mermaid {
   background-color: #ffffff;
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Target all rectangles (entity boxes) in the SVG */
+/* Dark theme diagram container */
+[data-theme="dark"] .mermaid {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Target all rectangles (entity boxes) in the SVG - Light theme */
 .mermaid svg rect {
   stroke: #0078d4 !important;
   stroke-width: 1.5px !important;
+  fill: #ffffff !important;
 }
 
-/* Target all text elements for consistent styling */
+/* Dark theme entity boxes */
+[data-theme="dark"] .mermaid svg rect {
+  stroke: #0078d4 !important;
+  stroke-width: 1.5px !important;
+  fill: #2d2d30 !important;
+}
+
+/* Target all text elements for consistent styling - Light theme */
 .mermaid svg text {
   font-family: 'Segoe UI', system-ui, sans-serif !important;
   fill: #323130 !important;
 }
 
-/* Relationship lines */
+/* Dark theme text */
+[data-theme="dark"] .mermaid svg text {
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  fill: #ffffff !important;
+}
+
+/* Relationship lines - consistent across themes */
 .mermaid svg path,
 .mermaid svg line {
   stroke: #0078d4 !important;
   stroke-width: 2px !important;
 }
 
-/* Entity name styling - make them stand out */
+/* Entity name styling - make them stand out - Light theme */
 .mermaid svg g:first-of-type text {
   font-weight: 600 !important;
   fill: #0078d4 !important;
+}
+
+/* Dark theme entity names */
+[data-theme="dark"] .mermaid svg g:first-of-type text {
+  font-weight: 600 !important;
+  fill: #ffffff !important;
+}
+
+/* Ensure proper contrast for entity headers */
+[data-theme="dark"] .mermaid svg g.er-entityBox rect {
+  fill: #3e3e42 !important;
+}
+
+/* Column type indicators (PK, FK) styling */
+.mermaid svg .er-attributeBoxOdd,
+.mermaid svg .er-attributeBoxEven {
+  fill: #ffffff !important;
+}
+
+[data-theme="dark"] .mermaid svg .er-attributeBoxOdd,
+[data-theme="dark"] .mermaid svg .er-attributeBoxEven {
+  fill: #2d2d30 !important;
+}
+
+/* Relationship connector styling */
+.mermaid svg .er-relationshipLabel {
+  fill: #323130 !important;
+}
+
+[data-theme="dark"] .mermaid svg .er-relationshipLabel {
+  fill: #cccccc !important;
 }

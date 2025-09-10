@@ -6,6 +6,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import mermaid from 'mermaid';
 import type { MermaidRenderResult } from '../types/file-upload.types';
+import { useTheme } from '../../../../../context/ThemeContext';
 
 export interface UseMermaidRendererResult {
   renderDiagram: (content: string, elementRef: React.RefObject<HTMLDivElement>) => Promise<MermaidRenderResult>;
@@ -26,37 +27,72 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
   const [lastRenderedContent, setLastRenderedContent] = useState<string | null>(null);
   const [renderResult, setRenderResult] = useState<MermaidRenderResult | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const { effectiveTheme } = useTheme();
 
   /**
-   * Initialize Mermaid with theme and configuration
+   * Get theme-specific Mermaid configuration
+   */
+  const getMermaidConfig = useCallback(() => {
+    const isDark = effectiveTheme === 'dark';
+    
+    if (isDark) {
+      // Dark theme configuration - aligned with Fluent UI dark colors
+      return {
+        startOnLoad: true,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Dark theme entity styling
+          primaryColor: '#2d2d30',              // Dark surface for entity headers
+          primaryBorderColor: '#0078d4',        // Fluent UI primary blue for borders
+          lineColor: '#0078d4',                 // Relationship lines in blue
+          
+          // Dark backgrounds
+          secondaryColor: '#1e1e1e',            // Main dark background
+          tertiaryColor: '#3e3e42',             // Slightly lighter dark surface
+          background: '#1e1e1e',                // Dark diagram background
+          
+          // Light text for dark theme
+          primaryTextColor: '#ffffff',          // White text
+          secondaryTextColor: '#cccccc',        // Light gray text
+          tertiaryTextColor: '#ffffff'          // White text
+        }
+      };
+    } else {
+      // Light theme configuration
+      return {
+        startOnLoad: true,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Light theme entity styling
+          primaryColor: '#e3f2fd',              // Very light blue for entity headers
+          primaryBorderColor: '#0078d4',        // Blue for borders
+          lineColor: '#0078d4',                 // Relationship lines in blue
+          
+          // Light backgrounds
+          secondaryColor: '#ffffff',            // White backgrounds
+          tertiaryColor: '#f8f9fa',            // Very light gray
+          background: '#ffffff',               // White diagram background
+          
+          // Dark text for light theme
+          primaryTextColor: '#323130',
+          secondaryTextColor: '#323130',
+          tertiaryTextColor: '#323130'
+        }
+      };
+    }
+  }, [effectiveTheme]);
+
+  /**
+   * Initialize Mermaid with theme-aware configuration
    */
   const initializeMermaid = useCallback(() => {
-    if (isInitialized) return;
-
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: 'base',
-      securityLevel: 'loose',
-      themeVariables: {
-        // Simple, accessible blue theme
-        primaryColor: '#e3f2fd',           // Very light blue for entity headers
-        primaryBorderColor: '#0078d4',     // Blue for borders
-        lineColor: '#0078d4',              // Relationship lines in blue
-        
-        // Keep colors neutral for readability
-        secondaryColor: '#ffffff',         // White backgrounds
-        tertiaryColor: '#f8f9fa',         // Very light gray
-        background: '#ffffff',            // White diagram background
-        
-        // Text colors - all dark for readability
-        primaryTextColor: '#323130',
-        secondaryTextColor: '#323130',
-        tertiaryTextColor: '#323130'
-      }
-    });
-
+    const config = getMermaidConfig();
+    console.log('🎨 Initializing Mermaid with theme:', effectiveTheme, config);
+    mermaid.initialize(config);
     setIsInitialized(true);
-  }, [isInitialized]);
+  }, [getMermaidConfig, effectiveTheme]);
 
   /**
    * Render a Mermaid diagram with retry logic
@@ -76,10 +112,11 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
     setRenderError(null);
 
     try {
-      // Ensure Mermaid is initialized
-      if (!isInitialized) {
-        initializeMermaid();
-      }
+      // Force re-initialize Mermaid with current theme on each render
+      // This ensures theme changes are applied immediately
+      console.log('🔄 Forcing Mermaid re-initialization for theme:', effectiveTheme);
+      setIsInitialized(false);
+      initializeMermaid();
 
       // Retry mechanism for when DOM element isn't ready yet
       const maxRetries = 20;
@@ -150,10 +187,16 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
     }
   }, [isInitialized, initializeMermaid]);
 
-  // Auto-initialize on mount
+  // Initialize and re-initialize when theme changes
   useEffect(() => {
     initializeMermaid();
-  }, [initializeMermaid]);
+    
+    // If we have previously rendered content, clear it to force re-render with new theme
+    if (lastRenderedContent) {
+      setLastRenderedContent(null);
+      setRenderResult(null);
+    }
+  }, [initializeMermaid, effectiveTheme, lastRenderedContent]);
 
   return {
     renderDiagram,

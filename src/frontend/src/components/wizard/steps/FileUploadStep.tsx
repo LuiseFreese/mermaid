@@ -17,6 +17,7 @@ import {
 import { DocumentRegular, DocumentArrowUpRegular } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext, Entity, Relationship, EntityAttribute } from '../../../context/WizardContext';
+import { useTheme } from '../../../context/ThemeContext';
 import styles from './FileUploadStep.module.css';
 
 interface FileUploadStepProps {
@@ -29,6 +30,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   onNext,
 }) => {
   const { wizardData, updateWizardData } = useWizardContext();
+  const { effectiveTheme } = useTheme();
   const {
     uploadedFile,
     cdmDetected, 
@@ -42,24 +44,96 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
   const mermaidRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Mermaid
+  // Render Mermaid diagram - defined early to avoid initialization order issues
+  const renderMermaidDiagram = useCallback(async () => {
+    console.log('🔍 DEBUG: renderMermaidDiagram called', {
+      hasMermaidRef: !!mermaidRef.current,
+      correctedErdContent,
+      contentLength: correctedErdContent?.length
+    });
+    
+    if (!correctedErdContent) {
+      console.log('🔍 DEBUG: No content to render');
+      return;
+    }
+
+    // Retry mechanism for when DOM element isn't ready yet
+    let retryCount = 0;
+    const maxRetries = 20; // Increased retries
+    const retryDelay = 200; // Increased delay
+
+    const attemptRender = async () => {
+      console.log(`🔍 DEBUG: Attempt ${retryCount + 1}, mermaidRef.current:`, !!mermaidRef.current);
+      
+      if (mermaidRef.current) {
+        try {
+          // Clear previous content
+          mermaidRef.current.innerHTML = '';
+          
+          console.log('🔍 DEBUG: About to render Mermaid diagram with content:', correctedErdContent);
+          
+          // Generate unique ID for this diagram
+          const id = `mermaid-diagram-${Date.now()}`;
+          
+          // Render the diagram
+          const { svg } = await mermaid.render(id, correctedErdContent);
+          console.log('🔍 DEBUG: Mermaid render successful, SVG length:', svg?.length);
+          mermaidRef.current.innerHTML = svg;
+        } catch (error) {
+          console.error('Error rendering Mermaid diagram:', error);
+          mermaidRef.current.innerHTML = '<p style="color: red;">Error rendering diagram: ' + (error instanceof Error ? error.message : String(error)) + '</p>';
+        }
+      } else {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`🔍 DEBUG: Mermaid ref not ready, retrying ${retryCount}/${maxRetries} in ${retryDelay}ms`);
+          setTimeout(attemptRender, retryDelay);
+        } else {
+          console.log('🔍 DEBUG: Max retries reached, mermaid ref still not available');
+        }
+      }
+    };
+
+    await attemptRender();
+  }, [correctedErdContent]);
+
+  // Initialize Mermaid with theme-aware configuration
   useEffect(() => {
+    console.log('🎨 DEBUG: Initializing Mermaid with theme:', effectiveTheme);
+    
+    const isDark = effectiveTheme === 'dark';
+    
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'base',
+      theme: isDark ? 'dark' : 'base',
       securityLevel: 'loose',
-      themeVariables: {
-        // Simple, accessible blue theme
-        primaryColor: '#e3f2fd',           // Very light blue for entity headers
-        primaryBorderColor: '#0078d4',     // Your blue for borders
-        lineColor: '#0078d4',              // Relationship lines in your blue
+      themeVariables: isDark ? {
+        // Dark theme styling - aligned with Fluent UI dark colors
+        primaryColor: '#2d2d30',              // Dark surface for entity headers
+        primaryBorderColor: '#0078d4',        // Fluent UI primary blue for borders
+        lineColor: '#0078d4',                 // Relationship lines in blue
         
-        // Keep colors neutral for readability
-        secondaryColor: '#ffffff',         // White backgrounds
-        tertiaryColor: '#f8f9fa',         // Very light gray
-        background: '#ffffff',            // White diagram background
+        // Dark backgrounds
+        secondaryColor: '#1e1e1e',            // Main dark background
+        tertiaryColor: '#3e3e42',             // Slightly lighter dark surface
+        background: '#1e1e1e',                // Dark diagram background
         
-        // Text colors - all dark for readability
+        // Light text for dark theme
+        primaryTextColor: '#ffffff',          // White text
+        secondaryTextColor: '#cccccc',        // Light gray text
+        tertiaryTextColor: '#ffffff'          // White text
+      } : {
+        // Light theme styling
+        primaryColor: '#e3f2fd',              // Very light blue for entity headers
+        primaryBorderColor: '#0078d4',        // Fluent UI blue for borders
+        lineColor: '#0078d4',                 // Relationship lines in blue
+        
+        // Light backgrounds
+        secondaryColor: '#ffffff',            // White backgrounds
+        tertiaryColor: '#f8f9fa',             // Very light gray
+        background: '#ffffff',               // White diagram background
+        
+        // Dark text for light theme
         primaryTextColor: '#323130',
         secondaryTextColor: '#323130',
         tertiaryTextColor: '#323130'
@@ -67,12 +141,22 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     });
     
     // Force re-render of any existing diagrams after theme change
+    // But only if user has made entity choice or no CDM detected
     setTimeout(() => {
-      if (correctedErdContent) {
-        renderMermaidDiagram();
+      const shouldRender = correctedErdContent && (entityChoice || !cdmDetected);
+      console.log('🎨 DEBUG: Post-theme-init render check', {
+        shouldRender,
+        theme: effectiveTheme,
+        hasCorrectedErdContent: !!correctedErdContent,
+        entityChoice,
+        cdmDetected
+      });
+      if (shouldRender) {
+        // We'll add a separate effect for this after variables are defined
+        console.log('🎨 DEBUG: Theme initialized, will trigger render via separate effect');
       }
     }, 100);
-  }, []);
+  }, [effectiveTheme]);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (file && file.name.endsWith('.mmd')) {
@@ -181,6 +265,44 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   }, [correctedErdContent]);
   
   const hasNamingIssues = namingConflicts.length > 0;
+
+  // Re-render diagram when content changes AND user has made entity choice AND no validation issues
+  useEffect(() => {
+    // Only render diagram if:
+    // 1. We have content AND
+    // 2. User has made a choice (entityChoice is set) OR no CDM was detected (no choice needed) AND
+    // 3. There are no validation issues (container is actually rendered)
+    const shouldRender = correctedErdContent && 
+                         (entityChoice || !cdmDetected) && 
+                         !hasChoiceIssues && 
+                         !hasNamingIssues;
+    
+    console.log('🔍 DEBUG: useEffect for diagram rendering', {
+      hasCorrectedErdContent: !!correctedErdContent,
+      entityChoice,
+      cdmDetected,
+      hasChoiceIssues,
+      hasNamingIssues,
+      shouldRender
+    });
+    
+    if (shouldRender) {
+      renderMermaidDiagram();
+    }
+  }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasChoiceIssues, hasNamingIssues]);
+
+  // Re-render diagram when theme changes (if all conditions are met)
+  useEffect(() => {
+    const shouldRender = correctedErdContent && 
+                         (entityChoice || !cdmDetected) && 
+                         !hasChoiceIssues && 
+                         !hasNamingIssues;
+    
+    if (shouldRender) {
+      console.log('🎨 DEBUG: Theme changed, re-rendering diagram');
+      setTimeout(() => renderMermaidDiagram(), 100);
+    }
+  }, [effectiveTheme, renderMermaidDiagram, correctedErdContent, entityChoice, cdmDetected, hasChoiceIssues, hasNamingIssues]);
 
   const applyChoiceColumnFix = useCallback(() => {
     let updatedContent = correctedErdContent;
@@ -340,66 +462,6 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       });
     }
   }, [correctedErdContent, parseErdContent, updateWizardData]);
-
-  // Render Mermaid diagram
-  const renderMermaidDiagram = useCallback(async () => {
-    console.log('🔍 DEBUG: renderMermaidDiagram called', {
-      hasMermaidRef: !!mermaidRef.current,
-      correctedErdContent,
-      contentLength: correctedErdContent?.length
-    });
-    
-    if (!correctedErdContent) {
-      console.log('🔍 DEBUG: No content to render');
-      return;
-    }
-
-    // Retry mechanism for when DOM element isn't ready yet
-    let retryCount = 0;
-    const maxRetries = 20; // Increased retries
-    const retryDelay = 200; // Increased delay
-
-    const attemptRender = async () => {
-      console.log(`🔍 DEBUG: Attempt ${retryCount + 1}, mermaidRef.current:`, !!mermaidRef.current);
-      
-      if (mermaidRef.current) {
-        try {
-          // Clear previous content
-          mermaidRef.current.innerHTML = '';
-          
-          console.log('🔍 DEBUG: About to render Mermaid diagram with content:', correctedErdContent);
-          
-          // Generate unique ID for this diagram
-          const id = `mermaid-diagram-${Date.now()}`;
-          
-          // Render the diagram
-          const { svg } = await mermaid.render(id, correctedErdContent);
-          console.log('🔍 DEBUG: Mermaid render successful, SVG length:', svg?.length);
-          mermaidRef.current.innerHTML = svg;
-        } catch (error) {
-          console.error('Error rendering Mermaid diagram:', error);
-          mermaidRef.current.innerHTML = '<p style="color: red;">Error rendering diagram: ' + (error instanceof Error ? error.message : String(error)) + '</p>';
-        }
-      } else {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          console.log(`🔍 DEBUG: Mermaid ref not ready, retrying ${retryCount}/${maxRetries} in ${retryDelay}ms`);
-          setTimeout(attemptRender, retryDelay);
-        } else {
-          console.log('🔍 DEBUG: Max retries reached, mermaid ref still not available');
-        }
-      }
-    };
-
-    await attemptRender();
-  }, [correctedErdContent]);
-
-  // Re-render diagram when content changes
-  useEffect(() => {
-    if (correctedErdContent) {
-      renderMermaidDiagram();
-    }
-  }, [correctedErdContent, renderMermaidDiagram]);
 
   return (
     <Card style={{

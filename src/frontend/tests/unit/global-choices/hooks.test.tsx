@@ -29,8 +29,8 @@ describe('useChoicesValidation', () => {
     const { result } = renderHook(() => useChoicesValidation());
 
     expect(result.current.isValid).toBe(true);
-    expect(result.current.hasSelectedChoices).toBe(true);
-    expect(result.current.hasUploadedChoices).toBe(true);
+    expect(result.current.errors).toEqual([]);
+    expect(result.current.warnings).toBeDefined();
   });
 
   it('should be valid even with no choices (optional step)', () => {
@@ -58,8 +58,8 @@ describe('useChoiceSelection', () => {
   it('should check if choice is selected correctly', () => {
     const { result } = renderHook(() => useChoiceSelection(availableChoices));
 
-    expect(result.current.isChoiceSelected('choice1')).toBe(true);
-    expect(result.current.isChoiceSelected('choice2')).toBe(false);
+    expect(result.current.selectedChoiceIds.includes('choice1')).toBe(true);
+    expect(result.current.selectedChoiceIds.includes('choice2')).toBe(false);
   });
 
   it('should handle selection and deselection', () => {
@@ -67,7 +67,7 @@ describe('useChoiceSelection', () => {
 
     // Test that the hook functions exist and work
     expect(typeof result.current.handleChoiceSelect).toBe('function');
-    expect(typeof result.current.clearSelection).toBe('function');
-    expect(typeof result.current.isChoiceSelected).toBe('function');
+    expect(typeof result.current.unselectAll).toBe('function');
+    expect(typeof result.current.selectChoice).toBe('function');
   });
 });

@@ -1,28 +1,43 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { makeStyles } from '@fluentui/react-components';
+import { FluentProvider, makeStyles } from '@fluentui/react-components';
 import { WizardShell } from './components/wizard/WizardShell';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { lightTheme, darkTheme } from './styles/FluentTheme';
+import './styles/themes.css';
 
 const useStyles = makeStyles({
   app: {
     minHeight: '100vh',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'var(--color-background)',
+    color: 'var(--color-text-primary)',
   },
 });
 
-function App() {
+const AppContent: React.FC = () => {
+  const { effectiveTheme } = useTheme();
   const styles = useStyles();
-
+  
   return (
-    <div className={styles.app}>
-      <ErrorBoundary>
-        <Routes>
-          <Route path="/" element={<Navigate to="/wizard" replace />} />
-          <Route path="/wizard/*" element={<WizardShell />} />
-          {/* Future routes can be added here */}
-        </Routes>
-      </ErrorBoundary>
-    </div>
+    <FluentProvider theme={effectiveTheme === 'dark' ? darkTheme : lightTheme}>
+      <div className={styles.app}>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Navigate to="/wizard" replace />} />
+            <Route path="/wizard/*" element={<WizardShell />} />
+            {/* Future routes can be added here */}
+          </Routes>
+        </ErrorBoundary>
+      </div>
+    </FluentProvider>
+  );
+};
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 
