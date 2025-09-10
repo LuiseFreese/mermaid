@@ -140,7 +140,7 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
                   </div>
                   {entity.attributes && entity.attributes.length > 0 && (
                     <div className={fileUploadStyles.attributeList}>
-                      {entity.attributes.map((attr, attrIndex) => (
+                      {entity.attributes.map((attr: any, attrIndex: number) => (
                         <div key={attrIndex} className={fileUploadStyles.attribute}>
                           {typeof attr === 'object' && attr.constraint ? (
                             <span className={fileUploadStyles.attributeLabel}>
@@ -325,7 +325,7 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
                                     display: 'block' 
                                   }}
                                 >
-                                  {choice.options?.map(opt => opt.label || opt.value).join(', ')}
+                                  {choice.options?.map((opt: any) => opt.label || opt.value).join(', ')}
                                 </Text>
                               </div>
                             ))}

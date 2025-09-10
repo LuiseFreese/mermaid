@@ -41,7 +41,7 @@ export const DeploymentResults: React.FC<DeploymentResultsProps> = ({
             </Text>
             <div style={{ marginTop: '8px' }}>
               {/* Show detailed deployment results */}
-              {result.entitiesCreated > 0 && (
+              {(result.entitiesCreated ?? 0) > 0 && (
                 <Text 
                   size={200} 
                   style={{ 
@@ -52,7 +52,7 @@ export const DeploymentResults: React.FC<DeploymentResultsProps> = ({
                   {result.entitiesCreated} custom entities created
                 </Text>
               )}
-              {result.relationshipsCreated > 0 && (
+              {(result.relationshipsCreated ?? 0) > 0 && (
                 <Text 
                   size={200} 
                   style={{ 
@@ -63,7 +63,7 @@ export const DeploymentResults: React.FC<DeploymentResultsProps> = ({
                   {result.relationshipsCreated} relationships created
                 </Text>
               )}
-              {result.globalChoicesAdded > 0 && (
+              {(result.globalChoicesAdded ?? 0) > 0 && (
                 <Text 
                   size={200} 
                   style={{ 
@@ -72,11 +72,11 @@ export const DeploymentResults: React.FC<DeploymentResultsProps> = ({
                   }}
                 >
                   {result.globalChoicesAdded} global choices{' '}
-                  {(result.globalChoicesCreated > 0 || result.globalChoicesExistingAdded > 0) && (
+                  {((result.globalChoicesCreated ?? 0) > 0 || (result.globalChoicesExistingAdded ?? 0) > 0) && (
                     <span>
                       {' '}({[
-                        result.globalChoicesCreated > 0 && `${result.globalChoicesCreated} created`,
-                        result.globalChoicesExistingAdded > 0 && `${result.globalChoicesExistingAdded} existing added`
+                        (result.globalChoicesCreated ?? 0) > 0 && `${result.globalChoicesCreated} created`,
+                        (result.globalChoicesExistingAdded ?? 0) > 0 && `${result.globalChoicesExistingAdded} existing added`
                       ].filter(Boolean).join(', ')})
                     </span>
                   )}

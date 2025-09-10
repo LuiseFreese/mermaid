@@ -23,7 +23,6 @@ import styles from './DeploymentStep.module.css';
 import fileUploadStyles from '../FileUploadStep.module.css';
 
 export const DeploymentStep: React.FC<DeploymentStepProps> = ({ 
-  onNext, 
   onPrevious 
 }) => {
   const { resetWizard } = useWizardContext();

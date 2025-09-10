@@ -11,7 +11,7 @@ import {
 import { ChevronRightRegular } from '@fluentui/react-icons';
 import { FileUploadStep } from './steps/FileUploadStep';
 import { SolutionSetupStep } from './steps/SolutionSetupStep';
-import { GlobalChoicesStep } from './steps/GlobalChoicesStep';
+import { GlobalChoicesStep } from './steps/global-choices';
 import { DeploymentStep } from './steps/deployment';
 import { WizardProvider } from '../../context/WizardContext';
 

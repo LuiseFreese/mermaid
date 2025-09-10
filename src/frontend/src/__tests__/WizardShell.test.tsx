@@ -22,7 +22,7 @@ vi.mock('../components/wizard/steps/SolutionSetupStep', () => ({
   ),
 }));
 
-vi.mock('../components/wizard/steps/GlobalChoicesStep', () => ({
+vi.mock('../components/wizard/steps/global-choices', () => ({
   GlobalChoicesStep: ({ onNext, onPrevious }: { onNext: () => void; onPrevious: () => void }) => (
     <div data-testid="global-choices-step">
       <button onClick={onPrevious}>Previous</button>

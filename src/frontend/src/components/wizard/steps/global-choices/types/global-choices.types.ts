@@ -8,8 +8,8 @@ export interface GlobalChoice {
   id: string;
   name: string;
   displayName: string;
-  logicalName: string;
-  options: GlobalChoiceOption[];
+  logicalName?: string;
+  options?: GlobalChoiceOption[];
   isCustom?: boolean;
   prefix?: string;
 }
@@ -123,6 +123,7 @@ export interface UseGlobalChoicesSelectionResult {
   isAllSelected: boolean;
   
   // Selection methods
+  handleChoiceSelect: (choiceId: string, selected: boolean) => void;
   selectChoice: (choice: GlobalChoice) => void;
   unselectChoice: (choice: GlobalChoice) => void;
   toggleChoice: (choice: GlobalChoice) => void;
@@ -134,23 +135,19 @@ export interface UseGlobalChoicesSelectionResult {
   errors: GlobalChoicesValidationError[];
 }
 
-export interface UseGlobalChoicesSearchResult {
-  // Search state
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
+export interface UseGlobalChoicesDataResult {
+  // Data
+  builtInChoices: GlobalChoice[];
+  customChoices: GlobalChoice[];
+  allChoices: GlobalChoice[];
   
-  // Filtered results
-  filteredBuiltInChoices: GlobalChoice[];
-  filteredCustomChoices: GlobalChoice[];
-  filteredAllChoices: GlobalChoice[];
+  // Loading state
+  loading: boolean;
+  error: string | null;
   
-  // Search methods
-  clearSearch: () => void;
-  searchChoices: (term: string) => GlobalChoice[];
-  
-  // Computed state
-  hasResults: boolean;
-  resultCount: number;
+  // Data management
+  refetch: () => Promise<void>;
+  addCustomChoices: (choices: GlobalChoice[]) => void;
 }
 
 export interface UseJsonUploadResult {
@@ -161,6 +158,7 @@ export interface UseJsonUploadResult {
   uploadError: string | null;
   
   // Upload methods
+  handleFileUpload: (file: File) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
   clearUpload: () => void;
   validateFile: (file: File) => Promise<boolean>;
@@ -188,7 +186,7 @@ export interface UseGlobalChoicesConfigurationResult {
   addCustomChoices: (choices: GlobalChoice[]) => void;
   
   // Search functionality
-  search: UseGlobalChoicesSearchResult;
+  search: UseGlobalChoicesDataResult;
   
   // Selection management
   selection: UseGlobalChoicesSelectionResult;
@@ -228,3 +226,56 @@ export const GLOBAL_CHOICES_ERROR_MESSAGES = {
   SEARCH_FAILED: 'Search failed. Please try again',
   LOADING_FAILED: 'Failed to load global choices. Please refresh',
 } as const;
+
+// Component Props Types
+export interface ChoiceSearchProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+export interface GlobalChoicesListProps {
+  choices: GlobalChoice[];
+  selectedChoices: GlobalChoice[];
+  onChoiceSelect: (choiceId: string, selected: boolean) => void;
+  searchTerm?: string;
+  loading?: boolean;
+  emptyMessage?: string;
+  className?: string;
+}
+
+export interface CustomChoicesUploadProps {
+  onFileUpload: (file: File) => void;
+  onChoicesUpload?: (choices: GlobalChoice[]) => void;
+  uploadedFile?: File | null;
+  isUploading?: boolean;
+  loading?: boolean;
+  error?: string | null;
+  disabled?: boolean;
+  className?: string;
+}
+
+export interface UploadedChoicesPreviewProps {
+  choices: GlobalChoice[];
+  onRemove: () => void;
+  className?: string;
+}
+
+export interface GlobalChoicesNavigationProps {
+  onNext: () => void;
+  onPrevious: () => void;
+  canProceed: boolean;
+  isValid?: boolean;
+  showValidation?: boolean;
+  className?: string;
+}
+
+// Hook Return Type Aliases
+export type UseChoiceSelectionResult = UseGlobalChoicesSelectionResult;
+export type UseFileUploadResult = UseJsonUploadResult;
+export type UseChoicesValidationResult = GlobalChoicesValidationResult;
+
+// Legacy exports for compatibility
+export type ChoiceOption = GlobalChoiceOption;

@@ -3,15 +3,13 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useWizardContext } from '../../../../../context/WizardContext';
 import { ApiService } from '../../../../../services/apiService';
 import { transformWizardDataToDeploymentData, validateDeploymentData } from '../utils';
 import type { UseDeploymentStateResult, DeploymentState } from '../types';
 
 export const useDeploymentState = (): UseDeploymentStateResult => {
-  const { wizardData, resetWizard } = useWizardContext();
-  const navigate = useNavigate();
+  const { wizardData } = useWizardContext();
 
   const [deploymentState, setDeploymentState] = useState<DeploymentState>({
     isDeploying: false,
