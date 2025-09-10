@@ -13,6 +13,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
+- **Theme**: All available in both lightmode and darkmode 🖤
 
 ## Architecture
 
@@ -23,13 +24,6 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Cloud**: Azure App Service with Managed Identity
 - **Security**: Azure Key Vault for secure credential storage
 - **Infrastructure**: Azure Bicep templates for repeatable deployments
-
-### Key Components
-- **Interactive Wizard**: Step-by-step guidance for Dataverse entity-relationship modeling
-- **Live Validation**: Real-time ERD syntax checking and relationship validation
-- **Secure Authentication**: Azure Managed Identity eliminates hardcoded credentials
-- **Automated Deployment**: PowerShell scripts for repeatable infrastructure and code deployment
-- **Modern UI**: Accessible, responsive design with Microsoft Fluent UI components
 
 ## Quick Start
 
@@ -195,6 +189,7 @@ GitHub Copilot has been incredibly helpful in this project - especially for:
 * Fleshing out examples
 * Outlining documentation
 * Writing debug and cleanup scripts
+* Writing all the test cases
 * Hardening deployments
 * Code commenting
 
