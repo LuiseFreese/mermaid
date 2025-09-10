@@ -37,6 +37,11 @@
   --color-hover: rgba(0, 120, 212, 0.1);
   --color-focus: rgba(0, 120, 212, 0.2);
   --color-active: rgba(0, 120, 212, 0.15);
+  
+  /* Banner/Header specific colors - blue header for light mode */
+  --color-banner-background: var(--color-primary);
+  --color-banner-text: #ffffff;
+  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
 }
 
 [data-theme="dark"] {

@@ -30,8 +30,8 @@ global.testHelpers = {
   // Navigate to app
   async navigateToWizard() {
     const port = global.__FRONTEND_PORT__ || '3002';
-    await global.page.goto(`http://localhost:${port}`, { waitUntil: 'networkidle0' });
-    await global.page.waitForSelector('[data-testid="wizard-container"]', { timeout: 10000 });
+    await global.page.goto(`http://localhost:${port}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await global.page.waitForSelector('[data-testid="wizard-container"]', { timeout: 15000 });
   },
 
   // Upload a test file

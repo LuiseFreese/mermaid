@@ -12,13 +12,36 @@
   transition: all 0.2s ease;
 }
 
+/* When in banner/header context, use banner text colors for better contrast */
+header .toggleButton,
+[role="banner"] .toggleButton {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--color-banner-text);
+}
+
 .toggleButton:hover {
   background-color: var(--color-hover);
   border-color: var(--color-primary);
 }
 
+/* Banner context hover states */
+header .toggleButton:hover,
+[role="banner"] .toggleButton:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
 .toggleButton:focus {
   background-color: var(--color-focus);
   outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Banner context focus states */
+header .toggleButton:focus,
+[role="banner"] .toggleButton:focus {
+  background-color: rgba(255, 255, 255, 0.2);
+  outline: 2px solid rgba(255, 255, 255, 0.8);
   outline-offset: 2px;
 }

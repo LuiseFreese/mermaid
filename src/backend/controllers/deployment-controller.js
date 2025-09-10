@@ -3,6 +3,7 @@
  * Handles HTTP requests for solution deployment endpoints
  */
 const { BaseController } = require('./base-controller');
+const { performanceMonitor } = require('../performance-monitor');
 
 class DeploymentController extends BaseController {
     constructor(dependencies = {}) {
@@ -21,6 +22,8 @@ class DeploymentController extends BaseController {
         if (!this.deploymentService) {
             console.warn('DeploymentController initialized without deploymentService - some functionality may be limited');
         }
+        
+        this.performanceMonitor = performanceMonitor;
     }
 
     /**
@@ -271,6 +274,79 @@ class DeploymentController extends BaseController {
             return result;
         } catch (error) {
             return { success: false, message: 'Connection test failed', error: error.message };
+        }
+    }
+
+    /**
+     * Get performance metrics for recent deployments
+     * GET /performance-metrics
+     */
+    async getPerformanceMetrics(req, res) {
+        this.log('getPerformanceMetrics', { method: req.method, url: req.url });
+
+        try {
+            const url = new URL(req.url, 'http://localhost');
+            const limit = parseInt(url.searchParams.get('limit')) || 10;
+            
+            const summary = this.performanceMonitor.getPerformanceSummary(limit);
+            const allMetrics = this.performanceMonitor.getAllMetrics();
+            
+            const response = {
+                success: true,
+                summary,
+                recentDeployments: allMetrics
+                    .filter(m => m.operationType === 'deployment')
+                    .sort((a, b) => b.endTime - a.endTime)
+                    .slice(0, limit)
+                    .map(metric => ({
+                        deploymentId: metric.operationId,
+                        duration: metric.duration,
+                        entitiesCreated: metric.results.entitiesCreated,
+                        relationshipsCreated: metric.results.relationshipsCreated,
+                        success: metric.results.success,
+                        timestamp: new Date(metric.startTime).toISOString(),
+                        solutionName: metric.metadata.solutionName
+                    }))
+            };
+
+            this.sendJson(res, 200, response);
+        } catch (error) {
+            this.sendInternalError(res, 'Failed to get performance metrics', error);
+        }
+    }
+
+    /**
+     * Get specific deployment metrics
+     * GET /performance-metrics/:deploymentId
+     */
+    async getDeploymentMetrics(req, res) {
+        this.log('getDeploymentMetrics', { method: req.method, url: req.url });
+
+        try {
+            const deploymentId = this.extractPathParameter(req.url, '/performance-metrics/');
+            
+            if (!deploymentId) {
+                return this.sendJson(res, 400, {
+                    success: false,
+                    message: 'Deployment ID is required'
+                });
+            }
+
+            const metrics = this.performanceMonitor.getMetrics(deploymentId);
+            
+            if (!metrics) {
+                return this.sendJson(res, 404, {
+                    success: false,
+                    message: 'Deployment metrics not found'
+                });
+            }
+
+            this.sendJson(res, 200, {
+                success: true,
+                metrics
+            });
+        } catch (error) {
+            this.sendInternalError(res, 'Failed to get deployment metrics', error);
         }
     }
 }

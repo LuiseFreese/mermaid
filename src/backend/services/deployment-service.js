@@ -3,6 +3,7 @@
  * Business logic for solution deployment orchestration
  */
 const { BaseService } = require('./base-service');
+const { performanceMonitor } = require('../performance-monitor');
 
 class DeploymentService extends BaseService {
     constructor(dependencies = {}) {
@@ -22,6 +23,9 @@ class DeploymentService extends BaseService {
         
         // Track active deployments
         this.activeDeployments = new Map();
+        
+        // Performance monitoring
+        this.performanceMonitor = performanceMonitor;
     }
 
     /**
@@ -32,6 +36,12 @@ class DeploymentService extends BaseService {
      */
     async deploySolution(config, progressCallback) {
         const deploymentId = this.generateDeploymentId();
+        
+        // Start performance monitoring
+        this.performanceMonitor.startOperation(deploymentId, 'deployment', {
+            entityCount: 0, // Will be updated when we parse the ERD
+            solutionName: config.solutionName
+        });
         
         try {
             this.validateInput(config, ['mermaidContent', 'solutionName'], {
@@ -131,6 +141,19 @@ class DeploymentService extends BaseService {
                     parseResult.entities, 
                     cdmMatches
                 );
+
+                // Update performance monitoring metadata with entity counts
+                const totalEntities = cdmEntities.length + customEntities.length;
+                const totalAttributes = parseResult.entities.reduce((sum, entity) => 
+                    sum + (entity.attributes?.length || 0), 0);
+                
+                this.performanceMonitor.startTimes.get(deploymentId).metadata = {
+                    ...this.performanceMonitor.startTimes.get(deploymentId).metadata,
+                    entityCount: totalEntities,
+                    attributeCount: totalAttributes,
+                    cdmEntityCount: cdmEntities.length,
+                    customEntityCount: customEntities.length
+                };
 
                 let results = {
                     success: true,
@@ -255,6 +278,9 @@ class DeploymentService extends BaseService {
                 // Update deployment tracking
                 this.updateDeploymentStatus(deploymentId, 'completed', results.summary);
                 
+                // End performance monitoring
+                this.performanceMonitor.endOperation(deploymentId, results);
+                
                 progress('complete', results.summary, { completed: true });
                 
                 // Use the generated summary as the success message
@@ -263,6 +289,14 @@ class DeploymentService extends BaseService {
             } catch (error) {
                 this.error('Deployment failed', error);
                 this.updateDeploymentStatus(deploymentId, 'failed', error.message);
+                
+                // End performance monitoring for failed deployment
+                this.performanceMonitor.endOperation(deploymentId, {
+                    success: false,
+                    error: error.message,
+                    entitiesCreated: 0,
+                    relationshipsCreated: 0
+                });
                 
                 const errorResult = {
                     success: false,
