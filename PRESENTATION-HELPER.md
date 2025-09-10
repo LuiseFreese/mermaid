@@ -3,7 +3,40 @@
 
 ---
 
-## 📊 **1. DATAVERSE WEB API ENDPOINTS**
+## � **SIMPLE PROCESS OVERVIEW**
+
+```
+📝 Mermaid ERD File
+        ↓
+🔍 PARSE (Regex Hell)
+   ├─ Extract Entities
+   ├─ Extract Attributes  
+   └─ Extract Relationships
+        ↓
+✅ VALIDATE
+   ├─ CDM Detection
+   ├─ Naming Conflicts
+   ├─ Choice Issues
+   └─ Auto-Fix Suggestions
+        ↓
+🚀 DEPLOY TO DATAVERSE
+   ├─ Create Publisher
+   ├─ Create Solution
+   ├─ Create Entities
+   ├─ Create Attributes
+   └─ Create Relationships
+        ↓
+✨ SUCCESS: Working Dataverse Solution
+```
+
+**In 3 Steps:**
+1. **PARSE** → Mermaid text becomes structured data (entities, attributes, relationships)
+2. **VALIDATE** → Check for issues, detect CDM entities, suggest fixes
+3. **DEPLOY** → Call Dataverse APIs to create actual solution with entities
+
+---
+
+## �📊 **1. DATAVERSE WEB API ENDPOINTS**
 
 ### **Authentication & Connection**
 ```http

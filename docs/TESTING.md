@@ -109,23 +109,6 @@ cd src/frontend && npm test
 npm test -- tests/unit/solution-setup/
 ```
 
-**Frontend Test Coverage:**
-- **Solution Setup Tests**: 97/97 tests passing
-  - SearchableDropdown component (21 tests)
-  - useSearchableDropdown hook (23 tests) 
-  - useSolutionConfiguration hook (12 tests)
-  - usePublisherConfiguration hook (11 tests)
-  - useNameGeneration hook (13 tests)
-  - SolutionSetupStep integration (17 tests)
-- **General Wizard Tests**: 28/28 tests passing
-  - FileUploadStep, GlobalChoicesStep, DeploymentStep
-  - WizardShell, ErrorDisplay components
-
-**Browser Testing:**
-- Access development server at http://localhost:3003 (frontend)
-- Access full application at http://localhost:8080 (production mode)
-- Use browser developer tools for debugging
-
 ### Deployment Testing
 
 #### 1. Local Production Build Test
@@ -349,21 +332,3 @@ npm run test:e2e -- --testNamePattern="Screen Reader Support"
 - Color contrast ratio verification (4.5:1 for normal text)
 - Alternative text for images and media
 - Form labeling and error identification
-
-### Testing Tools
-
-- **Jest**: Test framework and runner
-- **Supertest**: HTTP API testing
-- **Nock**: HTTP request mocking
-- **Sinon**: Function stubbing and spying
-
-### Writing Tests
-
-When adding new features:
-1. **Write unit tests** for new services or utilities
-2. **Add integration tests** for new API endpoints
-3. **Include error scenarios** and edge cases
-4. **Use existing test fixtures** in `tests/fixtures/test-data.js`
-5. **Follow naming convention**: `*.test.js`
-
-Tests should be readable, focused, and test one behavior per test case. The existing test files provide good examples to follow.

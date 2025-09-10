@@ -95,7 +95,7 @@ And finally
 
 The React application includes sophisticated validation that provides real-time feedback and intelligent fixes:
 
-### 🔍 Common Data Model (CDM) Detection
+### Common Data Model (CDM) Detection
 
 The system automatically analyzes your entities and detects potential CDM matches:
 
@@ -126,7 +126,7 @@ erDiagram
 - **Create custom entities**: Proceed with your custom entity definitions
 - **Mixed approach**: Use CDM for some, custom for others
 
-### 🛠️ Automatic Problem Detection & Fixes
+### Automatic Problem Detection & Fixes
 
 #### Primary Column Conflicts
 
