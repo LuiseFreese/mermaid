@@ -1,0 +1,78 @@
+.headerText {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.cardContent {
+  padding: 24px;
+}
+
+.accordionHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.accordionHeaderText {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+  flex: 1;
+}
+
+.expandIcon {
+  margin-left: auto;
+}
+
+.summarySection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.summaryItem {
+  padding: 4px 0;
+}
+
+.entityAttributes {
+  margin-top: 4px;
+}
+
+.deploymentProgress {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background-color: var(--colorNeutralBackground2);
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.deploymentResult {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.deploymentError {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+}
+
+.previousButton {
+  min-width: 160px;
+}
+
+.deployButton {
+  min-width: 200px;
+}

@@ -12,7 +12,7 @@ import { ChevronRightRegular } from '@fluentui/react-icons';
 import { FileUploadStep } from './steps/FileUploadStep';
 import { SolutionSetupStep } from './steps/SolutionSetupStep';
 import { GlobalChoicesStep } from './steps/GlobalChoicesStep';
-import { DeploymentStep } from './steps/DeploymentStep';
+import { DeploymentStep } from './steps/deployment';
 import { WizardProvider } from '../../context/WizardContext';
 
 export const WizardShell: React.FC = () => {

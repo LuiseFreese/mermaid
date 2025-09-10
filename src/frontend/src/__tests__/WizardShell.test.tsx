@@ -31,7 +31,7 @@ vi.mock('../components/wizard/steps/GlobalChoicesStep', () => ({
   ),
 }));
 
-vi.mock('../components/wizard/steps/DeploymentStep', () => ({
+vi.mock('../components/wizard/steps/deployment', () => ({
   DeploymentStep: ({ onPrevious }: { onPrevious: () => void }) => (
     <div data-testid="deployment-step">
       <button onClick={onPrevious}>Previous</button>
