@@ -35,7 +35,9 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     detectedEntities, 
     entityChoice, 
     correctedErdContent, 
-    fixedIssues 
+    fixedIssues,
+    parsedEntities,
+    parsedRelationships
   } = wizardData;
 
   const mermaidRef = useRef<HTMLDivElement>(null);
@@ -185,7 +187,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     console.log('Before choice fix:', updatedContent);
     
     // Remove all choice and category columns from all entities
-    updatedContent = updatedContent.replace(/^\s*\w+\s+(choice|category)\s+\w+.*$/gm, '');
+    // Updated regex to match both formats: "choice columnname" and "type choice columnname"
+    updatedContent = updatedContent.replace(/^\s*(\w+\s+)?(choice|category)\s+\w+.*$/gm, '');
     
     console.log('After choice fix:', updatedContent);
     updateWizardData({ 
@@ -327,7 +330,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     return { entities, relationships };
   }, []);
 
-  const { entities: parsedEntities, relationships: parsedRelationships } = parseErdContent(correctedErdContent);
+  // Parse ERD content (used for initial state and validation)
+  const { entities: localParsedEntities, relationships: localParsedRelationships } = parseErdContent(correctedErdContent);
 
   // Save parsed entities and relationships to wizard context whenever corrected content changes
   useEffect(() => {
@@ -947,7 +951,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                         {rel.from} → {rel.to}
                                       </Text>
                                       <Text className={styles.relationshipDetails}>
-                                        {rel.cardinality} {rel.label}
+                                        {rel.type} {rel.label}
                                       </Text>
                                     </div>
                                   </div>

@@ -1,0 +1,10 @@
+erDiagram
+  Customer {
+    string id PK
+    string name
+  }
+  Purchase {
+    string id PK
+    string customer_id FK
+  }
+  Customer ||--o{ Purchase : makes

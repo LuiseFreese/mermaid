@@ -48,7 +48,7 @@ describe('Phase 2 - Rendering Logic Hooks', () => {
     expect(content).toContain('resetProcessing');
     
     // Check for utility imports
-    expect(content).toContain('detectCDMEntitiesInContent');
+    expect(content).toContain('findCDMEntitiesInContent');
     expect(content).toContain('validateERDContent');
     
     // Check for enhanced processing
