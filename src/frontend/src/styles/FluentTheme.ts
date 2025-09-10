@@ -20,8 +20,29 @@ const brandRamp: BrandVariants = {
   160: "#96CFFF"
 };
 
+// Pink brand ramp for the pink theme 🌸
+const pinkBrandRamp: BrandVariants = {
+  10: "#2D0A1A",
+  20: "#4A0E2B",
+  30: "#66123C",
+  40: "#83164D",
+  50: "#9F1A5E",
+  60: "#BB1E6F",
+  70: "#C71585", // Our accessible Medium Violet Red
+  80: "#D71A95",
+  90: "#E71EA5",
+  100: "#F722B5",
+  110: "#F73BC1",
+  120: "#F854CD",
+  130: "#F96DD9",
+  140: "#FA86E5",
+  150: "#FB9FF1",
+  160: "#FCB8FD"
+};
+
 export const lightTheme = createLightTheme(brandRamp);
 export const darkTheme = createDarkTheme(brandRamp);
+export const pinkTheme = createLightTheme(pinkBrandRamp);
 
 // Export for use in other components
-export { brandRamp };
+export { brandRamp, pinkBrandRamp };

@@ -88,6 +88,50 @@
   --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
 }
 
+[data-theme="pink"] {
+  /* Pink theme - because why not? 🌸 */
+  --color-background: #fdf2f8;
+  --color-surface: #fce7f3;
+  --color-surface-variant: #f8bbd9;
+  --color-text-primary: #831843;
+  --color-text-secondary: #a21caf;
+  --color-border: #f472b6;
+  --color-shadow: rgba(236, 72, 153, 0.2);
+  
+  /* Pink brand colors - using accessible Medium Violet Red */
+  --color-primary: #C71585;
+  --color-primary-variant: #AD1457;
+  --color-secondary: #8b5cf6;
+  
+  /* Status colors - pink theme variants */
+  --color-success: #059669;
+  --color-success-background: #d1fae5;
+  --color-success-border: #6ee7b7;
+  
+  --color-warning: #d97706;
+  --color-warning-background: #fef3c7;
+  --color-warning-border: #fbbf24;
+  
+  --color-error: #dc2626;
+  --color-error-background: #fee2e2;
+  --color-error-border: #fca5a5;
+  
+  /* Semantic colors */
+  --color-info: #C71585;
+  --color-muted: #f8bbd9;
+  --color-accent: #fce7f3;
+  
+  /* Interactive states */
+  --color-hover: rgba(199, 21, 133, 0.1);
+  --color-focus: rgba(199, 21, 133, 0.2);
+  --color-active: rgba(199, 21, 133, 0.15);
+  
+  /* Banner/Header specific colors - pink header! */
+  --color-banner-background: var(--color-primary);
+  --color-banner-text: #ffffff;
+  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
+}
+
 /* Smooth transitions for theme changes */
 * {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;

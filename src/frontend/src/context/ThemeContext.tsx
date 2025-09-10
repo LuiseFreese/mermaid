@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Theme = 'light' | 'dark' | 'auto';
+type Theme = 'light' | 'dark' | 'pink' | 'auto';
 
 interface ThemeContextType {
   theme: Theme;
-  effectiveTheme: 'light' | 'dark';
+  effectiveTheme: 'light' | 'dark' | 'pink';
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
@@ -17,7 +17,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved || 'auto';
   });
 
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light');
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark' | 'pink'>('light');
 
   useEffect(() => {
     // Handle system preference detection
@@ -27,7 +27,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (theme === 'auto') {
         setEffectiveTheme(mediaQuery.matches ? 'dark' : 'light');
       } else {
-        setEffectiveTheme(theme);
+        setEffectiveTheme(theme as 'light' | 'dark' | 'pink');
       }
     };
 
@@ -46,7 +46,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleTheme = () => {
     setTheme(current => {
       if (current === 'light') return 'dark';
-      if (current === 'dark') return 'auto';
+      if (current === 'dark') return 'pink';
+      if (current === 'pink') return 'auto';
       return 'light';
     });
   };
