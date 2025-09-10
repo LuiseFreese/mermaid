@@ -13,8 +13,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
-- **Theme**: All available in both lightmode and darkmode 🖤
-
+- **Theme**: All available in lightmode, darkmode, and pinkmode 💖
 ## Architecture
 
 ### Modern Tech Stack

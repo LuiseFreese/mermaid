@@ -16,6 +16,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Pink theme diagram container 🌸 */
+[data-theme="pink"] .mermaid {
+  background-color: #fdf2f8;
+  box-shadow: 0 2px 8px rgba(199, 21, 133, 0.15);
+}
+
 /* Target all rectangles (entity boxes) in the SVG - Light theme */
 .mermaid svg rect {
   stroke: #0078d4 !important;
@@ -30,6 +36,33 @@
   fill: #2d2d30 !important;
 }
 
+/* Pink theme entity boxes 🌸 */
+[data-theme="pink"] .mermaid svg rect {
+  stroke: #C71585 !important;
+  stroke-width: 1.5px !important;
+  fill: #fce7f3 !important;
+}
+
+/* Pink theme - additional entity selectors 🌸 */
+[data-theme="pink"] .mermaid svg .er-entityBox rect,
+[data-theme="pink"] .mermaid svg .entity rect,
+[data-theme="pink"] .mermaid svg .entityBox rect {
+  stroke: #C71585 !important;
+  stroke-width: 1.5px !important;
+  fill: #fce7f3 !important;
+}
+
+/* Pink theme - force override all possible selectors 🌸 */
+[data-theme="pink"] .mermaid svg g rect,
+[data-theme="pink"] .mermaid svg g.er-entityBox rect,
+[data-theme="pink"] .mermaid svg g.entity rect,
+[data-theme="pink"] .mermaid svg rect[stroke="#0078d4"],
+[data-theme="pink"] .mermaid svg rect[fill="#ffffff"] {
+  stroke: #C71585 !important;
+  stroke-width: 1.5px !important;
+  fill: #fce7f3 !important;
+}
+
 /* Target all text elements for consistent styling - Light theme */
 .mermaid svg text {
   font-family: 'Segoe UI', system-ui, sans-serif !important;
@@ -42,10 +75,23 @@
   fill: #ffffff !important;
 }
 
+/* Pink theme text 🌸 */
+[data-theme="pink"] .mermaid svg text {
+  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  fill: #323130 !important;
+}
+
 /* Relationship lines - consistent across themes */
 .mermaid svg path,
 .mermaid svg line {
   stroke: #0078d4 !important;
+  stroke-width: 2px !important;
+}
+
+/* Pink theme relationship lines 🌸 */
+[data-theme="pink"] .mermaid svg path,
+[data-theme="pink"] .mermaid svg line {
+  stroke: #C71585 !important;
   stroke-width: 2px !important;
 }
 
@@ -61,9 +107,21 @@
   fill: #ffffff !important;
 }
 
+/* Pink theme entity names 🌸 */
+[data-theme="pink"] .mermaid svg g:first-of-type text {
+  font-weight: 600 !important;
+  fill: #C71585 !important;
+}
+
 /* Ensure proper contrast for entity headers */
 [data-theme="dark"] .mermaid svg g.er-entityBox rect {
   fill: #3e3e42 !important;
+}
+
+/* Pink theme entity headers 🌸 */
+[data-theme="pink"] .mermaid svg g.er-entityBox rect {
+  fill: #fce7f3 !important;
+  stroke: #C71585 !important;
 }
 
 /* Column type indicators (PK, FK) styling */
@@ -77,6 +135,13 @@
   fill: #2d2d30 !important;
 }
 
+/* Pink theme column indicators 🌸 */
+[data-theme="pink"] .mermaid svg .er-attributeBoxOdd,
+[data-theme="pink"] .mermaid svg .er-attributeBoxEven {
+  fill: #fce7f3 !important;
+  stroke: #C71585 !important;
+}
+
 /* Relationship connector styling */
 .mermaid svg .er-relationshipLabel {
   fill: #323130 !important;
@@ -84,4 +149,9 @@
 
 [data-theme="dark"] .mermaid svg .er-relationshipLabel {
   fill: #cccccc !important;
+}
+
+/* Pink theme relationship labels 🌸 */
+[data-theme="pink"] .mermaid svg .er-relationshipLabel {
+  fill: #323130 !important;
 }

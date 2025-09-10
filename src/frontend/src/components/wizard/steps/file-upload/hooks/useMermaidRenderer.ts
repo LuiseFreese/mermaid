@@ -21,7 +21,7 @@ export interface UseMermaidRendererResult {
  * Hook for managing Mermaid diagram rendering
  * @returns Mermaid rendering state and functions
  */
-export const useMermaidRenderer = (): UseMermaidRendererResult => {
+export const useMermaidRenderer = (): MermaidRendererHook => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [lastRenderedContent, setLastRenderedContent] = useState<string | null>(null);
@@ -33,9 +33,7 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
    * Get theme-specific Mermaid configuration
    */
   const getMermaidConfig = useCallback(() => {
-    const isDark = effectiveTheme === 'dark';
-    
-    if (isDark) {
+    if (effectiveTheme === 'dark') {
       // Dark theme configuration - aligned with Fluent UI dark colors
       return {
         startOnLoad: true,
@@ -58,6 +56,27 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
           tertiaryTextColor: '#ffffff'          // White text
         }
       };
+    } else if (effectiveTheme === 'pink') {
+      // Pink theme configuration 🌸 - back to base theme
+      const pinkConfig = {
+        startOnLoad: true,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Pink theme colors
+          primaryColor: '#fce7f3',              
+          primaryBorderColor: '#C71585',        
+          lineColor: '#C71585',                 
+          secondaryColor: '#fdf2f8',            
+          tertiaryColor: '#fce7f3',             
+          background: '#fdf2f8',                
+          primaryTextColor: '#323130',          
+          secondaryTextColor: '#323130',        
+          tertiaryTextColor: '#323130'
+        }
+      };
+      console.log('🌸 Pink theme config being sent to Mermaid:', pinkConfig);
+      return pinkConfig;
     } else {
       // Light theme configuration
       return {

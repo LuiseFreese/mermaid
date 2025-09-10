@@ -102,43 +102,78 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     console.log('🎨 DEBUG: Initializing Mermaid with theme:', effectiveTheme);
     
     const isDark = effectiveTheme === 'dark';
+    const isPink = effectiveTheme === 'pink';
     
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: isDark ? 'dark' : 'base',
-      securityLevel: 'loose',
-      themeVariables: isDark ? {
-        // Dark theme styling - aligned with Fluent UI dark colors
-        primaryColor: '#2d2d30',              // Dark surface for entity headers
-        primaryBorderColor: '#0078d4',        // Fluent UI primary blue for borders
-        lineColor: '#0078d4',                 // Relationship lines in blue
-        
-        // Dark backgrounds
-        secondaryColor: '#1e1e1e',            // Main dark background
-        tertiaryColor: '#3e3e42',             // Slightly lighter dark surface
-        background: '#1e1e1e',                // Dark diagram background
-        
-        // Light text for dark theme
-        primaryTextColor: '#ffffff',          // White text
-        secondaryTextColor: '#cccccc',        // Light gray text
-        tertiaryTextColor: '#ffffff'          // White text
-      } : {
-        // Light theme styling
-        primaryColor: '#e3f2fd',              // Very light blue for entity headers
-        primaryBorderColor: '#0078d4',        // Fluent UI blue for borders
-        lineColor: '#0078d4',                 // Relationship lines in blue
-        
-        // Light backgrounds
-        secondaryColor: '#ffffff',            // White backgrounds
-        tertiaryColor: '#f8f9fa',             // Very light gray
-        background: '#ffffff',               // White diagram background
-        
-        // Dark text for light theme
-        primaryTextColor: '#323130',
-        secondaryTextColor: '#323130',
-        tertiaryTextColor: '#323130'
-      }
-    });
+    let themeConfig;
+    
+    if (isPink) {
+      // Pink theme configuration 🌸
+      themeConfig = {
+        startOnLoad: true,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Pink theme colors
+          primaryColor: '#fce7f3',              
+          primaryBorderColor: '#C71585',        
+          lineColor: '#C71585',                 
+          secondaryColor: '#fdf2f8',            
+          tertiaryColor: '#fce7f3',             
+          background: '#fdf2f8',                
+          primaryTextColor: '#323130',          
+          secondaryTextColor: '#323130',        
+          tertiaryTextColor: '#323130'
+        }
+      };
+    } else if (isDark) {
+      // Dark theme configuration
+      themeConfig = {
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Dark theme styling - aligned with Fluent UI dark colors
+          primaryColor: '#2d2d30',              // Dark surface for entity headers
+          primaryBorderColor: '#0078d4',        // Fluent UI primary blue for borders
+          lineColor: '#0078d4',                 // Relationship lines in blue
+          
+          // Dark backgrounds
+          secondaryColor: '#1e1e1e',            // Main dark background
+          tertiaryColor: '#3e3e42',             // Slightly lighter dark surface
+          background: '#1e1e1e',                // Dark diagram background
+          
+          // Light text for dark theme
+          primaryTextColor: '#ffffff',          // White text
+          secondaryTextColor: '#cccccc',        // Light gray text
+          tertiaryTextColor: '#ffffff'          // White text
+        }
+      };
+    } else {
+      // Light theme configuration
+      themeConfig = {
+        startOnLoad: true,
+        theme: 'base',
+        securityLevel: 'loose',
+        themeVariables: {
+          // Light theme styling
+          primaryColor: '#e3f2fd',              // Very light blue for entity headers
+          primaryBorderColor: '#0078d4',        // Fluent UI blue for borders
+          lineColor: '#0078d4',                 // Relationship lines in blue
+          
+          // Light backgrounds
+          secondaryColor: '#ffffff',            // White backgrounds
+          tertiaryColor: '#f8f9fa',             // Very light gray
+          background: '#ffffff',               // White diagram background
+          
+          // Dark text for light theme
+          primaryTextColor: '#323130',
+          secondaryTextColor: '#323130',
+          tertiaryTextColor: '#323130'
+        }
+      };
+    }
+    
+    mermaid.initialize(themeConfig);
     
     // Force re-render of any existing diagrams after theme change
     // But only if user has made entity choice or no CDM detected
