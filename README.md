@@ -1,6 +1,6 @@
 # Mermaid to Dataverse Converter
 
-A modern React-based Azure App Service application that converts [Mermaid](https://www.mermaidchart.com/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships. Built with React 18, Fluent UI v9, and automated Azure deployment.
+A modern React-based Azure App Service application that converts [Mermaid](https://mermaid.js.org/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships. Built with React 18, Fluent UI v9, and automated Azure deployment.
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
