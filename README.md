@@ -13,7 +13,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Azure Security**: Key Vault integration with managed identity for secure credential management
-- **Theme**: All available in lightmode, darkmode, and pinkmode 💖
+- **Theme**: All available in light mode, dark mode, and pink mode 💖
 ## Architecture
 
 ### Modern Tech Stack
@@ -165,20 +165,14 @@ erDiagram
 
 ## Documentation
 
-- **[Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md)** - System architecture and development setup
-- **[Testing Guide](docs/TESTING.md)** - Comprehensive testing strategies, tools, and workflows
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Detailed deployment instructions and troubleshooting
-- **[Usage Guide](docs/USAGE-GUIDE.md)** - Comprehensive usage examples
-- **[Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md)** - Working with choice columns
-- **[Mermaid Guide](docs/MERMAID-GUIDE.md)** - ERD syntax reference
-- **[Relationship Types](docs/RELATIONSHIP_TYPES.md)** - Supported relationship patterns
+- [Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md) - System architecture and development setup
+- [Testing Guide](docs/TESTING.md) - Comprehensive testing strategies, tools, and workflows
+- [Deployment Guide](docs/DEPLOYMENT.md) - Detailed deployment instructions and troubleshooting
+- [Usage Guide](docs/USAGE-GUIDE.md) - Comprehensive usage examples
+- [Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md) - Working with choice columns
+- [Mermaid Guide](docs/MERMAID-GUIDE.md) - ERD syntax reference
+- [Relationship Types](docs/RELATIONSHIP_TYPES.md) - Supported relationship patterns
 - See the `examples/` directory for sample Mermaid ERD files
-
-### Getting Help
-- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/LuiseFreese/mermaid/issues)
-- **Discussions**: Join community discussions in [GitHub Discussions](https://github.com/LuiseFreese/mermaid/discussions)
-- **Documentation**: Check the comprehensive guides in the `docs/` directory
-- **Examples**: Review sample files in the `examples/` directory
 
 ## Note on AI Usage
 
