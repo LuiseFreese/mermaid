@@ -50,6 +50,11 @@
   border: 1px solid var(--colorNeutralStroke2);
 }
 
+.deploymentProgressContent {
+  margin-left: 16px;
+  padding-left: 8px;
+}
+
 .deploymentResult {
   margin-top: 16px;
   margin-bottom: 16px;

@@ -4,8 +4,10 @@ import {
   Text,
   Accordion,
   AccordionHeader,
-  AccordionPanel,
-  AccordionItem,
+  AccordionPane      <div className={styles.cardContent}>
+        <Text className={fileUploadStyles.schemaOverviewDescription}>
+          Review your deployment configuration. This summary shows what will be created in your Dataverse environment.
+        </Text>,
   Card,
   CardHeader,
   Button,
@@ -147,6 +149,21 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
       />
       
       <div className={styles.cardContent}>
+        {/* TEMPORARY TEST BUTTON - Remove after UI testing */}
+        <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#fff3cd', border: '1px solid #ffeaa7', borderRadius: '4px' }}>
+          <Button 
+            appearance="secondary" 
+            onClick={handleTestUI}
+            disabled={isDeploying}
+            size="small"
+          >
+            🧪 Test Deployment UI
+          </Button>
+          <Text size={200} style={{ marginLeft: '8px', color: '#856404' }}>
+            Click to test the deployment progress UI without actually deploying
+          </Text>
+        </div>
+
         <Text className={fileUploadStyles.schemaOverviewDescription}>
           Review your deployment configuration. This summary shows what will be created in your Dataverse environment.
         </Text>
@@ -432,12 +449,12 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
         {/* Deployment Progress */}
         {isDeploying && (
           <div className={styles.deploymentProgress}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div className={styles.deploymentProgressContent} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', marginLeft: '20px', paddingLeft: '8px' }}>
               <Spinner size="small" />
               <Text weight="semibold">Deploying to Dataverse...</Text>
             </div>
             {deploymentProgress && (
-              <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+              <Text size={200} className={styles.deploymentProgressContent} style={{ color: tokens.colorNeutralForeground2, marginLeft: '20px', paddingLeft: '8px' }}>
                 {deploymentProgress}
               </Text>
             )}

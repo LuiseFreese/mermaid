@@ -588,8 +588,8 @@ class OptimizedDataverseClient extends DataverseClient {
      * Override the original method to use the optimized version
      */
     async createCustomEntities(entities, options = {}) {
-        // Use optimized version if flag is set
-        if (options.useOptimized !== false) {
+        // Use optimized version only if explicitly enabled
+        if (options.useOptimized === true) {
             return this.createCustomEntitiesOptimized(entities, options);
         }
         

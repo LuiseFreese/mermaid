@@ -102,7 +102,7 @@ async function initializeComponents() {
     
     const dataverseRepo = new DataverseRepository({
       configurationRepository: configRepo,
-      DataverseClient: OptimizedDataverseClient, // Use optimized client for better performance
+      DataverseClient: DataverseClient, // Use regular client to avoid customization locks
       logger: console
     });
 
