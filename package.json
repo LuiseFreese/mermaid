@@ -22,7 +22,7 @@
     "test:all": "npm run test",
     "test:quick": "jest tests/unit --silent --detectOpenHandles --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles",
-    "lint": "eslint src/ tests/ --ext .js,.json",
+    "lint": "eslint src/backend/ src/azure-keyvault.js tests/ --ext .js,.json",
     "lint:fix": "eslint src/ tests/ --ext .js,.json --fix",
     "lint:frontend": "cd src/frontend && npm run lint",
     "audit": "npm audit --audit-level=moderate",

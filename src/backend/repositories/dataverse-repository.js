@@ -11,9 +11,6 @@ class DataverseRepository extends BaseRepository {
         this.DataverseClient = dependencies.DataverseClient;
         this.configRepository = dependencies.configRepository || dependencies.configurationRepository;
         
-        // Use regular client to avoid customization locks
-        this.useOptimizedClient = dependencies.useOptimizedClient === true;
-        
         if (!this.DataverseClient) {
             throw new Error('DataverseRepository requires DataverseClient dependency');
         }

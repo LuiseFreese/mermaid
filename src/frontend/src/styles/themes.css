@@ -39,9 +39,9 @@
   --color-active: rgba(0, 120, 212, 0.15);
   
   /* Banner/Header specific colors - blue header for light mode */
-  --color-banner-background: var(--color-primary);
+  --color-banner-background: #005a9e; /* Darker blue for better contrast */
   --color-banner-text: #ffffff;
-  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
+  --color-banner-text-secondary: #ffffff; /* Full white instead of transparent */
 }
 
 [data-theme="dark"] {
@@ -83,9 +83,9 @@
   --color-active: rgba(0, 120, 212, 0.2);
   
   /* Banner/Header specific colors - better contrast for dark mode */
-  --color-banner-background: var(--color-primary);
+  --color-banner-background: #005a9e; /* Darker blue for better contrast */
   --color-banner-text: #ffffff;
-  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
+  --color-banner-text-secondary: #ffffff; /* Full white instead of transparent */
 }
 
 [data-theme="pink"] {
@@ -127,9 +127,9 @@
   --color-active: rgba(199, 21, 133, 0.15);
   
   /* Banner/Header specific colors - pink header! */
-  --color-banner-background: var(--color-primary);
+  --color-banner-background: #A0136B; /* Darker pink for better contrast */
   --color-banner-text: #ffffff;
-  --color-banner-text-secondary: rgba(255, 255, 255, 0.85);
+  --color-banner-text-secondary: #ffffff; /* Full white instead of transparent */
 }
 
 /* Smooth transitions for theme changes */

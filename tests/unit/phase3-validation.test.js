@@ -10,8 +10,6 @@ describe('Phase 3: UI Components Structure', () => {
   test('All UI components should be importable', async () => {
     // Test component imports - in a real environment these would work
     // For testing purposes, we'll test that the files exist
-    const fs = require('fs');
-    const path = require('path');
     const componentsDir = path.resolve(__dirname, '../../src/frontend/src/components/wizard/steps/file-upload/components');
     
     const components = [

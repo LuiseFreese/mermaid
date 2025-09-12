@@ -21,7 +21,7 @@ export interface UseMermaidRendererResult {
  * Hook for managing Mermaid diagram rendering
  * @returns Mermaid rendering state and functions
  */
-export const useMermaidRenderer = (): MermaidRendererHook => {
+export const useMermaidRenderer = (): UseMermaidRendererResult => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [lastRenderedContent, setLastRenderedContent] = useState<string | null>(null);

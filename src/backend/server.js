@@ -40,14 +40,11 @@ const { SecurityMiddleware } = require('./middleware/security-middleware');
 // Core modules
 let MermaidERDParser = null;
 let DataverseClient  = null;
-let OptimizedDataverseClient = null;
 try {
   const { MermaidERDParser: Parser } = require('./mermaid-parser.js');
   const { DataverseClient: Client }  = require('./dataverse-client.js');
-  const OptimizedClient = require('./dataverse-client-optimized.js');
   MermaidERDParser = Parser;
   DataverseClient  = Client;
-  OptimizedDataverseClient = OptimizedClient;
 } catch (e) {
   console.error('Failed to load core modules:', e.message);
 }
