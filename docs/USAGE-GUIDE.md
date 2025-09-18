@@ -23,7 +23,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 - **Intelligent Validation**: Real-time error detection and auto-corrections
 - **Type Detection**: Smart data type mapping based on field names
 - **Modern UI**: Intuitive React wizard
-- **Secure**: Azure Managed Identity with Key Vault integration
+- **Secure**: Azure Managed Identity authentication
 
 ## 1. Use the Modern React Wizard
 

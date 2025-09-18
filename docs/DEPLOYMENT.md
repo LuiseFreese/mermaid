@@ -1,6 +1,6 @@
 # Deployment Guide - Mermaid to Dataverse Converter
 
-This guide explains how to deploy and use the Mermaid-to-Dataverse application. The application uses **fully automated setup** - no manual configuration required!
+This guide explains how to deploy and use the Mermaid-to-Dataverse application. The application uses **fully automated setup** with managed identity authentication - no manual configuration required!
 
 ## Quick Start (Recommended)
 
@@ -11,18 +11,18 @@ This guide explains how to deploy and use the Mermaid-to-Dataverse application. 
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Step 1: Create Azure infrastructure and Entra app (interactive)
-.\scripts\setup-entra-app.ps1
+# Step 1: Create Azure infrastructure and identity setup
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp" -DataverseUrl "https://your-org.crm.dynamics.com" -Unattended
 
 # Step 2: Deploy the application code
-.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
 **The setup script will:**
-- Create Entra App Registration with proper API permissions
-- Deploy Azure infrastructure (App Service, Key Vault, Managed Identity, etc.)
-- Configure secure authentication and Key Vault access
-- Set up Dataverse application user (optional)
+- Create App Registration with federated credentials
+- Deploy Azure infrastructure (App Service, Managed Identity, etc.)
+- Configure secure managed identity authentication
+- Set up Dataverse application user with proper permissions
 
 **The deploy script will:**
 - Build the React frontend locally using Vite
@@ -42,30 +42,25 @@ Before running the setup:
 6. **Appropriate permissions**:
    - **Azure**: Contributor or Owner on subscription
    - **Microsoft Entra ID**: Application Administrator (to create app registrations)
-   - **Dataverse**: System Administrator (to create application users)
+   - **Dataverse**: System Administrator (to create application users and assign System Customizer role)
 
 ## Deployment Process
 
 ### Step 1: Infrastructure Setup
 ```powershell
 # Interactive mode (prompts for configuration)
-.\scripts\setup-entra-app.ps1
+.\scripts\setup-secretless.ps1
 
 # OR unattended mode (provide all parameters)
-.\scripts\setup-entra-app.ps1 -Unattended `
-  -EnvironmentUrl "https://orgXXXXX.crm4.dynamics.com" `
-  -ResourceGroup "rg-mermaid-dataverse" `
-  -Location "westeurope" `
-  -AppRegistrationName "Mermaid-Dataverse-Converter" `
-  -AppServiceName "app-mermaid-dv-we-1234" `
-  -KeyVaultName "kv-mermaid-secrets-1234" `
-  -SecurityRole "System Administrator"
+.\scripts\setup-secretless.ps1 -Unattended `
+  -EnvironmentSuffix "myapp" `
+  -DataverseUrl "https://orgXXXXX.crm4.dynamics.com"
 ```
 
 ### Step 2: Application Deployment
 ```powershell
 # Deploy the application code to existing infrastructure
-.\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-1234" -ResourceGroup "rg-mermaid-dataverse" -KeyVaultName "kv-mermaid-secrets-1234"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
 
@@ -75,40 +70,37 @@ The setup script automatically creates:
 
 - **Azure Resource Group** - Container for all resources
 - **App Service & App Service Plan** - Web application hosting (Linux, Node.js 20)
-- **Key Vault** - Secure secret storage with RBAC
-- **User-Assigned Managed Identity** - Secure authentication without passwords
+- **User-Assigned Managed Identity** - Secure authentication with federated credentials
 - **Entra ID App Registration** - Service principal for Dataverse access
 - **Dataverse Application User** - Configured with appropriate security roles
 
 ## Automated Setup Process
 
-The **setup script** (`scripts/setup-entra-app.ps1`) creates the infrastructure:
+The **setup script** (`scripts/setup-secretless.ps1`) creates the infrastructure:
 
-1. **Creates App Registration** with proper configuration (using latest Azure CLI syntax)
-2. **Generates Client Secret** with 2-year expiration (securely, without console exposure)
-3. **Deploys Infrastructure** using Bicep (Key Vault, Managed Identity, App Service)
-4. **Configures RBAC permissions** for Key Vault access
-5. **Stores all secrets** securely in Key Vault
-6. **Creates Application User** in Dataverse via REST API
-7. **Assigns Security Roles** (System Administrator by default)
+1. **Creates App Registration** with proper configuration and federated credentials
+2. **Deploys Infrastructure** using Bicep (Managed Identity, App Service)
+3. **Configures federated credentials** for secure token exchange
+4. **Stores configuration** in App Service application settings
+5. **Creates Application User** in Dataverse via REST API
+6. **Assigns Security Roles** (System Customizer by default)
 
-The **deployment script** (`scripts/deploy.ps1`) handles the application:
+The **deployment script** (`scripts/deploy-secretless.ps1`) handles the application:
 
 1. **Builds React frontend** locally using Vite for optimal performance
 2. **Packages backend code** (excludes node_modules and source files)
 3. **Deploys to Azure App Service** using Azure CLI with proper static file configuration
-4. **Configures runtime settings** for Key Vault integration and static asset serving
+4. **Configures runtime settings** for managed identity integration and static asset serving
 5. **Validates deployment** by testing the application endpoints
 
 ### Security-First Deployment Approach
 
-The deployment process uses a **security-first approach** that eliminates exposure of sensitive data:
+The deployment process uses a **security-first approach** with managed identity authentication:
 
-- **No secrets in command line parameters** - Prevents exposure in process lists or command history
-- **Direct Key Vault retrieval** - Secrets are retrieved from Key Vault during deployment using Azure CLI
-- **Managed Identity authentication** - No stored credentials required for Key Vault access
-- **Fallback environment variables** - Securely set from Key Vault for runtime backup
-- **Zero hardcoded secrets** - All sensitive data flows through Azure's secure services
+- **No secrets required** - Managed identity provides passwordless authentication
+- **Secure environment variables** - Configuration stored in App Service settings
+- **Federated credentials** - Token exchange without storing secrets
+- **Zero hardcoded secrets** - All authentication handled by Azure managed identity
 
 ### Interactive Setup Example
 
@@ -126,11 +118,10 @@ Resource Group Name: rg-mermaid-dv-we-test
 Azure Region: westeurope
 App Registration Name: Mermaid-Dataverse-Converter
 App Service Name: app-mermaid-dv-we-5678
-Key Vault Name: kv-mermaid-secrets-5678
 
 ✅ App Registration created successfully
 ✅ Infrastructure deployed successfully  
-✅ Secrets stored in Key Vault
+✅ Managed identity configured
 ✅ Dataverse Application User created
 ✅ Security roles assigned
 
@@ -140,7 +131,7 @@ Next: Run the deploy script to deploy your application code.
 
 **Step 2: Application Deployment**
 ```powershell
-PS> .\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-5678" -ResourceGroup "rg-mermaid-dv-we-test" -KeyVaultName "kv-mermaid-secrets-5678"
+PS> .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "5678"
 
 Mermaid to Dataverse - Application Deployment
 ============================================
@@ -155,9 +146,9 @@ Mermaid to Dataverse - Application Deployment
    https://app-mermaid-dv-we-5678.azurewebsites.net/
 
 🔒 Security Features:
-   - All secrets secured in Azure Key Vault
    - Managed Identity for passwordless authentication
-   - Zero hardcoded credentials in deployment process
+   - Federated credentials for secure token exchange
+   - Zero secrets stored anywhere in the system
 ```
 
 ## Infrastructure as Code
@@ -168,27 +159,26 @@ All Azure resources are defined in `deploy/infrastructure.bicep`
 
 The deployment uses **enterprise-grade security** with multiple layers of protection:
 
-### Secret Management
-- **Azure Key Vault**: All sensitive data (client secrets, URLs) stored securely
-- **No hardcoded secrets**: Zero secrets in source code, configuration files, or deployment scripts
-- **Secure retrieval**: Secrets fetched directly from Key Vault during deployment using Azure CLI
-- **Runtime Key Vault integration**: App retrieves secrets at runtime using Managed Identity
-
 ### Authentication & Authorization
-- **User-Assigned Managed Identity**: Passwordless authentication for App Service ↔ Key Vault
-- **RBAC permissions**: Principle of least privilege for Key Vault access
-- **Entra ID App Registration**: Secure service principal for Dataverse access
+- **User-Assigned Managed Identity**: Passwordless authentication for secure token access
+- **Federated Credentials**: Secure token exchange without storing secrets
+- **Entra ID App Registration**: Service principal configured for managed identity
 - **Application User**: Dedicated Dataverse user with specific security roles
+
+### Configuration Management
+- **App Service Settings**: Configuration stored as environment variables
+- **No secrets required**: All authentication handled through Azure managed identity
+- **Zero hardcoded values**: Configuration managed through Azure portal or deployment scripts
 
 ### Deployment Security
 - **Parameter-free deployment**: No secrets passed as command-line parameters
 - **Azure CLI authentication**: Uses your existing Azure session for secure operations
-- **Temporary secret exposure**: Secrets only retrieved when needed during deployment
+- **Managed identity authentication**: All security handled through Azure identity services
 - **Audit trail**: All operations logged through Azure Activity Log
 
 ### Runtime Security
-- **Primary**: App uses Managed Identity to fetch secrets from Key Vault
-- **Fallback**: Secure environment variables set during deployment (also from Key Vault)
+- **Managed Identity authentication**: App uses managed identity for all external service access
+- **Environment variables**: Configuration stored securely in App Service settings
 - **HTTPS only**: All communication encrypted in transit
 - **Network isolation**: App Service can be configured with VNet integration
 
@@ -198,24 +188,24 @@ After the initial infrastructure setup, you can deploy code changes using the de
 
 ```powershell
 # Deploy code updates to existing infrastructure
-.\scripts\deploy.ps1 -AppName "app-mermaid-dv-we-5678" -ResourceGroup "rg-mermaid-dv-we-test" -KeyVaultName "kv-mermaid-secrets-5678"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
 This script will:
 1. **Build React frontend** locally using Vite for optimal performance
 2. **Package backend code** (excludes node_modules and source files for faster deployment)
 3. **Deploy to Azure App Service** using Azure CLI with proper static file configuration
-4. **Configure runtime settings** for Key Vault integration and static asset serving
+4. **Configure runtime settings** for managed identity integration and static asset serving
 5. **Test deployment** by verifying the application endpoints
 6. **Clean up temporary files** for security
 
 ### Security Benefits
 
-The deployment process ensures **zero exposure of sensitive data**:
-- Secrets are retrieved directly from Key Vault during deployment
-- No secrets appear in command parameters, process lists, or logs
+The deployment process ensures **zero secrets required**:
+- No secrets stored anywhere in the system
 - Managed Identity provides secure, passwordless authentication
-- Fallback environment variables are set securely from Key Vault
+- All configuration stored as environment variables in App Service
+- Federated credentials enable secure token exchange
 
 ### Idempotent Deployments
 
@@ -223,10 +213,10 @@ Both scripts are **idempotent** and can be run multiple times safely:
 
 ```powershell
 # Re-run infrastructure setup (detects existing resources)
-.\scripts\setup-entra-app.ps1
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp"
 
 # Re-run application deployment (updates code only)
-.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
 **Infrastructure script will:**

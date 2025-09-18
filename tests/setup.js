@@ -11,14 +11,7 @@ process.env.LOG_LEVEL = 'error'; // Reduce log noise during tests
 // Global test timeout
 jest.setTimeout(30000);
 
-// Mock Azure Key Vault for tests
-jest.mock('@azure/keyvault-secrets', () => ({
-  SecretClient: jest.fn().mockImplementation(() => ({
-    getSecret: jest.fn().mockResolvedValue({
-      value: 'mock-secret-value'
-    })
-  }))
-}));
+// Key Vault removed - using managed identity only
 
 // Mock Azure Identity for tests
 jest.mock('@azure/identity', () => ({

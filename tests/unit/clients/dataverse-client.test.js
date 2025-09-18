@@ -28,7 +28,7 @@ describe('DataverseClient', () => {
     dataverseUrl: 'https://test.crm.dynamics.com',
     tenantId: 'test-tenant-id',
     clientId: 'test-client-id',
-    clientSecret: 'test-client-secret'
+    useManagedIdentity: true
   };
 
   beforeEach(() => {
@@ -460,13 +460,15 @@ describe('DataverseClient', () => {
     });
 
     test('should extract entity ID from OData response', () => {
-      const odataId = 'solutions(12345678-1234-1234-1234-123456789012)';
+      const testGuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+      const odataId = `solutions(${testGuid})`;
       const entityId = client.extractEntityId(odataId);
-      expect(entityId).toBe('12345678-1234-1234-1234-123456789012');
+      expect(entityId).toBe(testGuid);
     });
 
     test('should validate GUID format', () => {
-      expect(client.isValidGuid('12345678-1234-1234-1234-123456789012')).toBe(true);
+      const testGuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+      expect(client.isValidGuid(testGuid)).toBe(true);
       expect(client.isValidGuid('invalid-guid')).toBe(false);
       expect(client.isValidGuid('')).toBe(false);
     });

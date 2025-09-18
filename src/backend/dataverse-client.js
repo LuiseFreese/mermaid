@@ -9,7 +9,21 @@ class DataverseClient {
     this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || '').replace(/\/$/, '');
     this.tenantId = cfg.tenantId || cfg.TENANT_ID;
     this.clientId = cfg.clientId || cfg.CLIENT_ID;
-    this.clientSecret = cfg.clientSecret || cfg.CLIENT_SECRET;
+    this.managedIdentityClientId = cfg.managedIdentityClientId || cfg.MANAGED_IDENTITY_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
+    
+    // Support for federated credentials and managed identity
+    this.useFederatedCredential = cfg.useFederatedCredential || 
+                                  process.env.USE_FEDERATED_CREDENTIAL === 'true';
+    
+    // Support for managed identity (Azure App Service, Container Instances, VMs, etc.)
+    this.useManagedIdentity = cfg.useManagedIdentity || 
+                              process.env.USE_MANAGED_IDENTITY === 'true' ||
+                              !this.useFederatedCredential;
+    
+    // For federated credentials, we need the assertion token or file path
+    this.clientAssertion = cfg.clientAssertion || process.env.CLIENT_ASSERTION;
+    this.clientAssertionFile = cfg.clientAssertionFile || process.env.CLIENT_ASSERTION_FILE;
+    
     this.verbose = !!cfg.verbose;
 
     this._http = axios.create({
@@ -35,27 +49,198 @@ class DataverseClient {
     const now = Math.floor(Date.now() / 1000);
     if (this._token && now < (this._tokenExp - 60)) return this._token;
 
-    if (!this.tenantId || !this.clientId || !this.clientSecret || !this.baseUrl) {
-      throw new Error('Missing Dataverse auth configuration (tenantId/clientId/clientSecret/dataverseUrl).');
+    // Determine authentication method based on configuration
+    if (this.useManagedIdentity && this.useFederatedCredential) {
+      // Use managed identity WITH federated credentials (workload identity pattern)
+      this._log('🔐 AUTHENTICATION: Using Managed Identity + Federated Credentials');
+      this._token = await this._getManagedIdentityWithFederatedCredentials();
+    } else if (this.useManagedIdentity) {
+      // Use managed identity (Azure App Service, VM, Container Instance, etc.)
+      this._log('🔐 AUTHENTICATION: Using Managed Identity Only');
+      if (!this.baseUrl) {
+        throw new Error('Missing Dataverse URL for managed identity authentication.');
+      }
+      this._token = await this._getManagedIdentityToken();
+    } else if (this.useFederatedCredential) {
+      // Use federated credentials with client assertion (direct)
+      this._log('🔐 AUTHENTICATION: Using Federated Credentials Only');
+      if (!this.tenantId || !this.clientId) {
+        throw new Error('Missing tenantId/clientId for federated credential authentication.');
+      }
+      this._token = await this._getTokenWithClientAssertion();
+    } else {
+      throw new Error('Authentication method not configured. Must use either managed identity or federated credentials.');
     }
 
-    this._log(' Requesting AAD token...');
+    // Set expiration time for all authentication methods
+    this._tokenExp = Math.floor(Date.now() / 1000) + 3599; // 1 hour default
+    return this._token;
+  }
+
+  /**
+   * Get managed identity token from Azure IMDS endpoint
+   */
+  async _getManagedIdentityToken() {
+    this._log(' Requesting token from managed identity...');
+    
+    try {
+      // Azure Instance Metadata Service (IMDS) endpoint for managed identity
+      const response = await axios.get('http://169.254.169.254/metadata/identity/oauth2/token', {
+        params: {
+          'api-version': '2018-02-01',
+          'resource': this.baseUrl
+        },
+        headers: {
+          'Metadata': 'true'
+        },
+        timeout: 5000 // Short timeout for IMDS
+      });
+      
+      this._log(' OK   Managed identity token acquired.');
+      return response.data.access_token;
+      
+    } catch (error) {
+      this._err(' Failed to get managed identity token:', error.message);
+      throw new Error(`Managed identity authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get token using managed identity with federated credentials (Azure App Service pattern)
+   * Two-step process: 1) Get Azure token via managed identity, 2) Exchange for Dataverse token
+   */
+  async _getManagedIdentityWithFederatedCredentials() {
+    this._log(' Requesting token via managed identity with federated credentials (App Service)...');
+    
+    try {
+      // Step 1: Get Azure token from managed identity using App Service endpoint
+      this._log(' Step 1: Getting Azure token from managed identity (App Service)...');
+      
+      // Azure App Service provides managed identity through these environment variables
+      const identityEndpoint = process.env.IDENTITY_ENDPOINT;
+      const identityHeader = process.env.IDENTITY_HEADER;
+      
+      if (!identityEndpoint || !identityHeader) {
+        throw new Error('App Service managed identity not configured. Missing IDENTITY_ENDPOINT or IDENTITY_HEADER.');
+      }
+      
+      // For user-assigned managed identity, we need to specify the managed identity client ID
+      const clientIdParam = this.managedIdentityClientId ? `&client_id=${this.managedIdentityClientId}` : '';
+      const managedIdentityUrl = `${identityEndpoint}?resource=api://AzureADTokenExchange&api-version=2019-08-01${clientIdParam}`;
+      
+      this._log(` Making request to: ${managedIdentityUrl}`);
+      
+      const managedIdentityRes = await axios.get(managedIdentityUrl, {
+        headers: { 
+          'X-IDENTITY-HEADER': identityHeader
+        }
+      });
+      
+      const azureToken = managedIdentityRes.data.access_token;
+      this._log(' OK   Azure token acquired from managed identity.');
+      
+      // Step 2: Exchange Azure token for Dataverse token using federated credentials
+      this._log(' Step 2: Exchanging Azure token for Dataverse token...');
+      const tokenRes = await axios.post(
+        `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+        new URLSearchParams({
+          client_id: this.clientId,
+          client_assertion: azureToken,
+          client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+          grant_type: 'client_credentials',
+          scope: `${this.baseUrl}/.default` // Dataverse specific scope
+        }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+
+      this._log(' OK   Dataverse token acquired via federated credentials.');
+      return tokenRes.data.access_token;
+      
+    } catch (error) {
+      // Log detailed error information for debugging
+      const errorDetails = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      };
+      
+      this._err(' Failed to get managed identity with federated credentials token:');
+      this._err(' Error details:', JSON.stringify(errorDetails, null, 2));
+      
+      throw new Error(`Managed identity with federated credentials failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get client assertion token for federated credentials
+   */
+  async _getClientAssertion() {
+    if (this.clientAssertion) {
+      // Direct assertion token provided
+      return this.clientAssertion;
+    }
+    
+    if (this.clientAssertionFile) {
+      // Read assertion from file
+      const fs = require('fs');
+      try {
+        const assertion = fs.readFileSync(this.clientAssertionFile, 'utf8').trim();
+        this._log(' Client assertion loaded from file.');
+        return assertion;
+      } catch (error) {
+        throw new Error(`Failed to read client assertion file: ${error.message}`);
+      }
+    }
+    
+    // Check for Azure App Service federated credential token
+    // Azure App Service provides the JWT token via environment variable or file
+    if (process.env.AZURE_FEDERATED_TOKEN_FILE) {
+      const fs = require('fs');
+      try {
+        const assertion = fs.readFileSync(process.env.AZURE_FEDERATED_TOKEN_FILE, 'utf8').trim();
+        this._log(' Client assertion loaded from Azure federated token file.');
+        return assertion;
+      } catch (error) {
+        this._log(' Failed to read Azure federated token file:', error.message);
+      }
+    }
+    
+    if (process.env.AZURE_FEDERATED_TOKEN) {
+      this._log(' Client assertion loaded from Azure federated token environment variable.');
+      return process.env.AZURE_FEDERATED_TOKEN;
+    }
+    
+    // Check standard GitHub Actions OIDC token (for reference)
+    if (process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN && process.env.ACTIONS_ID_TOKEN_REQUEST_URL) {
+      this._log(' GitHub Actions OIDC token detected (not applicable for App Service).');
+    }
+    
+    throw new Error('No client assertion token or file provided for federated credential authentication.');
+  }
+
+  /**
+   * Exchange client assertion for access token using federated credentials
+   */
+  async _getTokenWithClientAssertion() {
+    this._log(' Requesting token with client assertion (federated credentials)...');
+    
+    const clientAssertion = await this._getClientAssertion();
+    
     const tokenRes = await axios.post(
       `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
       new URLSearchParams({
         client_id: this.clientId,
-        client_secret: this.clientSecret,
+        client_assertion: clientAssertion,
+        client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
         grant_type: 'client_credentials',
-        scope: `${this.baseUrl}/.default`
+        scope: 'api://AzureADTokenExchange/.default'
       }).toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    const tok = tokenRes.data;
-    this._token = tok.access_token;
-    this._tokenExp = Math.floor(Date.now() / 1000) + (tok.expires_in || 3599);
-    this._log(' OK   Token acquired.');
-    return this._token;
+    this._log(' OK   Federated credential token acquired.');
+    return tokenRes.data.access_token;
   }
 
   async _req(method, url, data) {
@@ -1369,7 +1554,8 @@ class DataverseClient {
 
   // Helper method to check if authentication is properly configured
   _isAuthConfigured() {
-    return !!(this.tenantId && this.clientId && this.clientSecret && this.baseUrl);
+    // Only managed identity and federated credentials are supported
+    return !!(this.tenantId && this.clientId && this.baseUrl);
   }
 
   async getGlobalChoiceSets() {

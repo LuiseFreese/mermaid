@@ -92,7 +92,7 @@ class DeploymentService extends BaseService {
                 console.log('🔧 DEBUG: DeploymentService dataverseConfig:', {
                     hasServerUrl: !!dataverseConfig?.serverUrl,
                     hasClientId: !!dataverseConfig?.clientId,
-                    hasClientSecret: !!dataverseConfig?.clientSecret,
+                    hasManagedIdentity: !!dataverseConfig?.managedIdentityClientId,
                     hasTenantId: !!dataverseConfig?.tenantId,
                     keys: Object.keys(dataverseConfig || {})
                 });

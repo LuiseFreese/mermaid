@@ -25,13 +25,6 @@ class DataverseRepository extends BaseRepository {
      * @returns {Promise<Object>} DataverseClient instance
      */
     async getClient(config = null) {
-        console.log('🚨 DEBUG: getClient called at', new Date().toISOString());
-        console.log('🚨 DEBUG: config parameter:', {
-            isNull: config === null,
-            isUndefined: config === undefined,
-            type: typeof config,
-            keys: config ? Object.keys(config) : 'N/A'
-        });
         
         // Return mock client for tests
         if (process.env.NODE_ENV === 'test') {
@@ -42,6 +35,16 @@ class DataverseRepository extends BaseRepository {
                 getSolutions: () => Promise.resolve([
                     { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }
                 ]),
+                getGlobalChoiceSets: () => Promise.resolve({
+                    all: [
+                        { id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }
+                    ],
+                    grouped: {
+                        custom: [{ id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }],
+                        builtIn: []
+                    },
+                    summary: { total: 1, custom: 1, builtIn: 0 }
+                }),
                 getSolutionComponents: () => Promise.resolve([
                     { componentid: 'comp1', componenttype: 1, solutionid: 'sol1' }
                 ]),
@@ -89,8 +92,8 @@ class DataverseRepository extends BaseRepository {
             console.log('🔍 DEBUG: dataverseConfig:', {
                 hasServerUrl: !!dataverseConfig.serverUrl,
                 hasClientId: !!dataverseConfig.clientId,
-                hasClientSecret: !!dataverseConfig.clientSecret,
                 hasTenantId: !!dataverseConfig.tenantId,
+                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId,
                 rawConfig: Object.keys(dataverseConfig)
             });
 
@@ -118,18 +121,18 @@ class DataverseRepository extends BaseRepository {
                 dataverseUrl: dataverseConfig.serverUrl?.substring(0, 30) + '...',
                 tenantId: dataverseConfig.tenantId?.substring(0, 10) + '...',
                 clientId: dataverseConfig.clientId?.substring(0, 10) + '...',
-                clientSecret: dataverseConfig.clientSecret?.substring(0, 10) + '...',
+                managedIdentityClientId: dataverseConfig.managedIdentityClientId?.substring(0, 10) + '...',
                 hasServerUrl: !!dataverseConfig.serverUrl,
                 hasTenantId: !!dataverseConfig.tenantId,
                 hasClientId: !!dataverseConfig.clientId,
-                hasClientSecret: !!dataverseConfig.clientSecret
+                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId
             });
             
             const client = new this.DataverseClient({
                 dataverseUrl: dataverseConfig.serverUrl,
                 tenantId: dataverseConfig.tenantId,
                 clientId: dataverseConfig.clientId,
-                clientSecret: dataverseConfig.clientSecret,
+                managedIdentityClientId: dataverseConfig.managedIdentityClientId,
                 verbose: true
             });
 

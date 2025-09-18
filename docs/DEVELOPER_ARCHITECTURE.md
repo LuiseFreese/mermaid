@@ -13,7 +13,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
-- **Enterprise Security** - Azure Key Vault + Managed Identity
+- **Enterprise Security** - Managed Identity authentication
 - **Two-Step Deployment** - Separate infrastructure setup and application deployment
 
 ### Architecture Overview
@@ -27,7 +27,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **Backend**: Node.js + Custom HTTP Server
 - **Build System**: Vite for frontend, npm for backend
 - **Deployment**: Azure App Service with Managed Identity
-- **Security**: Azure Key Vault for credential storage
+- **Security**: Managed Identity for secure authentication
 - **Infrastructure**: Azure Bicep templates for repeatable deployments
 
 
@@ -77,13 +77,13 @@ graph TB
         
         subgraph "Repository Layer"
             DataverseRepo[Dataverse Repository<br/>API Abstraction]
-            ConfigRepo[Configuration Repository<br/>Settings & Key Vault]
+            ConfigRepo[Configuration Repository<br/>Settings & Environment]
         end
         
         subgraph "External Integrations"
             Parser[Mermaid Parser<br/>ERD to Entities]
             DataverseClient[Dataverse Client<br/>API Integration]
-            KeyVault[Azure Key Vault<br/>Credential Storage]
+            ManagedIdentity[Managed Identity<br/>Authentication]
         end
     end
 
@@ -131,7 +131,7 @@ graph TB
     
     %% External Connections (simplified)
     DataverseRepo --> DataverseClient
-    ConfigRepo --> KeyVault
+    ConfigRepo --> ManagedIdentity
     DataverseClient --> Dataverse
     DataverseClient --> EntraID
 
@@ -144,7 +144,7 @@ graph TB
     class UI,Router,Context,Services,Components frontend
     class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl backend
     class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
-    class Dataverse,EntraID,KeyVault,Parser,DataverseClient external
+    class Dataverse,EntraID,ManagedIdentity,Parser,DataverseClient external
 ```
 
 
@@ -1105,7 +1105,7 @@ GET /wizard
 GET /health
 ```
 
-**Purpose**: Comprehensive health check including Key Vault connectivity and Dataverse authentication.
+**Purpose**: Comprehensive health check including managed identity authentication and Dataverse connectivity.
 
 **Response**:
 ```json
@@ -1113,9 +1113,9 @@ GET /health
   "status": "healthy",
   "timestamp": "2025-09-07T14:30:00.000Z",
   "version": "2.0.0",
-  "keyVault": {
-    "accessible": true,
-    "secretsLoaded": 5
+  "managedIdentity": {
+    "authenticated": true,
+    "tokenValid": true
   },
   "dataverse": {
     "authenticated": true,
@@ -1240,83 +1240,70 @@ GET /api/solution-status?solution=SolutionName
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
            
 
-### 7. Azure Key Vault Integration (`src/backend/azure-keyvault.js`)
+### 7. Managed Identity Authentication (`src/backend/dataverse-client.js`)
 
-**Purpose**: Secure credential management via Azure Key Vault with Managed Identity authentication.
+**Purpose**: Secure, passwordless authentication using Azure Managed Identity for Dataverse access.
 
 **Key Features**:
-- **Managed Identity Integration**: Passwordless authentication with no secrets in code
-- **Fallback Environment Variables**: Graceful degradation for local development
-- **Secret Caching**: Efficient credential retrieval with intelligent caching
-- **Comprehensive Error Handling**: Robust error recovery when Key Vault unavailable
-- **Multiple Authentication Methods**: Support for both default and managed identity credentials
+- **Zero Secrets**: No client secrets, passwords, or certificates required
+- **Automatic Token Management**: Managed Identity handles token lifecycle
+- **Environment Variable Configuration**: Simple configuration via environment variables
+- **Comprehensive Error Handling**: Robust error recovery and logging
+- **Multiple Authentication Methods**: Support for both user-assigned and system-assigned managed identity
 
-**Required Secrets in Key Vault**:
-- `DATAVERSE-URL` - Target Dataverse environment URL
-- `CLIENT-ID` - Entra ID app registration client ID
-- `CLIENT-SECRET` - App registration client secret
-- `TENANT-ID` - Azure Active Directory tenant ID
-- `SOLUTION-NAME` - Default solution name for deployments
+**Required Environment Variables**:
+- `DATAVERSE_URL` - Target Dataverse environment URL
+- `CLIENT_ID` - Entra ID app registration client ID (for user-assigned managed identity)
+- `TENANT_ID` - Azure Active Directory tenant ID
+- `SOLUTION_NAME` - Default solution name for deployments
 
-**Secret Retrieval Implementation**:
+**Authentication Implementation**:
 
 ```javascript
-async getKeyVaultSecrets() {
+async authenticateWithManagedIdentity() {
   try {
-    const keyVaultUrl = process.env.KEY_VAULT_URI;
-    if (!keyVaultUrl) {
-      throw new Error('KEY_VAULT_URI environment variable not set');
-    }
-    
-    // Determine authentication method
-    const authType = process.env.AUTH_MODE || 'default';
-    const clientId = process.env.MANAGED_IDENTITY_CLIENT_ID;
+    // Use user-assigned managed identity if CLIENT_ID is provided
+    const clientId = process.env.CLIENT_ID;
     
     let credential;
-    if (authType === 'managed-identity' && clientId) {
+    if (clientId) {
       credential = new ManagedIdentityCredential(clientId);
     } else {
-      credential = new DefaultAzureCredential();
+      credential = new ManagedIdentityCredential(); // System-assigned
     }
     
-    const secretClient = new SecretClient(keyVaultUrl, credential);
+    // Get token for Dataverse
+    const tokenResponse = await credential.getToken('https://cds.dynamics.com/.default');
     
-    // Retrieve all required secrets
-    const secrets = await this.retrieveAllSecrets(secretClient);
+    if (!tokenResponse) {
+      throw new Error('Failed to obtain access token from managed identity');
+    }
     
-    return { success: true, secrets };
+    return {
+      accessToken: tokenResponse.token,
+      expiresOn: tokenResponse.expiresOnTimestamp
+    };
   } catch (error) {
-    console.warn('Key Vault access failed, falling back to environment variables:', error.message);
-    return this.getFallbackEnvironmentVariables();
+    console.error('Managed Identity authentication failed:', error.message);
+    throw error;
   }
 }
 
-// Fallback to environment variables for local development
-getFallbackEnvironmentVariables() {
-  const secrets = {
-    'DATAVERSE-URL': process.env.DATAVERSE_URL,
-    'CLIENT-ID': process.env.CLIENT_ID,
-    'CLIENT-SECRET': process.env.CLIENT_SECRET,
-    'TENANT-ID': process.env.TENANT_ID,
-    'SOLUTION-NAME': process.env.SOLUTION_NAME
-  };
+// Environment configuration validation
+validateConfiguration() {
+  const required = ['DATAVERSE_URL', 'CLIENT_ID', 'TENANT_ID', 'SOLUTION_NAME'];
+  const missing = required.filter(env => !process.env[env]);
   
-  const missing = Object.entries(secrets)
-    .filter(([key, value]) => !value)
-    .map(([key]) => key);
-    
   if (missing.length > 0) {
-    throw new Error(`Missing required configuration: ${missing.join(', ')}`);
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
-  
-  return { success: true, secrets };
 }
 ```
 
 **Security Benefits**:
-- **Zero Hardcoded Secrets**: All sensitive data stored securely in Azure Key Vault
-- **Managed Identity**: No service credentials required for authentication
-- **Audit Trail**: All secret access logged through Azure monitoring
+- **Zero Hardcoded Secrets**: No sensitive data in code or configuration files
+- **Managed Identity**: Azure handles all credential lifecycle management
+- **Audit Trail**: All authentication events logged through Azure monitoring
 - **RBAC Integration**: Fine-grained access control via Azure role assignments
 - **Rotation Support**: Supports secret rotation without application changes
 
@@ -1540,7 +1527,6 @@ sequenceDiagram
     participant User as React Frontend
     participant Server as HTTP Server
     participant Parser as Mermaid Parser
-    participant KeyVault as Azure Key Vault
     participant MI as Managed Identity
     participant Client as Dataverse Client
     participant Dataverse as Microsoft Dataverse
@@ -1555,10 +1541,8 @@ sequenceDiagram
     Parser->>Server: Return structured data with CDM analysis
     Server->>User: Stream parsing results with CDM detection
     
-    Server->>KeyVault: Request Dataverse credentials via Managed Identity
-    KeyVault->>MI: Validate managed identity token
-    MI->>KeyVault: Return authentication token
-    KeyVault->>Server: Return secrets (URL, Client ID, etc.)
+    Server->>Server: Get configuration from environment variables
+    Server->>MI: Request authentication for Dataverse
     
     Server->>Client: Initialize with retrieved credentials
     Client->>MI: Authenticate with managed identity
@@ -1632,18 +1616,9 @@ sequenceDiagram
 
 **Who**: PowerShell script user (DevOps/Admin)  
 **When**: During initial setup and configuration  
-**Duration**: Temporary (automatically cleaned up)
+**Duration**: One-time setup
 
-```powershell
-# Grants temporary Key Vault Administrator role
-az role assignment create --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope
-
-# Store secrets in Key Vault
-az keyvault secret set --vault-name $KeyVaultName --name "CLIENT-SECRET" --value $ClientSecret
-
-# Clean up: Remove temporary role
-az role assignment delete --assignee $currentUser --role "Key Vault Administrator" --scope $keyVaultScope
-```
+All authentication is handled through managed identity and federated credentials - no secrets or manual role assignments required.
 
 #### Runtime Permissions (Permanent)
 
@@ -1652,29 +1627,19 @@ az role assignment delete --assignee $currentUser --role "Key Vault Administrato
 **Duration**: Permanent (for application lifetime)
 
 ```bicep
-// Managed Identity gets read-only access to secrets
-resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  properties: {
-    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
-    principalId: managedIdentity.properties.principalId
-  }
+// Managed Identity configuration for Dataverse access
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-${appName}'
+  location: location
 }
 ```
-
-### Azure RBAC Roles Reference
-
-| **Role** | **Role ID** | **Permissions** | **Use Case** |
-|----------|-------------|-----------------|--------------|
-| **Key Vault Administrator** | `00482a5a-887f-4fb3-b363-3b7fe8e74483` | Full access to secrets, keys, certificates, policies | Setup, emergency access |
-| **Key Vault Secrets User** | `4633458b-17de-408a-b874-0445c86b69e6` | Read secrets only | Application runtime |
-| **Key Vault Secrets Officer** | `b86a8fe4-44ce-4948-aee5-eccb2c155cd7` | Read, write secrets (no policies) | CI/CD pipelines |
 
 ### Environment Variables
 
 **Production (Azure App Service)**:
 ```bash
-KEY_VAULT_URI=https://your-keyvault.vault.azure.net/
-AUTH_MODE=managed-identity
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-app-registration-id
 MANAGED_IDENTITY_CLIENT_ID=your-managed-identity-id
 PORT=8080
 ```
@@ -1683,8 +1648,11 @@ PORT=8080
 ```bash
 # Local .env file (development only)
 DATAVERSE_URL=https://yourorg.crm.dynamics.com
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-app-registration-id
+MANAGED_IDENTITY_CLIENT_ID=your-managed-identity-id
 CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-CLIENT_SECRET=your-client-secret
+MANAGED_IDENTITY_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 TENANT_ID=your-tenant-id
 SOLUTION_NAME=MermaidSolution
 ```
@@ -1740,22 +1708,22 @@ The application uses a **robust two-step deployment process** that separates inf
 **Step 1: Infrastructure Setup** (`scripts/setup-entra-app.ps1`)
 - Creates Entra ID App Registration with proper API permissions
 - Deploys Azure infrastructure using Bicep templates
-- Configures Managed Identity and Key Vault access
+- Configures Managed Identity with federated credentials
 - Sets up Dataverse application user and security roles
-- Stores all secrets securely in Key Vault
+- Configures environment variables in App Service
 
 **Step 2: Application Deployment** (`scripts/deploy.ps1`)
 - Builds React frontend locally using Vite for optimal performance
 - Packages only necessary backend files (excludes node_modules)
 - Deploys to Azure App Service with proper static file configuration
-- Configures runtime settings for Key Vault integration
+- Configures runtime settings for managed identity integration
 - Validates deployment success
 
 ### Azure Resources Architecture
 
-**Core Infrastructure**: Resource Group, App Service Plan, App Service, User-Assigned Managed Identity, Key Vault with RBAC
+**Core Infrastructure**: Resource Group, App Service Plan, App Service, User-Assigned Managed Identity
 
-**External Dependencies**: Entra ID App Registration, Dataverse Environment, Dataverse Application User
+**External Dependencies**: Entra ID App Registration with Federated Credentials, Dataverse Environment, Dataverse Application User
 
 ![Architecture in Azure Diagram](media/mermaid-to-dataverse.drawio.png)
 
@@ -1763,13 +1731,13 @@ The application uses a **robust two-step deployment process** that separates inf
 
 The entire deployment is fully automated through PowerShell scripts and Bicep templates:
 
-**Infrastructure Setup**: `.\scripts\setup-entra-app.ps1` - Creates Entra app, Azure infrastructure, managed identity, Key Vault secrets, and Dataverse application user
+**Infrastructure Setup**: `.\scripts\setup-secretless.ps1` - Creates Entra app with federated credentials, Azure infrastructure, and Dataverse application user
 
-**Application Deployment**: `.\scripts\deploy.ps1` - Builds React frontend, packages backend, deploys to App Service with proper configuration
+**Application Deployment**: `.\scripts\deploy-secretless.ps1` - Builds React frontend, packages backend, deploys to App Service with proper configuration
 
 ### Infrastructure as Code (Bicep)
 
-All Azure resources are defined in `deploy/infrastructure.bicep` with App Service Plan, App Service with Node.js 18, Managed Identity, and Key Vault integration
+All Azure resources are defined in `deploy/infrastructure.bicep` with App Service Plan, App Service with Node.js 20, and Managed Identity integration
 
 ## System Architecture Deep Dive
 
@@ -1796,7 +1764,7 @@ This section provides a comprehensive analysis of how the frontend, backend, and
 
 #### External Integration
 - **Authentication**: All Dataverse operations authenticate via Microsoft Entra ID
-- **Configuration**: Sensitive settings stored in Azure Key Vault
+- **Configuration**: Settings stored as environment variables in App Service
 - **Data Storage**: All entities and metadata stored in Microsoft Dataverse
   - Static files → Static file serving
 
@@ -1830,8 +1798,8 @@ ValidationController.validateERD()
 
 **Configuration Management:**
 ```javascript
-// ConfigurationRepository handles multiple sources
-Key Vault (preferred) → Environment Variables (fallback) → Default Values
+// ConfigurationRepository handles environment variables
+Environment Variables → Default Values
 ```
 
 **Dataverse Integration:**
@@ -1852,7 +1820,7 @@ React Frontend → Backend API → Azure Managed Identity → Dataverse
 
 **Key Security Features:**
 - **Azure Managed Identity**: Passwordless authentication to Azure services
-- **Azure Key Vault**: Secure credential storage with RBAC
+- **Federated Credentials**: Secure token exchange without secrets
 - **CORS Configuration**: Restricts cross-origin requests
 - **Request Logging**: Comprehensive audit trail
 
@@ -1867,7 +1835,7 @@ The architecture is prepared for authentication with:
 
 **Development**: Vite proxy routes `/api/*` to backend on port 8080  
 **Production**: Custom HTTP server serves both static React files and API endpoints  
-**Configuration**: Development uses .env files, Production uses Azure Key Vault
+**Configuration**: Development uses .env files, Production uses environment variables in App Service
 
 ## Development Setup
 

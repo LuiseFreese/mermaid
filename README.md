@@ -1,6 +1,6 @@
 # Mermaid to Dataverse Converter
 
-A modern React-based Azure App Service application that converts [Mermaid](https://mermaid.js.org/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships. Built with React 18, Fluent UI v9, and automated Azure deployment.
+A modern React-based Azure App Service application that converts [Mermaid](https://mermaid.js.org/) ERD diagrams into Microsoft Dataverse entities, columns, and relationships. Built with React 18, Fluent UI v9, and automated Azure deployment using managed identity.
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
@@ -12,8 +12,9 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **CDM Integration**: Automatically detects and maps to Microsoft Common Data Model entities
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
-- **Azure Security**: Key Vault integration with managed identity for secure credential management
+- **Zero-Trust Security**: Managed identity authentication with no stored secrets
 - **Theme**: All available in light mode, dark mode, and pink mode 💖
+
 ## Architecture
 
 ### Modern Tech Stack
@@ -21,7 +22,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Backend**: Node.js + Express
 - **Build Tool**: Vite (development and production builds)
 - **Cloud**: Azure App Service with Managed Identity
-- **Security**: Azure Key Vault for secure credential storage
+- **Security**: Federated credentials and managed identity for secure authentication
 - **Infrastructure**: Azure Bicep templates for repeatable deployments
 
 ## Quick Start
@@ -33,18 +34,18 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Step 1: Create Azure infrastructure and Entra app (interactive)
-.\scripts\setup-entra-app.ps1
+# Step 1: Create Azure infrastructure and identity setup
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp" -DataverseUrl "https://your-org.crm.dynamics.com" -Unattended
 
 # Step 2: Deploy the application
-.\scripts\deploy.ps1 -AppName "your-app-name" -ResourceGroup "your-resource-group" -KeyVaultName "your-keyvault-name"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
 **The setup script will:**
-- Create Entra App Registration with proper API permissions
-- Deploy Azure infrastructure (App Service, Key Vault, Managed Identity, etc.)
-- Configure secure authentication and Key Vault access
-- Set up Dataverse application user (optional)
+- Create App Registration with federated credentials
+- Deploy Azure infrastructure (App Service, Managed Identity, etc.)
+- Configure secure managed identity authentication
+- Set up Dataverse application user with proper permissions
 
 **The deploy script will:**
 - Build the React frontend locally

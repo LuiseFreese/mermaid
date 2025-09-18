@@ -11,7 +11,21 @@ class WizardController extends BaseController {
         super();
         
         this.staticFilesPath = dependencies.staticFilesPath || path.join(__dirname, '../../');
-        this.reactDistPath = path.join(__dirname, '../../frontend/dist');
+        
+        // Check for deployed structure first (public dir), then development structure
+        const deployedPath = path.join(__dirname, '../../public');  // For App Service deployment (fixed path)
+        const devPath = path.join(__dirname, '../../frontend/dist');  // For local development
+        const altDevPath = path.join(__dirname, '../../src/frontend/dist');  // Alternative dev path
+        
+        if (fs.existsSync(deployedPath)) {
+            this.reactDistPath = deployedPath;
+        } else if (fs.existsSync(devPath)) {
+            this.reactDistPath = devPath;
+        } else if (fs.existsSync(altDevPath)) {
+            this.reactDistPath = altDevPath;
+        } else {
+            this.reactDistPath = deployedPath; // Default to deployed path even if it doesn't exist
+        }
     }
 
     /**

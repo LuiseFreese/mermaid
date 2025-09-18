@@ -86,7 +86,7 @@ The React application can browse and select from existing global choices in your
 #### Step 1: Access Global Choices Selection
 1. **Open the React Wizard** - Navigate to your deployed Azure App Service URL (e.g., `https://your-app-name.azurewebsites.net`)
 2. **Navigate to Global Choices Step** - Use the Global Choices section in the wizard workflow
-3. **View available choices** - The system automatically fetches all global choices from your Dataverse environment using secure Azure Key Vault credentials
+3. **View available choices** - The system automatically fetches all global choices from your Dataverse environment using secure managed identity authentication
 
 #### Step 2: Browse Available Choices
 The React interface displays:

@@ -13,7 +13,7 @@ const axe = configureAxe({
 });
 
 // Make axe available globally for tests
-global.axe = axe;
+(global as any).axe = axe;
 
 // Mock console methods to avoid noise in tests (temporarily disabled for debug)
 // global.console = {

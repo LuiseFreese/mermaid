@@ -127,11 +127,11 @@ open http://localhost:8080
 #### 2. Deploy to Azure (Development Environment)
 
 ```bash
-# Create development infrastructure
-.\scripts\setup-entra-app.ps1
+# Set up complete infrastructure and authentication
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "dev"
 
 # Deploy application code
-.\scripts\deploy.ps1 -AppName "your-dev-app" -ResourceGroup "your-dev-rg" -KeyVaultName "your-dev-kv"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "dev"
 ```
 
 ### Diagnostic Tools

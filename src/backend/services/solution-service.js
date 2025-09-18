@@ -230,11 +230,11 @@ class SolutionService extends BaseService {
         return this.executeOperation('cleanupTestEntities', async () => {
             // Validate Dataverse connection info if provided directly
             if (cleanupOptions.dataverseUrl) {
-                this.validateInput(cleanupOptions, ['tenantId', 'clientId', 'clientSecret'], {
+                this.validateInput(cleanupOptions, ['tenantId', 'clientId', 'managedIdentityClientId'], {
                     dataverseUrl: 'string',
                     tenantId: 'string',
                     clientId: 'string',
-                    clientSecret: 'string'
+                    managedIdentityClientId: 'string'
                 });
             }
 
@@ -252,7 +252,7 @@ class SolutionService extends BaseService {
                     serverUrl: cleanupOptions.dataverseUrl,
                     tenantId: cleanupOptions.tenantId,
                     clientId: cleanupOptions.clientId,
-                    clientSecret: cleanupOptions.clientSecret
+                    managedIdentityClientId: cleanupOptions.managedIdentityClientId
                 };
             }
 

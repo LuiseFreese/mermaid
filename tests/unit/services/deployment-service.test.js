@@ -121,8 +121,8 @@ describe('DeploymentService', () => {
       mockConfigRepo.getDataverseConfig.mockResolvedValue({
         serverUrl: 'https://test.crm.dynamics.com',
         clientId: 'test-client-id',
-        clientSecret: 'test-client-secret',
-        tenantId: 'test-tenant-id'
+        tenantId: 'test-tenant-id',
+        useManagedIdentity: true
       });
 
       mockValidationService.validateERD.mockResolvedValue({

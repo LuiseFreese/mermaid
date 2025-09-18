@@ -110,8 +110,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       // Pink theme configuration 🌸
       themeConfig = {
         startOnLoad: true,
-        theme: 'base',
-        securityLevel: 'loose',
+        theme: 'base' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Pink theme colors
           primaryColor: '#fce7f3',              
@@ -129,8 +129,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       // Dark theme configuration
       themeConfig = {
         startOnLoad: true,
-        theme: 'dark',
-        securityLevel: 'loose',
+        theme: 'dark' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Dark theme styling - aligned with Fluent UI dark colors
           primaryColor: '#2d2d30',              // Dark surface for entity headers
@@ -152,8 +152,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       // Light theme configuration
       themeConfig = {
         startOnLoad: true,
-        theme: 'base',
-        securityLevel: 'loose',
+        theme: 'base' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Light theme styling
           primaryColor: '#e3f2fd',              // Very light blue for entity headers

@@ -8,7 +8,6 @@ class ConfigurationRepository extends BaseRepository {
     constructor(dependencies = {}) {
         super(dependencies);
         
-        this.keyVaultConfig = dependencies.keyVaultConfig;
         this.environment = dependencies.environment || process.env;
         
         // Cache for configuration data
@@ -30,7 +29,7 @@ class ConfigurationRepository extends BaseRepository {
                     serverUrl: process.env.DATAVERSE_URL || 'https://test.crm.dynamics.com',
                     tenantId: process.env.TENANT_ID || 'test-tenant-id',
                     clientId: process.env.CLIENT_ID || 'test-client-id',
-                    clientSecret: process.env.CLIENT_SECRET || 'test-client-secret'
+                    managedIdentityClientId: process.env.MANAGED_IDENTITY_CLIENT_ID || 'test-managed-identity-id'
                 };
                 return this.createSuccess(mockConfig, 'Test configuration provided');
             }
@@ -44,40 +43,39 @@ class ConfigurationRepository extends BaseRepository {
 
             let config = null;
 
-            try {
-                // Try Key Vault first if available
-                if (this.keyVaultConfig) {
-                    this.log('getDataverseConfig', { source: 'keyVault' });
-                    config = await this.keyVaultConfig.getDataverseConfig();
-                }
-            } catch (error) {
-                this.warn('Key Vault configuration failed, falling back to environment variables', {
-                    error: error.message
-                });
-            }
-
-            // Fallback to environment variables
-            if (!config) {
-                this.log('getDataverseConfig', { source: 'environment' });
-                
-                // Debug: log what environment variables are available
-                console.log('🔍 DEBUG: Environment variables:', {
-                    DATAVERSE_URL: !!this.environment.DATAVERSE_URL,
-                    TENANT_ID: !!this.environment.TENANT_ID,
-                    CLIENT_ID: !!this.environment.CLIENT_ID,
-                    CLIENT_SECRET: !!this.environment.CLIENT_SECRET,
-                    actual_DATAVERSE_URL: this.environment.DATAVERSE_URL?.substring(0, 20) + '...',
-                    actual_CLIENT_ID: this.environment.CLIENT_ID?.substring(0, 8) + '...',
-                    envKeys: Object.keys(this.environment).filter(k => k.includes('DATAVERSE') || k.includes('CLIENT') || k.includes('TENANT'))
-                });
-                
-                config = {
-                    serverUrl: this.environment.DATAVERSE_URL,
-                    tenantId: this.environment.TENANT_ID,
-                    clientId: this.environment.CLIENT_ID,
-                    clientSecret: this.environment.CLIENT_SECRET
-                };
-            }
+            // Use managed identity or federated credentials for authentication
+            const useManagedIdentity = this.environment.USE_MANAGED_IDENTITY === 'true';
+            const useFederatedCredential = this.environment.USE_FEDERATED_CREDENTIAL === 'true';
+            
+            this.log('getDataverseConfig', { 
+                source: 'managed_identity',
+                authMode: useManagedIdentity ? 'managed_identity' : 'federated_credential'
+            });
+            
+            config = {
+                serverUrl: this.environment.DATAVERSE_URL,
+                tenantId: this.environment.TENANT_ID,
+                clientId: this.environment.CLIENT_ID,
+                managedIdentityClientId: this.environment.MANAGED_IDENTITY_CLIENT_ID,
+                useFederatedCredential,
+                useManagedIdentity,
+                clientAssertion: this.environment.CLIENT_ASSERTION,
+                clientAssertionFile: this.environment.CLIENT_ASSERTION_FILE
+            };
+            
+            // Debug: log what environment variables are available
+            console.log('🔍 DEBUG: Environment variables:', {
+                DATAVERSE_URL: !!this.environment.DATAVERSE_URL,
+                TENANT_ID: !!this.environment.TENANT_ID,
+                CLIENT_ID: !!this.environment.CLIENT_ID,
+                MANAGED_IDENTITY_CLIENT_ID: !!this.environment.MANAGED_IDENTITY_CLIENT_ID,
+                USE_MANAGED_IDENTITY: !!this.environment.USE_MANAGED_IDENTITY,
+                USE_FEDERATED_CREDENTIAL: !!this.environment.USE_FEDERATED_CREDENTIAL,
+                actual_DATAVERSE_URL: this.environment.DATAVERSE_URL?.substring(0, 20) + '...',
+                actual_CLIENT_ID: this.environment.CLIENT_ID?.substring(0, 8) + '...',
+                actual_MANAGED_IDENTITY_CLIENT_ID: this.environment.MANAGED_IDENTITY_CLIENT_ID?.substring(0, 8) + '...',
+                envKeys: Object.keys(this.environment).filter(k => k.includes('DATAVERSE') || k.includes('CLIENT') || k.includes('TENANT') || k.includes('USE_') || k.includes('MANAGED'))
+            });
 
             // Validate configuration
             this.validateDataverseConfig(config);
@@ -150,28 +148,7 @@ class ConfigurationRepository extends BaseRepository {
         });
     }
 
-    /**
-     * Get Azure Key Vault configuration
-     * @returns {Promise<Object>} Key Vault configuration
-     */
-    async getKeyVaultConfig() {
-        return this.executeOperation('getKeyVaultConfig', async () => {
-            if (!this.keyVaultConfig) {
-                return this.createError('Key Vault configuration not available');
-            }
 
-            const config = {
-                available: true,
-                vaultUrl: this.environment.AZURE_KEY_VAULT_URL,
-                clientId: this.environment.AZURE_CLIENT_ID,
-                tenantId: this.environment.AZURE_TENANT_ID,
-                // Don't expose secrets in config
-                hasClientSecret: !!this.environment.AZURE_CLIENT_SECRET
-            };
-
-            return this.createSuccess(config, 'Key Vault configuration retrieved successfully');
-        });
-    }
 
     /**
      * Update configuration value
@@ -221,7 +198,7 @@ class ConfigurationRepository extends BaseRepository {
                 status: 'healthy',
                 checks: {
                     dataverseConfig: false,
-                    keyVaultConfig: false,
+                    managedIdentity: false,
                     environmentVariables: false
                 },
                 details: {}
@@ -239,17 +216,8 @@ class ConfigurationRepository extends BaseRepository {
                 health.details.dataverseError = error.message;
             }
 
-            try {
-                // Check Key Vault configuration
-                const keyVaultResult = await this.getKeyVaultConfig();
-                health.checks.keyVaultConfig = keyVaultResult.success;
-                if (!keyVaultResult.success) {
-                    health.details.keyVaultError = keyVaultResult.message;
-                }
-            } catch (error) {
-                health.checks.keyVaultConfig = false;
-                health.details.keyVaultError = error.message;
-            }
+            // Managed identity authentication - no Key Vault health check needed
+            health.checks.managedIdentity = true;
 
             // Check essential environment variables
             const requiredEnvVars = ['NODE_ENV', 'PORT'];
@@ -280,7 +248,14 @@ class ConfigurationRepository extends BaseRepository {
      * @throws {Error} If configuration is invalid
      */
     validateDataverseConfig(config) {
-        const required = ['serverUrl', 'tenantId', 'clientId', 'clientSecret'];
+        // Base required fields for all authentication modes
+        const required = ['serverUrl', 'tenantId', 'clientId'];
+        
+        // Always use managed identity - no client secrets required
+        if (config.managedIdentityClientId) {
+            required.push('managedIdentityClientId');
+        }
+        
         const missing = required.filter(field => !config[field]);
         
         if (missing.length > 0) {

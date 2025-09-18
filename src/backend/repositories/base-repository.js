@@ -159,7 +159,11 @@ class BaseRepository {
         }
 
         // Check for required configuration
-        const requiredProperties = ['baseUrl', 'tenantId', 'clientId', 'clientSecret'];
+        const requiredProperties = ['baseUrl', 'tenantId', 'clientId'];
+        
+        // Always use managed identity - require managed identity client ID
+        requiredProperties.push('managedIdentityClientId');
+        
         const missing = requiredProperties.filter(prop => !client[prop]);
         
         if (missing.length > 0) {

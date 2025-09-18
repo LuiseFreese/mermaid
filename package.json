@@ -2,9 +2,9 @@
   "name": "mermaid-to-dataverse",
   "version": "1.0.0",
   "description": "Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships",
-  "main": "src/index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/backend/server.js",
+    "start": "node server.js",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cross-env NODE_ENV=development node --watch src/backend/server.js",
     "dev:frontend": "cd src/frontend && npm run dev",
@@ -22,7 +22,7 @@
     "test:all": "npm run test",
     "test:quick": "jest tests/unit --silent --detectOpenHandles --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles",
-    "lint": "eslint src/backend/ src/azure-keyvault.js tests/ --ext .js,.json",
+    "lint": "eslint src/backend/ tests/ --ext .js,.json",
     "lint:fix": "eslint src/ tests/ --ext .js,.json --fix",
     "lint:frontend": "cd src/frontend && npm run lint",
     "audit": "npm audit --audit-level=moderate",
@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "@azure/identity": "^4.11.0",
-    "@azure/keyvault-secrets": "^4.10.0",
     "axios": "^1.11.0",
     "dotenv": "^16.6.1"
   },

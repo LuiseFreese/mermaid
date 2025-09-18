@@ -27,7 +27,7 @@ class DataverseClient {
         this.dataverseUrl = config.dataverseUrl;
         this.tenantId = config.tenantId;
         this.clientId = config.clientId;
-        this.clientSecret = config.clientSecret;
+        this.managedIdentityClientId = config.managedIdentityClientId;
         this.timeout = config.timeout;
 
         // Initialize Azure credential

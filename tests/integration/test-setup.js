@@ -8,11 +8,11 @@ process.env.NODE_ENV = 'test';
 process.env.DATAVERSE_URL = 'https://test.crm.dynamics.com';
 process.env.TENANT_ID = 'test-tenant-id';
 process.env.CLIENT_ID = 'test-client-id';
-process.env.CLIENT_SECRET = 'test-client-secret';
+process.env.USE_MANAGED_IDENTITY = 'true';
 process.env.LOG_REQUEST_BODY = 'false';
 process.env.STREAM_CHUNK_SIZE = '1024';
 
-// Disable Key Vault for tests
+// Key Vault disabled - using managed identity only
 process.env.KEY_VAULT_URI = '';
 process.env.AUTH_MODE = '';
 
@@ -26,6 +26,16 @@ jest.mock('../../src/backend/dataverse-client.js', () => {
       getSolutions: jest.fn().mockResolvedValue([
         { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }
       ]),
+      getGlobalChoiceSets: jest.fn().mockResolvedValue({
+        all: [
+          { id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }
+        ],
+        grouped: {
+          custom: [{ id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }],
+          builtIn: []
+        },
+        summary: { total: 1, custom: 1, builtIn: 0 }
+      }),
       getSolutionComponents: jest.fn().mockResolvedValue([
         { componentid: 'comp1', componenttype: 1, solutionid: 'sol1' }
       ]),
@@ -37,16 +47,8 @@ jest.mock('../../src/backend/dataverse-client.js', () => {
   };
 });
 
-// Mock the azure-keyvault module 
-jest.mock('../../src/azure-keyvault.js', () => ({
-  getKeyVaultSecrets: jest.fn().mockResolvedValue({}),
-  getDataverseConfig: jest.fn().mockResolvedValue({
-    serverUrl: process.env.DATAVERSE_URL,
-    tenantId: process.env.TENANT_ID,
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET
-  })
-}));
+// Azure Key Vault removed - using managed identity only
+// No mocking needed for managed identity authentication
 
 module.exports = {
   setupTestEnvironment: () => {

@@ -24,10 +24,7 @@ describe('API Integration Tests', () => {
     process.env.DATAVERSE_URL = 'https://test.crm.dynamics.com';
     process.env.TENANT_ID = 'test-tenant-id';
     process.env.CLIENT_ID = 'test-client-id';
-    process.env.CLIENT_SECRET = 'test-client-secret';
-    
-    // Disable Key Vault for tests
-    process.env.KEY_VAULT_URI = '';
+    process.env.MANAGED_IDENTITY_CLIENT_ID = 'test-managed-identity-id';
     process.env.AUTH_MODE = '';
 
     const { server: testServer } = await createLayeredServer();
@@ -236,8 +233,8 @@ describe('API Integration Tests', () => {
     it('GET /api/global-choices-list should return global choices', async () => {
       const response = await app
         .get('/api/global-choices-list')
-        .expect(200)
-        .expect('Content-Type', /json/);
+        .expect('Content-Type', /json/)
+        .expect(200);
 
       expect(response.body).toMatchObject({
         success: true,

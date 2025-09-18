@@ -261,7 +261,7 @@ class AdminController extends BaseController {
                 dataverseUrl: data.dataverseUrl,
                 tenantId: data.tenantId,
                 clientId: data.clientId,
-                clientSecret: data.clientSecret
+                managedIdentityClientId: data.managedIdentityClientId
             };
 
             const result = await this.solutionService.cleanupTestEntities(cleanupOptions);
@@ -443,7 +443,7 @@ class AdminController extends BaseController {
                 lastCheck: null,
                 configuration: {
                     hasServerUrl: !!process.env.DATAVERSE_URL,
-                    hasCredentials: !!(process.env.CLIENT_ID && process.env.CLIENT_SECRET),
+                    hasCredentials: !!(process.env.CLIENT_ID && process.env.MANAGED_IDENTITY_CLIENT_ID),
                     source: 'environment'
                 }
             }

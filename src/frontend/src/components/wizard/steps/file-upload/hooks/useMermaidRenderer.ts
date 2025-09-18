@@ -37,8 +37,8 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
       // Dark theme configuration - aligned with Fluent UI dark colors
       return {
         startOnLoad: true,
-        theme: 'base',
-        securityLevel: 'loose',
+        theme: 'base' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Dark theme entity styling
           primaryColor: '#2d2d30',              // Dark surface for entity headers
@@ -60,8 +60,8 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
       // Pink theme configuration 🌸 - back to base theme
       const pinkConfig = {
         startOnLoad: true,
-        theme: 'base',
-        securityLevel: 'loose',
+        theme: 'base' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Pink theme colors
           primaryColor: '#fce7f3',              
@@ -81,8 +81,8 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
       // Light theme configuration
       return {
         startOnLoad: true,
-        theme: 'base',
-        securityLevel: 'loose',
+        theme: 'base' as const,
+        securityLevel: 'loose' as const,
         themeVariables: {
           // Light theme entity styling
           primaryColor: '#e3f2fd',              // Very light blue for entity headers

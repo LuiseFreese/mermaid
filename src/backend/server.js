@@ -49,24 +49,8 @@ try {
   console.error('Failed to load core modules:', e.message);
 }
 
-// Optional KeyVault helper
-let keyVaultConfig = null;
-try {
-  keyVaultConfig = require('../azure-keyvault.js');
-  
-  // Test Key Vault connection at startup
-  if (process.env.KEY_VAULT_URI && process.env.AUTH_MODE) {
-    keyVaultConfig.getKeyVaultSecrets()
-      .then(() => {
-        console.log('Key Vault startup test successful');
-      })
-      .catch(error => {
-        console.error('Key Vault startup test failed:', error.message);
-      });
-  }
-} catch (error) {
-  console.log('Azure SDK not configured; falling back to env. Error:', error.message);
-}
+// Managed identity authentication - no secrets or Key Vault required
+console.log('Using managed identity authentication for secure, passwordless access');
 
 // --- Logging Setup -----------------------------------------------------
 const recentLogs = [];
@@ -91,9 +75,8 @@ async function initializeComponents() {
   console.log('Initializing application components...');
   
   try {
-    // Initialize repositories
+    // Initialize repositories with managed identity
     const configRepo = new ConfigurationRepository({
-      keyVaultConfig,
       logger: console
     });
     
@@ -225,28 +208,7 @@ function readRequestBody(req) {
 // Utility functions
 // Configuration management function
 
-async function getDataverseConfig() {
-  // Prefer Key Vault when available
-  if (keyVaultConfig && process.env.KEY_VAULT_URI) {
-    try {
-      const cfg = await keyVaultConfig.getDataverseConfig();
-      if (cfg?.serverUrl && cfg?.tenantId && cfg?.clientId && cfg?.clientSecret) {
-        return { source: 'key_vault', ...cfg };
-      }
-      console.warn('Key Vault returned incomplete config, falling back to env');
-    } catch (e) {
-      console.warn('Key Vault config failed, falling back to env:', e.message);
-    }
-  }
-  // Fallback: environment variables
-  const env = {
-    serverUrl:  process.env.DATAVERSE_URL || process.env.DATAVERSE_SERVER_URL,
-    tenantId:   process.env.TENANT_ID || process.env.DATAVERSE_TENANT_ID,
-    clientId:   process.env.CLIENT_ID || process.env.DATAVERSE_CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET || process.env.DATAVERSE_CLIENT_SECRET
-  };
-  return { source:'env', ...env };
-}
+
 
 // --- cleanup endpoint handler ------------------------------------------
 async function handleCleanup(req, res) {
@@ -260,12 +222,12 @@ async function handleCleanup(req, res) {
       return res.end(JSON.stringify({ success: false, error: 'No data received' }));
     }
 
-    // Initialize Dataverse client
+    // Initialize Dataverse client with managed identity
     const cfg = { 
       dataverseUrl: data.dataverseUrl, 
       tenantId: data.tenantId, 
       clientId: data.clientId, 
-      clientSecret: data.clientSecret,
+      useManagedIdentity: true,
       verbose: true 
     };
     
@@ -319,18 +281,25 @@ async function handleGetPublishers(req, res) {
       return;
     }
     
-    const cfg = await getDataverseConfig();
-    const client = new DataverseClient({
-      dataverseUrl: cfg.serverUrl,
-      tenantId: cfg.tenantId,
-      clientId: cfg.clientId,
-      clientSecret: cfg.clientSecret
+    // Create DataverseRepository with managed identity
+    const configRepo = new ConfigurationRepository({
+      logger: console
     });
     
-    const publishers = await client.getPublishers();
+    const dataverseRepo = new DataverseRepository({
+      configurationRepository: configRepo,
+      DataverseClient: DataverseClient,
+      logger: console
+    });
+    
+    const result = await dataverseRepo.getPublishers();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get publishers');
+    }
     
     res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ success: true, publishers }));
+    res.end(JSON.stringify({ success: true, publishers: result.data }));
     
   } catch (error) {
     console.error('Failed to get publishers:', error);
@@ -355,18 +324,25 @@ async function handleGetSolutions(req, res) {
       return;
     }
     
-    const cfg = await getDataverseConfig();
-    const client = new DataverseClient({
-      dataverseUrl: cfg.serverUrl,
-      tenantId: cfg.tenantId,
-      clientId: cfg.clientId,
-      clientSecret: cfg.clientSecret
+    // Create DataverseRepository with managed identity
+    const configRepo = new ConfigurationRepository({
+      logger: console
     });
     
-    const solutions = await client.getSolutions();
+    const dataverseRepo = new DataverseRepository({
+      configurationRepository: configRepo,
+      DataverseClient: DataverseClient,
+      logger: console
+    });
+    
+    const result = await dataverseRepo.getSolutions();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get solutions');
+    }
     
     res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ success: true, solutions }));
+    res.end(JSON.stringify({ success: true, solutions: result.data }));
     
   } catch (error) {
     console.error('Failed to get solutions:', error);
@@ -382,21 +358,27 @@ async function handleGetSolutions(req, res) {
 // --- global choices endpoint handler -----------------------------------
 async function handleGetGlobalChoices(req, res) {
   try {
-    // Get Dataverse configuration
-    const cfg = await getDataverseConfig();
-    const client = new DataverseClient({
-      dataverseUrl: cfg.serverUrl,
-      tenantId:     cfg.tenantId,
-      clientId:     cfg.clientId,
-      clientSecret: cfg.clientSecret
+    // Create DataverseRepository with managed identity
+    const configRepo = new ConfigurationRepository({
+      logger: console
     });
     
-    const choicesResult = await client.getGlobalChoiceSets();
+    const dataverseRepo = new DataverseRepository({
+      configurationRepository: configRepo,
+      DataverseClient: DataverseClient,
+      logger: console
+    });
+    
+    const result = await dataverseRepo.getGlobalChoiceSets();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to get global choices');
+    }
     
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end(JSON.stringify({ 
       success: true, 
-      ...choicesResult
+      ...result.data
     }));
     
   } catch (error) {
