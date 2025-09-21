@@ -41,17 +41,20 @@ export class ApiService {
   /**
    * Validate an uploaded Mermaid ERD file
    */
-  static async validateFile(fileData: FileData): Promise<ValidationResult> {
+  static async validateFile(fileData: FileData, entityChoice?: 'cdm' | 'custom' | null): Promise<ValidationResult> {
     try {
-      const response: AxiosResponse<ApiResponse<ValidationResult>> = await api.post('/validate', {
+      const response: AxiosResponse<any> = await api.post('/validate', {
         filename: fileData.name,
-        content: fileData.content,
+        mermaidContent: fileData.content,
+        entityChoice: entityChoice || null,
       });
 
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      if (response.data.success) {
+        // Backend spreads the data directly in the response, not nested under 'data'
+        const { success, ...validationResult } = response.data;
+        return validationResult as ValidationResult;
       } else {
-        throw new Error(response.data.error || 'Validation failed');
+        throw new Error(response.data.error || response.data.message || 'Validation failed');
       }
     } catch (error) {
       console.error('File validation error:', error);

@@ -90,6 +90,9 @@ describe('ThemeContext', () => {
     expect(screen.getByTestId('current-theme')).toHaveTextContent('dark');
     
     fireEvent.click(screen.getByTestId('toggle-theme'));
+    expect(screen.getByTestId('current-theme')).toHaveTextContent('pink');
+    
+    fireEvent.click(screen.getByTestId('toggle-theme'));
     expect(screen.getByTestId('current-theme')).toHaveTextContent('auto');
     
     fireEvent.click(screen.getByTestId('toggle-theme'));

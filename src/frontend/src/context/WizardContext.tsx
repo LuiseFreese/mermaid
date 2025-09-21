@@ -44,9 +44,13 @@ export interface Entity {
 export interface Relationship {
   from: string;
   to: string;
+  fromEntity?: string;
+  toEntity?: string;
   type: string;
   label: string;
-  cardinality?: string;
+  name?: string;
+  displayName?: string;
+  cardinality?: string | { type?: string };
 }
 
 export interface WizardData {
@@ -56,10 +60,14 @@ export interface WizardData {
   correctedErdContent: string;
   parsedEntities: Entity[];
   parsedRelationships: Relationship[];
+  relationships?: any[];
   cdmDetected: boolean;
   detectedEntities: string[];
+  cdmEntitiesDetected?: any[];
   entityChoice: 'cdm' | 'custom' | null;
   fixedIssues: Set<string>;
+  validationResults?: any;
+  hasErrors?: boolean;
   
   // Solution Setup Step
   solutionType: 'new' | 'existing';
@@ -91,6 +99,7 @@ const initialWizardData: WizardData = {
   detectedEntities: [],
   entityChoice: null,
   fixedIssues: new Set(),
+  validationResults: null,
   
   // Solution Setup Step
   solutionType: 'new',

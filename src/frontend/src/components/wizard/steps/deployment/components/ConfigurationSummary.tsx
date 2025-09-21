@@ -186,10 +186,10 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
                 <div key={index} className={fileUploadStyles.entityCard}>
                   <div className={fileUploadStyles.relationshipContent}>
                     <Text className={fileUploadStyles.relationshipTitle}>
-                      {relationship.from} → {relationship.to}
+                      {relationship.fromEntity || relationship.from} → {relationship.toEntity || relationship.to}
                     </Text>
                     <Text className={fileUploadStyles.relationshipDetails}>
-                      {relationship.type} {relationship.label && `${relationship.label}`}
+                      {relationship.cardinality?.type || relationship.type || relationship.cardinality} {(relationship.displayName || relationship.name || relationship.label) && `"${relationship.displayName || relationship.name || relationship.label}"`}
                     </Text>
                   </div>
                 </div>

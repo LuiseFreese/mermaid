@@ -132,6 +132,34 @@ class ValidationService extends BaseService {
                     }
                 }
 
+                // Step 3.5: Set isCdm flag on entities based on user choice and CDM detection
+                if (options.entityChoice === 'cdm' && result.cdmDetection?.matches?.length > 0) {
+                    const cdmEntityNames = result.cdmDetection.matches.map(match => match.originalEntity?.name || match.name).filter(Boolean);
+                    
+                    result.entities = result.entities.map(entity => ({
+                        ...entity,
+                        isCdm: cdmEntityNames.includes(entity.name)
+                    }));
+                    
+                    this.log('setCdmFlags', { 
+                        entityChoice: options.entityChoice,
+                        cdmEntityNames,
+                        entitiesWithCdmFlags: result.entities.map(e => ({ name: e.name, isCdm: e.isCdm }))
+                    });
+                } else {
+                    // If user chose custom or no CDM detected, all entities are custom
+                    result.entities = result.entities.map(entity => ({
+                        ...entity,
+                        isCdm: false
+                    }));
+                    
+                    this.log('setCdmFlags', { 
+                        entityChoice: options.entityChoice,
+                        allEntitiesCustom: true,
+                        entityCount: result.entities.length
+                    });
+                }
+
                 // Step 4: Generate summary
                 result.summary = {
                     entityCount: result.entities.length,

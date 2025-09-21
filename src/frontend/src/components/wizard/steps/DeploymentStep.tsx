@@ -20,7 +20,7 @@ import {
 } from './deployment/components';
 import type { DeploymentStepProps } from './deployment/types';
 import styles from './deployment/DeploymentStep.module.css';
-import fileUploadStyles from '../FileUploadStep.module.css';
+import fileUploadStyles from './FileUploadStep.module.css';
 
 export const DeploymentStep: React.FC<DeploymentStepProps> = ({ 
   onPrevious 

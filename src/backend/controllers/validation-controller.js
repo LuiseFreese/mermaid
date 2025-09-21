@@ -45,7 +45,10 @@ class ValidationController extends BaseController {
             // Call validation service
             const result = await this.validationService.validateERD({
                 mermaidContent: data.mermaidContent,
-                options: data.options || {}
+                options: {
+                    ...data.options || {},
+                    entityChoice: data.entityChoice || null
+                }
             });
 
             // Send response

@@ -61,7 +61,7 @@ This means:
 
 ### Creating Many-to-Many Relationships
 
-The web application fully supports many-to-many relationships when modeled using junction entities. This approach is actually preferred for Dataverse as it provides better control and flexibility:
+The web application fully supports many-to-many relationships when modeled using junction entities. This approach is actually preferred for Dataverse as it provides better control and flexibility. **Recent improvements include enhanced detection and automatic handling of junction table patterns:**
 
 ```mermaid
 erDiagram
@@ -89,14 +89,36 @@ erDiagram
 
 **Benefits of this approach:**
 - **Full Dataverse support**: Creates proper lookup relationships automatically
+- **Intelligent detection**: The system automatically identifies junction table patterns and handles them appropriately
+- **Primary key optimization**: Junction tables without explicit primary keys are automatically configured with composite keys
 - **Additional attributes**: Junction table can store relationship-specific data (like `enrollment_date`, `grade`)
 - **Better performance**: More efficient than native Dataverse many-to-many relationships
 - **Flexibility**: Easier to modify and extend the relationship structure
+- **Auto-correction**: The system can fix common junction table modeling issues automatically
 
 **Real-world examples** from the included sample files:
 - `simple-sales.mmd`: ORDER ↔ PRODUCT via ORDER_ITEM junction
 - `event-erd.mmd`: EVENT ↔ VOLUNTEER via VOLUNTEER_ASSIGNMENT junction
 - `crm-solution.mmd`: OPPORTUNITY ↔ PRODUCT via OPPORTUNITY_PRODUCT junction
+
+### Recent Improvements for Junction Tables
+
+The system now includes enhanced detection and handling for junction table patterns:
+
+**Automatic Junction Table Detection**
+- Identifies entities that serve as junction tables based on their relationships and attributes
+- Recognizes common patterns like entities with multiple foreign key relationships
+- Handles both explicit and implicit junction table definitions
+
+**Smart Primary Key Management**
+- Automatically creates composite primary keys for junction tables when no explicit PK is defined
+- Converts foreign key columns to primary key + foreign key combinations where appropriate
+- Ensures proper indexing and relationship integrity
+
+**Pattern Recognition**
+- Detects junction tables with names ending in common patterns (e.g., `EntityEntity`, `Entity_Entity`)
+- Handles entities with only foreign key attributes as potential junction tables
+- Supports both simple and complex junction table designs with additional attributes
 
 ## When You Might Want Parental Relationships
 

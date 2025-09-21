@@ -14,6 +14,13 @@ export interface ValidationResult {
   warnings: ValidationWarning[];
   cdmEntities?: CDMEntity[];
   customEntities?: CustomEntity[];
+  correctedERD?: string;
+  entities?: any[];
+  relationships?: any[];
+  summary?: any;
+  cdmDetection?: any;
+  cdmEntitiesDetected?: any[];
+  hasErrors?: boolean;
 }
 
 export interface ValidationError {
@@ -31,6 +38,11 @@ export interface ValidationWarning {
   column?: number;
   code?: string;
   suggestion?: string;
+  type?: string;
+  entity?: string;
+  relationship?: string;
+  columns?: string[];
+  autoFixed?: boolean;
 }
 
 export interface CDMEntity {

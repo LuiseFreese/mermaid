@@ -87,12 +87,16 @@ class MermaidERDParser {
     // Comprehensive validation after parsing
     this.validateSchema();
 
+    // Generate corrected relationships if there are many-to-many relationships
+    const correctedRelationships = this.generateCorrectedRelationships();
+
     return {
       entities: Array.from(this.entities.values()),
-      relationships: this.relationships,
+      relationships: correctedRelationships,
       warnings: this.warnings,
       validation: this.getValidationSummary(),
-      cdmDetection: this.cdmDetectionResults // Include CDM detection results
+      cdmDetection: this.cdmDetectionResults, // Include CDM detection results
+      correctedERD: this.generateCorrectedERD()
     };
   }
 
@@ -409,22 +413,12 @@ class MermaidERDParser {
     this.warnings = [];
 
     // First, detect CDM entities so we can use this information during validation
-    console.log('🔍 DEBUG: Starting CDM detection...');
     this.detectCDMEntities();
-    console.log('🔍 DEBUG: CDM detection completed. Results:', {
-      hasCdmDetectionResults: !!this.cdmDetectionResults,
-      detectedCDMCount: this.cdmDetectionResults?.detectedCDM?.length || 0,
-      cdmMatches: this.cdmDetectionResults?.detectedCDM?.map(m => ({
-        original: m.originalEntity?.name,
-        cdm: m.cdmEntity?.logicalName,
-        matchType: m.matchType
-      })) || []
-    });
 
     // Get CDM entity names for filtering during validation
     const cdmEntityNames = new Set();
-    if (this.cdmDetection && this.cdmDetection.detectedCDM) {
-      this.cdmDetection.detectedCDM.forEach(match => {
+    if (this.cdmDetectionResults && this.cdmDetectionResults.detectedCDM) {
+      this.cdmDetectionResults.detectedCDM.forEach(match => {
         if (match.originalEntity && match.originalEntity.name) {
           cdmEntityNames.add(match.originalEntity.name);
         }
@@ -562,15 +556,25 @@ class MermaidERDParser {
 
       // CRITICAL: Block many-to-many relationships with detailed guidance
       if (relationship.cardinality && relationship.cardinality.type === 'many-to-many') {
+        const junctionTableName = `${relationship.fromEntity}_${relationship.toEntity}`;
         this.warnings.push({
-          type: 'many_to_many_relationship',
-          severity: 'error',
+          type: 'many_to_many_auto_corrected',
+          severity: 'warning',
           relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
-          message: `Many-to-many relationship detected between '${relationship.fromEntity}' and '${relationship.toEntity}'. Direct M:N relationships are not supported.`,
-          suggestion: 'Create an intersection table to model many-to-many relationships as two one-to-many relationships.',
+          message: `Many-to-many relationship detected between '${relationship.fromEntity}' and '${relationship.toEntity}'. Automatically converted to junction table pattern.`,
+          suggestion: `Auto-created junction table '${junctionTableName}' with two one-to-many relationships.`,
           documentationLink: '/docs/RELATIONSHIP_TYPES.md#creating-many-to-many-relationships',
-          example: `Create a junction table like '${relationship.fromEntity}${relationship.toEntity}' with FK references to both entities.`,
-          category: 'relationships'
+          example: `${relationship.fromEntity} ||--o{ ${junctionTableName} : "has" and ${relationship.toEntity} ||--o{ ${junctionTableName} : "has"`,
+          category: 'relationships',
+          autoFixed: true,
+          corrections: {
+            originalRelationship: `${relationship.fromEntity} }o--o{ ${relationship.toEntity} : "${relationship.name}"`,
+            junctionTable: junctionTableName,
+            newRelationships: [
+              `${relationship.fromEntity} ||--o{ ${junctionTableName} : "has"`,
+              `${relationship.toEntity} ||--o{ ${junctionTableName} : "has"`
+            ]
+          }
         });
       }
 
@@ -610,10 +614,10 @@ class MermaidERDParser {
             category: 'relationships'
           });
         } else if (!hasMatchingFK) {
-          // There are FKs but none match the expected pattern - this is just informational
+          // There are FKs but none match the expected pattern - this should be fixable
           this.warnings.push({
             type: 'foreign_key_naming',
-            severity: 'info',
+            severity: 'warning',
             relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
             message: `Relationship '${relationship.fromEntity} → ${relationship.toEntity}' exists with foreign keys present in '${relationship.toEntity}', but no FK named '${expectedFK}' was found.`,
             suggestion: `If using a different FK name, ensure it properly references '${relationship.fromEntity}'. Otherwise, consider renaming to '${expectedFK} FK' for clarity.`,
@@ -716,7 +720,6 @@ class MermaidERDParser {
    * Basic CDM entity detection (fallback) - Simple exact name matching
    */
   detectCDMEntitiesBasic() {
-    console.log('🔍 DEBUG: Starting basic CDM detection...');
     const cdmEntities = [
       'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
       'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
@@ -727,18 +730,11 @@ class MermaidERDParser {
 
     const matches = [];
     
-    console.log('🔍 DEBUG: Checking entities against CDM list:', {
-      parsedEntities: Array.from(this.entities.keys()),
-      cdmEntityList: cdmEntities
-    });
-
     this.entities.forEach((entity, entityName) => {
       // Simple case-insensitive name matching
       const matchingCDM = cdmEntities.find(cdm => 
         cdm.toLowerCase() === entityName.toLowerCase()
       );
-      
-      console.log(`🔍 DEBUG: Checking entity "${entityName}" - CDM match: ${matchingCDM || 'none'}`);
       
       if (matchingCDM) {
         const logical = matchingCDM.toLowerCase();
@@ -828,6 +824,70 @@ class MermaidERDParser {
   }
 
   /**
+   * Generate corrected relationships array with many-to-many relationships replaced by two one-to-many relationships
+   * Also adds junction table entities to the entities collection
+   */
+  generateCorrectedRelationships() {
+    const correctedRelationships = [];
+    
+    this.relationships.forEach(rel => {
+      if (rel.cardinality && rel.cardinality.type === 'many-to-many') {
+        // Create junction table name
+        const intersectionTableName = `${rel.fromEntity}_${rel.toEntity}`;
+        
+        // Add junction table entity if it doesn't already exist
+        if (!this.entities.has(intersectionTableName)) {
+          this.entities.set(intersectionTableName, {
+            name: intersectionTableName,
+            attributes: [
+              {
+                name: 'id',
+                type: 'string',
+                constraints: ['PK'],
+                description: 'Unique identifier'
+              },
+              {
+                name: `${rel.fromEntity.toLowerCase()}_id`,
+                type: 'string',
+                constraints: ['FK'],
+                description: `Foreign key to ${rel.fromEntity}`
+              },
+              {
+                name: `${rel.toEntity.toLowerCase()}_id`,
+                type: 'string',
+                constraints: ['FK'],
+                description: `Foreign key to ${rel.toEntity}`
+              }
+            ]
+          });
+        }
+        
+        // Create two one-to-many relationships instead of many-to-many
+        correctedRelationships.push({
+          fromEntity: rel.fromEntity,
+          toEntity: intersectionTableName,
+          cardinality: { type: 'one-to-many', from: 'one', to: 'many' },
+          name: 'has',
+          cardinalitySymbol: '||--o{'
+        });
+        
+        correctedRelationships.push({
+          fromEntity: rel.toEntity,
+          toEntity: intersectionTableName,
+          cardinality: { type: 'one-to-many', from: 'one', to: 'many' },
+          name: 'has',
+          cardinalitySymbol: '||--o{'
+        });
+      } else {
+        // Keep non-many-to-many relationships as they are
+        correctedRelationships.push(rel);
+      }
+    });
+    
+    return correctedRelationships;
+  }
+
+  /**
    * Generate a corrected version of the ERD based on validation warnings
    * @returns {string} Corrected ERD content
    */
@@ -851,10 +911,7 @@ class MermaidERDParser {
       w.severity === 'warning'
     );
     
-    const manyToManyRelationships = this.warnings.filter(w => 
-      w.type === 'many_to_many_relationship' && 
-      w.severity === 'error'
-    );
+
     
     const missingPrimaryKeys = this.warnings.filter(w => 
       w.type === 'missing_primary_key' && 
@@ -963,45 +1020,31 @@ class MermaidERDParser {
       correctedERD += '    }\n\n';
     }
 
-    // Handle relationships - only fix many-to-many, preserve others exactly
-    this.relationships.forEach(rel => {
-      const isManyToMany = manyToManyRelationships.some(w => 
-        w.relationship === `${rel.fromEntity} → ${rel.toEntity}` ||
-        w.relationship === `${rel.toEntity} → ${rel.fromEntity}`
-      );
+    // Handle relationships - use corrected relationships which already handle many-to-many fixes
+    const correctedRelationships = this.generateCorrectedRelationships();
+    correctedRelationships.forEach(rel => {
+      // Use corrected relationships which already replace many-to-many with junction tables
+      let cardinalitySymbol = '||--o{'; // Default
       
-      if (isManyToMany) {
-        // Create intersection table for many-to-many relationship
-        const intersectionTableName = `${rel.fromEntity}${rel.toEntity}`;
-        
-        correctedERD += `    ${intersectionTableName} {\n`;
-        correctedERD += `        string id PK "Unique identifier"\n`;
-        correctedERD += `        string ${rel.fromEntity.toLowerCase()}_id FK "Foreign key to ${rel.fromEntity}"\n`;
-        correctedERD += `        string ${rel.toEntity.toLowerCase()}_id FK "Foreign key to ${rel.toEntity}"\n`;
-        correctedERD += '    }\n\n';
-        
-        // Create two one-to-many relationships instead of many-to-many
-        correctedERD += `    ${rel.fromEntity} ||--o{ ${intersectionTableName} : "has"\n`;
-        correctedERD += `    ${rel.toEntity} ||--o{ ${intersectionTableName} : "has"\n`;
-      } else {
-        // Preserve original relationship exactly as written
-        let cardinalitySymbol = '||--o{'; // Default, but try to preserve original
-        
-        if (rel.cardinality) {
-          if (rel.cardinality.type === 'one-to-one') {
-            cardinalitySymbol = '||--||';
-          } else if (rel.cardinality.type === 'one-to-many') {
-            cardinalitySymbol = '||--o{';
-          } else if (rel.cardinality.type === 'zero-to-many') {
-            cardinalitySymbol = 'o|--o{';
-          }
+      if (rel.cardinality) {
+        if (rel.cardinality.type === 'one-to-one') {
+          cardinalitySymbol = '||--||';
+        } else if (rel.cardinality.type === 'one-to-many') {
+          cardinalitySymbol = '||--o{';
+        } else if (rel.cardinality.type === 'zero-to-many') {
+          cardinalitySymbol = 'o|--o{';
         }
-        
-        const relationshipName = rel.name || 'has';
-        // Remove any existing quotes to avoid double quotes, then add quotes
-        const cleanRelationshipName = relationshipName.replace(/^["']|["']$/g, '');
-        correctedERD += `    ${rel.fromEntity} ${cardinalitySymbol} ${rel.toEntity} : "${cleanRelationshipName}"\n`;
       }
+      
+      // Use the cardinality symbol from the relationship if available
+      if (rel.cardinalitySymbol) {
+        cardinalitySymbol = rel.cardinalitySymbol;
+      }
+      
+      const relationshipName = rel.name || 'has';
+      // Remove any existing quotes to avoid double quotes, then add quotes
+      const cleanRelationshipName = relationshipName.replace(/^["']|["']$/g, '');
+      correctedERD += `    ${rel.fromEntity} ${cardinalitySymbol} ${rel.toEntity} : "${cleanRelationshipName}"\n`;
     });
 
     return correctedERD.trim();

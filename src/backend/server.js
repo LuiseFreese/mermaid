@@ -271,10 +271,12 @@ async function handleCleanup(req, res) {
 // --- publishers endpoint handler ---------------------------------------
 async function handleGetPublishers(req, res) {
   try {
-    // Return mock data for tests
-    if (process.env.NODE_ENV === 'test') {
+    // Return mock data for tests and development (since managed identity doesn't work on localhost)
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
       const mockPublishers = [
-        { id: 'pub1', uniqueName: 'testpub', friendlyName: 'Test Publisher', prefix: 'test' }
+        { id: 'pub1', uniqueName: 'testpub', friendlyName: 'Test Publisher', prefix: 'test' },
+        { id: 'pub2', uniqueName: 'devpub', friendlyName: 'Development Publisher', prefix: 'dev' },
+        { id: 'pub3', uniqueName: 'localpub', friendlyName: 'Local Publisher', prefix: 'local' }
       ];
       res.writeHead(200, {'Content-Type':'application/json'});
       res.end(JSON.stringify({ success: true, publishers: mockPublishers }));
@@ -314,10 +316,12 @@ async function handleGetPublishers(req, res) {
 
 async function handleGetSolutions(req, res) {
   try {
-    // Return mock data for tests
-    if (process.env.NODE_ENV === 'test') {
+    // Return mock data for tests and development (since managed identity doesn't work on localhost)
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
       const mockSolutions = [
-        { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }
+        { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' },
+        { solutionid: 'sol2', uniquename: 'devsolution', friendlyname: 'Development Solution' },
+        { solutionid: 'sol3', uniquename: 'localsolution', friendlyname: 'Local Solution' }
       ];
       res.writeHead(200, {'Content-Type':'application/json'});
       res.end(JSON.stringify({ success: true, solutions: mockSolutions }));
@@ -358,6 +362,80 @@ async function handleGetSolutions(req, res) {
 // --- global choices endpoint handler -----------------------------------
 async function handleGetGlobalChoices(req, res) {
   try {
+    // Return mock data for tests and development (since managed identity doesn't work on localhost)
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
+      const mockGlobalChoices = {
+        all: [
+          { id: 'gc1', logicalName: 'cr123_priority', displayName: 'Priority', isCustom: true, options: [
+            { value: 1, label: 'Low' },
+            { value: 2, label: 'Medium' },
+            { value: 3, label: 'High' },
+            { value: 4, label: 'Critical' }
+          ]},
+          { id: 'gc2', logicalName: 'cr123_status', displayName: 'Status', isCustom: true, options: [
+            { value: 1, label: 'Active' },
+            { value: 2, label: 'Inactive' },
+            { value: 3, label: 'Pending' }
+          ]},
+          { id: 'gc3', logicalName: 'cr123_category', displayName: 'Category', isCustom: true, options: [
+            { value: 1, label: 'General' },
+            { value: 2, label: 'Technical' },
+            { value: 3, label: 'Business' }
+          ]},
+          { id: 'gc4', logicalName: 'statecode', displayName: 'State Code', isCustom: false, options: [
+            { value: 0, label: 'Active' },
+            { value: 1, label: 'Inactive' }
+          ]},
+          { id: 'gc5', logicalName: 'statuscode', displayName: 'Status Reason', isCustom: false, options: [
+            { value: 1, label: 'Active' },
+            { value: 2, label: 'Inactive' }
+          ]}
+        ],
+        grouped: {
+          custom: [
+            { id: 'gc1', logicalName: 'cr123_priority', displayName: 'Priority', options: [
+              { value: 1, label: 'Low' },
+              { value: 2, label: 'Medium' },
+              { value: 3, label: 'High' },
+              { value: 4, label: 'Critical' }
+            ]},
+            { id: 'gc2', logicalName: 'cr123_status', displayName: 'Status', options: [
+              { value: 1, label: 'Active' },
+              { value: 2, label: 'Inactive' },
+              { value: 3, label: 'Pending' }
+            ]},
+            { id: 'gc3', logicalName: 'cr123_category', displayName: 'Category', options: [
+              { value: 1, label: 'General' },
+              { value: 2, label: 'Technical' },
+              { value: 3, label: 'Business' }
+            ]}
+          ],
+          builtIn: [
+            { id: 'gc4', logicalName: 'statecode', displayName: 'State Code', options: [
+              { value: 0, label: 'Active' },
+              { value: 1, label: 'Inactive' }
+            ]},
+            { id: 'gc5', logicalName: 'statuscode', displayName: 'Status Reason', options: [
+              { value: 1, label: 'Active' },
+              { value: 2, label: 'Inactive' }
+            ]}
+          ]
+        },
+        summary: { 
+          total: 5, 
+          custom: 3, 
+          builtIn: 2 
+        }
+      };
+      
+      res.writeHead(200, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({ 
+        success: true, 
+        ...mockGlobalChoices
+      }));
+      return;
+    }
+    
     // Create DataverseRepository with managed identity
     const configRepo = new ConfigurationRepository({
       logger: console

@@ -414,7 +414,7 @@ Write-Host "Configuring App Service for Node.js runtime..." -ForegroundColor Cya
 
 # Set the runtime stack with the EXACT format from working environment
 Write-Host "Setting Node.js runtime stack..." -ForegroundColor Yellow
-az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "NODE|20-lts"
+az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "NODE|20-LTS" | Out-Null
 
 # Set the startup command
 Write-Host "Setting startup command..." -ForegroundColor Yellow
@@ -428,12 +428,23 @@ $runtimeSettings = @(
     "NODE_ENV=production"
 )
 
-# Add Dataverse URL if provided
+# Add Dataverse URL if provided, or get it from existing App Service settings
 if ($DataverseUrl) {
     Write-Host "   └─ Setting DATAVERSE_URL: $DataverseUrl" -ForegroundColor Gray
     $runtimeSettings += "DATAVERSE_URL=$DataverseUrl"
 } else {
-    Write-Warning "DATAVERSE_URL not provided. Ensure it's configured in App Service settings."
+    # Try to get existing DATAVERSE_URL from App Service settings
+    try {
+        $existingSettings = az webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query "[?name=='DATAVERSE_URL'].value" -o tsv 2>$null
+        if ($existingSettings) {
+            Write-Host "   └─ Using existing DATAVERSE_URL from App Service settings" -ForegroundColor Gray
+            $runtimeSettings += "DATAVERSE_URL=$existingSettings"
+        } else {
+            Write-Warning "DATAVERSE_URL not provided and not found in App Service settings. This may cause runtime issues."
+        }
+    } catch {
+        Write-Warning "Could not retrieve existing DATAVERSE_URL from App Service settings."
+    }
 }
 
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings $runtimeSettings | Out-Null
