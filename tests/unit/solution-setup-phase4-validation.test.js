@@ -67,23 +67,7 @@ describe('Solution Setup - Phase 4: Main Component Integration', () => {
   });
 
   describe('Component Import Integration', () => {
-    test.skip('should import all modular UI components - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'SolutionConfigSection',
-        'PublisherConfigSection',
-        "from './components'",
-        'useSolutionConfiguration',
-        'usePublisherConfiguration',
-        'useFormValidation',
-        "from './hooks'",
-        'SolutionSetupStepProps',
-        "from './types'",
-        'validateSolutionSetupForm',
-        "from './utils'",
-      ])).toBe(true);
-    });
+
 
     test('should import Fluent UI components consistently', () => {
       const content = readFileContent(mainComponentPath);
@@ -108,57 +92,11 @@ describe('Solution Setup - Phase 4: Main Component Integration', () => {
   });
 
   describe('Hook Integration', () => {
-    test.skip('should use solution configuration hook correctly - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'const solutionConfig = useSolutionConfiguration({',
-        'solutions,',
-        'selectedSolution: currentSolution,',
-        'onSolutionSelect: onSolutionChange,',
-        'formData: solutionFormData,',
-        'onFormDataChange: setSolutionFormData,',
-      ])).toBe(true);
-    });
 
-    test.skip('should use publisher configuration hook correctly - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'const publisherConfig = usePublisherConfiguration({',
-        'publishers,',
-        'selectedPublisher: currentPublisher,',
-        'onPublisherSelect: onPublisherChange,',
-        'formData: publisherFormData,',
-        'onFormDataChange: setPublisherFormData,',
-      ])).toBe(true);
-    });
-
-    test.skip('should use form validation hook correctly - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'useFormValidation({',
-        'validationRules: validateSolutionSetupForm',
-        'autoValidate',
-        'errors: localValidationErrors',
-        'validateField',
-        'validateForm',
-      ])).toBe(true);
-    });
   });
 
   describe('State Management', () => {
-    test.skip('should manage local form state correctly - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'const [solutionFormData, setSolutionFormData] = useState<SolutionFormData>(',
-        'const [publisherFormData, setPublisherFormData] = useState<PublisherFormData>(',
-        'solutionName: externalFormData?.solutionName || \'\'',
-        'publisherName: externalFormData?.publisherName || \'\'',
-      ])).toBe(true);
-    });
+
 
     test('should handle form data change callbacks', () => {
       const content = readFileContent(mainComponentPath);
@@ -230,19 +168,7 @@ describe('Solution Setup - Phase 4: Main Component Integration', () => {
       ])).toBe(true);
     });
 
-    test.skip('should handle optional event handlers - SKIPPED: Implementation changed', () => {
-      const content = readFileContent(mainComponentPath);
-      
-      expect(containsPatterns(content, [
-        'onCreateSolution,',
-        'onCreatePublisher,',
-        'onEditSolution,',
-        'onEditPublisher,',
-        'onRefreshData,',
-        'onCreateSolution?.(solutionFormData)',
-        'onCreatePublisher?.(publisherFormData)',
-      ])).toBe(true);
-    });
+
 
     test('should handle UI configuration props', () => {
       const content = readFileContent(mainComponentPath);

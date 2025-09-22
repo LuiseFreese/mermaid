@@ -96,6 +96,11 @@ class ValidationService extends BaseService {
                     return this.createError('ERD structure validation failed', result.errors, result);
                 }
 
+                // Merge structure validation warnings into result
+                if (structureValidation.warnings && structureValidation.warnings.length > 0) {
+                    result.warnings = [...result.warnings, ...structureValidation.warnings];
+                }
+
                 // Step 3: CDM detection - use results from parser
                 if (options.detectCDM !== false) {
                     try {

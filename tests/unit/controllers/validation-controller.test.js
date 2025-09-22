@@ -263,7 +263,7 @@ describe('ValidationController', () => {
     });
   });
 
-  describe.skip('HTTP method validation', () => {
+  describe('HTTP method validation', () => {
     it('should reject non-POST requests', async () => {
       // Create a fresh request with GET method
       const getReq = global.testUtils.createMockRequest({
@@ -278,33 +278,12 @@ describe('ValidationController', () => {
         'Content-Type': 'application/json',
         'Allow': 'POST'
       });
+      expect(mockRes.end).toHaveBeenCalledWith(JSON.stringify({
+        success: false,
+        error: 'Method not allowed'
+      }));
     });
   });
 
-  describe.skip('Request timeout handling', () => {
-    it('should handle request timeouts gracefully', async () => {
-      // This test just verifies that the method exists and can be called
-      // In a real scenario, timeout would be handled by the HTTP server layer
-      expect(typeof validationController.validateERD).toBe('function');
-      
-      // Test with a simple successful case to ensure no hanging
-      mockValidationService.validateERD.mockResolvedValue({
-        success: true,
-        validation: { isValid: true },
-        entities: [],
-        relationships: [],
-        warnings: [],
-        correctedERD: null,
-        summary: { entityCount: 0, relationshipCount: 0 },
-        cdmDetection: { detectedCDM: [], customEntities: [] }
-      });
 
-      const requestData = { mermaidContent: 'test content' };
-      jest.spyOn(validationController, 'parseRequestBody').mockResolvedValue(requestData);
-
-      await validationController.validateERD(mockReq, mockRes);
-      
-      expect(mockRes.end).toHaveBeenCalled();
-    });
-  });
 });
