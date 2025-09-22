@@ -1,0 +1,30 @@
+erDiagram
+    %% Case 1: Custom primary column + conflicting name column (should warn)
+    Customer {
+        string customer_code PK "Customer Code"
+        string name "Customer Name - should cause conflict warning"
+        string email "Email Address"
+    }
+    
+    %% Case 2: No explicit PK, has name column (should suggest making name PK)
+    Product {
+        string name "Product Name - should suggest making this PK"
+        decimal price "Unit Price"
+        string category "Product Category"
+    }
+    
+    %% Case 3: Explicit name PK (should be fine, no warnings)
+    Category {
+        string name PK "Category Name"
+        string description "Category Description"
+    }
+    
+    %% Case 4: Custom PK, no name column (should be fine, no warnings)
+    Order {
+        string order_number PK "Order Number"
+        date order_date "Order Date"
+        decimal total_amount "Total Amount"
+        string customer_code FK "Customer Reference"
+    }
+    
+    Customer ||--o{ Order : "places"

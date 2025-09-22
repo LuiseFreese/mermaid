@@ -941,11 +941,26 @@ class DataverseClient {
   _entityPayloadFromParser(entity, publisherPrefix) {
     const logical = `${publisherPrefix}_${this._safeName(entity.name)}`;
     const schema  = `${publisherPrefix}_${this._safeName(entity.name.charAt(0).toUpperCase() + entity.name.slice(1))}`;
-    // Primary name attribute - use "name" column display name if it exists
-    const primarySchema = `${publisherPrefix}_${this._safeName(entity.name)}_name`;
-    const nameAttr = entity.attributes?.find(attr => attr.name && attr.name.toLowerCase() === 'name');
-    const primaryDisp   = nameAttr?.displayName || `${entity.displayName || entity.name} Name`;
-    const displayName   = entity.displayName || entity.name;
+    
+    // CUSTOM PRIMARY COLUMN SUPPORT: Use custom primary column name if specified, otherwise default to 'name'
+    let primaryColumnName, primaryDisplayName;
+    
+    if (entity.primaryColumnName) {
+      // Custom primary column specified
+      primaryColumnName = entity.primaryColumnName;
+      primaryDisplayName = entity.primaryColumnDisplayName || entity.primaryColumnName;
+      console.log(`🔍 Using custom primary column: ${primaryColumnName} for entity ${entity.name}`);
+    } else {
+      // Default behavior - look for 'name' attribute or use default
+      const nameAttr = entity.attributes?.find(attr => attr.name && attr.name.toLowerCase() === 'name');
+      primaryColumnName = 'name';
+      primaryDisplayName = nameAttr?.displayName || `${entity.displayName || entity.name} Name`;
+      console.log(`🔍 Using default primary column: name for entity ${entity.name}`);
+    }
+    
+    const primarySchema = `${publisherPrefix}_${this._safeName(entity.name)}_${this._safeName(primaryColumnName)}`;
+    const displayName = entity.displayName || entity.name;
+    
     return {
       LogicalName: logical,
       SchemaName: schema,
@@ -955,23 +970,24 @@ class DataverseClient {
       HasActivities: false,
       HasNotes: true,
       OwnershipType: 'UserOwned',
-      PrimaryNameAttributeDisplayName: primaryDisp
+      PrimaryNameAttributeDisplayName: primaryDisplayName,
+      CustomPrimaryColumn: entity.primaryColumnName || null // Track if custom primary column is used
     };
   }
 
   _attributeFromParser(entityName, attr, publisherPrefix) {
     console.log(`🔍 Processing attribute: ${attr.name} for entity: ${entityName}`);
     
-    // Skip PK (Dataverse auto ID)
+    // CUSTOM PRIMARY COLUMN SUPPORT: Skip primary key attributes since Dataverse provides them automatically
+    // This handles both default 'name' columns and custom primary columns
     if (attr.isPrimaryKey) {
-      console.log(`🔍 Skipping primary key: ${attr.name}`);
+      console.log(`🔍 Skipping primary key attribute: ${attr.name} for ${entityName} - handled by primary name column`);
       return null;
     }
 
-    // Skip "name" attributes since Dataverse provides a primary name column automatically
-    // The primary name column display name is set during entity creation
-    if (attr.name && attr.name.toLowerCase() === 'name') {
-      console.log(`� SKIPPING 'name' attribute for ${entityName} - using primary name column instead`);
+    // Also skip 'name' attributes when they're not primary keys (legacy behavior)
+    if (attr.name && attr.name.toLowerCase() === 'name' && !attr.isPrimaryKey) {
+      console.log(`🔍 SKIPPING 'name' attribute for ${entityName} - using primary name column instead`);
       return null;
     }
 
@@ -1374,18 +1390,19 @@ class DataverseClient {
 
         // Attributes
         if (Array.isArray(entity.attributes)) {
-          // Filter out foreign key attributes, "name" attributes, and "status" attributes
+          // CUSTOM PRIMARY COLUMN SUPPORT: Filter out system-handled attributes
           // Foreign key attributes will be created by relationship creation
-          // "name" attributes are handled by the primary name column
+          // Primary key attributes (including custom ones) are handled by the primary name column
           // "status" attributes are system-provided in Dataverse via statecode/statuscode
           const regularAttributes = entity.attributes.filter(a => {
             const isFK = a.isForeignKey;
-            const isNameAttr = a.name && a.name.toLowerCase() === 'name';
+            const isPrimaryKey = a.isPrimaryKey; // This handles both 'name' and custom primary columns
+            const isNameAttr = a.name && a.name.toLowerCase() === 'name' && !a.isPrimaryKey; // Legacy name handling
             const isEntityNameAttr = a.name && a.name.toLowerCase() === `${entity.name.toLowerCase()}_name`;
             const isStatusAttr = a.name && a.name.toLowerCase() === 'status';
-            return !isFK && !isNameAttr && !isEntityNameAttr && !isStatusAttr;
+            return !isFK && !isPrimaryKey && !isNameAttr && !isEntityNameAttr && !isStatusAttr;
           });
-          this._log(`🔍 Processing ${regularAttributes.length} regular attributes (filtered out ${entity.attributes.length - regularAttributes.length} foreign key/name/status attributes)`);
+          this._log(`🔍 Processing ${regularAttributes.length} regular attributes (filtered out ${entity.attributes.length - regularAttributes.length} primary key/foreign key/name/status attributes)`);
           
           if (progressCallback && regularAttributes.length > 0) {
             progressCallback('entity-columns', `Adding columns to Table: ${entity.displayName || entity.name}`, { entityName: entity.name, columnCount: regularAttributes.length });

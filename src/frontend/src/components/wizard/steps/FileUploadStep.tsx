@@ -504,7 +504,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     });
   }, [correctedErdContent, fixedIssues, updateWizardData]);
 
-  // Individual naming conflict fixes
+  // Individual naming conflict fixes - CUSTOM PRIMARY COLUMNS SUPPORT
   const applyNamingConflictFixForEntity = useCallback((entityName: string) => {
     let updatedContent = correctedErdContent;
     
@@ -513,15 +513,43 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       updatedContent = updatedContent.replace(/\\n/g, '\n');
     }
     
-    // Fix naming conflict for specific entity - preserve line structure
-    const entityPattern = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\n?\\s*string\\s+name(?![\\w_])`, 'g');
-    updatedContent = updatedContent.replace(entityPattern, `$1\n        string ${entityName.toLowerCase()}_name`);
+    // Find the specific warning for this entity to determine fix type
+    const entityWarning = wizardData.validationResults?.warnings?.find((w: any) => 
+      w.type === 'naming_conflict' && w.entity === entityName
+    );
+    
+    const hasCustomPrimaryColumn = entityWarning?.message?.includes('custom primary column');
+    const isInfoLevel = entityWarning?.severity === 'info';
+    
+    if (hasCustomPrimaryColumn) {
+      // Case: Entity has custom PK + separate 'name' column - rename the 'name' column
+      const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+      updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
+        if (!columnDescription.includes('PK')) {
+          return `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
+        }
+        return match;
+      });
+    } else if (isInfoLevel) {
+      // Case: Entity has no explicit PK but has 'name' column - make it primary
+      const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+      updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
+        if (!columnDescription.includes('PK')) {
+          return `${entityStart}string name PK ${columnDescription}${entityEnd}`;
+        }
+        return match;
+      });
+    } else {
+      // Legacy behavior - rename name column
+      const entityPattern = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\n?\\s*string\\s+name(?![\\w_])`, 'g');
+      updatedContent = updatedContent.replace(entityPattern, `$1\n        string ${entityName.toLowerCase()}_name`);
+    }
     
     updateWizardData({ 
       correctedErdContent: updatedContent,
       fixedIssues: new Set([...fixedIssues, `naming-conflicts-${entityName}`])
     });
-  }, [correctedErdContent, fixedIssues, updateWizardData]);
+  }, [correctedErdContent, fixedIssues, updateWizardData, wizardData.validationResults]);
 
   const handleBackendWarningFix = useCallback(async (warning: any) => {
     console.log('🔧 DEBUG: handleBackendWarningFix called with warning type:', warning.type, 'entity:', warning.entity);
@@ -697,37 +725,56 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         });
       }
     } else if (warning.type === 'naming_conflict') {
-      // Extract entity name from warning message or entity property
+      // CUSTOM PRIMARY COLUMNS SUPPORT: Handle naming conflicts intelligently
       const entityName = warning.entity || warning.message.match(/Entity '(\w+)'/)?.[1];
       console.log('🔧 DEBUG: Extracted entity name:', entityName);
       if (entityName) {
         warningId = `naming_conflict_${entityName}`;
         console.log('🔧 DEBUG: Generated warning ID:', warningId);
-        console.log('🔧 DEBUG: Content before naming fix:', updatedContent);
+        console.log('🔧 DEBUG: Warning message:', warning.message);
         
-        // Fix naming conflict by renaming 'name' column to 'entityname_name'
-        const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+        // Determine the type of naming conflict and appropriate fix
+        const hasCustomPrimaryColumn = warning.message.includes('custom primary column');
+        const isInfoLevel = warning.severity === 'info';
         const contentBeforeReplace = updatedContent;
-        updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
-          console.log('🔧 DEBUG: Entity match found:', match);
-          // Only replace if it's not a PK and is literally 'name'
-          if (!columnDescription.includes('PK')) {
-            const result = `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
-            console.log('🔧 DEBUG: Entity after replacement:', result);
-            return result;
-          }
-          return match;
-        });
         
-        // If no literal 'name' column found, check if this is a false positive (already fixed)
-        if (contentBeforeReplace === updatedContent) {
-          console.log('🔧 DEBUG: No literal "name" column found - this warning may be stale');
-          // Check if entity already has properly named column (e.g., event_name, location_name)
-          const hasProperNaming = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?string\\s+${entityName.toLowerCase()}_name[\\s\\S]*?\\}`, 'i').test(updatedContent);
-          if (hasProperNaming) {
-            console.log('🔧 DEBUG: Entity already has proper naming - marking as fixed');
-            // Content is already correct, just mark as fixed
-          }
+        if (hasCustomPrimaryColumn) {
+          // Case: Entity has custom PK + separate 'name' column - rename the 'name' column
+          console.log('🔧 DEBUG: Fixing custom primary column naming conflict');
+          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
+            // Only replace if it's not a PK and is literally 'name'
+            if (!columnDescription.includes('PK')) {
+              const result = `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
+              console.log('🔧 DEBUG: Renamed conflicting name column:', result);
+              return result;
+            }
+            return match;
+          });
+        } else if (isInfoLevel) {
+          // Case: Entity has no explicit PK but has 'name' column - suggest making it primary
+          console.log('🔧 DEBUG: Converting name column to primary key');
+          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
+            // Add PK to the name column if it doesn't already have it
+            if (!columnDescription.includes('PK')) {
+              const result = `${entityStart}string name PK ${columnDescription}${entityEnd}`;
+              console.log('🔧 DEBUG: Made name column primary:', result);
+              return result;
+            }
+            return match;
+          });
+        } else {
+          // Legacy behavior - rename name column
+          console.log('🔧 DEBUG: Applying legacy naming conflict fix');
+          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
+          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
+            if (!columnDescription.includes('PK')) {
+              const result = `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
+              return result;
+            }
+            return match;
+          });
         }
         
         console.log('🔧 DEBUG: Content changed?', contentBeforeReplace !== updatedContent);
@@ -1575,51 +1622,96 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                             )}
 
                             {/* Individual Naming Conflict Corrections */}
-                            {namingConflicts.map((entityName) => (
-                              <div key={entityName} className={styles.correctionItem}>
-                                <div className={styles.correctionHeader}>
-                                  <Text className={styles.correctionTitle}>Fix naming conflict in {entityName}</Text>
-                                  <Button 
-                                    appearance="secondary"
-                                    size="small"
-                                    className={styles.fixButton}
-                                    onClick={() => applyNamingConflictFixForEntity(entityName)}
-                                  >
-                                    Fix this
-                                  </Button>
-                                </div>
-                                <div className={styles.comparisonGrid}>
-                                  <div className={styles.originalColumn}>
-                                    <Text className={styles.columnHeader}>
-                                      Original ERD
+                            {namingConflicts.map((entityName) => {
+                              // Find the specific warning for this entity to determine fix type
+                              const entityWarning = wizardData.validationResults?.warnings?.find((w: any) => 
+                                w.type === 'naming_conflict' && w.entity === entityName
+                              );
+                              
+                              const hasCustomPrimaryColumn = entityWarning?.message?.includes('custom primary column');
+                              const isInfoLevel = entityWarning?.severity === 'info';
+                              
+                              return (
+                                <div key={entityName} className={styles.correctionItem}>
+                                  <div className={styles.correctionHeader}>
+                                    <Text className={styles.correctionTitle}>
+                                      {hasCustomPrimaryColumn 
+                                        ? `Fix naming conflict in ${entityName} (Custom Primary Column)`
+                                        : isInfoLevel
+                                        ? `Optimize primary column in ${entityName}`
+                                        : `Fix naming conflict in ${entityName}`
+                                      }
                                     </Text>
-                                    <div className={styles.codeBlock}>
-                                      <Text className={styles.codeText}>
-                                        {entityName} {`{`}<br />
-                                        &nbsp;&nbsp;string id PK<br />
-                                        &nbsp;&nbsp;<span className={styles.highlightError}>string name</span><br />
-                                        &nbsp;&nbsp;...<br />
-                                        {`}`}
+                                    <Button 
+                                      appearance="secondary"
+                                      size="small"
+                                      className={styles.fixButton}
+                                      onClick={() => applyNamingConflictFixForEntity(entityName)}
+                                    >
+                                      Fix this
+                                    </Button>
+                                  </div>
+                                  <div className={styles.comparisonGrid}>
+                                    <div className={styles.originalColumn}>
+                                      <Text className={styles.columnHeader}>
+                                        Original ERD
                                       </Text>
+                                      <div className={styles.codeBlock}>
+                                        <Text className={styles.codeText}>
+                                          {entityName} {`{`}<br />
+                                          {hasCustomPrimaryColumn ? (
+                                            <>
+                                              &nbsp;&nbsp;string customer_code PK<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightError}>string name</span><br />
+                                            </>
+                                          ) : isInfoLevel ? (
+                                            <>
+                                              &nbsp;&nbsp;string other_field<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightError}>string name</span><br />
+                                            </>
+                                          ) : (
+                                            <>
+                                              &nbsp;&nbsp;string id<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightError}>string name</span><br />
+                                            </>
+                                          )}
+                                          &nbsp;&nbsp;...<br />
+                                          {`}`}
+                                        </Text>
+                                      </div>
+                                    </div>
+                                    <div className={styles.correctedColumn}>
+                                      <Text className={styles.columnHeader}>
+                                        Corrected ERD
+                                      </Text>
+                                      <div className={styles.codeBlock}>
+                                        <Text className={styles.codeText}>
+                                          {entityName} {`{`}<br />
+                                          {hasCustomPrimaryColumn ? (
+                                            <>
+                                              &nbsp;&nbsp;string customer_code PK<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightSuccess}>string {entityName.toLowerCase()}_name</span><br />
+                                            </>
+                                          ) : isInfoLevel ? (
+                                            <>
+                                              &nbsp;&nbsp;string other_field<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightSuccess}>string name PK "Primary Name"</span><br />
+                                            </>
+                                          ) : (
+                                            <>
+                                              &nbsp;&nbsp;string id<br />
+                                              &nbsp;&nbsp;<span className={styles.highlightSuccess}>string {entityName.toLowerCase()}_name</span><br />
+                                            </>
+                                          )}
+                                          &nbsp;&nbsp;...<br />
+                                          {`}`}
+                                        </Text>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className={styles.correctedColumn}>
-                                    <Text className={styles.columnHeader}>
-                                      Corrected ERD
-                                    </Text>
-                                    <div className={styles.codeBlock}>
-                                      <Text className={styles.codeText}>
-                                        {entityName} {`{`}<br />
-                                        &nbsp;&nbsp;string id PK<br />
-                                        &nbsp;&nbsp;<span className={styles.highlightSuccess}>string {entityName.toLowerCase()}_name</span><br />
-                                        &nbsp;&nbsp;...<br />
-                                        {`}`}
-                                      </Text>
-                                    </div>
-                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
 
                           {(hasChoiceIssues || hasNamingIssues) && (

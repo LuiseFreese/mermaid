@@ -76,6 +76,7 @@ global.testUtils = {
     entities: [
       {
         name: 'Customer',
+        isCdm: false,
         attributes: [
           { name: 'customer_id', type: 'string', isPrimaryKey: true },
           { name: 'first_name', type: 'string' },
@@ -85,6 +86,7 @@ global.testUtils = {
       },
       {
         name: 'Order',
+        isCdm: false,
         attributes: [
           { name: 'order_id', type: 'string', isPrimaryKey: true },
           { name: 'customer_id', type: 'string', isForeignKey: true },

@@ -79,7 +79,9 @@ describe('ValidationController', () => {
 
       expect(mockValidationService.validateERD).toHaveBeenCalledWith({
         mermaidContent: global.testUtils.mockERDContent,
-        options: {}
+        options: {
+          entityChoice: null
+        }
       });
 
       expect(mockRes.writeHead).toHaveBeenCalledWith(200, {
@@ -191,7 +193,8 @@ describe('ValidationController', () => {
         mermaidContent: global.testUtils.mockERDContent,
         options: {
           validateNaming: false,
-          detectCDM: true
+          detectCDM: true,
+          entityChoice: null
         }
       });
     });

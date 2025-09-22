@@ -1,0 +1,37 @@
+erDiagram
+    Customer {
+        string customer_code PK "Customer Code"
+        string company_name "Company Name"
+        string email "Email Address"
+        string phone "Phone Number"
+        string address "Business Address"
+    }
+    
+    Product {
+        string product_sku PK "Product SKU"
+        string product_name "Product Name"
+        decimal price "Unit Price"
+        string category "Product Category"
+        int stock_quantity "Stock Quantity"
+    }
+    
+    Order {
+        string order_number PK "Order Number"
+        date order_date "Order Date"
+        decimal total_amount "Total Amount"
+        string status "Order Status"
+        string customer_code FK "Customer Reference"
+    }
+    
+    OrderItem {
+        string line_item_id PK "Line Item ID"
+        string order_number FK "Order Reference"
+        string product_sku FK "Product Reference"
+        int quantity "Quantity Ordered"
+        decimal unit_price "Unit Price"
+        decimal line_total "Line Total"
+    }
+    
+    Customer ||--o{ Order : "places"
+    Order ||--o{ OrderItem : "contains"
+    Product ||--o{ OrderItem : "includes"

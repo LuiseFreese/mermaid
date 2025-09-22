@@ -1,0 +1,39 @@
+erDiagram
+    Department {
+        string dept_code PK "Department Code"
+        string department_name "Department Name"
+        string manager_email "Manager Email"
+        string budget_code "Budget Code"
+    }
+    
+    Employee {
+        string employee_id PK "Employee ID"
+        string first_name "First Name"
+        string last_name "Last Name"
+        string email "Work Email"
+        date hire_date "Hire Date"
+        decimal salary "Annual Salary"
+        string dept_code FK "Department Reference"
+    }
+    
+    Project {
+        string project_code PK "Project Code"
+        string project_title "Project Title"
+        date start_date "Start Date"
+        date end_date "End Date"
+        decimal budget "Project Budget"
+        string status "Project Status"
+    }
+    
+    Assignment {
+        string assignment_id PK "Assignment ID"
+        string employee_id FK "Employee Reference"
+        string project_code FK "Project Reference"
+        date assigned_date "Assignment Date"
+        int hours_allocated "Hours Allocated"
+        string role "Role on Project"
+    }
+    
+    Department ||--o{ Employee : "employs"
+    Employee ||--o{ Assignment : "has"
+    Project ||--o{ Assignment : "requires"

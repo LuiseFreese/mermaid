@@ -1,0 +1,37 @@
+erDiagram
+    Student {
+        string student_id PK "Student ID"
+        string first_name "First Name"
+        string last_name "Last Name"
+        string email "Email Address"
+        date enrollment_date "Enrollment Date"
+    }
+    
+    Course {
+        string course_code PK "Course Code"
+        string course_title "Course Title"
+        int credit_hours "Credit Hours"
+        string department "Department"
+        string instructor "Instructor Name"
+    }
+    
+    Enrollment {
+        string enrollment_id PK "Enrollment ID"
+        string student_id FK "Student Reference"
+        string course_code FK "Course Reference"
+        date enrollment_date "Enrollment Date"
+        string grade "Final Grade"
+        string status "Enrollment Status"
+    }
+    
+    Library {
+        string library_card_number PK "Library Card Number"
+        string student_id FK "Student Reference"
+        date issue_date "Issue Date"
+        date expiry_date "Expiry Date"
+        string status "Card Status"
+    }
+    
+    Student ||--o{ Enrollment : "enrolls_in"
+    Course ||--o{ Enrollment : "has_enrollment"
+    Student ||--|| Library : "has_library_card"

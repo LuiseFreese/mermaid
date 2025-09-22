@@ -43,7 +43,9 @@ class MermaidERDParser {
           this.entities.set(currentEntity, {
             name: currentEntity,
             attributes: [],
-            displayName: this.formatDisplayName(currentEntity)
+            displayName: this.formatDisplayName(currentEntity),
+            primaryColumnName: null, // Will be set when primary key is found
+            primaryColumnDisplayName: null
           });
           inEntityDefinition = true;
           continue;
@@ -72,6 +74,14 @@ class MermaidERDParser {
             this.entities.get(currentEntity).attributes.push(attribute);
           } else {
             this.entities.get(currentEntity).attributes.push(attribute);
+          }
+          
+          // Track primary column information for custom primary columns
+          if (attribute.isPrimaryKey) {
+            const entity = this.entities.get(currentEntity);
+            entity.primaryColumnName = attribute.name;
+            entity.primaryColumnDisplayName = attribute.displayName || attribute.description;
+            console.log(`🔍 Custom primary column detected: ${attribute.name} for entity ${currentEntity}`);
           }
         }
         continue;
@@ -346,21 +356,43 @@ class MermaidERDParser {
     }
     if (!entity || !entity.attributes) return;
 
-    // Check for "name" column conflicts (case-insensitive)
+    // CUSTOM PRIMARY COLUMNS SUPPORT: Check for naming conflicts based on primary column strategy
+    const hasCustomPrimaryColumn = entity.primaryColumnName && entity.primaryColumnName !== 'name';
+    const hasExplicitNamePK = entity.primaryColumnName === 'name';
+    
+    // Only flag 'name' columns as conflicts if:
+    // 1. The entity has a custom primary column (not 'name') AND there's a separate 'name' column
+    // 2. OR there are multiple 'name' columns (shouldn't happen but safety check)
     const nameColumns = entity.attributes.filter(attr => 
       attr.name.toLowerCase() === 'name' && !attr.isPrimaryKey
     );
 
     if (nameColumns.length > 0) {
-      this.warnings.push({
-        type: 'naming_conflict',
-        severity: 'warning',
-        entity: entityName,
-        message: `Entity '${entityName}' has a non-primary column called 'name'. This will conflict with the auto-generated primary name column in Dataverse.`,
-        suggestion: `Consider renaming the column to something like '${entityName.toLowerCase()}_name', 'display_name', or 'title'.`,
-        columns: nameColumns.map(col => col.name),
-        category: 'naming'
-      });
+      if (hasCustomPrimaryColumn) {
+        // Entity has a custom primary column AND a separate 'name' column - this is a real conflict
+        this.warnings.push({
+          type: 'naming_conflict',
+          severity: 'warning',
+          entity: entityName,
+          message: `Entity '${entityName}' has a custom primary column '${entity.primaryColumnName}' but also has a non-primary 'name' column. This will conflict with the auto-generated primary name column in Dataverse.`,
+          suggestion: `Consider renaming the 'name' column to something like '${entityName.toLowerCase()}_name', 'display_name', or 'title', since you're using '${entity.primaryColumnName}' as the primary column.`,
+          columns: nameColumns.map(col => col.name),
+          category: 'naming'
+        });
+      } else if (!hasExplicitNamePK) {
+        // Entity has no explicit primary column and has non-primary 'name' columns
+        // This is the legacy behavior - suggest either making it primary or renaming
+        this.warnings.push({
+          type: 'naming_conflict',
+          severity: 'info', // Reduced severity since this is more of a suggestion
+          entity: entityName,
+          message: `Entity '${entityName}' has a non-primary 'name' column. You can either make it the primary column with 'name PK' or rename it to avoid conflicts.`,
+          suggestion: `Either add 'PK' to make it the primary column: 'string name PK "Display Name"', or rename it to '${entityName.toLowerCase()}_name', 'display_name', or 'title'.`,
+          columns: nameColumns.map(col => col.name),
+          category: 'naming'
+        });
+      }
+      // If hasExplicitNamePK is true, no conflict - the 'name' column is the intended primary column
     }
 
     // Check for other potential conflicts with system columns (exclude timestamp/user fields and status which should be ignored)

@@ -41,10 +41,43 @@ erDiagram
     }
 ```
 
-> **🎯 Smart Detection**: The system will identify these as CDM entities and offer to use the existing `contact` and `account` entities instead of creating custom ones.
+> **Smart Detection**: The system will identify these as CDM entities and offer to use the existing `contact` and `account` entities instead of creating custom ones.
+
+### Custom Primary Columns
+You can specify custom primary column names instead of using the default `name` column:
+
+**Custom primary columns:**
+
+```bash
+erDiagram
+    Customer {
+        string customer_code PK "Customer Code"
+        string company_name "Company Name"
+        string email "Email Address"
+    }
+    
+    Product {
+        string product_sku PK "Product SKU"
+        string product_name "Product Name"
+        decimal price "Unit Price"
+    }
+    
+    Student {
+        string student_id PK "Student ID"
+        string first_name "First Name"
+        string last_name "Last Name"
+    }
+```
+
+**Dataverse Results:**
+- **Customer**: Primary column will be named `customer_code` (not the default `name`)
+- **Product**: Primary column will be named `product_sku`
+- **Student**: Primary column will be named `student_id`
+
+
 
 ### Primary Column Validation
-Dataverse automatically creates a primary name column for each entity. The validator detects conflicts:
+The system validates primary column configuration and detects conflicts:
 
 **Problem detected:**
 
@@ -63,7 +96,7 @@ erDiagram
 erDiagram
     Customer {
         string customer_id PK "Customer identifier"
-        string name "Customer name"
+        string customer_name "Customer name"
         string email "Email address"
     }
 ```
