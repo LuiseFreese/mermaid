@@ -19,6 +19,7 @@ import mermaid from 'mermaid';
 import { useWizardContext } from '../../../context/WizardContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { ApiService } from '../../../services/apiService';
+import { ValidationWarning } from '../../../../../shared/types';
 import styles from './FileUploadStep.module.css';
 
 interface FileUploadStepProps {
@@ -47,19 +48,36 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
   const mermaidRef = useRef<HTMLDivElement>(null);
   const revalidationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isRenderingRef = useRef<boolean>(false);
 
   // Render Mermaid diagram - defined early to avoid initialization order issues
   const renderMermaidDiagram = useCallback(async () => {
-    console.log('🔍 DEBUG: renderMermaidDiagram called', {
+    const timestamp = new Date().toISOString();
+    console.log(`🔍 DEBUG: renderMermaidDiagram called at ${timestamp}`, {
       hasMermaidRef: !!mermaidRef.current,
-      correctedErdContent,
-      contentLength: correctedErdContent?.length
+      correctedErdContent: correctedErdContent?.substring(0, 100) + (correctedErdContent?.length > 100 ? '...' : ''),
+      contentLength: correctedErdContent?.length,
+      isCurrentlyRendering: isRenderingRef.current
     });
+    
+    // Prevent overlapping renders
+    if (isRenderingRef.current) {
+      console.log('🔍 DEBUG: Already rendering, skipping this call');
+      return;
+    }
+    
+    // Debug: Log the full content when there's a parsing error
+    if (correctedErdContent && correctedErdContent.includes('123invalid')) {
+      console.log('🚨 DEBUG: Invalid content detected:');
+      console.log(correctedErdContent);
+    }
     
     if (!correctedErdContent) {
       console.log('🔍 DEBUG: No content to render');
       return;
     }
+    
+    isRenderingRef.current = true;
 
     // Debug: Check for PK FK combinations that cause Mermaid errors
     const pkFkLines = correctedErdContent.split('\n').filter(line => line.includes('PK FK'));
@@ -93,22 +111,37 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       if (mermaidRef.current) {
         try {
           // Clear previous content
+          console.log('🧹 DEBUG: Clearing previous diagram content');
           mermaidRef.current.innerHTML = '';
           
           // Generate unique ID for this diagram
           const id = `mermaid-diagram-${Date.now()}`;
           
           // Render the diagram
+          console.log('🔍 DEBUG: About to render Mermaid with ID:', id);
+          console.log('🔍 DEBUG: Content to render (first 200 chars):', cleanedContent.substring(0, 200));
+          console.log('🔍 DEBUG: Full content length:', cleanedContent.length);
+          
           const { svg } = await mermaid.render(id, cleanedContent);
+          console.log('✅ DEBUG: Mermaid render successful, SVG length:', svg.length);
           mermaidRef.current.innerHTML = svg;
+          console.log('✅ DEBUG: SVG inserted into DOM element');
         } catch (error) {
-          console.error('Error rendering Mermaid diagram:', error);
-          mermaidRef.current.innerHTML = '<p style="color: red;">Error rendering diagram: ' + (error instanceof Error ? error.message : String(error)) + '</p>';
+          console.error('🚨 ERROR: Mermaid rendering failed:', error);
+          console.error('🚨 ERROR: Content that failed to render:', cleanedContent);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error('🚨 ERROR: Error message:', errorMessage);
+          mermaidRef.current.innerHTML = '<p style="color: red; padding: 10px; border: 1px solid red; margin: 10px;">Error rendering diagram: ' + errorMessage + '</p>';
+        } finally {
+          isRenderingRef.current = false;
         }
       } else {
         retryCount++;
         if (retryCount < maxRetries) {
           setTimeout(attemptRender, retryDelay);
+        } else {
+          console.warn('🚨 DEBUG: Max retries reached, mermaidRef still not available');
+          isRenderingRef.current = false;
         }
       }
     };
@@ -318,57 +351,20 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     input?.click();
   }, []);
 
-  // Check which issues are still present - Dynamic detection based on actual content
-  const hasChoiceIssues = /\w+\s+(choice|category)\s+\w+/g.test(correctedErdContent);
-  
-  
-  // Detect individual naming conflicts per entity - exclude CDM entities and fixed ones
-  const namingConflicts = useMemo(() => {
-    const conflicts: string[] = [];
-    const cdmEntities = [
-      'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
-      'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
-      'User', 'Team', 'BusinessUnit', 'SystemUser',
-      'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
-      'Campaign', 'MarketingList', 'Competitor'
-    ];
-    
-    const entityMatches = correctedErdContent.match(/(\w+)\s*\{[^}]*\}/g);
-    if (entityMatches) {
-      entityMatches.forEach(entityMatch => {
-        const nameMatch = entityMatch.match(/(\w+)\s*\{/);
-        if (nameMatch) {
-          const entityName = nameMatch[1];
-          
-          // Skip CDM entities - they are untouchable
-          const isCdmEntity = cdmEntities.some(cdmEntity => 
-            cdmEntity.toLowerCase() === entityName.toLowerCase()
-          );
-          
-          // Skip already fixed naming conflicts
-          if (fixedIssues.has(`naming-conflicts-${entityName}`)) {
-            return;
-          }
-          
-          if (!isCdmEntity) {
-            // Check if this entity has a non-PK column named 'name'
-            if (entityMatch.match(/string\s+name(?!\w)/) && !entityMatch.match(/string\s+name\s+PK/)) {
-              conflicts.push(entityName);
-            }
-          }
-        }
-      });
-    }
-    return conflicts;
-  }, [correctedErdContent, fixedIssues]);
-  
-  const hasNamingIssues = namingConflicts.length > 0;
+  // Legacy frontend validation (now handled by backend warnings)
+  const hasChoiceIssues = false; // Deprecated - handled by backend warnings
+  const namingConflicts: string[] = []; // Deprecated - handled by backend warnings  
+  const hasNamingIssues = false; // Deprecated - handled by backend warnings
   
   // Check if there are any backend validation warnings that should prevent showing "looks good"
   const hasBackendWarnings = useMemo(() => {
     if (!wizardData.validationResults?.warnings) return false;
     
-    return wizardData.validationResults.warnings.some((warning: any) => {
+    console.log('🔧 DEBUG: Filtering warnings. Total warnings:', wizardData.validationResults.warnings.length);
+    console.log('🔧 DEBUG: Fixed issues set:', Array.from(fixedIssues));
+    console.log('🔧 DEBUG: All warning IDs:', wizardData.validationResults.warnings.map((w: ValidationWarning) => w.id));
+    
+    const visibleWarnings = wizardData.validationResults.warnings.filter((warning: any) => {
       // Hide CDM-related warnings if user has already chosen to use CDM entities
       if (wizardData.entityChoice === 'cdm' && 
           (warning.category === 'cdm' || warning.type === 'cdm_entity_detected' || warning.type === 'cdm_summary')) {
@@ -392,66 +388,24 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         }
       }
       
-      // Check if this specific warning has been fixed by the user
-      if (warning.type === 'missing_primary_key') {
-        const entityMatch = warning.message.match(/Entity '(\w+)'/);
-        if (entityMatch) {
-          const warningId = `missing_primary_key_${entityMatch[1]}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
-      } else if (warning.type === 'missing_foreign_key') {
-        const entityMatch = warning.message.match(/no foreign key found in '(\w+)'/) || warning.message.match(/Relationship defined but no foreign key found in '(\w+)'/);
-        const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
-        if (entityMatch && relationshipMatch) {
-          const warningId = `missing_foreign_key_${entityMatch[1]}_${relationshipMatch[1]}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
-      } else if (warning.type === 'foreign_key_naming') {
-        const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
-        if (relationshipMatch) {
-          const warningId = `foreign_key_naming_${relationshipMatch[2]}_${relationshipMatch[1]}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
-      } else if (warning.type === 'naming_conflict') {
-        const entityName = warning.entity || warning.message.match(/Entity '(\w+)'/)?.[1];
-        if (entityName) {
-          // Check if this entity actually has a 'name' column in the current ERD content
-          const entityRegex = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-          const entityMatch = correctedErdContent.match(entityRegex);
-          if (entityMatch && entityMatch[0]) {
-            // Check if there's actually a literal 'name' column (not event_name, location_name, etc.)
-            const hasLiteralNameColumn = /\bstring\s+name\s+/i.test(entityMatch[0]);
-            if (!hasLiteralNameColumn) {
-              return false; // False positive, don't count it
-            }
-          }
-          
-          const warningId = `naming_conflict_${entityName}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
-      } else if (warning.type === 'multiple_primary_keys') {
-        const entityMatch = warning.message.match(/Entity '(\w+)'/);
-        if (entityMatch) {
-          const warningId = `multiple_primary_keys_${entityMatch[1]}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
-      } else if (warning.type === 'duplicate_columns') {
-        const entityName = warning.entity;
-        if (entityName) {
-          const warningId = `duplicate_columns_${entityName}`;
-          if (fixedIssues.has(warningId)) return false;
-        }
+      // Check if this specific warning has been fixed by the user using the actual backend warning ID
+      if (fixedIssues.has(warning.id)) {
+        console.log('🔧 DEBUG: Warning filtered out (already fixed):', warning.id, warning.type);
+        return false;
       }
       
       // Count all non-auto-fixed warnings except pure info messages (like status column info)
       return !warning.autoFixed && warning.severity !== 'info';
     });
+    
+    console.log('🔧 DEBUG: Visible warnings after filtering:', visibleWarnings.length);
+    return visibleWarnings.length > 0;
   }, [wizardData.validationResults, wizardData.entityChoice, fixedIssues, correctedErdContent]);
   
   // Check if ERD has any issues at all
-  const hasAnyIssues = hasChoiceIssues || hasNamingIssues || hasBackendWarnings;
+  const hasAnyIssues = hasBackendWarnings; // Only backend warnings matter now
 
-  // Re-render diagram when content changes AND user has made entity choice AND no validation issues
+  // Re-render diagram when content, theme, or validation state changes
   useEffect(() => {
     // Only render diagram if:
     // 1. We have content AND
@@ -468,26 +422,19 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       cdmDetected,
       hasChoiceIssues,
       hasNamingIssues,
-      shouldRender
+      shouldRender,
+      effectiveTheme
     });
     
     if (shouldRender) {
-      renderMermaidDiagram();
+      // Add small delay to ensure DOM is ready and prevent rapid re-renders
+      const timeoutId = setTimeout(() => {
+        renderMermaidDiagram();
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasAnyIssues]);
-
-  // Re-render diagram when theme changes (if all conditions are met)
-  useEffect(() => {
-    const shouldRender = correctedErdContent && 
-                         (entityChoice || !cdmDetected) && 
-                         !hasChoiceIssues && 
-                         !hasNamingIssues;
-    
-    if (shouldRender) {
-      console.log('🎨 DEBUG: Theme changed, re-rendering diagram');
-      setTimeout(() => renderMermaidDiagram(), 100);
-    }
-  }, [effectiveTheme, renderMermaidDiagram, correctedErdContent, entityChoice, cdmDetected, hasAnyIssues]);
+  }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasAnyIssues, effectiveTheme]);
 
   const applyChoiceColumnFix = useCallback(() => {
     let updatedContent = correctedErdContent;
@@ -551,380 +498,72 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     });
   }, [correctedErdContent, fixedIssues, updateWizardData, wizardData.validationResults]);
 
-  const handleBackendWarningFix = useCallback(async (warning: any) => {
-    console.log('🔧 DEBUG: handleBackendWarningFix called with warning type:', warning.type, 'entity:', warning.entity);
-    let updatedContent = correctedErdContent;
-    let warningId = '';
+  const handleBackendWarningFix = useCallback(async (warningOrId: any) => {
+    console.log('🔧 DEBUG: handleBackendWarningFix called with:', warningOrId);
     
-    // Ensure we have proper line breaks before processing
-    if (updatedContent.includes('\\n')) {
-      updatedContent = updatedContent.replace(/\\n/g, '\n');
+    // Handle both warning object and warning ID
+    const warningId = typeof warningOrId === 'string' ? warningOrId : warningOrId?.id;
+    
+    if (!warningId) {
+      console.error('Warning ID not found in:', warningOrId);
+      return;
     }
-    
-    if (warning.type === 'missing_primary_key') {
-      // Extract entity name from warning message
-      const entityMatch = warning.message.match(/Entity '(\w+)'/);
-      if (entityMatch) {
-        const entityName = entityMatch[1];
-        warningId = `missing_primary_key_${entityName}`;
-        
-        // Check if entity already has columns that could be primary keys
-        const entityRegex = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-        const entityContentMatch = updatedContent.match(entityRegex);
-        if (entityContentMatch && entityContentMatch[0]) {
-          // Look for an existing id-like column that's not marked as PK
-          const idColumnMatch = entityContentMatch[0].match(/((?:string|int)\s+)(\w*id\w*|id)(\s+(?!PK)[^\n]*)/i);
-          if (idColumnMatch) {
-            // Mark existing id column as PK
-            const oldColumn = idColumnMatch[0];
-            const newColumn = `${idColumnMatch[1]}${idColumnMatch[2]} PK${idColumnMatch[3]}`;
-            updatedContent = updatedContent.replace(oldColumn, newColumn);
-          } else {
-            // Add a new primary key attribute to the entity - preserve line structure
-            const entityPattern = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)(\\n\\s*\\})`, 'g');
-            updatedContent = updatedContent.replace(entityPattern, `$1\n        string id PK "Unique identifier"$2`);
-          }
-        }
-      }
-    } else if (warning.type === 'multiple_primary_keys') {
-      // Fix multiple primary keys based on the specific issue
-      const entityMatch = warning.message.match(/Entity '(\w+)'/);
-      if (entityMatch) {
-        const entityName = entityMatch[1];
-        warningId = `multiple_primary_keys_${entityName}`;
-        console.log('🔧 DEBUG: Fixing multiple primary keys for entity:', entityName);
-        
-        // Find the entity and analyze its columns
-        const entityRegex = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-        updatedContent = updatedContent.replace(entityRegex, (entityMatch) => {
-          console.log('🔧 DEBUG: Entity content before fix:', entityMatch);
-          
-          // Collect all columns and their current attributes
-          const columnRegex = /((?:string|int|number|datetime|date|time|bool|boolean)\s+\w+)\s*([^\n\r]*)?/g;
-          const columns = [];
-          let match;
-          
-          while ((match = columnRegex.exec(entityMatch)) !== null) {
-            const attributes = (match[2] || '').trim();
-            columns.push({
-              fullMatch: match[0],
-              columnDef: match[1],
-              attributes: attributes,
-              hasPK: attributes.includes('PK'),
-              hasFK: attributes.includes('FK')
-            });
-          }
-          
-          console.log('🔧 DEBUG: Found columns:', columns.map(c => ({ def: c.columnDef, attrs: c.attributes, hasPK: c.hasPK, hasFK: c.hasFK })));
-          
-          const pkColumns = columns.filter(col => col.hasPK);
-          const fkColumns = columns.filter(col => col.hasFK);
-          
-          let result = entityMatch;
-          
-          if (pkColumns.length > 1) {
-            // Case 1: Multiple PK columns - keep only the first one
-            console.log('🔧 DEBUG: Case 1 - Multiple PKs, keeping first');
-            let foundFirstPK = false;
-            result = result.replace(columnRegex, (match, columnDef, attributes) => {
-              const attrs = (attributes || '').trim();
-              if (attrs.includes('PK')) {
-                if (!foundFirstPK) {
-                  foundFirstPK = true;
-                  console.log('🔧 DEBUG: Keeping first PK:', match);
-                  return match;
-                } else {
-                  // Remove PK, keep FK if present
-                  let cleanedAttrs = attrs.replace(/\bPK\b/g, '').replace(/\s+/g, ' ').trim();
-                  if (cleanedAttrs.includes('FK')) {
-                    const fkMatch = cleanedAttrs.match(/FK(\s*"[^"]*")?/);
-                    cleanedAttrs = fkMatch ? fkMatch[0] : 'FK';
-                  }
-                  const newResult = cleanedAttrs ? `${columnDef} ${cleanedAttrs}` : columnDef;
-                  console.log('🔧 DEBUG: Removed extra PK:', match, '->', newResult);
-                  return newResult;
-                }
-              }
-              return match;
-            });
-          } else if (pkColumns.length === 0 && fkColumns.length >= 2) {
-            // Case 2: Junction table - no PKs but multiple FKs
-            // Convert all FKs to PKs (composite primary key for junction table)
-            console.log('🔧 DEBUG: Case 2 - Junction table, converting FKs to PKs');
-            result = result.replace(columnRegex, (match, columnDef, attributes) => {
-              const attrs = (attributes || '').trim();
-              if (attrs.includes('FK')) {
-                // Extract FK description if present
-                const fkDescMatch = attrs.match(/FK\s*"([^"]*)"/);
-                const description = fkDescMatch ? ` "Primary key - references ${fkDescMatch[1]}"` : '';
-                const newResult = `${columnDef} PK${description}`;
-                console.log('🔧 DEBUG: Converted FK to PK:', match, '->', newResult);
-                return newResult;
-              }
-              return match;
-            });
-          } else if (pkColumns.length === 0) {
-            // Case 3: No PKs at all - add PK to first suitable column
-            console.log('🔧 DEBUG: Case 3 - No PKs, adding to first column');
-            let addedPK = false;
-            result = result.replace(columnRegex, (match, columnDef, attributes) => {
-              if (!addedPK && !attributes.includes('FK')) {
-                addedPK = true;
-                const newResult = attributes ? `${columnDef} PK ${attributes}` : `${columnDef} PK`;
-                console.log('🔧 DEBUG: Added PK to first column:', match, '->', newResult);
-                return newResult;
-              }
-              return match;
-            });
-          }
-          
-          console.log('🔧 DEBUG: Entity content after fix:', result);
-          return result;
-        });
-      }
-    } else if (warning.type === 'missing_foreign_key') {
-      // Extract entity and foreign key info from warning
-      const entityMatch = warning.message.match(/no foreign key found in '(\w+)'/) || warning.message.match(/Relationship defined but no foreign key found in '(\w+)'/);
-      const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
+
+    try {
+      console.log('🔧 DEBUG: Sending to API:', {
+        mermaidContentLength: correctedErdContent?.length,
+        mermaidContentPreview: correctedErdContent?.substring(0, 200),
+        warningId: warningId
+      });
       
-      if (entityMatch && relationshipMatch) {
-        const entityName = entityMatch[1];
-        const fromEntity = relationshipMatch[1];
-        const fkName = `${fromEntity.toLowerCase()}_id`;
-        warningId = `missing_foreign_key_${entityName}_${fromEntity}`;
+      // Call the individual fix API
+      const fixResult = await ApiService.fixIndividualWarning({
+        mermaidContent: correctedErdContent,
+        warningId: warningId,
+        options: {}
+      });
+
+      if (fixResult.success && fixResult.fixedContent) {
+        console.log('🔧 DEBUG: Individual fix applied successfully:', fixResult.appliedFix);
         
-        // Add foreign key attribute to the entity - preserve line structure
-        const entityPattern = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)(\\n\\s*\\})`, 'g');
-        updatedContent = updatedContent.replace(entityPattern, 
-          `$1\n        string ${fkName} FK "Foreign key to ${fromEntity}"$2`);
-      }
-    } else if (warning.type === 'foreign_key_naming') {
-      // Extract entity and expected FK info from warning
-      const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
-      
-      if (relationshipMatch) {
-        const fromEntity = relationshipMatch[1];
-        const toEntity = relationshipMatch[2];
-        const expectedFK = `${fromEntity.toLowerCase()}_id`;
-        warningId = `foreign_key_naming_${toEntity}_${fromEntity}`;
-        
-        // Find and rename the specific FK that should reference the fromEntity
-        const entityRegex = new RegExp(`${toEntity}\\s*\\{[\\s\\S]*?\\}`, 'g');
-        updatedContent = updatedContent.replace(entityRegex, (entityMatch) => {
-          // Look for FK that contains the fromEntity name but isn't properly formatted
-          const fromEntityLower = fromEntity.toLowerCase();
-          const fkRegex = new RegExp(`((?:string|int)\\s+)(${fromEntityLower}\\w*)\\s+(FK[^\n]*)`, 'g');
-          
-          return entityMatch.replace(fkRegex, (fkMatch, typePart, currentFK, fkPart) => {
-            // Only rename if it's not already the expected name and relates to this entity
-            if (currentFK !== expectedFK && currentFK.includes(fromEntityLower)) {
-              return `${typePart}${expectedFK} ${fkPart}`;
-            }
-            return fkMatch;
-          });
+        // Update the corrected ERD content
+        updateWizardData({
+          correctedErdContent: fixResult.fixedContent,
+          fixedIssues: new Set([...fixedIssues, warningId])
         });
-      }
-    } else if (warning.type === 'naming_conflict') {
-      // CUSTOM PRIMARY COLUMNS SUPPORT: Handle naming conflicts intelligently
-      const entityName = warning.entity || warning.message.match(/Entity '(\w+)'/)?.[1];
-      console.log('🔧 DEBUG: Extracted entity name:', entityName);
-      if (entityName) {
-        warningId = `naming_conflict_${entityName}`;
-        console.log('🔧 DEBUG: Generated warning ID:', warningId);
-        console.log('🔧 DEBUG: Warning message:', warning.message);
-        
-        // Determine the type of naming conflict and appropriate fix
-        const hasCustomPrimaryColumn = warning.message.includes('custom primary column');
-        const isInfoLevel = warning.severity === 'info';
-        const contentBeforeReplace = updatedContent;
-        
-        if (hasCustomPrimaryColumn) {
-          // Case: Entity has custom PK + separate 'name' column - rename the 'name' column
-          console.log('🔧 DEBUG: Fixing custom primary column naming conflict');
-          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
-          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
-            // Only replace if it's not a PK and is literally 'name'
-            if (!columnDescription.includes('PK')) {
-              const result = `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
-              console.log('🔧 DEBUG: Renamed conflicting name column:', result);
-              return result;
-            }
-            return match;
-          });
-        } else if (isInfoLevel) {
-          // Case: Entity has no explicit PK but has 'name' column - suggest making it primary
-          console.log('🔧 DEBUG: Converting name column to primary key');
-          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
-          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
-            // Add PK to the name column if it doesn't already have it
-            if (!columnDescription.includes('PK')) {
-              const result = `${entityStart}string name PK ${columnDescription}${entityEnd}`;
-              console.log('🔧 DEBUG: Made name column primary:', result);
-              return result;
-            }
-            return match;
-          });
-        } else {
-          // Legacy behavior - rename name column
-          console.log('🔧 DEBUG: Applying legacy naming conflict fix');
-          const entityRegex = new RegExp(`(${entityName}\\s*\\{[\\s\\S]*?)\\bstring\\s+name\\s+([^\n]*?)(\\s*[\\s\\S]*?\\})`, 'g');
-          updatedContent = updatedContent.replace(entityRegex, (match, entityStart, columnDescription, entityEnd) => {
-            if (!columnDescription.includes('PK')) {
-              const result = `${entityStart}string ${entityName.toLowerCase()}_name ${columnDescription}${entityEnd}`;
-              return result;
-            }
-            return match;
-          });
-        }
-        
-        console.log('🔧 DEBUG: Content changed?', contentBeforeReplace !== updatedContent);
-        console.log('🔧 DEBUG: Content after naming fix:', updatedContent);
-      }
-    } else if (warning.type === 'duplicate_columns') {
-      // Fix duplicate columns by renaming duplicates with incremental suffixes
-      const entityName = warning.entity;
-      if (entityName && warning.columns) {
-        warningId = `duplicate_columns_${entityName}`;
-        
-        const entityRegex = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-        updatedContent = updatedContent.replace(entityRegex, (entityMatch) => {
-          let modifiedEntity = entityMatch;
-          
-          // For each duplicate column, rename subsequent occurrences
-          warning.columns.forEach((duplicateColumn: string) => {
-            const columnRegex = new RegExp(`((?:string|int)\\s+)${duplicateColumn}(\\s+[^\n]*)`, 'gi');
-            let occurrenceCount = 0;
-            
-            modifiedEntity = modifiedEntity.replace(columnRegex, (match, typePart, rest) => {
-              occurrenceCount++;
-              if (occurrenceCount === 1) {
-                return match; // Keep first occurrence as is
-              } else {
-                return `${typePart}${duplicateColumn}_${occurrenceCount}${rest}`;
-              }
-            });
-          });
-          
-          return modifiedEntity;
-        });
-        
-        console.log(`Fixed duplicate columns in ${entityName}: ${warning.columns.join(', ')}`);
-      }
-    }
-    
-    // Update the content and mark as fixed
-    updateWizardData({ 
-      correctedErdContent: updatedContent,
-      fixedIssues: new Set([...fixedIssues, warningId])
-    });
-    
-    // Debounce re-validation to prevent multiple simultaneous calls
-    if (revalidationTimeoutRef.current) {
-      clearTimeout(revalidationTimeoutRef.current);
-    }
-    
-    console.log('🔧 DEBUG: Scheduling re-validation...');
-    revalidationTimeoutRef.current = setTimeout(async () => {
-      console.log('🔧 DEBUG: Starting re-validation...');
-      try {
-        const validationResult = await ApiService.validateFile({
-          name: wizardData.uploadedFile?.name || 'corrected.mmd',
-          content: updatedContent,
-          size: updatedContent.length,
+
+        // Re-validate to get updated warnings
+        const revalidationResult = await ApiService.validateFile({
+          name: uploadedFile?.name || 'fixed.mmd',
+          content: fixResult.fixedContent,
+          size: fixResult.fixedContent.length,
           lastModified: Date.now()
         }, wizardData.entityChoice);
-        
-        console.log('🔧 DEBUG: Re-validation completed, new warnings:', validationResult.warnings?.length || 0);
-        console.log('🔧 DEBUG: New warnings details:', validationResult.warnings?.map(w => `${w.type}: ${w.entity || 'N/A'} - ${w.message?.substring(0, 50)}...`));
-        
-        // Update with fresh validation results
-        updateWizardData({
-          validationResults: validationResult,
-          correctedErdContent: validationResult.correctedERD || updatedContent,
-          parsedEntities: validationResult.entities || [],
-          relationships: validationResult.relationships || [],
-          cdmEntitiesDetected: validationResult.cdmEntitiesDetected || [],
-          hasErrors: validationResult.hasErrors || false
-        });
-      } catch (error) {
-        console.error('🔧 ERROR: Re-validation failed:', error);
-      }
-    }, 500); // 500ms debounce
-  }, [correctedErdContent, fixedIssues, updateWizardData, wizardData.uploadedFile]);
 
-  const applyAllFixes = useCallback(() => {
-    let updatedContent = correctedErdContent;
-    
-    // Apply all fixes in sequence
-    // Remove choice and category columns from any entity (if needed)
-    if (hasChoiceIssues) {
-      updatedContent = updatedContent.replace(/^\s*\w+\s+(choice|category)\s+\w+.*$/gm, '');
-    }
-    
-    // Fix naming conflicts for all entities with conflicts
-    if (hasNamingIssues) {
-      namingConflicts.forEach(entityName => {
-        const entityPattern = new RegExp(`(${entityName}\\s*\\{[^}]*?)\\s+string\\s+name`, 'gs');
-        updatedContent = updatedContent.replace(entityPattern, `$1 string ${entityName.toLowerCase()}_name`);
-      });
-    }
-    
-    // Apply backend warning fixes
-    wizardData.validationResults?.warnings?.forEach((warning: any) => {
-      if (!warning.autoFixed && (warning.type === 'missing_primary_key' || warning.type === 'missing_foreign_key' || warning.type === 'foreign_key_naming')) {
-        if (warning.type === 'missing_primary_key') {
-          const entityMatch = warning.message.match(/Entity '(\w+)'/);
-          if (entityMatch) {
-            const entityName = entityMatch[1];
-            const entityPattern = new RegExp(`(${entityName}\\s*\\{[^}]*?)(\\s*\\})`, 'gs');
-            updatedContent = updatedContent.replace(entityPattern, `$1        string id PK "Unique identifier"$2`);
-          }
-        } else if (warning.type === 'missing_foreign_key') {
-          const entityMatch = warning.message.match(/no foreign key found in '(\w+)'/) || warning.message.match(/Relationship defined but no foreign key found in '(\w+)'/);
-          const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
-          
-          if (entityMatch && relationshipMatch) {
-            const entityName = entityMatch[1];
-            const fromEntity = relationshipMatch[1];
-            const fkName = `${fromEntity.toLowerCase()}_id`;
-            
-            const entityPattern = new RegExp(`(${entityName}\\s*\\{[^}]*?)(\\s*\\})`, 'gs');
-            updatedContent = updatedContent.replace(entityPattern, 
-              `$1        string ${fkName} FK "Foreign key to ${fromEntity}"$2`);
-          }
-        } else if (warning.type === 'foreign_key_naming') {
-          const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
-          
-          if (relationshipMatch) {
-            const fromEntity = relationshipMatch[1];
-            const toEntity = relationshipMatch[2];
-            const expectedFK = `${fromEntity.toLowerCase()}_id`;
-            
-            // Find and rename the specific FK that should reference the fromEntity
-            const entityRegex = new RegExp(`${toEntity}\\s*\\{[\\s\\S]*?\\}`, 'g');
-            updatedContent = updatedContent.replace(entityRegex, (entityMatch) => {
-              // Look for FK that contains the fromEntity name but isn't properly formatted
-              const fromEntityLower = fromEntity.toLowerCase();
-              const fkRegex = new RegExp(`(string\\s+)(${fromEntityLower}\\w*)\\s+(FK[^\\n]*)`, 'g');
-              
-              return entityMatch.replace(fkRegex, (fkMatch, stringPart, currentFK, fkPart) => {
-                // Only rename if it's not already the expected name and relates to this entity
-                if (currentFK !== expectedFK && currentFK.includes(fromEntityLower)) {
-                  return `${stringPart}${expectedFK} ${fkPart}`;
-                }
-                return fkMatch;
-              });
-            });
-          }
-        }
+        updateWizardData({
+          validationResults: revalidationResult
+        });
+
+      } else {
+        console.error('Individual fix failed:', fixResult.error || 'Unknown error');
       }
-    });
+    } catch (error) {
+      console.error('Error applying individual fix:', error);
+    }
+  }, [correctedErdContent, fixedIssues, updateWizardData, uploadedFile, wizardData.entityChoice]);
+
+  const applyAllFixes = useCallback(async () => {
+    // Apply all auto-fixable warnings one by one
+    const autoFixableWarnings = wizardData.validationResults?.warnings?.filter((w: ValidationWarning) => w.autoFixable) || [];
     
-    updateWizardData({ 
-      correctedErdContent: updatedContent,
-      fixedIssues: new Set(['naming-conflicts', 'choice-columns', 'backend-warnings'])
-    });
-  }, [correctedErdContent, updateWizardData, hasChoiceIssues, hasNamingIssues, namingConflicts, wizardData.validationResults]);
+    for (const warning of autoFixableWarnings) {
+      try {
+        await handleBackendWarningFix(warning.id);
+      } catch (error) {
+        console.error('Failed to fix warning:', warning.id, error);
+      }
+    }
+  }, [handleBackendWarningFix, wizardData.validationResults]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -1183,18 +822,20 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                     {/* Warning messages for fixable warnings */}
                     {wizardData.validationResults.warnings
                       .filter((warning: any) => {
-                        // Use the same filtering logic as fixable warnings
+                        // Hide CDM-related warnings if user has already chosen to use CDM entities
                         if (wizardData.entityChoice === 'cdm' && 
                             (warning.category === 'cdm' || warning.type === 'cdm_entity_detected' || warning.type === 'cdm_summary')) {
                           return false;
                         }
                         
+                        // Never show warnings for CDM entities (Account, Contact)
                         const cdmEntities = ['Account', 'Contact'];
                         if (warning.entity && cdmEntities.includes(warning.entity)) {
                           return false;
                         }
                         
-                        if (warning.type === 'foreign_key_naming' && warning.relationship) {
+                        // For FK warnings, also check the relationship field for CDM entities
+                        if (warning.relationship) {
                           const relationshipMatch = warning.relationship.match(/(\w+)\s*→\s*(\w+)/);
                           if (relationshipMatch) {
                             const [, fromEntity, toEntity] = relationshipMatch;
@@ -1204,21 +845,8 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                           }
                         }
                         
-                        if (warning.type === 'naming_conflict') {
-                          const entityName = warning.entity || warning.message.match(/Entity '(\w+)'/)?.[1];
-                          if (entityName) {
-                            const entityRegex = new RegExp(`${entityName}\\s*\\{[\\s\\S]*?\\}`, 'g');
-                            const entityMatch = correctedErdContent.match(entityRegex);
-                            if (entityMatch && entityMatch[0]) {
-                              const hasLiteralNameColumn = /\bstring\s+name\s+/i.test(entityMatch[0]);
-                              if (!hasLiteralNameColumn) {
-                                return false;
-                              }
-                            }
-                          }
-                        }
-                        
-                        return !warning.autoFixed && (warning.type === 'missing_primary_key' || warning.type === 'missing_foreign_key' || warning.type === 'foreign_key_naming' || warning.type === 'naming_conflict' || warning.type === 'multiple_primary_keys' || warning.type === 'duplicate_columns');
+                        // Show all warnings that are auto-fixable and not already auto-fixed or user-fixed
+                        return !warning.autoFixed && warning.autoFixable === true && !fixedIssues.has(warning.id);
                       })
                       .map((warning: any, index: number) => (
                         <MessageBar 
@@ -1228,6 +856,9 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                         >
                           <MessageBarBody>
                             <strong>Warning: {warning.message}</strong><br />
+                            <Text style={{ fontSize: '10px', color: tokens.colorNeutralForeground3, fontFamily: 'monospace' }}>
+                              ID: {warning.id}
+                            </Text><br />
                             <Text style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
                               {warning.suggestion || 'This issue can be automatically fixed.'}
                             </Text>
@@ -1252,7 +883,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                         }
                         
                         // For FK warnings, also check the relationship field for CDM entities
-                        if (warning.type === 'foreign_key_naming' && warning.relationship) {
+                        if (warning.relationship) {
                           const relationshipMatch = warning.relationship.match(/(\w+)\s*→\s*(\w+)/);
                           if (relationshipMatch) {
                             const [, fromEntity, toEntity] = relationshipMatch;
@@ -1335,17 +966,29 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                           }
                         }
                         
-                        return !warning.autoFixed && (warning.type === 'missing_primary_key' || warning.type === 'missing_foreign_key' || warning.type === 'foreign_key_naming' || warning.type === 'naming_conflict' || warning.type === 'multiple_primary_keys' || warning.type === 'duplicate_columns');
+                        // Show all warnings that are auto-fixable and not already auto-fixed or user-fixed
+                        return !warning.autoFixed && warning.autoFixable === true && !fixedIssues.has(warning.id);
                       })
                       .map((warning: any, index: number) => {
                         let entityName = 'Entity';
-                        if (warning.type === 'foreign_key_naming') {
+                        
+                        // First try to get entity name from warning.entity field
+                        if (warning.entity) {
+                          entityName = warning.entity;
+                        } else if (warning.type === 'foreign_key_naming') {
                           // For foreign key naming, extract the target entity from the relationship
                           const relationshipMatch = warning.relationship?.match(/(\w+)\s*→\s*(\w+)/);
                           entityName = relationshipMatch ? relationshipMatch[2] : 'Entity';
                         } else {
-                          // For other warning types, extract from message
-                          const entityMatch = warning.message.match(/Entity '(\w+)'/) || warning.message.match(/no foreign key found in '(\w+)'/) || warning.message.match(/Relationship defined but no foreign key found in '(\w+)'/);
+                          // For other warning types, extract from message using multiple patterns
+                          const entityMatch = warning.message.match(/Entity '(\w+)'/) || 
+                                            warning.message.match(/entity '(\w+)'/) ||
+                                            warning.message.match(/no foreign key found in '(\w+)'/) || 
+                                            warning.message.match(/Relationship defined but no foreign key found in '(\w+)'/) ||
+                                            warning.message.match(/in entity (\w+)/) ||
+                                            warning.message.match(/(\w+) entity/) ||
+                                            warning.message.match(/for (\w+):/) ||
+                                            warning.message.match(/(\w+) has/);
                           entityName = entityMatch ? entityMatch[1] : 'Entity';
                         }
                         
@@ -1491,6 +1134,9 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                       >
                         <MessageBarBody>
                           <strong>{warning.severity === 'info' ? 'Info' : 'Warning'}: {warning.message}</strong><br />
+                          <Text style={{ fontSize: '10px', color: tokens.colorNeutralForeground3, fontFamily: 'monospace' }}>
+                            ID: {warning.id}
+                          </Text><br />
                           <Text style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
                             {warning.suggestion || warning.message}
                           </Text>
@@ -1556,7 +1202,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                 onClick={() => applyNamingConflictFixForEntity(entityName)}
                                 style={{ marginLeft: '12px', flexShrink: 0 }}
                               >
-                                Fix this
+                                Fix this (N/A)
                               </Button>
                             </div>
                           </MessageBarBody>
@@ -1585,7 +1231,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                     className={styles.fixButton}
                                     onClick={applyChoiceColumnFix}
                                   >
-                                    Fix this
+                                    Fix this (N/A)
                                   </Button>
                                 </div>
                                 <div className={styles.comparisonGrid}>
@@ -1648,7 +1294,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                       className={styles.fixButton}
                                       onClick={() => applyNamingConflictFixForEntity(entityName)}
                                     >
-                                      Fix this
+                                      Fix this (N/A)
                                     </Button>
                                   </div>
                                   <div className={styles.comparisonGrid}>

@@ -37,7 +37,7 @@ class MermaidERDParser {
 
       // Check if this is an entity definition start
       if (line.includes('{')) {
-        const entityMatch = line.match(/^(\w+)\s*\{/);
+        const entityMatch = line.match(/^([A-Za-z0-9_-]+)\s*\{/);
         if (entityMatch) {
           currentEntity = entityMatch[1];
           this.entities.set(currentEntity, {
@@ -61,12 +61,17 @@ class MermaidERDParser {
 
       // Parse attribute within entity definition
       if (inEntityDefinition && currentEntity) {
+        console.log(`🔍 DEBUG: Parsing line in entity ${currentEntity}: "${line}"`);
         const attribute = this.parseAttribute(line);
         if (attribute) {
-          // Filter out system timestamp and user fields that Dataverse provides automatically
+          console.log(`🔍 DEBUG: Parsed attribute:`, { name: attribute.name, isPrimaryKey: attribute.isPrimaryKey, type: attribute.type });
+          // Check for system timestamp and user fields - still parse them for validation warnings
           const systemFieldsToIgnore = ['createdon', 'createdby', 'modifiedon', 'modifiedby'];
           if (systemFieldsToIgnore.includes(attribute.name.toLowerCase())) {
-            console.log(`🔍 Ignoring system field: ${attribute.name} (automatically provided by Dataverse)`);
+            console.log(`🔍 Detected system field: ${attribute.name} (will be flagged for validation)`);
+            // Mark as system field for validation but still add to entity
+            attribute.isSystemField = true;
+            this.entities.get(currentEntity).attributes.push(attribute);
           } else if (attribute.isForeignKey) {
             // For foreign key attributes, we still add them to the entity model for relationship validation,
             // but they won't be created as regular attributes - the relationship creation will handle them
@@ -83,6 +88,8 @@ class MermaidERDParser {
             entity.primaryColumnDisplayName = attribute.displayName || attribute.description;
             console.log(`🔍 Custom primary column detected: ${attribute.name} for entity ${currentEntity}`);
           }
+        } else {
+          console.log(`🔍 DEBUG: Failed to parse line as attribute: "${line}"`);
         }
         continue;
       }
@@ -135,15 +142,56 @@ class MermaidERDParser {
       return null;
     }
     
-    // Pattern: type name [constraints] [description] - ONLY for entity attributes
-    const attributePattern = /^((?:choice\([^)]+\)|lookup\([^)]+\)|\w+))\s+(\w+)(?:\s+([^"]+?))?(?:\s+"([^"]*)")?$/;
-    const match = line.match(attributePattern);
+    // Check if the line follows the format: name constraints description (no type)
+    // This happens when the second word is a constraint like PK, FK, UK, etc.
+    const constraintKeywords = ['PK', 'FK', 'UK', 'NOT', 'NULL'];
+    const parts = line.split(/\s+/);
+    const hasConstraintAsSecondWord = parts.length >= 2 && constraintKeywords.some(keyword => parts[1].includes(keyword));
 
-    if (!match) {
-      return null;
+    let type, name, constraints = '', description = '';
+
+    if (hasConstraintAsSecondWord) {
+      // Pattern: name [constraints] [description] - Type omitted format
+      // Made more permissive to capture any attribute name, validation happens later
+      const shortAttributePattern = /^([^\s"]+)(?:\s+([^"]+?))?(?:\s+"([^"]*)")?$/;
+      const shortMatch = line.match(shortAttributePattern);
+      
+      if (shortMatch) {
+        [, name, constraints = '', description = ''] = shortMatch;
+        // Default type when not specified
+        type = 'string';
+        console.log(`🔍 DEBUG: Short pattern matched (constraint detected) - name: ${name}, constraints: ${constraints}, description: ${description} (defaulting type to 'string')`);
+      } else {
+        console.log(`🔍 DEBUG: Short pattern failed to match line: "${line}"`);
+        return null;
+      }
+    } else {
+      // Try full pattern first: type name [constraints] [description]
+      // Made more permissive to capture any attribute name, validation happens later
+      const fullAttributePattern = /^((?:choice\([^)]+\)|lookup\([^)]+\)|\w+))\s+([^\s"]+)(?:\s+([^"]+?))?(?:\s+"([^"]*)")?$/;
+      const fullMatch = line.match(fullAttributePattern);
+
+      if (fullMatch) {
+        [, type, name, constraints = '', description = ''] = fullMatch;
+        console.log(`🔍 DEBUG: Full pattern matched - type: ${type}, name: ${name}, constraints: ${constraints}, description: ${description}`);
+      } else {
+        // Fall back to short pattern: name [description] (no type, no constraints)  
+        // Made more permissive to capture any attribute name, validation happens later
+        const shortAttributePattern = /^([^\s"]+)(?:\s+"([^"]*)")?$/;
+        const shortMatch = line.match(shortAttributePattern);
+        
+        if (shortMatch) {
+          [, name, description = ''] = shortMatch;
+          // Default type when not specified
+          type = 'string';
+          constraints = '';
+          console.log(`🔍 DEBUG: Short pattern matched (no constraints) - name: ${name}, description: ${description} (defaulting type to 'string')`);
+        } else {
+          console.log(`🔍 DEBUG: No pattern matched for line: "${line}"`);
+          return null;
+        }
+      }
     }
-
-    const [, type, name, constraints = '', description = ''] = match;
     const typeInfo = this.mapMermaidTypeToDataverse(type);
     const initialType = typeInfo.dataType || typeInfo;
     
@@ -483,14 +531,22 @@ class MermaidERDParser {
 
     // CRITICAL: Check for multiple primary keys
     const primaryKeys = entity.attributes.filter(attr => attr.isPrimaryKey);
+    console.log(`🔍 DEBUG: Entity '${entityName}' primary key check:`, {
+      totalAttributes: entity.attributes.length,
+      attributesWithPK: entity.attributes.map(attr => ({ name: attr.name, isPrimaryKey: attr.isPrimaryKey })),
+      primaryKeyCount: primaryKeys.length
+    });
+    
     if (primaryKeys.length === 0) {
+      console.log(`🔍 DEBUG: Adding missing_primary_key warning for ${entityName}`);
       this.warnings.push({
         type: 'missing_primary_key',
         severity: 'error',
         entity: entityName,
         message: `Entity '${entityName}' must have exactly one primary key (PK) attribute.`,
         suggestion: 'Add a primary key attribute with PK constraint to one of your columns.',
-        category: 'structure'
+        category: 'structure',
+        autoFixable: true
       });
     } else if (primaryKeys.length > 1) {
       this.warnings.push({
@@ -643,7 +699,13 @@ class MermaidERDParser {
             relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
             message: `Relationship defined but no foreign key found in '${relationship.toEntity}'.`,
             suggestion: `Add a foreign key field '${expectedFK} FK' to entity '${relationship.toEntity}' or ensure one of the existing FK fields handles this relationship.`,
-            category: 'relationships'
+            category: 'relationships',
+            autoFixable: true,
+            fixData: {
+              entityName: relationship.toEntity,
+              columnName: expectedFK,
+              referencedEntity: relationship.fromEntity
+            }
           });
         } else if (!hasMatchingFK) {
           // There are FKs but none match the expected pattern - this should be fixable

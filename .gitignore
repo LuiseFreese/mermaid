@@ -29,6 +29,7 @@ src/backup-server.js
 src/server-old.js
 deploy.zip
 deploy-temp/
+test-files/
 
 
 # Project management
@@ -40,6 +41,9 @@ docs/NEXT-FEATURES-ROADMAP.md
 STEP1-MODULARIZATION-PLAN.md
 STEP2-MODULARIZATION-PLAN.md
 FUTURE-IMPROVEMENTS.md
+
+# Release notes (generated for GitHub releases)
+RELEASE-NOTES-*.md
 
 
 

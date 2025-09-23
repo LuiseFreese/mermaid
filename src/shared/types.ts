@@ -32,6 +32,7 @@ export interface ValidationError {
 }
 
 export interface ValidationWarning {
+  id: string;
   severity: 'warning' | 'info' | 'suggestion';
   message: string;
   line?: number;
@@ -43,6 +44,8 @@ export interface ValidationWarning {
   relationship?: string;
   columns?: string[];
   autoFixed?: boolean;
+  autoFixable?: boolean;
+  category?: string;
 }
 
 export interface CDMEntity {

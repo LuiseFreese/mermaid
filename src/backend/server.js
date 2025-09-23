@@ -613,6 +613,36 @@ async function handleApiRoutes(pathname, req, res, components) {
           }));
           return;
         }
+      case 'bulk-fix':
+        if (req.method === 'POST') {
+          return components.validationController.bulkFixWarnings(req, res);
+        } else {
+          // Method not allowed
+          res.writeHead(405, {
+            'Content-Type': 'application/json',
+            'Allow': 'POST'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }));
+          return;
+        }
+      case 'fix-warning':
+        if (req.method === 'POST') {
+          return components.validationController.fixWarning(req, res);
+        } else {
+          // Method not allowed
+          res.writeHead(405, {
+            'Content-Type': 'application/json',
+            'Allow': 'POST'
+          });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }));
+          return;
+        }
     }
   }
 

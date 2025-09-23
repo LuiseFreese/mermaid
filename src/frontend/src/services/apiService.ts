@@ -56,7 +56,23 @@ export class ApiService {
       } else {
         throw new Error(response.data.error || response.data.message || 'Validation failed');
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Handle 422 responses specially - they contain validation warnings, not errors
+      if (error.response?.status === 422 && error.response?.data) {
+        console.log('🔍 DEBUG: Handling 422 response with validation data:', error.response.data);
+        
+        // 422 means validation found warnings - treat as successful validation with issues
+        const validationData = error.response.data;
+        
+        // Check if we have the full validation data structure (after backend fix)
+        if (validationData.entities || validationData.warnings) {
+          // Return the validation data as if it was a successful response
+          const { success, message, errors, ...validationResult } = validationData;
+          console.log('🔍 DEBUG: Extracted validation result from 422:', validationResult);
+          return validationResult as ValidationResult;
+        }
+      }
+      
       console.error('File validation error:', error);
       throw error;
     }
@@ -167,6 +183,29 @@ export class ApiService {
       return result || { success: false, error: 'No result received' };
     } catch (error) {
       console.error('Deployment error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix an individual warning by ID
+   */
+  static async fixIndividualWarning(data: {
+    mermaidContent: string;
+    warningId: string;
+    options?: any;
+  }): Promise<{
+    success: boolean;
+    fixedContent?: string;
+    appliedFix?: any;
+    remainingWarnings?: any[];
+    error?: string;
+  }> {
+    try {
+      const response: AxiosResponse<any> = await api.post('/validation/fix-warning', data);
+      return response.data;
+    } catch (error) {
+      console.error('Individual warning fix error:', error);
       throw error;
     }
   }
