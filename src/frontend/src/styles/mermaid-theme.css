@@ -155,3 +155,24 @@
 [data-theme="pink"] .mermaid svg .er-relationshipLabel {
   fill: #323130 !important;
 }
+
+/* Neon theme ERD styling 🌈✨ */
+[data-theme="neon"] .mermaid svg .er-entityNameText {
+  fill: #ffffff !important;
+  filter: none !important;
+}
+
+[data-theme="neon"] .mermaid svg .er-attributeText {
+  fill: #39ff14 !important;
+  filter: none !important;
+}
+
+[data-theme="neon"] .mermaid svg .er-relationshipLabel {
+  fill: #00ffff !important;
+  filter: none !important;
+}
+
+/* No glow for readable text */
+[data-theme="neon"] .mermaid svg text {
+  filter: none !important;
+}

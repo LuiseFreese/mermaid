@@ -40,9 +40,30 @@ const pinkBrandRamp: BrandVariants = {
   160: "#FCB8FD"
 };
 
+// Neon brand ramp for the synthwave/retrowave theme 🌈✨
+const neonBrandRamp: BrandVariants = {
+  10: "#0A0015",
+  20: "#1A0033", 
+  30: "#2D1B4E",
+  40: "#4A2C7A",
+  50: "#663DA6",
+  60: "#8A2BE2", // BlueViolet - core neon purple
+  70: "#9A44ED",
+  80: "#AA5DF8",
+  90: "#BA76FF",
+  100: "#CA8FFF",
+  110: "#DA8FFF",
+  120: "#EA9FFF",
+  130: "#FAAFFF",
+  140: "#FF007F", // Neon pink accent
+  150: "#FF4DA6",
+  160: "#FF80CC"
+};
+
 export const lightTheme = createLightTheme(brandRamp);
 export const darkTheme = createDarkTheme(brandRamp);
 export const pinkTheme = createLightTheme(pinkBrandRamp);
+export const neonTheme = createDarkTheme(neonBrandRamp);
 
 // Export for use in other components
-export { brandRamp, pinkBrandRamp };
+export { brandRamp, pinkBrandRamp, neonBrandRamp };

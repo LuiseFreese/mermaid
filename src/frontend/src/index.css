@@ -42,3 +42,798 @@ button {
   background-color: #0078d4;
   color: white;
 }
+
+/* ===== NEON THEME VARIABLES ===== */
+:root[data-theme="neon"] {
+  /* 🌈 Core Neon Colors */
+  --neon-pink: #ff007f;
+  --neon-cyan: #00ffff;
+  --neon-purple: #8a2be2;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6600;
+  --neon-blue: #0080ff;
+  
+  /* 🎨 Primary Color Palette */
+  --primary-bg: #0a0015;
+  --secondary-bg: #1a0033;
+  --tertiary-bg: #2d1b4e;
+  --surface-bg: rgba(16, 0, 32, 0.9);
+  --card-bg: rgba(26, 0, 51, 0.8);
+  
+  /* ✨ Glow Effects */
+  --neon-glow-pink: 0 0 5px #ff007f, 0 0 10px #ff007f, 0 0 15px #ff007f, 0 0 20px #ff007f;
+  --neon-glow-cyan: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff, 0 0 20px #00ffff;
+  --neon-glow-purple: 0 0 5px #8a2be2, 0 0 10px #8a2be2, 0 0 15px #8a2be2, 0 0 20px #8a2be2;
+  --neon-glow-green: 0 0 5px #39ff14, 0 0 10px #39ff14, 0 0 15px #39ff14, 0 0 20px #39ff14;
+  
+  /* 🌟 Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #ff007f;
+  --text-accent: #00ffff;
+  --text-muted: #b399ff;
+  
+  /* 📦 UI Elements */
+  --border-color: #ff007f;
+  --border-glow: 0 0 10px #ff007f;
+  --button-bg: linear-gradient(45deg, #ff007f, #8a2be2);
+  --button-hover-bg: linear-gradient(45deg, #ff4da6, #a855f7);
+  
+  /* 🌐 Grid Pattern */
+  --grid-color: rgba(255, 0, 127, 0.3);
+  --grid-size: 20px;
+  
+  /* 🎭 Retrowave Gradients */
+  --bg-gradient: linear-gradient(135deg, #0a0015 0%, #1a0033 50%, #2d1b4e 100%);
+  --surface-gradient: linear-gradient(135deg, rgba(255, 0, 127, 0.1) 0%, rgba(138, 43, 226, 0.1) 100%);
+  --card-gradient: linear-gradient(135deg, rgba(26, 0, 51, 0.9) 0%, rgba(45, 27, 78, 0.9) 100%);
+  
+  /* 🏛️ Banner/Header Colors */
+  --color-banner-background: linear-gradient(135deg, #1a0033 0%, #2d1b4e 50%, #0a0015 100%);
+  --color-banner-text: #ffffff;
+  --color-banner-text-secondary: #b399ff;
+  
+  /* 🌌 General Theme Colors */
+  --color-background: var(--primary-bg);
+  --color-text-primary: var(--text-primary);
+}
+
+/* ===== NEON THEME STYLING ===== */
+[data-theme="neon"] body {
+  background: var(--bg-gradient);
+  color: var(--text-primary);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 🌌 Animated Background Grid */
+[data-theme="neon"] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(255, 0, 127, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 127, 0.3) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  pointer-events: none;
+  z-index: -1;
+  animation: gridPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes gridPulse {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+/* 🎨 Scrollbar Styling */
+[data-theme="neon"] ::-webkit-scrollbar {
+  width: 12px;
+}
+
+[data-theme="neon"] ::-webkit-scrollbar-track {
+  background: var(--primary-bg);
+  border-radius: 6px;
+}
+
+[data-theme="neon"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, var(--neon-pink), var(--neon-cyan));
+  border-radius: 6px;
+  box-shadow: var(--neon-glow-pink);
+}
+
+[data-theme="neon"] ::-webkit-scrollbar-thumb:hover {
+  box-shadow: var(--neon-glow-cyan);
+}
+
+/* ✨ Text Selection */
+[data-theme="neon"] ::selection {
+  background: linear-gradient(45deg, var(--neon-pink), var(--neon-cyan));
+  color: var(--primary-bg);
+  text-shadow: none;
+}
+
+/* 🎯 Focus Styles */
+[data-theme="neon"] :focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+  box-shadow: var(--neon-glow-cyan);
+}
+
+/* 🌟 Neon Text Glow Effect - Subtle for readability */
+[data-theme="neon"] h1 {
+  color: var(--neon-pink);
+  text-shadow: 0 0 8px rgba(255, 0, 127, 0.6);
+}
+
+[data-theme="neon"] h2,
+[data-theme="neon"] h3 {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 3px rgba(0, 255, 255, 0.3);
+}
+
+/* 📝 Subtle styling for main content titles */
+[data-theme="neon"] main h2 {
+  color: var(--text-primary);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="neon"] .neon-text {
+  text-shadow: var(--neon-glow-pink);
+  color: var(--neon-pink);
+}
+
+/* 🌌 Page Background Override */
+[data-theme="neon"] body,
+[data-theme="neon"] #root,
+[data-theme="neon"] div[data-testid="wizard-container"] {
+  background: var(--primary-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 🌟 Ensure all main containers have proper background */
+[data-theme="neon"] main {
+  background: transparent !important;
+}
+
+/* 🎯 Banner/Header Styling for Neon Theme */
+[data-theme="neon"] .header,
+[data-theme="neon"] .banner {
+  background: var(--card-gradient) !important;
+  border-bottom: 1px solid var(--neon-pink) !important;
+  box-shadow: 0 2px 10px rgba(255, 0, 127, 0.3) !important;
+}
+
+/* 💎 Card/Surface Styling */
+[data-theme="neon"] .card,
+[data-theme="neon"] .surface {
+  background: var(--card-gradient);
+  border: 1px solid var(--neon-pink);
+  border-radius: 8px;
+  box-shadow: var(--border-glow), inset 0 0 20px rgba(255, 0, 127, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* 🎮 Button Styling */
+[data-theme="neon"] button {
+  background: var(--button-bg);
+  border: 1px solid var(--neon-pink);
+  color: var(--text-primary);
+  text-shadow: 0 0 5px currentColor;
+  box-shadow: var(--border-glow);
+  transition: all 0.3s ease;
+}
+
+[data-theme="neon"] button:hover {
+  background: var(--button-hover-bg);
+  box-shadow: var(--neon-glow-cyan);
+  transform: translateY(-1px);
+}
+
+/* 🌈 Link Styling */
+[data-theme="neon"] a {
+  color: var(--neon-cyan);
+  text-shadow: var(--neon-glow-cyan);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+[data-theme="neon"] a:hover {
+  color: var(--neon-pink);
+  text-shadow: var(--neon-glow-pink);
+}
+
+/* 🔥 Input Field Styling */
+[data-theme="neon"] input,
+[data-theme="neon"] textarea,
+[data-theme="neon"] select {
+  background: var(--surface-bg);
+  border: 1px solid var(--neon-purple);
+  color: var(--text-primary);
+  border-radius: 4px;
+  box-shadow: inset 0 0 10px rgba(138, 43, 226, 0.3);
+}
+
+[data-theme="neon"] input:focus,
+[data-theme="neon"] textarea:focus,
+[data-theme="neon"] select:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: var(--neon-glow-cyan), inset 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+/* 🎪 Animation for Interactive Elements */
+@keyframes neonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+[data-theme="neon"] .interactive:hover,
+[data-theme="neon"] .glow {
+  animation: neonPulse 2s ease-in-out infinite;
+}
+
+/* 🌠 Futuristic Loading Animation */
+@keyframes neonScan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+[data-theme="neon"] .loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  animation: neonScan 2s linear infinite;
+}
+
+/* 🎨 Special Effects for Code/Pre */
+[data-theme="neon"] pre,
+[data-theme="neon"] code {
+  background: var(--primary-bg);
+  border: 1px solid var(--neon-green);
+  color: var(--neon-green);
+  text-shadow: var(--neon-glow-green);
+  font-family: 'Courier New', monospace;
+}
+
+/* 🌟 Synthwave Sun/Horizon Effect (decorative) */
+[data-theme="neon"] .horizon {
+  background: linear-gradient(
+    to bottom,
+    var(--primary-bg) 0%,
+    var(--neon-purple) 40%,
+    var(--neon-pink) 60%,
+    var(--neon-orange) 80%,
+    var(--neon-orange) 100%
+  );
+  border-radius: 50% 50% 0 0;
+}
+
+/* 🎮 Fluent UI Component Overrides for Neon Theme */
+[data-theme="neon"] .fui-Button {
+  background: var(--button-bg) !important;
+  border-color: var(--neon-pink) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--border-glow) !important;
+}
+
+[data-theme="neon"] .fui-Button:hover {
+  background: var(--button-hover-bg) !important;
+  box-shadow: var(--neon-glow-cyan) !important;
+  transform: translateY(-1px);
+}
+
+[data-theme="neon"] .fui-Card,
+[data-theme="neon"] .fui-Surface {
+  background: var(--card-gradient) !important;
+  border: 1px solid var(--neon-pink) !important;
+  box-shadow: var(--border-glow), inset 0 0 20px rgba(255, 0, 127, 0.1) !important;
+}
+
+[data-theme="neon"] .fui-Input,
+[data-theme="neon"] .fui-Textarea,
+[data-theme="neon"] .fui-Select {
+  background: var(--surface-bg) !important;
+  border-color: var(--neon-purple) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="neon"] .fui-Input:focus,
+[data-theme="neon"] .fui-Textarea:focus,
+[data-theme="neon"] .fui-Select:focus {
+  border-color: var(--neon-cyan) !important;
+  box-shadow: var(--neon-glow-cyan) !important;
+}
+
+[data-theme="neon"] .fui-Label {
+  color: var(--text-secondary) !important;
+  text-shadow: var(--neon-glow-pink) !important;
+}
+
+[data-theme="neon"] .fui-Link {
+  color: var(--neon-cyan) !important;
+  text-shadow: var(--neon-glow-cyan) !important;
+}
+
+[data-theme="neon"] .fui-Link:hover {
+  color: var(--neon-pink) !important;
+  text-shadow: var(--neon-glow-pink) !important;
+}
+
+/* 🌈 Neon Theme Accent Classes */
+[data-theme="neon"] .neon-accent-pink {
+  color: var(--neon-pink) !important;
+  text-shadow: var(--neon-glow-pink) !important;
+}
+
+[data-theme="neon"] .neon-accent-cyan {
+  color: var(--neon-cyan) !important;
+  text-shadow: var(--neon-glow-cyan) !important;
+}
+
+[data-theme="neon"] .neon-accent-purple {
+  color: var(--neon-purple) !important;
+  text-shadow: var(--neon-glow-purple) !important;
+}
+
+[data-theme="neon"] .neon-accent-green {
+  color: var(--neon-green) !important;
+  text-shadow: var(--neon-glow-green) !important;
+}
+
+/* 🎪 Neon Container Classes */
+[data-theme="neon"] .neon-container {
+  background: var(--card-gradient);
+  border: 1px solid var(--neon-pink);
+  border-radius: 8px;
+  box-shadow: var(--border-glow);
+  padding: 1rem;
+}
+
+[data-theme="neon"] .neon-grid-bg {
+  background-image: 
+    linear-gradient(rgba(255, 0, 127, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 127, 0.3) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* 🔥 Special Effects for Warnings/Errors in Neon Theme */
+[data-theme="neon"] .error {
+  color: var(--neon-pink) !important;
+  text-shadow: var(--neon-glow-pink) !important;
+  border-color: var(--neon-pink) !important;
+}
+
+[data-theme="neon"] .warning {    
+  color: var(--neon-orange) !important;
+  text-shadow: 0 0 5px var(--neon-orange), 0 0 10px var(--neon-orange) !important;
+  border-color: var(--neon-orange) !important;
+}
+
+[data-theme="neon"] .success {
+  color: var(--neon-green) !important;
+  text-shadow: var(--neon-glow-green) !important;
+  border-color: var(--neon-green) !important;
+}
+
+[data-theme="neon"] .info {
+  color: var(--neon-cyan) !important;
+  text-shadow: var(--neon-glow-cyan) !important;
+  border-color: var(--neon-cyan) !important;
+}
+
+/* 🏛️ PARSED SCHEMA NEON STYLING 🏛️ */
+
+/* Entity Tables */
+[data-theme="neon"] .entity-table,
+[data-theme="neon"] .schema-table {
+  background: var(--card-gradient) !important;
+  border: 1px solid var(--neon-pink) !important;
+  border-radius: 8px !important;
+  box-shadow: 
+    var(--border-glow),
+    inset 0 0 20px rgba(255, 0, 127, 0.1) !important;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+/* Entity Headers */
+[data-theme="neon"] .entity-header,
+[data-theme="neon"] .table-header {
+  background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink)) !important;
+  color: var(--text-primary) !important;
+  padding: 12px 16px !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3) !important;
+  border-bottom: 1px solid var(--neon-cyan) !important;
+}
+
+/* Entity/Table Rows */
+[data-theme="neon"] .entity-row,
+[data-theme="neon"] .table-row,
+[data-theme="neon"] tr {
+  border-bottom: 1px solid rgba(255, 0, 127, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+[data-theme="neon"] .entity-row:hover,
+[data-theme="neon"] .table-row:hover,
+[data-theme="neon"] tr:hover {
+  background: rgba(0, 255, 255, 0.1) !important;
+  box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.2) !important;
+}
+
+/* Table Cells */
+[data-theme="neon"] .entity-cell,
+[data-theme="neon"] .table-cell,
+[data-theme="neon"] td,
+[data-theme="neon"] th {
+  padding: 8px 16px !important;
+  color: var(--text-primary) !important;
+  border-right: 1px solid rgba(138, 43, 226, 0.3) !important;
+}
+
+/* Attribute Names */
+[data-theme="neon"] .attribute-name,
+[data-theme="neon"] .field-name {
+  color: var(--neon-cyan) !important;
+  font-weight: 500 !important;
+  text-shadow: 0 0 3px rgba(0, 255, 255, 0.4) !important;
+}
+
+/* Data Types */
+[data-theme="neon"] .data-type,
+[data-theme="neon"] .field-type {
+  color: var(--neon-green) !important;
+  font-style: italic !important;
+  text-shadow: 0 0 2px rgba(57, 255, 20, 0.3) !important;
+}
+
+/* Entity Count Badge */
+[data-theme="neon"] .entity-count,
+[data-theme="neon"] .attribute-count {
+  background: linear-gradient(45deg, var(--neon-orange), var(--neon-pink)) !important;
+  color: var(--text-primary) !important;
+  padding: 4px 8px !important;
+  border-radius: 12px !important;
+  font-size: 0.8rem !important;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 5px rgba(255, 102, 0, 0.5) !important;
+}
+
+/* Primary Key Indicator */
+[data-theme="neon"] .primary-key,
+[data-theme="neon"] .pk-indicator {
+  color: var(--neon-orange) !important;
+  font-weight: bold !important;
+  text-shadow: var(--neon-glow-green) !important;
+}
+
+/* Special Styling for Schema Overview Container */
+[data-theme="neon"] .schema-overview,
+[data-theme="neon"] .parsed-schema {
+  background: var(--surface-gradient) !important;
+  border: 1px solid var(--neon-purple) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  box-shadow: 
+    0 0 20px rgba(138, 43, 226, 0.3),
+    inset 0 0 30px rgba(255, 0, 127, 0.05) !important;
+}
+
+/* Entity Grid Layout */
+[data-theme="neon"] .entity-grid {
+  display: grid !important;
+  gap: 16px !important;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+}
+
+/* Table Headers Specific */
+[data-theme="neon"] table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: var(--card-gradient) !important;
+  border: 1px solid var(--neon-pink) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+[data-theme="neon"] thead {
+  background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink)) !important;
+}
+
+[data-theme="neon"] thead th {
+  color: var(--text-primary) !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3) !important;
+  padding: 12px 16px !important;
+  border-bottom: 2px solid var(--neon-cyan) !important;
+}
+
+[data-theme="neon"] tbody {
+  background: var(--card-gradient) !important;
+}
+
+/* Glow Animation for Interactive Elements */
+@keyframes neonTableGlow {
+  0%, 100% { 
+    box-shadow: 
+      var(--border-glow),
+      inset 0 0 20px rgba(255, 0, 127, 0.1);
+  }
+  50% { 
+    box-shadow: 
+      var(--neon-glow-cyan),
+      inset 0 0 25px rgba(0, 255, 255, 0.15);
+  }
+}
+
+[data-theme="neon"] .entity-table:hover,
+[data-theme="neon"] .schema-table:hover {
+  animation: neonTableGlow 3s ease-in-out infinite !important;
+}
+
+/* 🏷️ NEON BADGES & LABELS 🏷️ */
+
+/* CDM Badge */
+[data-theme="neon"] .cdmBadge {
+  background: linear-gradient(45deg, var(--neon-cyan), var(--neon-blue)) !important;
+  color: var(--text-primary) !important;
+  padding: 4px 8px !important;
+  border-radius: 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.7) !important;
+  box-shadow: 
+    0 0 10px rgba(0, 255, 255, 0.5),
+    inset 0 0 10px rgba(0, 255, 255, 0.2) !important;
+  border: 1px solid var(--neon-cyan) !important;
+  animation: cdmGlow 2s ease-in-out infinite alternate !important;
+}
+
+/* CUSTOM Badge */
+[data-theme="neon"] .customBadge {
+  background: linear-gradient(45deg, var(--neon-pink), var(--neon-purple)) !important;
+  color: var(--text-primary) !important;
+  padding: 4px 8px !important;
+  border-radius: 12px !important;
+  font-size: 0.75rem !important;
+  font-weight: bold !important;
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.7) !important;
+  box-shadow: 
+    0 0 10px rgba(255, 0, 127, 0.5),
+    inset 0 0 10px rgba(255, 0, 127, 0.2) !important;
+  border: 1px solid var(--neon-pink) !important;
+  animation: customGlow 2s ease-in-out infinite alternate !important;
+}
+
+/* Badge Glow Animations */
+@keyframes cdmGlow {
+  0% { 
+    box-shadow: 
+      0 0 10px rgba(0, 255, 255, 0.5),
+      inset 0 0 10px rgba(0, 255, 255, 0.2);
+  }
+  100% { 
+    box-shadow: 
+      0 0 15px rgba(0, 255, 255, 0.8),
+      inset 0 0 15px rgba(0, 255, 255, 0.3);
+  }
+}
+
+@keyframes customGlow {
+  0% { 
+    box-shadow: 
+      0 0 10px rgba(255, 0, 127, 0.5),
+      inset 0 0 10px rgba(255, 0, 127, 0.2);
+  }
+  100% { 
+    box-shadow: 
+      0 0 15px rgba(255, 0, 127, 0.8),
+      inset 0 0 15px rgba(255, 0, 127, 0.3);
+  }
+}
+
+/* Entity Badge Container */
+[data-theme="neon"] .entityBadge {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 4px 0 !important;
+}
+
+/* 🔗 RELATIONSHIP ARROWS & CONNECTIONS 🔗 */
+
+/* Relationship Arrow Symbol */
+[data-theme="neon"] .relationshipContent,
+[data-theme="neon"] .relationshipDetails {
+  color: var(--text-primary) !important;
+}
+
+/* Style for the → arrow specifically */
+[data-theme="neon"] .relationshipContent:contains("→"),
+[data-theme="neon"] .relationshipDetails:contains("→") {
+  color: var(--neon-cyan) !important;
+  text-shadow: var(--neon-glow-cyan) !important;
+  font-weight: bold !important;
+}
+
+/* Generic arrow styling */
+[data-theme="neon"] .arrow,
+[data-theme="neon"] .relationship-arrow {
+  color: var(--neon-cyan) !important;
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.8) !important;
+  font-size: 1.2em !important;
+  font-weight: bold !important;
+  margin: 0 8px !important;
+  display: inline-block !important;
+  animation: arrowPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes arrowPulse {
+  0%, 100% { 
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
+    transform: scale(1);
+  }
+  50% { 
+    text-shadow: 0 0 12px rgba(0, 255, 255, 1);
+    transform: scale(1.1);
+  }
+}
+
+/* Relationship titles */
+[data-theme="neon"] .relationshipTitle {
+  color: var(--neon-pink) !important;
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.5) !important;
+  font-weight: bold !important;
+}
+
+/* Special styling for text containing arrows */
+[data-theme="neon"] *:contains("→") {
+  color: var(--text-primary) !important;
+}
+
+/* Target specific relationship text patterns */
+[data-theme="neon"] .relationshipContent *,
+[data-theme="neon"] .relationshipDetails * {
+  color: inherit !important;
+}
+
+/* Make arrows stand out in relationship text */
+[data-theme="neon"] .relationshipContent::before,
+[data-theme="neon"] .relationshipDetails::before {
+  content: none !important;
+}
+
+/* Enhanced styling for relationship containers */
+[data-theme="neon"] .relationshipContent {
+  background: var(--surface-gradient) !important;
+  border: 1px solid var(--neon-purple) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  box-shadow: 
+    0 0 10px rgba(138, 43, 226, 0.3),
+    inset 0 0 15px rgba(255, 0, 127, 0.05) !important;
+}
+
+/* 🎯 STEP BADGES & PROGRESS INDICATORS 🎯 */
+
+/* Step badges in the wizard */
+[data-theme="neon"] .fui-Badge {
+  background: linear-gradient(45deg, var(--neon-purple), var(--neon-pink)) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--neon-cyan) !important;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.4) !important;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Progress step indicators */
+[data-theme="neon"] .fui-Badge[data-testid^="step-"] {
+  background: linear-gradient(45deg, var(--neon-cyan), var(--neon-blue)) !important;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.6) !important;
+  animation: stepGlow 3s ease-in-out infinite alternate !important;
+}
+
+@keyframes stepGlow {
+  0% { box-shadow: 0 0 10px rgba(0, 255, 255, 0.6); }
+  100% { box-shadow: 0 0 15px rgba(0, 255, 255, 0.9); }
+}
+
+/* 💫 GENERAL NEON LABEL ENHANCEMENTS 💫 */
+
+/* Any element with "custom" in the class name */
+[data-theme="neon"] [class*="custom"],
+[data-theme="neon"] [class*="Custom"] {
+  color: var(--neon-pink) !important;
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.5) !important;
+}
+
+/* Any element with "cdm" in the class name */
+[data-theme="neon"] [class*="cdm"],
+[data-theme="neon"] [class*="CDM"],
+[data-theme="neon"] [class*="Cdm"] {
+  color: var(--neon-cyan) !important;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.5) !important;
+}
+
+/* Attribute count indicators */
+[data-theme="neon"] .entityBadge span {
+  display: inline-block !important;
+  padding: 2px 6px !important;
+  margin: 2px !important;
+  border-radius: 8px !important;
+  font-size: 0.7rem !important;
+  font-weight: bold !important;
+}
+
+/* Text that looks like counts (e.g., "13 attributes") */
+[data-theme="neon"] .entityBadge {
+  color: var(--text-secondary) !important;
+  font-size: 0.8rem !important;
+  text-shadow: 0 0 3px rgba(255, 0, 127, 0.3) !important;
+}
+
+/* 📝 NON-GLOWY TEXT FOR READABILITY 📝 */
+
+/* Form labels, descriptions, and input labels - no glow for readability */
+[data-theme="neon"] label,
+[data-theme="neon"] .fui-Label,
+[data-theme="neon"] .form-label,
+[data-theme="neon"] .field-label,
+[data-theme="neon"] .input-description,
+[data-theme="neon"] .help-text,
+[data-theme="neon"] .description-text,
+[data-theme="neon"] .placeholder-text {
+  text-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+/* Input fields and text areas - clean text */
+[data-theme="neon"] input,
+[data-theme="neon"] textarea,
+[data-theme="neon"] .fui-Input,
+[data-theme="neon"] .fui-Textarea {
+  text-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+/* Step content text - no glow on body text */
+[data-theme="neon"] .step-content,
+[data-theme="neon"] .form-content,
+[data-theme="neon"] .solution-form,
+[data-theme="neon"] .publisher-form {
+  text-shadow: none !important;
+}
+
+/* Specific overrides for solution setup step */
+[data-theme="neon"] .solution-setup *:not(button):not(.fui-Button):not([class*="badge"]):not([class*="Banner"]),
+[data-theme="neon"] .publisher-setup *:not(button):not(.fui-Button):not([class*="badge"]):not([class*="Banner"]) {
+  text-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+/* Remove glow from all form text but keep it on interactive elements */
+[data-theme="neon"] form *:not(button):not(.fui-Button):not([class*="badge"]):not([class*="Banner"]) {
+  text-shadow: none !important;
+}
+
+/* Exception: Keep glow on buttons, badges, and banners */
+[data-theme="neon"] button,
+[data-theme="neon"] .fui-Button {
+  text-shadow: var(--neon-glow-pink) !important;
+}
+
+[data-theme="neon"] [class*="badge"],
+[data-theme="neon"] [class*="Badge"] {
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="neon"] [class*="banner"],
+[data-theme="neon"] [class*="Banner"] {
+  text-shadow: 0 0 8px rgba(255, 0, 127, 0.6) !important;
+}

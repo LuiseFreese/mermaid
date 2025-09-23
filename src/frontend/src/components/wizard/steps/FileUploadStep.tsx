@@ -155,10 +155,43 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     
     const isDark = effectiveTheme === 'dark';
     const isPink = effectiveTheme === 'pink';
+    const isNeon = effectiveTheme === 'neon';
     
     let themeConfig;
     
-    if (isPink) {
+    if (isNeon) {
+      // Neon/Retrowave theme configuration 🌈✨
+      themeConfig = {
+        startOnLoad: true,
+        theme: 'dark' as const,
+        securityLevel: 'loose' as const,
+        themeVariables: {
+          // Neon synthwave colors
+          primaryColor: '#2d1b4e',              // Deep purple for entity headers
+          primaryBorderColor: '#ff007f',        // Neon pink borders
+          lineColor: '#00ffff',                 // Cyan relationship lines
+          
+          // Dark neon backgrounds
+          secondaryColor: '#0a0015',            // Very dark purple background
+          tertiaryColor: '#1a0033',             // Dark purple surface
+          background: '#0a0015',                // Dark diagram background
+          
+          // Neon text colors
+          primaryTextColor: '#ffffff',          // White text
+          secondaryTextColor: '#ff007f',        // Neon pink text
+          tertiaryTextColor: '#00ffff',         // Cyan accent text
+          
+          // Additional neon styling
+          mainBkg: '#2d1b4e',                   // Entity background
+          secondBkg: '#1a0033',                 // Secondary background
+          border1: '#ff007f',                   // Primary border
+          border2: '#8a2be2',                   // Secondary border
+          arrowheadColor: '#00ffff',            // Arrow heads
+          fontFamily: '"Courier New", monospace', // Retro font
+          fontSize: '14px'
+        }
+      };
+    } else if (isPink) {
       // Pink theme configuration 🌸
       themeConfig = {
         startOnLoad: true,

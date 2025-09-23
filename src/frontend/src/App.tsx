@@ -3,7 +3,7 @@ import { FluentProvider, makeStyles } from '@fluentui/react-components';
 import { WizardShell } from './components/wizard/WizardShell';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { lightTheme, darkTheme, pinkTheme } from './styles/FluentTheme';
+import { lightTheme, darkTheme, pinkTheme, neonTheme } from './styles/FluentTheme';
 import './styles/themes.css';
 
 const useStyles = makeStyles({
@@ -23,6 +23,7 @@ const AppContent: React.FC = () => {
     switch (effectiveTheme) {
       case 'dark': return darkTheme;
       case 'pink': return pinkTheme;
+      case 'neon': return neonTheme;
       default: return lightTheme;
     }
   };
