@@ -8,12 +8,13 @@ import {
   validateERDContent, 
   getIssuesByType
 } from '../utils/validationRules';
+import { ApiService } from '../../../../../services/apiService';
 import type { ValidationResult, ValidationIssue } from '../types/validation.types';
 
 export interface UseERDValidationResult {
   validationResult: ValidationResult | null;
   validateContent: (content: string) => void;
-  validateERD: (content: string, isCDM?: boolean) => void;
+  validateERD: (content: string, isCDM?: boolean) => Promise<void>;
   resetValidation: () => void;
   isValid: boolean;
   hasWarnings: boolean;
@@ -48,11 +49,75 @@ export const useERDValidation = (initialContent?: string): UseERDValidationResul
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
   /**
-   * Validate the provided ERD content
+   * Validate the provided ERD content using frontend validation only
    */
   const validateContent = useCallback((content: string) => {
     const result = validateERDContent(content);
     setValidationResult(result);
+  }, []);
+
+  /**
+   * Validate the provided ERD content using backend API with CDM choice
+   */
+  const validateERD = useCallback(async (content: string, isCDM?: boolean) => {
+    try {
+      console.log('🔧 DEBUG: useERDValidation.validateERD called with:', {
+        contentLength: content.length,
+        isCDM,
+        entityChoice: isCDM ? 'cdm' : 'custom'
+      });
+
+      const fileData = {
+        name: 'validation.mmd',
+        content: content,
+        size: content.length,
+        lastModified: Date.now()
+      };
+
+      const entityChoice = isCDM ? 'cdm' : 'custom';
+      const backendResult = await ApiService.validateFile(fileData, entityChoice);
+      
+      console.log('🔧 DEBUG: Backend validation result:', backendResult);
+      
+      // Map backend result to frontend ValidationResult interface
+      const validationResult: ValidationResult = {
+        isValid: backendResult.valid ?? !backendResult.errors?.length,
+        hasWarnings: !!backendResult.warnings?.length,
+        issues: [
+          // Map errors to issues
+          ...(backendResult.errors || []).map((error: any) => ({
+            type: 'syntax' as const,
+            entityName: error.entityName,
+            description: error.message,
+            fixable: false,
+            severity: 'error' as const,
+            fixed: false
+          })),
+          // Map warnings to issues
+          ...(backendResult.warnings || []).map((warning: any) => ({
+            type: 'naming' as const,
+            entityName: warning.entityName,
+            description: warning.message || warning.suggestion,
+            fixable: warning.autoFixable || false,
+            severity: 'warning' as const,
+            fixed: false
+          }))
+        ],
+        summary: backendResult.summary || {
+          totalIssues: (backendResult.errors?.length || 0) + (backendResult.warnings?.length || 0),
+          errors: backendResult.errors?.length || 0,
+          warnings: backendResult.warnings?.length || 0,
+          info: 0
+        }
+      };
+      
+      setValidationResult(validationResult);
+    } catch (error) {
+      console.error('ERD validation error:', error);
+      // Fall back to frontend validation if backend fails
+      const fallbackResult = validateERDContent(content);
+      setValidationResult(fallbackResult);
+    }
   }, []);
 
   /**
@@ -143,7 +208,7 @@ export const useERDValidation = (initialContent?: string): UseERDValidationResul
   return {
     validationResult,
     validateContent,
-    validateERD: validateContent, // Alias for compatibility
+    validateERD, // Use the actual async validateERD function
     resetValidation,
     isValid,
     hasWarnings,

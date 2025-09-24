@@ -193,6 +193,7 @@ export class ApiService {
   static async fixIndividualWarning(data: {
     mermaidContent: string;
     warningId: string;
+    entityChoice?: string;
     options?: any;
   }): Promise<{
     success: boolean;
@@ -202,7 +203,12 @@ export class ApiService {
     error?: string;
   }> {
     try {
-      const response: AxiosResponse<any> = await api.post('/validation/fix-warning', data);
+      const requestData = {
+        ...data,
+        entityChoice: data.entityChoice || (data.options as any)?.entityChoice
+      };
+      console.log('🔧 FRONTEND DEBUG: Sending fix request with entityChoice:', requestData.entityChoice);
+      const response: AxiosResponse<any> = await api.post('/validation/fix-warning', requestData);
       return response.data;
     } catch (error) {
       console.error('Individual warning fix error:', error);

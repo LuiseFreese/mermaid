@@ -97,7 +97,24 @@ export const FileUploadStep: React.FC = () => {
 
   // CDM choice handler
   const handleCDMChoiceSelected = useCallback(async (choice: 'cdm' | 'custom') => {
-    if (!currentFile) return;
+    console.log('🔧 FRONTEND DEBUG: handleCDMChoiceSelected called', {
+      choice,
+      hasCurrentFile: !!currentFile,
+      fileName: currentFile?.file?.name,
+      currentCdmDetection: cdmDetection,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (!currentFile) {
+      console.log('🔧 FRONTEND DEBUG: No current file, returning early');
+      return;
+    }
+    
+    console.log('🔧 FRONTEND DEBUG: Setting CDM choice and calling validateERD', {
+      choice,
+      isCdm: choice === 'cdm',
+      contentLength: currentFile.content.length
+    });
     
     setCDMChoice(choice);
     
@@ -116,7 +133,13 @@ export const FileUploadStep: React.FC = () => {
       entities: [],
       relationships: []
     });
-  }, [currentFile, setCDMChoice, validateERD, generateAutoFixes]);
+    
+    console.log('🔧 FRONTEND DEBUG: handleCDMChoiceSelected completed', {
+      choice,
+      hasValidationResult: !!validationResult,
+      timestamp: new Date().toISOString()
+    });
+  }, [currentFile, setCDMChoice, validateERD, generateAutoFixes, cdmDetection, validationResult]);
 
   // Auto-fix handlers
   const handleApplyFix = useCallback(async (fixId: string) => {

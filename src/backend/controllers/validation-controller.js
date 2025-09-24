@@ -42,6 +42,13 @@ class ValidationController extends BaseController {
             // Validate required fields
             this.validateRequiredFields(data, ['mermaidContent']);
             
+            // Debug: Log the entity choice being passed
+            console.log('🔧 DEBUG: Validation Controller - Entity Choice:', {
+                entityChoice: data.entityChoice,
+                hasOptions: !!data.options,
+                options: data.options
+            });
+            
             // Call validation service
             const result = await this.validationService.validateERD({
                 mermaidContent: data.mermaidContent,
@@ -287,11 +294,21 @@ class ValidationController extends BaseController {
             // Validate required fields
             this.validateRequiredFields(data, ['mermaidContent', 'warningId']);
             
+            // Debug: Log the entity choice being passed
+            console.log('🔧 DEBUG: Fix Warning Controller - Entity Choice:', {
+                entityChoice: data.entityChoice,
+                hasOptions: !!data.options,
+                options: data.options
+            });
+            
             // Call validation service to fix individual warning
             const result = await this.validationService.fixIndividualWarning({
                 mermaidContent: data.mermaidContent,
                 warningId: data.warningId,
-                options: data.options || {}
+                options: {
+                    ...data.options || {},
+                    entityChoice: data.entityChoice || null
+                }
             });
             
             this.sendJson(res, 200, result);

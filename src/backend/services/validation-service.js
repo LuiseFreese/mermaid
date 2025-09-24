@@ -54,8 +54,22 @@ class ValidationService extends BaseService {
      * @returns {Object} Warning with deterministic ID
      */
     createWarning(warningData) {
+        const id = this.generateWarningId(warningData);
+        
+        // Debug: Track specific problematic warning IDs
+        if (id === 'warning_1304205498' || id === 'warning_1571953518') {
+            console.log('🚨 CRITICAL: Creating problematic warning:', {
+                id,
+                type: warningData.type,
+                message: warningData.message,
+                entity: warningData.entity,
+                relationship: warningData.relationship,
+                stackTrace: new Error().stack.substring(0, 500)
+            });
+        }
+        
         return {
-            id: this.generateWarningId(warningData),
+            id,
             ...warningData
         };
     }
@@ -123,26 +137,144 @@ class ValidationService extends BaseService {
                 result.entities = parseResult.entities || [];
                 result.relationships = parseResult.relationships || [];
                 // Convert parser warnings to use our warning format with unique IDs
-                result.warnings = (parseResult.warnings || []).map(warning => {
-                    // Determine if parser warning should be auto-fixable
-                    let autoFixable = warning.autoFixable;
-                    if (autoFixable === undefined) {
-                        // Most parser warnings are auto-fixable, except for certain types
-                        const nonAutoFixableTypes = ['cdm_summary', 'cdm_entity_detected'];
-                        autoFixable = !nonAutoFixableTypes.includes(warning.type);
-                    }
-                    
-                    return this.createWarning({
-                        ...warning,
-                        autoFixable
+                result.warnings = (parseResult.warnings || [])
+                    .filter(warning => {
+                        // Filter out relationship name warnings since spaces should be allowed
+                        return warning.type !== 'invalid_relationship_name';
+                    })
+                    .map(warning => {
+                        // Determine if parser warning should be auto-fixable
+                        let autoFixable = warning.autoFixable;
+                        if (autoFixable === undefined) {
+                            // Most parser warnings are auto-fixable, except for certain types
+                            const nonAutoFixableTypes = ['cdm_summary', 'cdm_entity_detected'];
+                            autoFixable = !nonAutoFixableTypes.includes(warning.type);
+                        }
+                        
+                        return this.createWarning({
+                            ...warning,
+                            autoFixable
+                        });
                     });
-                });
                 
                 // Apply Mermaid syntax fixes to ensure valid diagram rendering
                 const baseContent = parseResult.correctedERD || mermaidContent;
                 result.correctedERD = this.fixMermaidSyntax(baseContent);
 
-                // Step 2: Validate entity structure
+                // Step 2: CDM detection and entity flag setting - moved before structure validation
+                if (options.detectCDM !== false) {
+                    try {
+                        // Use CDM detection results from the parser
+                        result.cdmDetection = parseResult.cdmDetection || {
+                            matches: [],
+                            detectedCDM: [],
+                            totalEntities: result.entities.length,
+                            cdmEntities: 0,
+                            customEntities: result.entities.length,
+                            confidence: 'low'
+                        };
+                        
+                        console.log('🔧 DEBUG: CDM Detection from parser:', {
+                            parseResultHasCdmDetection: !!parseResult.cdmDetection,
+                            matchesCount: result.cdmDetection.matches?.length || 0,
+                            detectedCDMCount: result.cdmDetection.detectedCDM?.length || 0,
+                            matches: result.cdmDetection.matches?.map(m => ({ original: m.originalEntity?.name, cdm: m.cdmEntity?.logicalName })) || []
+                        });
+                        
+                        this.log('cdmDetection', { matchesFound: result.cdmDetection.matches?.length || 0 });
+                        
+                        // If no advanced CDM detection available, use basic detection
+                        if (!result.cdmDetection.matches || result.cdmDetection.matches.length === 0) {
+                            try {
+                                result.cdmDetection = this.performBasicCDMDetection(result.entities);
+                            } catch (basicCdmError) {
+                                console.warn('⚠️ Advanced CDM detection not available, using basic detection:', basicCdmError.message);
+                                result.cdmDetection = {
+                                    matches: [],
+                                    detectedCDM: [],
+                                    totalEntities: result.entities.length,
+                                    cdmEntities: 0,
+                                    customEntities: result.entities.length,
+                                    confidence: 'low'
+                                };
+                                result.warnings.push(this.createWarning({
+                                    type: 'cdm_detection_failed',
+                                    severity: 'info',
+                                    message: 'CDM detection unavailable',
+                                    suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
+                                    category: 'cdm',
+                                    autoFixable: false
+                                }));
+                            }
+                        }
+                    } catch (cdmDetectionError) {
+                        console.error('CDM detection failed:', cdmDetectionError);
+                        result.cdmDetection = {
+                            matches: [],
+                            detectedCDM: [],
+                            totalEntities: result.entities.length,
+                            cdmEntities: 0,
+                            customEntities: result.entities.length,
+                            confidence: 'low'
+                        };
+                        result.warnings.push(this.createWarning({
+                            type: 'cdm_detection_failed',
+                            severity: 'info',
+                            message: 'CDM detection unavailable',
+                            suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
+                            category: 'cdm',
+                            autoFixable: false
+                        }));
+                    }
+                }
+
+                // Step 2.5: Set isCdm flag on entities based on user choice and CDM detection
+                console.log('🔧 DEBUG: CDM Flag Setting - Initial state:', {
+                    entityChoice: options.entityChoice,
+                    hasCdmDetection: !!result.cdmDetection,
+                    matchesCount: result.cdmDetection?.matches?.length || 0,
+                    matches: result.cdmDetection?.matches?.map(m => ({ original: m.originalEntity?.name, cdm: m.cdmEntity?.logicalName })) || []
+                });
+                
+                if (options.entityChoice === 'cdm' && result.cdmDetection?.matches?.length > 0) {
+                    const cdmEntityNames = result.cdmDetection.matches.map(match => match.originalEntity?.name || match.name).filter(Boolean);
+                    console.log('🔧 DEBUG: CDM Entity Names extracted:', cdmEntityNames);
+                    console.log('🔧 DEBUG: Available entity names:', result.entities.map(e => e.name));
+                    
+                    result.entities = result.entities.map(entity => {
+                        const isCdm = cdmEntityNames.includes(entity.name);
+                        console.log(`🔧 DEBUG: Entity ${entity.name} - isCdm: ${isCdm}`);
+                        return {
+                            ...entity,
+                            isCdm
+                        };
+                    });
+                    
+                    this.log('setCdmFlags', { 
+                        entityChoice: options.entityChoice,
+                        cdmEntityNames,
+                        entitiesWithCdmFlags: result.entities.map(e => ({ name: e.name, isCdm: e.isCdm }))
+                    });
+                } else {
+                    // If user chose custom or no CDM detected, all entities are custom
+                    console.log('🔧 DEBUG: Setting all entities as custom because:', {
+                        entityChoice: options.entityChoice,
+                        cdmMatches: result.cdmDetection?.matches?.length || 0
+                    });
+                    
+                    result.entities = result.entities.map(entity => ({
+                        ...entity,
+                        isCdm: false
+                    }));
+                    
+                    this.log('setCdmFlags', { 
+                        entityChoice: options.entityChoice,
+                        allEntitiesCustom: true,
+                        entityCount: result.entities.length
+                    });
+                }
+
+                // Step 3: Validate entity structure (now entities have CDM flags set)
                 const structureValidation = this.validateEntityStructure(result.entities, result.relationships);
                 console.log('🔧 DEBUG: Structure validation result:', {
                     isValid: structureValidation.isValid,
@@ -166,70 +298,8 @@ class ValidationService extends BaseService {
                     result.warnings = [...result.warnings, ...structureValidation.warnings];
                 }
 
-                // Step 3: CDM detection - use results from parser
-                if (options.detectCDM !== false) {
-                    try {
-                        // Use CDM detection results from the parser
-                        result.cdmDetection = parseResult.cdmDetection || {
-                            matches: [],
-                            detectedCDM: [],
-                            totalEntities: result.entities.length,
-                            cdmEntities: 0,
-                            customEntities: result.entities.length,
-                            confidence: 'low'
-                        };
-                        
-                        this.log('cdmDetection', { 
-                            matchesFound: result.cdmDetection.detectedCDM?.length || 0 
-                        });
-                    } catch (error) {
-                        this.warn('CDM detection failed', { error: error.message });
-                        result.cdmDetection = {
-                            matches: [],
-                            detectedCDM: [],
-                            totalEntities: result.entities.length,
-                            cdmEntities: 0,
-                            customEntities: result.entities.length,
-                            confidence: 'low'
-                        };
-                        result.warnings.push(this.createWarning({
-                            type: 'cdm_detection_failed',
-                            severity: 'info',
-                            message: 'CDM detection unavailable',
-                            suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
-                            category: 'cdm',
-                            autoFixable: false
-                        }));
-                    }
-                }
-
-                // Step 3.5: Set isCdm flag on entities based on user choice and CDM detection
-                if (options.entityChoice === 'cdm' && result.cdmDetection?.matches?.length > 0) {
-                    const cdmEntityNames = result.cdmDetection.matches.map(match => match.originalEntity?.name || match.name).filter(Boolean);
-                    
-                    result.entities = result.entities.map(entity => ({
-                        ...entity,
-                        isCdm: cdmEntityNames.includes(entity.name)
-                    }));
-                    
-                    this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
-                        cdmEntityNames,
-                        entitiesWithCdmFlags: result.entities.map(e => ({ name: e.name, isCdm: e.isCdm }))
-                    });
-                } else {
-                    // If user chose custom or no CDM detected, all entities are custom
-                    result.entities = result.entities.map(entity => ({
-                        ...entity,
-                        isCdm: false
-                    }));
-                    
-                    this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
-                        allEntitiesCustom: true,
-                        entityCount: result.entities.length
-                    });
-                }
+                // Update autoFixable flags for warnings based on CDM entity status
+                result.warnings = this.updateAutoFixableForCDMEntities(result.warnings, result.entities);
 
                 // Step 4: Generate summary
                 result.summary = {
@@ -317,17 +387,12 @@ class ValidationService extends BaseService {
                 totalAttributes: entity.attributes?.length || 0,
                 attributesWithDetails: entity.attributes?.map(attr => ({ 
                     name: attr.name, 
-                    isPrimaryKey: attr.isPrimaryKey,
-                    hasIdInName: attr.name?.toLowerCase().includes('id')
+                    isPrimaryKey: attr.isPrimaryKey
                 })) || [],
-                hasPrimaryKeyCheck: entity.attributes?.some(attr => 
-                    attr.isPrimaryKey || attr.name?.toLowerCase().includes('id')
-                )
+                hasPrimaryKeyCheck: entity.attributes?.some(attr => attr.isPrimaryKey)
             });
             
-            const hasPrimaryKey = entity.attributes?.some(attr => 
-                attr.isPrimaryKey || attr.name?.toLowerCase().includes('id')
-            );
+            const hasPrimaryKey = entity.attributes?.some(attr => attr.isPrimaryKey);
             
             if (!hasPrimaryKey) {
                 console.log(`🔍 DEBUG ValidationService: Adding missing_primary_key warning for ${entity.name}`);
@@ -337,7 +402,7 @@ class ValidationService extends BaseService {
                     entity: entity.name,
                     message: `Entity '${entity.name}' may be missing a primary key`,
                     suggestion: 'Add a primary key attribute using "PK" notation to ensure proper table structure.',
-                    example: 'string id PK "Unique identifier"',
+                    example: 'guid myEntityId PK "Unique identifier"',
                     category: 'entities',
                     autoFixable: true
                 }));
@@ -368,6 +433,10 @@ class ValidationService extends BaseService {
 
         // Enhanced naming convention validation
         console.log('About to call validateNamingConventions with entities count:', entities?.length);
+        console.log('🔍 DEBUG: Relationships being passed to validateNamingConventions:', {
+            relationshipsCount: relationships?.length || 0,
+            relationships: relationships?.slice(0, 5) || [] // Show first 5 relationships
+        });
         const namingWarnings = this.validateNamingConventions(entities, relationships);
         console.log('Naming warnings returned:', namingWarnings?.length);
         warnings.push(...namingWarnings);
@@ -387,6 +456,14 @@ class ValidationService extends BaseService {
      */
     validateRelationships(entities, relationships) {
         const warnings = [];
+        
+        // Skip relationship validation for CDM-only ERDs
+        const allEntitiesAreCdm = entities.every(entity => entity.isCdm === true);
+        if (allEntitiesAreCdm && entities.length > 0) {
+            console.log('🔍 Skipping relationship validation for CDM-only ERD');
+            return warnings; // Return empty warnings array
+        }
+        
         const entityMap = new Map();
         
         // Build entity map for efficient lookups
@@ -431,27 +508,35 @@ class ValidationService extends BaseService {
 
             // For one-to-many relationships, check if the "many" side has a foreign key
             if (rel.cardinality && (rel.cardinality.type === 'one-to-many' || rel.cardinality.type === 'zero-to-many')) {
-                const expectedFK = `${rel.fromEntity.toLowerCase()}_id`;
+                // Use current entity names instead of original relationship names
+                const currentFromEntityName = fromEntity.name;
+                const currentToEntityName = toEntity.name;
+                
+                // Check for any foreign key that references the correct entity (no naming convention required)
                 const hasForeignKey = toEntity.attributes && toEntity.attributes.some(attr => 
-                    attr.name.toLowerCase() === expectedFK || 
-                    attr.name.toLowerCase() === `${rel.fromEntity.toLowerCase()}id` ||
-                    (attr.isForeignKey && attr.referencedEntity === rel.fromEntity)
+                    attr.isForeignKey && (
+                        attr.referencedEntity === currentFromEntityName ||
+                        attr.referencedEntity === rel.fromEntity
+                    )
                 );
 
                 if (!hasForeignKey) {
+                    // Suggest a generic foreign key name without enforcing "_id" convention
+                    const suggestedFK = `${currentFromEntityName.toLowerCase()}Ref`;
+                    
                     warnings.push(this.createWarning({
                         type: 'missing_foreign_key',
                         category: 'relationships',
                         severity: 'warning',
-                        entity: rel.toEntity,
-                        relationship: `${rel.fromEntity} → ${rel.toEntity}`,
-                        message: `Relationship '${rel.fromEntity} → ${rel.toEntity}' exists but no foreign key found in '${rel.toEntity}'. Expected '${expectedFK}'.`,
-                        suggestion: `Add foreign key column: string ${expectedFK} FK "Foreign key to ${rel.fromEntity}"`,
+                        entity: currentToEntityName,
+                        relationship: `${currentFromEntityName} → ${currentToEntityName}`,
+                        message: `Relationship '${currentFromEntityName} → ${currentToEntityName}' exists but no foreign key found in '${currentToEntityName}'. Add a foreign key column.`,
+                        suggestion: `Add foreign key column: guid ${suggestedFK} FK "Foreign key to ${currentFromEntityName}"`,
                         autoFixable: true,
                         fixData: {
-                            entityName: rel.toEntity,
-                            columnName: expectedFK,
-                            referencedEntity: rel.fromEntity
+                            entityName: currentToEntityName,
+                            columnName: suggestedFK,
+                            referencedEntity: currentFromEntityName
                         }
                     }));
                 }
@@ -459,11 +544,23 @@ class ValidationService extends BaseService {
 
             // For one-to-one relationships, check both sides (typically the dependent side should have the FK)
             if (rel.cardinality && rel.cardinality.type === 'one-to-one') {
-                const expectedFK = `${rel.fromEntity.toLowerCase()}_id`;
+                // Use current entity names instead of original relationship names
+                const currentFromEntityName = fromEntity.name;
+                const currentToEntityName = toEntity.name;
+                const expectedFK = `${currentFromEntityName.toLowerCase()}_id`;
+                
+                // Also check for FK using original entity name (in case of partial fixes)
+                const originalExpectedFK = `${rel.fromEntity.toLowerCase()}_id`;
+                
                 const hasForeignKey = toEntity.attributes && toEntity.attributes.some(attr => 
                     attr.name.toLowerCase() === expectedFK || 
+                    attr.name.toLowerCase() === originalExpectedFK ||
+                    attr.name.toLowerCase() === `${currentFromEntityName.toLowerCase()}id` ||
                     attr.name.toLowerCase() === `${rel.fromEntity.toLowerCase()}id` ||
-                    (attr.isForeignKey && attr.referencedEntity === rel.fromEntity)
+                    (attr.isForeignKey && (
+                        attr.referencedEntity === currentFromEntityName ||
+                        attr.referencedEntity === rel.fromEntity
+                    ))
                 );
 
                 if (!hasForeignKey) {
@@ -471,15 +568,15 @@ class ValidationService extends BaseService {
                         type: 'missing_foreign_key',
                         category: 'relationships',
                         severity: 'warning',
-                        entity: rel.toEntity,
-                        relationship: `${rel.fromEntity} → ${rel.toEntity}`,
-                        message: `One-to-one relationship between '${rel.fromEntity}' and '${rel.toEntity}' but no foreign key found in '${rel.toEntity}'.`,
-                        suggestion: `Add foreign key column: string ${expectedFK} FK "Foreign key to ${rel.fromEntity}"`,
+                        entity: currentToEntityName,
+                        relationship: `${currentFromEntityName} → ${currentToEntityName}`,
+                        message: `One-to-one relationship between '${currentFromEntityName}' and '${currentToEntityName}' but no foreign key found in '${currentToEntityName}'.`,
+                        suggestion: `Add foreign key column: string ${expectedFK} FK "Foreign key to ${currentFromEntityName}"`,
                         autoFixable: true,
                         fixData: {
-                            entityName: rel.toEntity,
+                            entityName: currentToEntityName,
                             columnName: expectedFK,
-                            referencedEntity: rel.fromEntity
+                            referencedEntity: currentFromEntityName
                         }
                     }));
                 }
@@ -772,8 +869,8 @@ class ValidationService extends BaseService {
         // 2. Validate attribute names
         warnings.push(...this.validateAttributeNames(entities));
         
-        // 3. Validate relationship names
-        warnings.push(...this.validateRelationshipNames(relationships));
+        // 3. Validate relationship names - DISABLED: Relationship labels should allow spaces
+        // warnings.push(...this.validateRelationshipNames(relationships));
         
         // 4. Check for reserved words
         warnings.push(...this.checkReservedWords(entities));
@@ -787,14 +884,20 @@ class ValidationService extends BaseService {
      * @returns {Array} Array of entity naming warnings
      */
     validateEntityNames(entities) {
-        console.log('validateEntityNames called with entities:', entities?.map(e => e.name));
+        console.log('validateEntityNames called with entities:', entities?.map(e => ({ name: e.name, isCdm: e.isCdm })));
         const warnings = [];
         const dataverseReservedWords = ['User', 'Account', 'Contact', 'Lead', 'Opportunity', 'Task', 
                                       'Activity', 'Note', 'Email', 'PhoneCall', 'Appointment', 'Letter'];
 
         entities.forEach(entity => {
             const entityName = entity.name;
-            console.log(`Validating entity: ${entityName}`);
+            console.log(`Validating entity: ${entityName}, isCdm: ${entity.isCdm}`);
+
+            // Skip validation for CDM entities - they are managed by Dataverse
+            if (entity.isCdm) {
+                console.log(`🔍 Skipping entity name validation for CDM entity: ${entityName}`);
+                return;
+            }
 
             // Check for invalid characters
             if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(entityName)) {
@@ -882,6 +985,12 @@ class ValidationService extends BaseService {
         entities.forEach(entity => {
             if (!entity.attributes) return;
 
+            // Skip validation for CDM entities - they are managed by Dataverse
+            if (entity.isCdm) {
+                console.log(`🔍 Skipping attribute validation for CDM entity: ${entity.name}`);
+                return;
+            }
+
             entity.attributes.forEach(attr => {
                 const attrName = attr.name;
 
@@ -942,41 +1051,7 @@ class ValidationService extends BaseService {
                     }));
                 }
 
-                // Check for proper foreign key naming
-                if (attr.isForeignKey || attrName.toLowerCase().endsWith('_id') || attrName.toLowerCase().endsWith('id')) {
-                    const expectedPattern = /^[a-z][a-zA-Z0-9]*_id$|^[a-z][a-zA-Z0-9]*Id$/;
-                    if (!expectedPattern.test(attrName)) {
-                        warnings.push(this.createWarning({
-                            type: 'foreign_key_naming_convention',
-                            category: 'naming',
-                            severity: 'info',
-                            entity: entity.name,
-                            attribute: attrName,
-                            message: `Foreign key '${attrName}' should follow naming convention ending with '_id' or 'Id'.`,
-                            suggestion: `Rename to: ${this.fixForeignKeyName(attrName)}`,
-                            autoFixable: true,
-                            fixData: {
-                                entityName: entity.name,
-                                originalName: attrName,
-                                suggestedName: this.fixForeignKeyName(attrName)
-                            }
-                        }));
-                    }
-                }
-
-                // Check for meaningful names (avoid single letters or very short names)
-                if (attrName.length <= 2 && !['id', 'Id'].includes(attrName)) {
-                    warnings.push(this.createWarning({
-                        type: 'attribute_name_too_short',
-                        category: 'naming',
-                        severity: 'info',
-                        entity: entity.name,
-                        attribute: attrName,
-                        message: `Attribute name '${attrName}' is very short. Consider using a more descriptive name.`,
-                        suggestion: 'Use descriptive names like "firstName", "isActive", "orderDate"',
-                        autoFixable: false
-                    }));
-                }
+                // Removed: Check for meaningful names - no longer enforcing attribute name length conventions
             });
         });
 
@@ -989,62 +1064,9 @@ class ValidationService extends BaseService {
      * @returns {Array} Array of relationship naming warnings
      */
     validateRelationshipNames(relationships) {
-        const warnings = [];
-
-        relationships.forEach(rel => {
-            if (!rel.name) return;
-
-            const relName = rel.name;
-
-            // Check for invalid characters
-            if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(relName)) {
-                warnings.push(this.createWarning({
-                    type: 'invalid_relationship_name',
-                    category: 'naming',
-                    severity: 'warning',
-                    relationship: `${rel.fromEntity} → ${rel.toEntity}`,
-                    message: `Relationship name '${relName}' contains invalid characters.`,
-                    suggestion: `Rename to: ${this.sanitizeRelationshipName(relName)}`,
-                    autoFixable: true,
-                    fixData: {
-                        originalName: relName,
-                        suggestedName: this.sanitizeRelationshipName(relName)
-                    }
-                }));
-            }
-
-            // Check for length constraints
-            if (relName.length > 100) {
-                warnings.push(this.createWarning({
-                    type: 'relationship_name_too_long',
-                    category: 'naming',
-                    severity: 'warning',
-                    relationship: `${rel.fromEntity} → ${rel.toEntity}`,
-                    message: `Relationship name '${relName}' is too long (${relName.length} characters).`,
-                    suggestion: `Consider shortening to: ${relName.substring(0, 97)}...`,
-                    autoFixable: true,
-                    fixData: {
-                        originalName: relName,
-                        suggestedName: this.shortenRelationshipName(relName)
-                    }
-                }));
-            }
-
-            // Suggest meaningful relationship names based on entities
-            if (relName === `${rel.fromEntity}_${rel.toEntity}` || relName.toLowerCase() === 'relationship') {
-                warnings.push(this.createWarning({
-                    type: 'generic_relationship_name',
-                    category: 'naming',
-                    severity: 'info',
-                    relationship: `${rel.fromEntity} → ${rel.toEntity}`,
-                    message: `Relationship name '${relName}' is generic. Consider using a more descriptive name.`,
-                    suggestion: `Examples: "owns", "belongs to", "manages", "contains"`,
-                    autoFixable: false
-                }));
-            }
-        });
-
-        return warnings;
+        // DISABLED: Relationship labels should allow any characters, including spaces
+        console.log('🔍 DEBUG: validateRelationshipNames DISABLED - returning empty warnings');
+        return []; // Return empty array to bypass all relationship name validation
     }
 
     /**
@@ -1059,6 +1081,12 @@ class ValidationService extends BaseService {
 
         // Check entity names
         entities.forEach(entity => {
+            // Skip validation for CDM entities - they are managed by Dataverse
+            if (entity.isCdm) {
+                console.log(`🔍 Skipping reserved word validation for CDM entity: ${entity.name}`);
+                return;
+            }
+
             if (sqlReservedWords.includes(entity.name.toUpperCase())) {
                 warnings.push(this.createWarning({
                     type: 'sql_reserved_word',
@@ -1188,14 +1216,6 @@ class ValidationService extends BaseService {
     /**
      * Fix foreign key name to follow convention
      */
-    fixForeignKeyName(name) {
-        // Remove existing id/ref suffixes
-        let baseName = name.replace(/_?(id|ref)$/i, '').replace(/(Id|Ref)$/g, '');
-        
-        // Convert to lowercase and add _id suffix
-        return baseName.toLowerCase() + '_id';
-    }
-
     /**
      * Sanitize relationship name
      */
@@ -1526,6 +1546,9 @@ class ValidationService extends BaseService {
                 case 'invalid_choice_syntax':
                     return this.fixChoiceColumns(content, warning);
                     
+                // case 'invalid_relationship_name': // DISABLED: Relationship labels should allow spaces
+                //     return this.fixInvalidRelationshipName(content, warning);
+                    
                 default:
                     return {
                         success: false,
@@ -1679,8 +1702,58 @@ class ValidationService extends BaseService {
             };
         }
 
-        // Add foreign key line
-        const foreignKeyLine = `\n        string ${columnName} FK "Foreign key to ${referencedEntity}"`;
+        // Add foreign key line - use current entity name in description, not the old one from fixData
+        // In case entity was renamed, we want the FK description to use the current entity name
+        let currentReferencedEntity = referencedEntity;
+        
+        // Check if the referencedEntity exists in the current ERD
+        const entityPattern = new RegExp(`\\b${referencedEntity}\\s*\\{`, 'g');
+        if (!entityPattern.test(content)) {
+            // Original entity not found, try to find the current name by checking all entities
+            const allEntityMatches = content.match(/(\w+)\s*\{/g);
+            if (allEntityMatches) {
+                const availableEntities = allEntityMatches
+                    .map(match => match.replace(/\s*\{/, ''))
+                    .filter(entity => entity.length > 1); // Filter out single characters from relationship syntax
+                console.log(`🔧 DEBUG: Referenced entity '${referencedEntity}' not found. Available entities:`, availableEntities);
+                
+                // Try to find a matching entity based on common patterns
+                // Look for entities that might be the renamed version
+                const potentialMatches = availableEntities.filter(entity => {
+                    // Check if it contains the original name (e.g., CustomContact contains Contact)
+                    return entity.toLowerCase().includes(referencedEntity.toLowerCase()) ||
+                           // Or if the original name contains the current name
+                           referencedEntity.toLowerCase().includes(entity.toLowerCase());
+                });
+                
+                if (potentialMatches.length === 1) {
+                    currentReferencedEntity = potentialMatches[0];
+                    console.log(`🔧 DEBUG: Auto-resolved referenced entity from '${referencedEntity}' to '${currentReferencedEntity}'`);
+                } else if (potentialMatches.length > 1) {
+                    console.log(`🔧 DEBUG: Multiple potential matches found:`, potentialMatches, 'using first one:', potentialMatches[0]);
+                    currentReferencedEntity = potentialMatches[0];
+                } else {
+                    // If no good match, check relationships to infer the correct entity
+                    // Parse relationships from the content to find what entity this FK should reference
+                    const relationshipPattern = new RegExp(`${entityName}\\s*\\|[\\|\\-\\}\\{o]*\\s*(\\w+)\\s*:`, 'g');
+                    let relationshipMatch;
+                    while ((relationshipMatch = relationshipPattern.exec(content)) !== null) {
+                        const relatedEntity = relationshipMatch[1];
+                        if (availableEntities.includes(relatedEntity) && relatedEntity !== entityName) {
+                            currentReferencedEntity = relatedEntity;
+                            console.log(`🔧 DEBUG: Inferred referenced entity from relationship: '${currentReferencedEntity}'`);
+                            break;
+                        }
+                    }
+                    
+                    if (currentReferencedEntity === referencedEntity) {
+                        console.log(`🔧 DEBUG: Could not auto-resolve referenced entity, using original name '${referencedEntity}'`);
+                    }
+                }
+            }
+        }
+        
+        const foreignKeyLine = `\n        string ${columnName} FK "Foreign key to ${currentReferencedEntity}"`;
         const newEntityBody = entityBody + foreignKeyLine;
         
         // Reconstruct the content
@@ -2450,6 +2523,80 @@ class ValidationService extends BaseService {
     }
 
     /**
+     * Fix invalid relationship names by sanitizing them
+     * @param {string} content - ERD content
+     * @param {Object} warning - Warning object
+     * @returns {Object} Fix result
+     */
+    fixInvalidRelationshipName(content, warning) {
+        console.log('🔧 DEBUG: fixInvalidRelationshipName called with:', {
+            warningType: warning.type,
+            relationship: warning.relationship,
+            details: warning.details
+        });
+
+        try {
+            let updatedContent = content;
+            const relationshipText = warning.relationship || warning.details?.relationship;
+            
+            if (!relationshipText) {
+                console.log('🔧 No relationship text found in warning');
+                return { success: false, error: 'No relationship information found' };
+            }
+
+            // Extract entities from relationship text (e.g., "Location → Event")
+            const relationshipMatch = relationshipText.match(/(\w[\w\s]*?)\s*[→-]\s*(\w[\w\s]*?)$/);
+            if (!relationshipMatch) {
+                console.log('🔧 Could not parse relationship:', relationshipText);
+                return { success: false, error: 'Could not parse relationship format' };
+            }
+
+            const [, fromEntity, toEntity] = relationshipMatch;
+            console.log('🔧 Parsed relationship:', { fromEntity, toEntity });
+
+            // Sanitize entity names (remove invalid characters, ensure valid Mermaid names)
+            const sanitizedFromEntity = this.sanitizeEntityName(fromEntity.trim());
+            const sanitizedToEntity = this.sanitizeEntityName(toEntity.trim());
+
+            console.log('🔧 Sanitized entities:', { 
+                from: `${fromEntity} → ${sanitizedFromEntity}`, 
+                to: `${toEntity} → ${sanitizedToEntity}` 
+            });
+
+            // Find and replace the relationship in the content
+            const relationshipPattern = new RegExp(
+                `${this.escapeRegExp(fromEntity)}\\s*[→{}-]\\s*${this.escapeRegExp(toEntity)}`,
+                'gi'
+            );
+
+            const replacement = `${sanitizedFromEntity} }|--|| ${sanitizedToEntity}`;
+            updatedContent = updatedContent.replace(relationshipPattern, replacement);
+
+            // Also check for any entity declarations that need updating
+            if (sanitizedFromEntity !== fromEntity) {
+                const fromEntityPattern = new RegExp(`^\\s*${this.escapeRegExp(fromEntity)}\\s*\\{`, 'gm');
+                updatedContent = updatedContent.replace(fromEntityPattern, `    ${sanitizedFromEntity} {`);
+            }
+
+            if (sanitizedToEntity !== toEntity) {
+                const toEntityPattern = new RegExp(`^\\s*${this.escapeRegExp(toEntity)}\\s*\\{`, 'gm');
+                updatedContent = updatedContent.replace(toEntityPattern, `    ${sanitizedToEntity} {`);
+            }
+
+            console.log('🔧 Fixed invalid relationship name');
+            return {
+                success: true,
+                content: updatedContent,
+                appliedFix: `Fixed relationship name: "${relationshipText}" → "${sanitizedFromEntity} }|--|| ${sanitizedToEntity}"`
+            };
+
+        } catch (error) {
+            console.error('🔧 ERROR: fixInvalidRelationshipName failed:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Fix general Mermaid syntax issues in content
      * @param {string} content - ERD content
      * @returns {string} Fixed content with valid Mermaid syntax
@@ -2547,6 +2694,62 @@ class ValidationService extends BaseService {
         }
 
         return { success: false, error: 'Unable to determine reserved word context' };
+    }
+
+    /**
+     * Update autoFixable flag for warnings based on CDM entity status
+     * CDM entities should not be auto-fixed, only custom entities
+     * @param {Array} warnings - Array of warnings to update
+     * @param {Array} entities - Array of entities with isCdm flags
+     * @returns {Array} Updated warnings
+     */
+    updateAutoFixableForCDMEntities(warnings, entities) {
+        // Create a map of entity names to their CDM status
+        const entityCDMStatus = new Map();
+        entities.forEach(entity => {
+            entityCDMStatus.set(entity.name, entity.isCdm || false);
+        });
+
+        // Update warnings to disable autoFixable for CDM entities
+        return warnings.map(warning => {
+            if (!warning.autoFixable) {
+                // If already not auto-fixable, leave as is
+                return warning;
+            }
+
+            // Check if this warning relates to a CDM entity
+            let isCdmRelated = false;
+            
+            // Check warning.entity (direct entity reference)
+            if (warning.entity && entityCDMStatus.has(warning.entity)) {
+                isCdmRelated = entityCDMStatus.get(warning.entity);
+            }
+            
+            // Check warning.fixData.entityName (fix data entity reference)
+            if (!isCdmRelated && warning.fixData?.entityName && entityCDMStatus.has(warning.fixData.entityName)) {
+                isCdmRelated = entityCDMStatus.get(warning.fixData.entityName);
+            }
+
+            // If this warning relates to a CDM entity, disable auto-fixing
+            if (isCdmRelated) {
+                return {
+                    ...warning,
+                    autoFixable: false,
+                    message: warning.message + ' [CDM entity - cannot be auto-fixed]'
+                };
+            }
+
+            return warning;
+        });
+    }
+
+    /**
+     * Escape special regex characters in a string
+     * @param {string} string - String to escape
+     * @returns {string} Escaped string
+     */
+    escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 }
 

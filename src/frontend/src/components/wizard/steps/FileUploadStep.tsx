@@ -41,6 +41,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     detectedEntities, 
     entityChoice, 
     correctedErdContent, 
+    originalErdContent,
     fixedIssues,
     parsedEntities,
     parsedRelationships
@@ -104,11 +105,29 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
     // Retry mechanism for when DOM element isn't ready yet
     let retryCount = 0;
-    const maxRetries = 20; // Increased retries
-    const retryDelay = 200; // Increased delay
+    const maxRetries = 30; // More retries for slow accordion animations
+    const retryDelay = 300; // Longer delay to account for accordion animations
 
     const attemptRender = async () => {
       if (mermaidRef.current) {
+        // Check if the element is visible and has dimensions
+        const rect = mermaidRef.current.getBoundingClientRect();
+        const isVisible = rect.width > 0 && rect.height > 0;
+        
+        console.log('🔍 DEBUG: Mermaid container check', {
+          hasRef: !!mermaidRef.current,
+          isVisible,
+          dimensions: { width: rect.width, height: rect.height },
+          retryCount
+        });
+        
+        // If the element exists but isn't visible yet (accordion still animating), retry
+        if (!isVisible && retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(attemptRender, retryDelay);
+          return;
+        }
+        
         try {
           // Clear previous content
           console.log('🧹 DEBUG: Clearing previous diagram content');
@@ -138,6 +157,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       } else {
         retryCount++;
         if (retryCount < maxRetries) {
+          console.log(`🔍 DEBUG: mermaidRef not available, retry ${retryCount}/${maxRetries}`);
           setTimeout(attemptRender, retryDelay);
         } else {
           console.warn('🚨 DEBUG: Max retries reached, mermaidRef still not available');
@@ -384,6 +404,47 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     input?.click();
   }, []);
 
+  // Handle CDM choice selection and update entities with isCdm flag
+  const handleCDMChoice = useCallback((choice: 'cdm' | 'custom') => {
+    console.log('🔘 DEBUG: CDM choice selected:', choice);
+    
+    // Update the entity choice
+    updateWizardData({ entityChoice: choice });
+    
+    // If CDM is selected, update parsedEntities to mark CDM entities with isCdm: true
+    if (choice === 'cdm' && parsedEntities.length > 0) {
+      console.log('🔘 DEBUG: Updating parsedEntities with CDM flags');
+      console.log('🔘 DEBUG: Current parsedEntities:', parsedEntities);
+      
+      // Get detected CDM entities from wizardData
+      const detectedCDMNames = detectedEntities || [];
+      console.log('🔘 DEBUG: Detected CDM entity names:', detectedCDMNames);
+      
+      // Update parsedEntities to mark CDM entities
+      const updatedEntities = parsedEntities.map(entity => {
+        const isCdmEntity = detectedCDMNames.includes(entity.name);
+        console.log(`🔘 DEBUG: Entity ${entity.name}: isCdm = ${isCdmEntity}`);
+        return {
+          ...entity,
+          isCdm: isCdmEntity
+        };
+      });
+      
+      console.log('🔘 DEBUG: Updated parsedEntities:', updatedEntities);
+      updateWizardData({ parsedEntities: updatedEntities });
+    } else if (choice === 'custom' && parsedEntities.length > 0) {
+      // If custom is selected, ensure all entities are marked as non-CDM
+      console.log('🔘 DEBUG: Marking all entities as custom (non-CDM)');
+      const updatedEntities = parsedEntities.map(entity => ({
+        ...entity,
+        isCdm: false
+      }));
+      
+      console.log('🔘 DEBUG: Updated parsedEntities (all custom):', updatedEntities);
+      updateWizardData({ parsedEntities: updatedEntities });
+    }
+  }, [parsedEntities, detectedEntities, updateWizardData]);
+
   // Legacy frontend validation (now handled by backend warnings)
   const hasChoiceIssues = false; // Deprecated - handled by backend warnings
   const namingConflicts: string[] = []; // Deprecated - handled by backend warnings  
@@ -391,49 +452,43 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   
   // Check if there are any backend validation warnings that should prevent showing "looks good"
   const hasBackendWarnings = useMemo(() => {
-    if (!wizardData.validationResults?.warnings) return false;
+    // For CDM entities, trust the backend completely - if user selected CDM, no frontend warnings needed
+    if (wizardData.entityChoice === 'cdm') {
+      console.log('🔧 DEBUG: CDM entity choice - trusting backend validation (no frontend warnings)');
+      return false;
+    }
+
+    if (!wizardData.validationResults?.warnings) {
+      console.log('🔧 DEBUG: No validation results or warnings found');
+      return false;
+    }
     
-    console.log('🔧 DEBUG: Filtering warnings. Total warnings:', wizardData.validationResults.warnings.length);
-    console.log('🔧 DEBUG: Fixed issues set:', Array.from(fixedIssues));
-    console.log('🔧 DEBUG: All warning IDs:', wizardData.validationResults.warnings.map((w: ValidationWarning) => w.id));
+    const totalWarnings = wizardData.validationResults.warnings.length;
+    console.log('🔧 DEBUG: Processing warnings for non-CDM entities:', {
+      totalWarnings,
+      entityChoice: wizardData.entityChoice
+    });
     
+    // For non-CDM entities, check each warning
     const visibleWarnings = wizardData.validationResults.warnings.filter((warning: any) => {
-      // Hide CDM-related warnings if user has already chosen to use CDM entities
-      if (wizardData.entityChoice === 'cdm' && 
-          (warning.category === 'cdm' || warning.type === 'cdm_entity_detected' || warning.type === 'cdm_summary')) {
-        return false;
-      }
-      
-      // Never count warnings for CDM entities (Account, Contact)
-      const cdmEntities = ['Account', 'Contact'];
-      if (warning.entity && cdmEntities.includes(warning.entity)) {
-        return false;
-      }
-      
-      // For FK warnings, also check the relationship field for CDM entities
-      if (warning.type === 'foreign_key_naming' && warning.relationship) {
-        const relationshipMatch = warning.relationship.match(/(\w+)\s*→\s*(\w+)/);
-        if (relationshipMatch) {
-          const [, fromEntity, toEntity] = relationshipMatch;
-          if (cdmEntities.includes(fromEntity) || cdmEntities.includes(toEntity)) {
-            return false;
-          }
-        }
-      }
-      
-      // Check if this specific warning has been fixed by the user using the actual backend warning ID
+      // Check if this specific warning has been fixed by the user
       if (fixedIssues.has(warning.id)) {
         console.log('🔧 DEBUG: Warning filtered out (already fixed):', warning.id, warning.type);
         return false;
       }
       
-      // Count all non-auto-fixed warnings except pure info messages (like status column info)
+      // Count all non-auto-fixed warnings except pure info messages
       return !warning.autoFixed && warning.severity !== 'info';
     });
     
-    console.log('🔧 DEBUG: Visible warnings after filtering:', visibleWarnings.length);
-    return visibleWarnings.length > 0;
-  }, [wizardData.validationResults, wizardData.entityChoice, fixedIssues, correctedErdContent]);
+    const hasWarnings = visibleWarnings.length > 0;
+    console.log('🔧 DEBUG: Final hasBackendWarnings result:', {
+      visibleWarningsCount: visibleWarnings.length,
+      hasWarnings
+    });
+    
+    return hasWarnings;
+  }, [wizardData.validationResults, wizardData.entityChoice, fixedIssues]);
   
   // Check if ERD has any issues at all
   const hasAnyIssues = hasBackendWarnings; // Only backend warnings matter now
@@ -468,6 +523,76 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       return () => clearTimeout(timeoutId);
     }
   }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasAnyIssues, effectiveTheme]);
+
+  // Track last revalidated entity choice to prevent infinite loops
+  const lastRevalidatedChoiceRef = useRef<string | null>(null);
+
+  // Re-validate when entity choice changes
+  useEffect(() => {
+    console.log('🔧 DEBUG: entityChoice changed, checking if revalidation needed', {
+      entityChoice,
+      hasUploadedFile: !!uploadedFile,
+      hasOriginalContent: !!originalErdContent,
+      fileName: uploadedFile?.name,
+      lastRevalidatedChoice: lastRevalidatedChoiceRef.current
+    });
+
+    // Only revalidate if:
+    // 1. User has made an entity choice (not null)
+    // 2. We have a file uploaded
+    // 3. We have original content to revalidate
+    // 4. Choice is different from last revalidated choice (prevent loops)
+    if (entityChoice && 
+        uploadedFile && 
+        originalErdContent && 
+        entityChoice !== lastRevalidatedChoiceRef.current) {
+      
+      console.log('🔧 DEBUG: Triggering revalidation with entityChoice:', entityChoice);
+      lastRevalidatedChoiceRef.current = entityChoice;
+
+      const revalidateWithChoice = async () => {
+        try {
+          console.log('🔧 DEBUG: Starting revalidation request with entityChoice:', entityChoice);
+          
+          const revalidationResult = await ApiService.validateFile({
+            name: uploadedFile.name,
+            content: originalErdContent,
+            size: uploadedFile.size,
+            lastModified: uploadedFile.lastModified
+          }, entityChoice);
+          
+          console.log('🔧 DEBUG: Revalidation completed with entityChoice:', {
+            entityChoice,
+            warningsCount: revalidationResult.warnings?.length || 0,
+            autoFixableWarnings: revalidationResult.warnings?.filter((w: any) => w.autoFixable).length || 0,
+            totalValidationResults: revalidationResult
+          });
+
+          console.log('🔧 DEBUG: About to update wizard data with new validation results');
+          
+          // Ensure we completely replace validation results, not merge them
+          updateWizardData({
+            validationResults: revalidationResult, // This should completely replace the old validation results
+            correctedErdContent: revalidationResult.correctedERD || originalErdContent
+          });
+
+          console.log('🔧 DEBUG: Wizard data updated successfully');
+
+          // Force a small delay to ensure state update completes
+          setTimeout(() => {
+            console.log('🔧 DEBUG: Delayed check - current validation warnings count:', 
+              wizardData.validationResults?.warnings?.length || 0);
+          }, 100);
+
+        } catch (error) {
+          console.error('Error during revalidation with entityChoice:', error);
+        }
+      };
+
+      revalidateWithChoice();
+    }
+  }, [entityChoice, uploadedFile, originalErdContent]);
+  // Removed updateWizardData and isValidating from dependencies to prevent infinite loops
 
   const applyChoiceColumnFix = useCallback(() => {
     let updatedContent = correctedErdContent;
@@ -550,9 +675,11 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       });
       
       // Call the individual fix API
+      console.log('🔧 FRONTEND DEBUG: Calling backend fix with entityChoice:', wizardData.entityChoice);
       const fixResult = await ApiService.fixIndividualWarning({
         mermaidContent: correctedErdContent,
         warningId: warningId,
+        entityChoice: wizardData.entityChoice || undefined,
         options: {}
       });
 
@@ -722,14 +849,14 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                         <div className={styles.cdmChoiceContainer}>
                           <Button 
                             appearance="primary"
-                            onClick={() => updateWizardData({ entityChoice: 'cdm' })}
+                            onClick={() => handleCDMChoice('cdm')}
                             className={styles.cdmChoiceButton}
                           >
                             Use CDM entities
                           </Button>
                           <Button 
                             appearance="secondary"
-                            onClick={() => updateWizardData({ entityChoice: 'custom' })}
+                            onClick={() => handleCDMChoice('custom')}
                             className={styles.cdmChoiceButton}
                           >
                             Create custom entities

@@ -56,14 +56,28 @@ export const CDMDetectionCard: React.FC<CDMDetectionCardProps> = ({
               <div className={styles.choiceButtons}>
                 <Button 
                   appearance="primary"
-                  onClick={() => onChoiceSelected('cdm')}
+                  onClick={() => {
+                    console.log('🔧 FRONTEND DEBUG: CDM button clicked - USE CDM', {
+                      choice: 'cdm',
+                      detectedEntities: entities,
+                      timestamp: new Date().toISOString()
+                    });
+                    onChoiceSelected('cdm');
+                  }}
                   className={styles.cdmChoiceButton}
                 >
                   Use existing CDM entities
                 </Button>
                 <Button 
                   appearance="secondary"
-                  onClick={() => onChoiceSelected('custom')}
+                  onClick={() => {
+                    console.log('🔧 FRONTEND DEBUG: CDM button clicked - CREATE CUSTOM', {
+                      choice: 'custom',
+                      detectedEntities: entities,
+                      timestamp: new Date().toISOString()
+                    });
+                    onChoiceSelected('custom');
+                  }}
                   className={styles.cdmChoiceButton}
                 >
                   Create custom entities
