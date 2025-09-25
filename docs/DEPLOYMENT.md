@@ -1,8 +1,16 @@
 # Deployment Guide - Mermaid to Dataverse Converter
 
-This guide explains how to deploy and use the Mermaid-to-Dataverse application. The application uses **fully automated setup** with managed identity authentication - no manual configuration required!
+This guide explains how to deploy and use the Mermaid-to-Dataverse application. Choose between **Azure deployment** with managed identity or **local development** with client secret authentication.
 
-## Quick Start (Recommended)
+## Table of Contents
+
+1. [Quick Start - Azure Deployment (Recommended)](#quick-start-azure-deployment-recommended)
+2. [Local Development Setup](#local-development-setup)
+3. [Prerequisites](#prerequisites)
+4. [Azure Deployment Process](#azure-deployment-process)
+5. [Local Development Process](#local-development-process)
+
+## Quick Start - Azure Deployment (Recommended)
 
 **Two steps to deploy everything:**
 
@@ -30,9 +38,36 @@ cd mermaid
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
 
+## Local Development Setup
+
+**For local development with real Dataverse authentication:**
+
+```powershell
+# Clone the repository
+git clone https://github.com/LuiseFreese/mermaid.git
+cd mermaid
+
+# Step 1: Create App Registration and local environment
+.\scripts\setup-local-dev.ps1 -DataverseUrl "https://your-org.crm.dynamics.com"
+
+# Step 2: Start development servers
+.\scripts\dev-local.ps1
+```
+
+**The local setup script will:**
+- Create App Registration with client secret
+- Set up Dataverse application user with proper permissions
+- Generate `.env.local` file with authentication configuration
+- Configure local environment for development
+
+**The dev script will:**
+- Start backend server with real Dataverse authentication
+- Start frontend development server with hot reload
+- Enable API proxy for seamless development
+
 ## Prerequisites
 
-Before running the setup:
+### For Azure Deployment:
 
 1. **Azure subscription** with permissions to create resources
 2. **PowerShell 7+** (recommended) or Windows PowerShell 5.1
@@ -44,7 +79,17 @@ Before running the setup:
    - **Microsoft Entra ID**: Application Administrator (to create app registrations)
    - **Dataverse**: System Administrator (to create application users and assign System Customizer role)
 
-## Deployment Process
+### For Local Development:
+
+1. **PowerShell 7+** (recommended) or Windows PowerShell 5.1
+2. **Azure CLI** installed and logged in (`az login`)
+3. **Node.js 18+** (required for both frontend and backend)
+4. **Access to Dataverse environment** where you want to test
+5. **Appropriate permissions**:
+   - **Microsoft Entra ID**: Application Administrator (to create app registrations)
+   - **Dataverse**: System Administrator (to create application users and assign roles)
+
+## Azure Deployment Process
 
 ### Step 1: Infrastructure Setup
 ```powershell
@@ -63,6 +108,70 @@ Before running the setup:
 .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
+## Local Development Process
+
+### Step 1: Local Environment Setup
+```powershell
+# Interactive mode (prompts for Dataverse URL)
+.\scripts\setup-local-dev.ps1
+
+# OR provide Dataverse URL directly
+.\scripts\setup-local-dev.ps1 -DataverseUrl "https://orgXXXXX.crm4.dynamics.com"
+```
+
+**This script will:**
+- Create a new App Registration with client secret
+- Generate a `.env.local` file with authentication configuration
+- Create a Dataverse Application User with System Customizer role
+- Configure the local environment for development
+
+### Step 2: Start Development Servers
+```powershell
+# Start both backend and frontend servers
+.\scripts\dev-local.ps1
+```
+
+**This script will:**
+- Start the backend server on port 8080 with real Dataverse authentication
+- Start the frontend development server on port 3003 (or next available port)
+- Configure API proxy for seamless development experience
+- Enable hot reload for both frontend and backend changes
+
+### Local Development Features
+
+**Backend Server (Port 8080):**
+- Real Dataverse authentication using client secret
+- All API endpoints available (`/api/*`)
+- File upload handling (`/upload`)
+- Deployment history tracking
+- Full entity management capabilities
+
+**Frontend Server (Port 3003+):**
+- React development server with hot reload
+- Vite-powered fast refresh
+- API proxy to backend server
+- All frontend routes working (wizard, deployment history)
+- Theme switching and responsive design
+
+### Manual Setup (Alternative)
+
+If you prefer manual setup or need to troubleshoot:
+
+```powershell
+# 1. Create App Registration manually
+.\scripts\create-local-dev-app.ps1 -DataverseUrl "https://your-org.crm.dynamics.com"
+
+# 2. Set up Dataverse Application User
+.\scripts\setup-dataverse-user.ps1 -AppId "your-app-id" -ServicePrincipalId "your-sp-id" -DataverseUrl "https://your-org.crm.dynamics.com"
+
+# 3. Create .env.local file manually with:
+# CLIENT_ID=your-app-id
+# CLIENT_SECRET=your-client-secret
+# DATAVERSE_URL=https://your-org.crm.dynamics.com
+
+# 4. Start development servers
+.\scripts\dev-local.ps1
+```
 
 ## What Gets Deployed
 
@@ -73,6 +182,33 @@ The setup script automatically creates:
 - **User-Assigned Managed Identity** - Secure authentication with federated credentials
 - **Entra ID App Registration** - Service principal for Dataverse access
 - **Dataverse Application User** - Configured with appropriate security roles
+
+## Local Development vs Azure Deployment
+
+| Feature | Local Development | Azure Deployment |
+|---------|------------------|-----------------|
+| **Authentication** | Client Secret | Managed Identity (Federated Credentials) |
+| **App Registration** | Separate for local dev | Shared with Azure resources |
+| **Frontend Server** | Vite dev server (port 3003+) | Served by backend (port 443/80) |
+| **Backend Server** | Node.js dev server (port 8080) | Azure App Service |
+| **Hot Reload** | ✅ Full hot reload | ❌ Requires redeployment |
+| **Environment** | `.env.local` file | App Service settings |
+| **Security** | Client secret (development only) | Passwordless (production-ready) |
+| **Setup Time** | ~2 minutes | ~5-10 minutes |
+| **Cost** | Free (local) | Azure resources cost |
+| **Use Case** | Development & testing | Production deployment |
+
+### When to Use Local Development:
+- 🔧 **Development**: Building and testing new features
+- 🐛 **Debugging**: Troubleshooting issues with full logging
+- 🚀 **Rapid iteration**: Quick changes with hot reload
+- 📝 **Learning**: Understanding the application architecture
+
+### When to Use Azure Deployment:
+- 🌐 **Production**: Live application for end users  
+- 🏢 **Team sharing**: Multiple users accessing the same instance
+- 🔐 **Security**: Enterprise-grade managed identity authentication
+- 📊 **Performance**: Optimized for production workloads
 
 ## Automated Setup Process
 
@@ -230,3 +366,57 @@ Both scripts are **idempotent** and can be run multiple times safely:
 - Rebuild frontend for latest changes
 - Update runtime configuration
 - Ensure optimal performance
+
+## Troubleshooting
+
+### Local Development Issues
+
+**Problem: Frontend shows 404 for `/deployment-history`**
+- **Cause**: Frontend dev server not running or wrong port
+- **Solution**: Access frontend at `http://localhost:3003` (not backend port 8080)
+
+**Problem: API calls fail with authentication errors**
+- **Cause**: Missing or invalid `.env.local` configuration
+- **Solution**: Re-run `.\scripts\setup-local-dev.ps1` to regenerate configuration
+
+**Problem: "Port 3003 is in use, trying another one..."**
+- **Cause**: Another process using port 3003
+- **Solution**: Frontend will automatically use next available port (3004, 3005, etc.)
+
+**Problem: Backend fails to start with Dataverse authentication errors**
+- **Cause**: App Registration or client secret expired/invalid
+- **Solution**: 
+  ```powershell
+  # Regenerate the local development setup
+  .\scripts\setup-local-dev.ps1 -DataverseUrl "your-dataverse-url"
+  ```
+
+**Problem: "Application User not found" in backend logs**
+- **Cause**: Dataverse Application User not created properly
+- **Solution**: 
+  ```powershell
+  # Manually create the Application User
+  .\scripts\setup-dataverse-user.ps1 -AppId "your-app-id" -ServicePrincipalId "your-sp-id" -DataverseUrl "your-dataverse-url"
+  ```
+
+### General Issues
+
+**Problem: Azure CLI not authenticated**
+- **Solution**: `az login` and select the correct subscription with `az account set --subscription "your-subscription"`
+
+**Problem: Insufficient permissions in Dataverse**
+- **Cause**: User account doesn't have System Administrator role
+- **Solution**: Ask your Dataverse administrator to grant System Administrator permissions temporarily for setup
+
+**Problem: Node.js version too old**
+- **Cause**: Node.js version below 18
+- **Solution**: Install Node.js 18+ from [nodejs.org](https://nodejs.org)
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. **Check the logs**: Both frontend and backend show detailed error messages
+2. **Verify prerequisites**: Ensure all required tools and permissions are available  
+3. **Re-run setup**: Most issues can be resolved by re-running the setup scripts
+4. **Clean start**: Delete `.env.local` and re-run `.\scripts\setup-local-dev.ps1`

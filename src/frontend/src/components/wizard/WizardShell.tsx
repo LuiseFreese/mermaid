@@ -1,14 +1,15 @@
 import React from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   Title1,
   Title2,
   Text,
   ProgressBar,
   tokens,
-  Badge
+  Badge,
+  Button
 } from '@fluentui/react-components';
-import { ChevronRightRegular } from '@fluentui/react-icons';
+import { ChevronRightRegular, HistoryRegular } from '@fluentui/react-icons';
 import { FileUploadStep } from './steps/FileUploadStep';
 import { SolutionSetupStep } from './steps/SolutionSetupStep';
 import { GlobalChoicesStep } from './steps/global-choices';
@@ -72,7 +73,22 @@ export const WizardShell: React.FC = () => {
             position: 'absolute',
             top: '16px',
             right: '24px',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
           }}>
+            <Link to="/deployment-history" style={{ textDecoration: 'none' }}>
+              <Button 
+                appearance="subtle"
+                icon={<HistoryRegular />}
+                style={{ 
+                  color: 'var(--color-banner-text)',
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                }}
+              >
+                History
+              </Button>
+            </Link>
             <ThemeToggle />
           </div>
           

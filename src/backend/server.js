@@ -9,7 +9,14 @@
 const http = require('http');
 const url  = require('url');
 const path = require('path');
-require('dotenv').config();
+
+// Load environment variables - check .env.local first (for local dev), then .env
+const fs = require('fs');
+if (fs.existsSync('.env.local')) {
+  require('dotenv').config({ path: '.env.local' });
+} else {
+  require('dotenv').config();
+}
 
 // --- Import New Architecture Layers ------------------------------------
 
@@ -22,6 +29,7 @@ const { AdminController } = require('./controllers/admin-controller');
 // Services
 const { ValidationService } = require('./services/validation-service');
 const { DeploymentService } = require('./services/deployment-service');
+const { DeploymentHistoryService } = require('./services/deployment-history-service');
 const { PublisherService } = require('./services/publisher-service');
 const { GlobalChoicesService } = require('./services/global-choices-service');
 const { SolutionService } = require('./services/solution-service');
@@ -121,6 +129,10 @@ async function initializeComponents() {
       logger: console
     });
 
+    const deploymentHistoryService = new DeploymentHistoryService({
+      logger: console
+    });
+
     // Initialize middleware
     const requestLogger = new RequestLoggerMiddleware({
       logger: console,
@@ -153,6 +165,9 @@ async function initializeComponents() {
       deploymentService,
       streamingMiddleware: streamingHandler
     });
+
+    // Set deployment history service on the deployment controller
+    deploymentController.setDeploymentHistoryService(deploymentHistoryService);
 
     const adminController = new AdminController(
       publisherService,
@@ -572,7 +587,12 @@ async function routeRequest(pathname, req, res, components) {
     return handleHealthCheck(req, res, components);
   }
 
-  // 404 Not Found
+  // --- SPA fallback: serve React app for all other GET routes (except above) ---
+  if (req.method === 'GET') {
+    return components.wizardController.serveReactApp(req, res);
+  }
+
+  // 404 Not Found (for non-GET or truly unknown)
   await components.errorHandler.handle404(req, res);
 }
 
@@ -675,6 +695,32 @@ async function handleApiRoutes(pathname, req, res, components) {
           return components.deploymentController.testConnection(req, res);
         }
         break;
+    }
+  }
+
+  // Deployment history routes
+  if (route.startsWith('deployments/')) {
+    const deploymentsRoute = route.replace('deployments/', '');
+    
+    // Handle /api/deployments/history
+    if (deploymentsRoute === 'history') {
+      if (req.method === 'GET') {
+        return components.deploymentController.getDeploymentHistory(req, res);
+      }
+    }
+    
+    // Handle /api/deployments/compare
+    if (deploymentsRoute === 'compare') {
+      if (req.method === 'GET') {
+        return components.deploymentController.compareDeployments(req, res);
+      }
+    }
+    
+    // Handle /api/deployments/{id}/details
+    if (deploymentsRoute.endsWith('/details')) {
+      if (req.method === 'GET') {
+        return components.deploymentController.getDeploymentDetails(req, res);
+      }
     }
   }
 

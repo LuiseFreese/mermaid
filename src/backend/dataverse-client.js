@@ -6,10 +6,16 @@ const axios = require('axios');
 
 class DataverseClient {
   constructor(cfg = {}) {
-    this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || '').replace(/\/$/, '');
-    this.tenantId = cfg.tenantId || cfg.TENANT_ID;
-    this.clientId = cfg.clientId || cfg.CLIENT_ID;
+    this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || process.env.DATAVERSE_URL || '').replace(/\/$/, '');
+    this.tenantId = cfg.tenantId || cfg.TENANT_ID || process.env.TENANT_ID;
+    this.clientId = cfg.clientId || cfg.CLIENT_ID || process.env.CLIENT_ID;
+    this.clientSecret = cfg.clientSecret || cfg.CLIENT_SECRET || process.env.CLIENT_SECRET;
     this.managedIdentityClientId = cfg.managedIdentityClientId || cfg.MANAGED_IDENTITY_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
+    
+    // Support for client secret authentication (local development)
+    this.useClientSecret = cfg.useClientSecret || 
+                           process.env.USE_CLIENT_SECRET === 'true' ||
+                           (this.clientSecret && this.clientId && this.tenantId);
     
     // Support for federated credentials and managed identity
     this.useFederatedCredential = cfg.useFederatedCredential || 
@@ -18,7 +24,7 @@ class DataverseClient {
     // Support for managed identity (Azure App Service, Container Instances, VMs, etc.)
     this.useManagedIdentity = cfg.useManagedIdentity || 
                               process.env.USE_MANAGED_IDENTITY === 'true' ||
-                              !this.useFederatedCredential;
+                              (!this.useClientSecret && !this.useFederatedCredential);
     
     // For federated credentials, we need the assertion token or file path
     this.clientAssertion = cfg.clientAssertion || process.env.CLIENT_ASSERTION;
@@ -50,7 +56,14 @@ class DataverseClient {
     if (this._token && now < (this._tokenExp - 60)) return this._token;
 
     // Determine authentication method based on configuration
-    if (this.useManagedIdentity && this.useFederatedCredential) {
+    if (this.useClientSecret) {
+      // Use client secret authentication (local development)
+      this._log('🔐 AUTHENTICATION: Using Client Secret');
+      if (!this.tenantId || !this.clientId || !this.clientSecret) {
+        throw new Error('Missing tenantId/clientId/clientSecret for client secret authentication.');
+      }
+      this._token = await this._getTokenWithClientSecret();
+    } else if (this.useManagedIdentity && this.useFederatedCredential) {
       // Use managed identity WITH federated credentials (workload identity pattern)
       this._log('🔐 AUTHENTICATION: Using Managed Identity + Federated Credentials');
       this._token = await this._getManagedIdentityWithFederatedCredentials();
@@ -69,7 +82,7 @@ class DataverseClient {
       }
       this._token = await this._getTokenWithClientAssertion();
     } else {
-      throw new Error('Authentication method not configured. Must use either managed identity or federated credentials.');
+      throw new Error('Authentication method not configured. Must use client secret, managed identity, or federated credentials.');
     }
 
     // Set expiration time for all authentication methods
@@ -241,6 +254,43 @@ class DataverseClient {
 
     this._log(' OK   Federated credential token acquired.');
     return tokenRes.data.access_token;
+  }
+
+  /**
+   * Get access token using client secret (local development)
+   */
+  async _getTokenWithClientSecret() {
+    this._log(' Requesting token with client secret (local development)...');
+    
+    try {
+      const tokenRes = await axios.post(
+        `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+        new URLSearchParams({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          grant_type: 'client_credentials',
+          scope: `${this.baseUrl}/.default`
+        }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+
+      this._log(' OK   Client secret token acquired.');
+      return tokenRes.data.access_token;
+      
+    } catch (error) {
+      // Log detailed error information for debugging
+      const errorDetails = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      };
+      
+      this._err(' Failed to get client secret token:');
+      this._err(' Error details:', JSON.stringify(errorDetails, null, 2));
+      
+      throw new Error(`Client secret authentication failed: ${error.message}`);
+    }
   }
 
   async _req(method, url, data) {

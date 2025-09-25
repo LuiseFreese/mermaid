@@ -65,6 +65,18 @@ class DeploymentController extends BaseController {
             if (process.env.NODE_ENV === 'test') {
                 try {
                     const result = await this.deploymentService.deploySolution(deploymentConfig);
+                    
+                    // Capture deployment history on success
+                    if (result.success && this.deploymentHistoryService) {
+                        try {
+                            await this.deploymentHistoryService.saveDeployment(deploymentConfig, result);
+                            this.log('deploySolution', 'Deployment history captured successfully (test mode)');
+                        } catch (historyError) {
+                            this.log('deploySolution', 'Failed to capture deployment history (test mode)', historyError);
+                            // Don't fail the deployment if history capture fails
+                        }
+                    }
+                    
                     return this.sendJson(res, 200, result);
                 } catch (deployError) {
                     if (deployError.message.includes('Missing required') || deployError.message.includes('is required')) {
@@ -91,6 +103,17 @@ class DeploymentController extends BaseController {
                 deploymentConfig, 
                 progressCallback
             );
+
+            // Capture deployment history on success
+            if (result.success && this.deploymentHistoryService) {
+                try {
+                    await this.deploymentHistoryService.saveDeployment(deploymentConfig, result);
+                    this.log('deploySolution', 'Deployment history captured successfully');
+                } catch (historyError) {
+                    this.log('deploySolution', 'Failed to capture deployment history', historyError);
+                    // Don't fail the deployment if history capture fails
+                }
+            }
 
             // Send final result
             streaming.sendFinal(result);
@@ -183,20 +206,51 @@ class DeploymentController extends BaseController {
      * GET /api/deployment-history
      */
     async getDeploymentHistory(req, res) {
-        try {
-            const url = require('url');
-            const urlParts = url.parse(req.url, true);
-            const limit = parseInt(urlParts.query.limit) || 50;
-            const offset = parseInt(urlParts.query.offset) || 0;
+        this.log('getDeploymentHistory', { method: req.method, url: req.url });
 
-            const result = await this.deploymentService.getDeploymentHistory({ limit, offset });
-            
-            if (result.success) {
-                this.sendSuccess(res, result.data);
-            } else {
-                this.sendError(res, 500, result.message);
+        try {
+            if (!this.deploymentHistoryService) {
+                this.log('getDeploymentHistory', 'No deployment history service, falling back to old service');
+                // Fallback to old deployment service if history service not available
+                const url = require('url');
+                const urlParts = url.parse(req.url, true);
+                const limit = parseInt(urlParts.query.limit) || 50;
+                const offset = parseInt(urlParts.query.offset) || 0;
+
+                const result = await this.deploymentService.getDeploymentHistory({ limit, offset });
+                
+                if (result.success) {
+                    this.sendSuccess(res, result.data);
+                } else {
+                    this.sendError(res, 500, result.message);
+                }
+                return;
             }
 
+            const url = require('url');
+            const urlParts = url.parse(req.url, true);
+            console.log('Debug URL parsing:', req.url, urlParts.query);
+            const environmentSuffix = (urlParts.query && urlParts.query.environmentSuffix) || 'default';
+            const limit = parseInt((urlParts.query && urlParts.query.limit)) || 20;
+
+            if (limit > 100) {
+                return this.sendJson(res, 400, {
+                    success: false,
+                    message: 'Limit cannot exceed 100'
+                });
+            }
+
+            const deployments = await this.deploymentHistoryService.getDeploymentHistory(
+                environmentSuffix, 
+                limit
+            );
+
+            this.sendJson(res, 200, {
+                success: true,
+                environmentSuffix,
+                count: deployments.length,
+                deployments
+            });
         } catch (error) {
             this.sendInternalError(res, 'Failed to get deployment history', error);
         }
@@ -348,6 +402,114 @@ class DeploymentController extends BaseController {
         } catch (error) {
             this.sendInternalError(res, 'Failed to get deployment metrics', error);
         }
+    }
+
+    /**
+     * Get deployment history for an environment
+     * GET /api/deployments/history?environmentSuffix=value&limit=20
+     */
+    /**
+     * Get detailed information about a specific deployment
+     * GET /api/deployments/:deploymentId/details
+     */
+    async getDeploymentDetails(req, res) {
+        this.log('getDeploymentDetails', { method: req.method, url: req.url });
+
+        try {
+            if (!this.deploymentHistoryService) {
+                return this.sendJson(res, 501, {
+                    success: false,
+                    message: 'Deployment history service not available'
+                });
+            }
+
+            // Extract deployment ID from URL path like /api/deployments/123/details
+            const deploymentId = this.extractDeploymentIdFromUrl(req.url);
+
+            if (!deploymentId) {
+                return this.sendJson(res, 400, {
+                    success: false,
+                    message: 'Deployment ID is required'
+                });
+            }
+
+            const deployment = await this.deploymentHistoryService.getDeploymentById(deploymentId);
+
+            if (!deployment) {
+                return this.sendJson(res, 404, {
+                    success: false,
+                    message: `Deployment ${deploymentId} not found`
+                });
+            }
+
+            this.sendJson(res, 200, {
+                success: true,
+                deployment
+            });
+        } catch (error) {
+            this.sendInternalError(res, 'Failed to get deployment details', error);
+        }
+    }
+
+    /**
+     * Compare two deployments and show differences
+     * GET /api/deployments/compare?from=deploymentId1&to=deploymentId2
+     */
+    async compareDeployments(req, res) {
+        this.log('compareDeployments', { method: req.method, url: req.url });
+
+        try {
+            if (!this.deploymentHistoryService) {
+                return this.sendJson(res, 501, {
+                    success: false,
+                    message: 'Deployment history service not available'
+                });
+            }
+
+            const url = require('url');
+            const urlParts = url.parse(req.url, true);
+            const { from, to } = urlParts.query;
+
+            if (!from || !to) {
+                return this.sendJson(res, 400, {
+                    success: false,
+                    message: 'Both from and to deployment IDs are required'
+                });
+            }
+
+            const comparison = await this.deploymentHistoryService.compareDeployments(from, to);
+
+            this.sendJson(res, 200, {
+                success: true,
+                comparison
+            });
+        } catch (error) {
+            if (error.message.includes('not found')) {
+                return this.sendJson(res, 404, {
+                    success: false,
+                    message: error.message
+                });
+            }
+            this.sendInternalError(res, 'Failed to compare deployments', error);
+        }
+    }
+
+    /**
+     * Extract deployment ID from URL path
+     * @param {string} url - The URL to parse
+     * @returns {string|null} The deployment ID or null if not found
+     */
+    extractDeploymentIdFromUrl(url) {
+        const match = url.match(/\/deployments\/([^/]+)\/details/);
+        return match ? match[1] : null;
+    }
+
+    /**
+     * Set the deployment history service dependency
+     * @param {Object} deploymentHistoryService - Deployment history service instance
+     */
+    setDeploymentHistoryService(deploymentHistoryService) {
+        this.deploymentHistoryService = deploymentHistoryService;
     }
 }
 
