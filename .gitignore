@@ -12,12 +12,15 @@ dist/
 coverage/
 .github
 
+# Data directories (development/test data)
+data/deployments/*.json
+data/test/
+
 # Backup files
 *.backup
 *.bak
 src/server-old.js
 src/backup-server.js
-
 
 # Debug/temp files
 fix_*.ps1
@@ -30,7 +33,9 @@ src/server-old.js
 deploy.zip
 deploy-temp/
 test-files/
-
+utputFormat
+*.tmp
+*.temp
 
 # Project management
 TODO.md

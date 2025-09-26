@@ -56,6 +56,7 @@ class ConfigurationRepository extends BaseRepository {
                 serverUrl: this.environment.DATAVERSE_URL,
                 tenantId: this.environment.TENANT_ID,
                 clientId: this.environment.CLIENT_ID,
+                clientSecret: this.environment.CLIENT_SECRET, // Add client secret for local dev
                 managedIdentityClientId: this.environment.MANAGED_IDENTITY_CLIENT_ID,
                 useFederatedCredential,
                 useManagedIdentity,
@@ -68,13 +69,15 @@ class ConfigurationRepository extends BaseRepository {
                 DATAVERSE_URL: !!this.environment.DATAVERSE_URL,
                 TENANT_ID: !!this.environment.TENANT_ID,
                 CLIENT_ID: !!this.environment.CLIENT_ID,
+                CLIENT_SECRET: !!this.environment.CLIENT_SECRET, // Log client secret availability
                 MANAGED_IDENTITY_CLIENT_ID: !!this.environment.MANAGED_IDENTITY_CLIENT_ID,
                 USE_MANAGED_IDENTITY: !!this.environment.USE_MANAGED_IDENTITY,
                 USE_FEDERATED_CREDENTIAL: !!this.environment.USE_FEDERATED_CREDENTIAL,
+                AUTH_MODE: this.environment.AUTH_MODE, // Log auth mode
                 actual_DATAVERSE_URL: this.environment.DATAVERSE_URL?.substring(0, 20) + '...',
                 actual_CLIENT_ID: this.environment.CLIENT_ID?.substring(0, 8) + '...',
                 actual_MANAGED_IDENTITY_CLIENT_ID: this.environment.MANAGED_IDENTITY_CLIENT_ID?.substring(0, 8) + '...',
-                envKeys: Object.keys(this.environment).filter(k => k.includes('DATAVERSE') || k.includes('CLIENT') || k.includes('TENANT') || k.includes('USE_') || k.includes('MANAGED'))
+                envKeys: Object.keys(this.environment).filter(k => k.includes('DATAVERSE') || k.includes('CLIENT') || k.includes('TENANT') || k.includes('USE_') || k.includes('MANAGED') || k.includes('AUTH'))
             });
 
             // Validate configuration

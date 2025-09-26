@@ -2,7 +2,7 @@
  * Dataverse Client
  * Handles authentication and API interactions with Microsoft Dataverse
  */
-const { DefaultAzureCredential } = require('@azure/identity');
+const { DefaultAzureCredential, ClientSecretCredential } = require('@azure/identity');
 const axios = require('axios');
 const logger = require('../utils/logger');
 
@@ -27,15 +27,59 @@ class DataverseClient {
         this.dataverseUrl = config.dataverseUrl;
         this.tenantId = config.tenantId;
         this.clientId = config.clientId;
+        this.clientSecret = config.clientSecret;
         this.managedIdentityClientId = config.managedIdentityClientId;
         this.timeout = config.timeout;
 
-        // Initialize Azure credential
-        this.credential = new DefaultAzureCredential();
+        // Initialize appropriate Azure credential based on environment
+        this.authMode = this._determineAuthMode();
+        this.credential = this._initializeCredential();
         
         // Token cache
         this.cachedToken = null;
         this.tokenExpiry = null;
+
+        logger.info(`DataverseClient initialized with ${this.authMode} authentication`);
+    }
+
+    /**
+     * Determine authentication mode based on environment variables
+     */
+    _determineAuthMode() {
+        // Check if client secret is provided (local development)
+        if (this.clientId && this.clientSecret && this.tenantId) {
+            return 'client-secret';
+        }
+        
+        // Check environment variable for auth mode
+        const envAuthMode = process.env.AUTH_MODE;
+        if (envAuthMode === 'client-secret' && process.env.CLIENT_ID && process.env.CLIENT_SECRET && process.env.TENANT_ID) {
+            return 'client-secret';
+        }
+        
+        // Default to managed identity (Azure production environment)
+        return 'managed-identity';
+    }
+
+    /**
+     * Initialize appropriate credential based on auth mode
+     */
+    _initializeCredential() {
+        if (this.authMode === 'client-secret') {
+            const tenantId = this.tenantId || process.env.TENANT_ID;
+            const clientId = this.clientId || process.env.CLIENT_ID;
+            const clientSecret = this.clientSecret || process.env.CLIENT_SECRET;
+            
+            if (!tenantId || !clientId || !clientSecret) {
+                throw new Error('Client secret authentication requires TENANT_ID, CLIENT_ID, and CLIENT_SECRET');
+            }
+
+            logger.info('Using ClientSecretCredential for authentication');
+            return new ClientSecretCredential(tenantId, clientId, clientSecret);
+        } else {
+            logger.info('Using DefaultAzureCredential (managed identity) for authentication');
+            return new DefaultAzureCredential();
+        }
     }
 
     /**

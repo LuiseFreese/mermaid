@@ -121,17 +121,20 @@ class DataverseRepository extends BaseRepository {
                 dataverseUrl: dataverseConfig.serverUrl?.substring(0, 30) + '...',
                 tenantId: dataverseConfig.tenantId?.substring(0, 10) + '...',
                 clientId: dataverseConfig.clientId?.substring(0, 10) + '...',
+                hasClientSecret: !!dataverseConfig.clientSecret, // Log client secret availability
                 managedIdentityClientId: dataverseConfig.managedIdentityClientId?.substring(0, 10) + '...',
                 hasServerUrl: !!dataverseConfig.serverUrl,
                 hasTenantId: !!dataverseConfig.tenantId,
                 hasClientId: !!dataverseConfig.clientId,
-                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId
+                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId,
+                authMode: process.env.AUTH_MODE
             });
             
             const client = new this.DataverseClient({
                 dataverseUrl: dataverseConfig.serverUrl,
                 tenantId: dataverseConfig.tenantId,
                 clientId: dataverseConfig.clientId,
+                clientSecret: dataverseConfig.clientSecret, // Pass client secret
                 managedIdentityClientId: dataverseConfig.managedIdentityClientId,
                 verbose: true
             });

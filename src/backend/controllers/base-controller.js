@@ -70,17 +70,59 @@ class BaseController {
      */
     parseRequestBody(req) {
         return new Promise((resolve, reject) => {
-            let body = '';
-            req.on('data', chunk => body += chunk);
-            req.on('end', () => {
-                try {
-                    const data = body ? JSON.parse(body) : {};
+            try {
+                // Check if body was already read by middleware
+                if (req.rawBody !== undefined) {
+                    console.log('🔧 DEBUG: Using pre-read body from middleware:', {
+                        length: req.rawBody.length,
+                        content: req.rawBody.substring(0, 200),
+                        isEmpty: req.rawBody === '',
+                        contentType: req.headers['content-type']
+                    });
+                    
+                    const data = req.rawBody ? JSON.parse(req.rawBody) : {};
+                    
+                    console.log('🔧 DEBUG: Parsed JSON data:', {
+                        keys: Object.keys(data),
+                        hasContent: Object.keys(data).length > 0,
+                        stringified: JSON.stringify(data)
+                    });
+                    
                     resolve(data);
-                } catch (error) {
-                    reject(new Error('Invalid JSON in request body'));
+                    return;
                 }
-            });
-            req.on('error', reject);
+
+                // Fallback: read from stream if not pre-read
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        console.log('🔧 DEBUG: Raw request body from stream:', {
+                            length: body.length,
+                            content: body.substring(0, 200),
+                            isEmpty: body === '',
+                            contentType: req.headers['content-type']
+                        });
+                        
+                        const data = body ? JSON.parse(body) : {};
+                        
+                        console.log('🔧 DEBUG: Parsed JSON data:', {
+                            keys: Object.keys(data),
+                            hasContent: Object.keys(data).length > 0,
+                            stringified: JSON.stringify(data)
+                        });
+                        
+                        resolve(data);
+                    } catch (error) {
+                        console.log('🔧 DEBUG: JSON parse error:', error.message);
+                        reject(new Error('Invalid JSON in request body'));
+                    }
+                });
+                req.on('error', reject);
+            } catch (error) {
+                console.log('🔧 DEBUG: Immediate JSON parse error:', error.message);
+                reject(new Error('Invalid JSON in request body'));
+            }
         });
     }
 

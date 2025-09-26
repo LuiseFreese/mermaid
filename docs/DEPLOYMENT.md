@@ -47,20 +47,21 @@ cd mermaid
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Step 1: Create App Registration and local environment
-.\scripts\setup-local-dev.ps1 -DataverseUrl "https://your-org.crm.dynamics.com"
+# Step 1: Create App Registration and Dataverse Application User
+.\scripts\setup-local-dataverse-user.ps1
 
 # Step 2: Start development servers
 .\scripts\dev-local.ps1
 ```
 
-**The local setup script will:**
-- Create App Registration with client secret
-- Set up Dataverse application user with proper permissions
+**The local setup process will:**
+- Create App Registration with client secret (if needed)
+- Set up Dataverse Application User with System Customizer role
 - Generate `.env.local` file with authentication configuration
 - Configure local environment for development
 
 **The dev script will:**
+- Load environment variables from `.env.local`
 - Start backend server with real Dataverse authentication
 - Start frontend development server with hot reload
 - Enable API proxy for seamless development
@@ -110,28 +111,62 @@ cd mermaid
 
 ## Local Development Process
 
-### Step 1: Local Environment Setup
-```powershell
-# Interactive mode (prompts for Dataverse URL)
-.\scripts\setup-local-dev.ps1
+### Step 1: Create App Registration and Configure Dataverse
 
-# OR provide Dataverse URL directly
-.\scripts\setup-local-dev.ps1 -DataverseUrl "https://orgXXXXX.crm4.dynamics.com"
+If you don't already have an App Registration configured:
+
+```powershell
+# Create new App Registration with client secret
+$clientId = "your-existing-client-id"  # Or create new one
+az ad app credential reset --id $clientId --years 1
+```
+
+Then configure the Dataverse Application User:
+
+```powershell
+# Set up Dataverse Application User with System Customizer role
+.\scripts\setup-local-dataverse-user.ps1
 ```
 
 **This script will:**
-- Create a new App Registration with client secret
-- Generate a `.env.local` file with authentication configuration
-- Create a Dataverse Application User with System Customizer role
-- Configure the local environment for development
+- Find your existing App Registration and Service Principal
+- Create a Dataverse Application User linked to your App Registration
+- Assign System Customizer role for table creation permissions
+- Verify the configuration is working correctly
 
-### Step 2: Start Development Servers
+### Step 2: Create Local Environment Configuration
+
+Create a `.env.local` file in the project root:
+
+```bash
+# Local Development Configuration
+USE_CLIENT_SECRET=true
+USE_MANAGED_IDENTITY=false
+
+# Azure AD Configuration
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-app-registration-client-id
+CLIENT_SECRET=your-client-secret
+
+# Dataverse Configuration
+DATAVERSE_URL=https://your-org.crm4.dynamics.com/
+
+# Development Settings
+NODE_ENV=development
+PORT=8080
+LOG_REQUEST_BODY=true
+LOG_LEVEL=debug
+```
+
+### Step 3: Start Development Servers
+
 ```powershell
 # Start both backend and frontend servers
 .\scripts\dev-local.ps1
 ```
 
 **This script will:**
+- Load environment variables from `.env.local`
 - Start the backend server on port 8080 with real Dataverse authentication
 - Start the frontend development server on port 3003 (or next available port)
 - Configure API proxy for seamless development experience
@@ -158,20 +193,52 @@ cd mermaid
 If you prefer manual setup or need to troubleshoot:
 
 ```powershell
-# 1. Create App Registration manually
-.\scripts\create-local-dev-app.ps1 -DataverseUrl "https://your-org.crm.dynamics.com"
+# 1. Create or reset App Registration client secret
+$clientId = "your-app-id"
+$secretResult = az ad app credential reset --id $clientId --years 1 | ConvertFrom-Json
+$newSecret = $secretResult.password
 
 # 2. Set up Dataverse Application User
-.\scripts\setup-dataverse-user.ps1 -AppId "your-app-id" -ServicePrincipalId "your-sp-id" -DataverseUrl "https://your-org.crm.dynamics.com"
+.\scripts\setup-local-dataverse-user.ps1
 
-# 3. Create .env.local file manually with:
-# CLIENT_ID=your-app-id
-# CLIENT_SECRET=your-client-secret
-# DATAVERSE_URL=https://your-org.crm.dynamics.com
+# 3. Create .env.local file with the new credentials:
+@"
+USE_CLIENT_SECRET=true
+USE_MANAGED_IDENTITY=false
+TENANT_ID=your-tenant-id
+CLIENT_ID=$clientId
+CLIENT_SECRET=$newSecret
+DATAVERSE_URL=https://your-org.crm4.dynamics.com/
+NODE_ENV=development
+PORT=8080
+LOG_REQUEST_BODY=true
+LOG_LEVEL=debug
+"@ | Out-File ".env.local" -Encoding UTF8
 
 # 4. Start development servers
 .\scripts\dev-local.ps1
 ```
+
+### Local Development Authentication Flow
+
+The local development setup uses **client secret authentication** with these key components:
+
+1. **App Registration**: Azure AD application with client secret for authentication
+2. **Service Principal**: Automatically created when the App Registration is created
+3. **Dataverse Application User**: User in Dataverse linked to the Service Principal Object ID
+4. **System Customizer Role**: Assigned to the Application User for table creation permissions
+
+**Authentication Process:**
+1. Backend loads credentials from `.env.local`
+2. Uses client secret to get access token from Azure AD
+3. Calls Dataverse API with the access token
+4. Dataverse validates the token and maps it to the Application User
+5. Operations are authorized based on the Application User's security roles
+
+**Important Notes:**
+- Client secrets expire (usually 1-2 years) and need to be renewed
+- The Application User must have System Customizer role for table operations
+- The Service Principal Object ID links the App Registration to the Dataverse Application User
 
 ## What Gets Deployed
 
@@ -376,27 +443,40 @@ Both scripts are **idempotent** and can be run multiple times safely:
 - **Solution**: Access frontend at `http://localhost:3003` (not backend port 8080)
 
 **Problem: API calls fail with authentication errors**
-- **Cause**: Missing or invalid `.env.local` configuration
-- **Solution**: Re-run `.\scripts\setup-local-dev.ps1` to regenerate configuration
+- **Cause**: Missing, invalid, or expired client secret in `.env.local` configuration
+- **Solution**: Create new client secret and update configuration:
+  ```powershell
+  # Generate new client secret
+  $clientId = "your-client-id"
+  $newSecret = az ad app credential reset --id $clientId --years 1 --query password -o tsv
+  
+  # Update .env.local file with new secret
+  (Get-Content ".env.local") -replace "CLIENT_SECRET=.*", "CLIENT_SECRET=$newSecret" | Set-Content ".env.local"
+  
+  # Restart the backend server to load new credentials
+  ```
 
 **Problem: "Port 3003 is in use, trying another one..."**
 - **Cause**: Another process using port 3003
 - **Solution**: Frontend will automatically use next available port (3004, 3005, etc.)
 
 **Problem: Backend fails to start with Dataverse authentication errors**
-- **Cause**: App Registration or client secret expired/invalid
+- **Cause**: Dataverse Application User not properly configured or missing System Customizer role
 - **Solution**: 
   ```powershell
-  # Regenerate the local development setup
-  .\scripts\setup-local-dev.ps1 -DataverseUrl "your-dataverse-url"
+  # Recreate the Dataverse Application User with proper permissions
+  .\scripts\setup-local-dataverse-user.ps1
   ```
 
-**Problem: "Application User not found" in backend logs**
-- **Cause**: Dataverse Application User not created properly
+**Problem: "Application User not found" or "401 Unauthorized" in backend logs**
+- **Cause**: App Registration and Dataverse Application User not properly linked
 - **Solution**: 
   ```powershell
-  # Manually create the Application User
-  .\scripts\setup-dataverse-user.ps1 -AppId "your-app-id" -ServicePrincipalId "your-sp-id" -DataverseUrl "your-dataverse-url"
+  # Verify and recreate the Application User
+  .\scripts\setup-local-dataverse-user.ps1
+  
+  # Check that the Service Principal Object ID matches in Dataverse
+  az ad sp show --id "your-client-id" --query id -o tsv
   ```
 
 ### General Issues
@@ -418,5 +498,6 @@ If you encounter issues not covered here:
 
 1. **Check the logs**: Both frontend and backend show detailed error messages
 2. **Verify prerequisites**: Ensure all required tools and permissions are available  
-3. **Re-run setup**: Most issues can be resolved by re-running the setup scripts
-4. **Clean start**: Delete `.env.local` and re-run `.\scripts\setup-local-dev.ps1`
+3. **Regenerate credentials**: Most authentication issues can be resolved by creating a new client secret
+4. **Recreate Application User**: Use `.\scripts\setup-local-dataverse-user.ps1` to fix Dataverse configuration
+5. **Clean start**: Delete `.env.local`, create new client secret, and recreate the Application User

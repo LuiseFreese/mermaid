@@ -1,21 +1,17 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Start the Mermaid application in local development mode with mock data
+    Start the Mermaid application in local development mode
 
 .DESCRIPTION
-    This script sets up a local development environment that bypasses managed identity
-    authentication and uses mock data for testing. This allows for fast development
-    and debugging without needing to deploy to Azure.
+    This script sets up a local development environment. If .env.local exists,
+    it will use real Dataverse authentication. Otherwise, it uses mock data.
 
 .PARAMETER Port
     Port for the backend server (default: 8080)
 
 .PARAMETER FrontendPort
     Port for the frontend dev server (default: 3003)
-
-.PARAMETER SkipBuild
-    Skip frontend build step
 
 .PARAMETER NoOpen
     Don't automatically open browser
@@ -38,9 +34,6 @@ param(
     [int]$FrontendPort = 3003,
     
     [Parameter(Mandatory = $false)]
-    [switch]$SkipBuild,
-    
-    [Parameter(Mandatory = $false)]
     [switch]$NoOpen
 )
 
@@ -50,181 +43,118 @@ Write-Host "🚀 Starting Mermaid Local Development Environment" -ForegroundColo
 Write-Host "Backend: http://localhost:$Port" -ForegroundColor Cyan
 Write-Host "Frontend: http://localhost:$FrontendPort" -ForegroundColor Cyan
 
-# Set up environment variables for local development
+# Load environment variables from .env.local if it exists
+$envLocalPath = ".env.local"
+$useRealAuth = $false
+
+if (Test-Path $envLocalPath) {
+    Write-Host "Loading real authentication from .env.local..." -ForegroundColor Green
+    
+    # Parse .env.local file and set environment variables
+    Get-Content $envLocalPath | ForEach-Object {
+        if ($_ -match "^([^=]+)=(.*)$") {
+            $name = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            # Remove quotes if present
+            if ($value -match "^[`"'](.*)['`"]$") {
+                $value = $matches[1]
+            }
+            [System.Environment]::SetEnvironmentVariable($name, $value, [System.EnvironmentVariableTarget]::Process)
+        }
+    }
+    
+    $useRealAuth = $true
+    $env:USE_MOCK_DATA = "false"
+    $env:AUTH_MODE = "client-secret"
+    
+    Write-Host "✅ Using real Dataverse authentication" -ForegroundColor Green
+    Write-Host "Client ID: $($env:CLIENT_ID)" -ForegroundColor Cyan
+    Write-Host "Dataverse URL: $($env:DATAVERSE_URL)" -ForegroundColor Cyan
+} else {
+    Write-Host "No .env.local found - using mock data for development" -ForegroundColor Yellow
+    
+    $env:USE_MOCK_DATA = "true"
+    $env:AUTH_MODE = "development"
+    $env:DATAVERSE_URL = "https://mock-dataverse.local"
+    
+    Write-Host "✅ Using mock data mode" -ForegroundColor Green
+}
+
+# Common environment variables
 $env:NODE_ENV = "development"
 $env:PORT = $Port.ToString()
-$env:USE_MOCK_DATA = "true"
-$env:DATAVERSE_URL = "https://mock-dataverse.local"
-$env:AUTH_MODE = "development"
 
-Write-Host "Environment configured for local development" -ForegroundColor Green
-
-# Create mock deployment data if it doesn't exist
-Write-Host "Setting up mock deployment data..." -ForegroundColor Cyan
-if (-not (Test-Path "data")) {
-    New-Item -ItemType Directory -Path "data" | Out-Null
-}
-if (-not (Test-Path "data/deployments")) {
-    New-Item -ItemType Directory -Path "data/deployments" | Out-Null
-}
-
-# Create sample deployment data for testing
-$sampleDeployments = @(
-    @{
-        deploymentId = "deploy_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_sample1"
-        timestamp = (Get-Date).AddHours(-2).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-        environmentSuffix = "default"
-        status = "success"
-        summary = @{
-            totalEntities = 3
-            entitiesAdded = @("Customer", "Order", "Product")
-            entitiesModified = @()
-            entitiesRemoved = @()
-            totalAttributes = 12
-            cdmEntities = 0
-            customEntities = 3
-        }
-        deploymentLogs = @()
-        duration = 45000
-        solutionInfo = @{
-            solutionName = "E-Commerce Solution"
-            publisherName = "Development Publisher"
-        }
-        metadata = @{
-            deploymentMethod = "web-ui"
-            previousDeploymentId = $null
-        }
-        completedAt = (Get-Date).AddHours(-2).AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-    },
-    @{
-        deploymentId = "deploy_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_sample2"
-        timestamp = (Get-Date).AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-        environmentSuffix = "default"
-        status = "success"
-        summary = @{
-            totalEntities = 2
-            entitiesAdded = @("Invoice", "Payment")
-            entitiesModified = @()
-            entitiesRemoved = @()
-            totalAttributes = 8
-            cdmEntities = 0
-            customEntities = 2
-        }
-        deploymentLogs = @()
-        duration = 32000
-        solutionInfo = @{
-            solutionName = "Billing System"
-            publisherName = "Development Publisher"
-        }
-        metadata = @{
-            deploymentMethod = "web-ui"
-            previousDeploymentId = $null
-        }
-        completedAt = (Get-Date).AddDays(-1).AddMinutes(1).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-    },
-    @{
-        deploymentId = "deploy_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_sample3"
-        timestamp = (Get-Date).AddDays(-3).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-        environmentSuffix = "default"
-        status = "failed"
-        summary = @{
-            totalEntities = 0
-            entitiesAdded = @()
-            entitiesModified = @()
-            entitiesRemoved = @()
-            totalAttributes = 0
-            cdmEntities = 0
-            customEntities = 0
-        }
-        deploymentLogs = @(
-            @{
-                level = "error"
-                message = "Validation failed: Entity name contains invalid characters"
-                timestamp = (Get-Date).AddDays(-3).ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-            }
-        )
-        duration = 5000
-        solutionInfo = @{
-            solutionName = "Invalid Solution"
-            publisherName = "Development Publisher"
-        }
-        metadata = @{
-            deploymentMethod = "web-ui"
-            previousDeploymentId = $null
-        }
-        completedAt = $null
+# Create minimal mock data directory structure only if using mock mode
+if ($env:USE_MOCK_DATA -eq "true") {
+    Write-Host "Setting up mock data directories..." -ForegroundColor Cyan
+    if (-not (Test-Path "data/deployments")) {
+        New-Item -ItemType Directory -Path "data/deployments" -Force | Out-Null
     }
-)
-
-# Create individual deployment files and index
-$indexData = @{
-    deployments = @()
+    Write-Host "✅ Mock data directories ready (data will be created by backend)" -ForegroundColor Green
 }
 
-foreach ($deployment in $sampleDeployments) {
-    $deploymentFile = "data/deployments/$($deployment.deploymentId).json"
-    $deployment | ConvertTo-Json -Depth 10 | Out-File -FilePath $deploymentFile -Encoding UTF8 -Force
-    
-    # Add to index
-    $indexData.deployments += @{
-        deploymentId = $deployment.deploymentId
-        timestamp = $deployment.timestamp
-        status = $deployment.status
-        summary = $deployment.summary
-    }
-}
+# Kill any existing processes on these ports
+Write-Host "Cleaning up any existing processes..." -ForegroundColor Cyan
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq "node" } | Stop-Process -Force -ErrorAction SilentlyContinue
 
-# Write index file
-$indexData | ConvertTo-Json -Depth 10 | Out-File -FilePath "data/deployments/default_index.json" -Encoding UTF8 -Force
-
-Write-Host "✅ Mock deployment data created" -ForegroundColor Green
-
-# Build frontend if needed
-if (-not $SkipBuild) {
-    Write-Host "Installing and building frontend..." -ForegroundColor Cyan
-    Push-Location src/frontend
-    try {
-        Write-Host "Installing dependencies..." -ForegroundColor Yellow
-        npm install --silent
+# Install frontend dependencies if needed
+Push-Location src/frontend
+try {
+    if (-not (Test-Path "node_modules")) {
+        Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
+        npm install
         if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
-        
-        Write-Host "Building frontend..." -ForegroundColor Yellow
-        npm run build
-        if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
-        
-        Write-Host "✅ Frontend built successfully" -ForegroundColor Green
-    } finally {
-        Pop-Location
     }
-} else {
-    Write-Host "⏭️ Skipping frontend build" -ForegroundColor Yellow
+} finally {
+    Pop-Location
 }
 
-# Start backend server in background
-Write-Host "Starting backend server..." -ForegroundColor Cyan
+Write-Host ""
+Write-Host "🚀 Starting development servers..." -ForegroundColor Green
+
+# Start backend server
+Write-Host "Starting backend server at http://localhost:$Port" -ForegroundColor Cyan
+
+# Start backend in background job
 $backendJob = Start-Job -ScriptBlock {
     param($Port, $ProjectRoot)
-    
     Set-Location $ProjectRoot
+    
+    # Load environment variables from .env.local if it exists
+    $envLocalPath = ".env.local"
+    if (Test-Path $envLocalPath) {
+        Get-Content $envLocalPath | ForEach-Object {
+            if ($_ -match "^([^=]+)=(.*)$") {
+                $name = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                if ($value -match "^[`"'](.*)['`"]$") {
+                    $value = $matches[1]
+                }
+                [System.Environment]::SetEnvironmentVariable($name, $value, [System.EnvironmentVariableTarget]::Process)
+            }
+        }
+        $env:USE_MOCK_DATA = "false"
+        $env:AUTH_MODE = "client-secret"
+    } else {
+        $env:USE_MOCK_DATA = "true"
+        $env:AUTH_MODE = "development"
+        $env:DATAVERSE_URL = "https://mock-dataverse.local"
+    }
+    
     $env:NODE_ENV = "development"
     $env:PORT = $Port.ToString()
-    $env:USE_MOCK_DATA = "true"
-    $env:DATAVERSE_URL = "https://mock-dataverse.local"
-    $env:AUTH_MODE = "development"
     
+    Write-Host "Backend: Environment variables loaded"
     node src/backend/server.js
-} -ArgumentList $Port, (Get-Location).Path
+} -ArgumentList $Port, (Get-Location)
 
 # Wait for backend to start
-Write-Host "Waiting for backend to start..." -ForegroundColor Yellow
 Start-Sleep -Seconds 3
 
-# Test if backend is responding
+# Test backend
 $backendReady = $false
 $attempts = 0
-$maxAttempts = 10
-
-while (-not $backendReady -and $attempts -lt $maxAttempts) {
+while (-not $backendReady -and $attempts -lt 10) {
     $attempts++
     try {
         $response = Invoke-WebRequest -Uri "http://localhost:$Port/health" -TimeoutSec 5 -ErrorAction Stop
@@ -238,61 +168,49 @@ while (-not $backendReady -and $attempts -lt $maxAttempts) {
 }
 
 if (-not $backendReady) {
-    Write-Error "Backend server failed to start properly"
+    Write-Error "❌ Backend server failed to start"
     Stop-Job $backendJob -ErrorAction SilentlyContinue
     Remove-Job $backendJob -ErrorAction SilentlyContinue
     exit 1
 }
 
 # Start frontend dev server
-Write-Host "Starting frontend dev server..." -ForegroundColor Cyan
+Write-Host "Starting frontend dev server at http://localhost:$FrontendPort" -ForegroundColor Cyan
 Push-Location src/frontend
-$frontendJob = Start-Job -ScriptBlock {
-    param($FrontendPort, $ProjectRoot)
-    
-    Set-Location "$ProjectRoot/src/frontend"
-    $env:VITE_API_BASE_URL = "http://localhost:8080"
-    
-    npm run dev -- --port $FrontendPort --host localhost
-} -ArgumentList $FrontendPort, (Get-Location | Select-Object -ExpandProperty Path | Split-Path -Parent | Split-Path -Parent)
-
-Pop-Location
-
-# Wait for frontend to start
-Write-Host "Waiting for frontend to start..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
-
-Write-Host ""
-Write-Host "🎉 Local development environment is ready!" -ForegroundColor Green
-Write-Host ""
-Write-Host "URLs:" -ForegroundColor Cyan
-Write-Host "  Frontend: http://localhost:$FrontendPort" -ForegroundColor White
-Write-Host "  Backend:  http://localhost:$Port" -ForegroundColor White
-Write-Host "  API:      http://localhost:$Port/api" -ForegroundColor White
-Write-Host "  Health:   http://localhost:$Port/health" -ForegroundColor White
-Write-Host ""
-Write-Host "Test deployment history:" -ForegroundColor Cyan
-Write-Host "  http://localhost:$FrontendPort/deployment-history" -ForegroundColor White
-Write-Host ""
-Write-Host "Press Ctrl+C to stop both servers" -ForegroundColor Yellow
-
-if (-not $NoOpen) {
-    Start-Process "http://localhost:$FrontendPort/deployment-history"
-}
-
-# Wait for user to stop
 try {
-    Write-Host "Servers are running. Press any key to stop..." -ForegroundColor Gray
-    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-} catch {
-    # Handle Ctrl+C
+    $env:VITE_API_BASE_URL = "http://localhost:$Port"
+    
+    Write-Host ""
+    Write-Host "🎉 Development environment running!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Frontend: http://localhost:$FrontendPort" -ForegroundColor Cyan
+    Write-Host "Backend:  http://localhost:$Port" -ForegroundColor Cyan
+    Write-Host "Health:   http://localhost:$Port/health" -ForegroundColor Cyan
+    Write-Host ""
+    if ($useRealAuth) {
+        Write-Host "🔐 Using real Dataverse authentication" -ForegroundColor Green
+    } else {
+        Write-Host "🧪 Using mock data" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    Write-Host "Test deployment history: http://localhost:$FrontendPort/deployment-history" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Press Ctrl+C to stop both servers" -ForegroundColor Gray
+    Write-Host ""
+    
+    if (-not $NoOpen) {
+        Start-Sleep -Seconds 2
+        Start-Process "http://localhost:$FrontendPort"
+    }
+    
+    # Start frontend dev server (this will run in foreground)
+    npm run dev -- --port=$FrontendPort --host=localhost
+    
+} finally {
+    Pop-Location
+    # Clean up backend job when frontend stops
+    Write-Host "`nStopping backend server..." -ForegroundColor Yellow
+    Stop-Job $backendJob -ErrorAction SilentlyContinue
+    Remove-Job $backendJob -ErrorAction SilentlyContinue
+    Write-Host "✅ Development environment stopped" -ForegroundColor Green
 }
-
-# Clean up
-Write-Host "`nStopping servers..." -ForegroundColor Yellow
-Stop-Job $backendJob -ErrorAction SilentlyContinue
-Stop-Job $frontendJob -ErrorAction SilentlyContinue
-Remove-Job $backendJob -ErrorAction SilentlyContinue
-Remove-Job $frontendJob -ErrorAction SilentlyContinue
-
-Write-Host "✅ Development environment stopped" -ForegroundColor Green

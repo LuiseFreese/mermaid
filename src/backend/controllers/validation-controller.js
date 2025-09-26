@@ -39,6 +39,15 @@ class ValidationController extends BaseController {
             // Parse request body
             const data = await this.parseRequestBody(req);
             
+            // Debug: Log what data was received
+            console.log('🔧 DEBUG: Validation Controller - Received data:', {
+                keys: Object.keys(data),
+                hasMermaidContent: !!data.mermaidContent,
+                mermaidContentType: typeof data.mermaidContent,
+                mermaidContentLength: data.mermaidContent?.length,
+                rawData: JSON.stringify(data).substring(0, 200) + '...'
+            });
+            
             // Validate required fields
             this.validateRequiredFields(data, ['mermaidContent']);
             

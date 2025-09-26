@@ -100,21 +100,28 @@ class RequestLoggerMiddleware {
     async logRequestBody(req, requestId) {
         try {
             let body = '';
-            req.on('data', (chunk) => {
-                body += chunk.toString();
-                if (body.length > this.maxBodySize) {
-                    body = body.substring(0, this.maxBodySize) + '... [TRUNCATED]';
-                }
-            });
+            
+            return new Promise((resolve) => {
+                req.on('data', (chunk) => {
+                    body += chunk.toString();
+                    if (body.length > this.maxBodySize) {
+                        body = body.substring(0, this.maxBodySize) + '... [TRUNCATED]';
+                    }
+                });
 
-            req.on('end', () => {
-                if (body) {
-                    this.logger.log(`[${requestId}] REQUEST BODY:`, {
-                        requestId,
-                        body: body,
-                        truncated: body.includes('[TRUNCATED]')
-                    });
-                }
+                req.on('end', () => {
+                    // Store the body on the request object for later use
+                    req.rawBody = body;
+                    
+                    if (body) {
+                        this.logger.log(`[${requestId}] REQUEST BODY:`, {
+                            requestId,
+                            body: body,
+                            truncated: body.includes('[TRUNCATED]')
+                        });
+                    }
+                    resolve();
+                });
             });
         } catch (error) {
             this.logger.error(`[${requestId}] Failed to log request body:`, error);

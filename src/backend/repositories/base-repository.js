@@ -161,8 +161,13 @@ class BaseRepository {
         // Check for required configuration
         const requiredProperties = ['baseUrl', 'tenantId', 'clientId'];
         
-        // Always use managed identity - require managed identity client ID
-        requiredProperties.push('managedIdentityClientId');
+        // Check auth mode: require either managed identity OR client secret
+        const hasManagedIdentity = !!client.managedIdentityClientId;
+        const hasClientSecret = !!client.clientSecret;
+        
+        if (!hasManagedIdentity && !hasClientSecret) {
+            throw new Error(`${this.name} client missing authentication: requires either managedIdentityClientId (for Azure) or clientSecret (for local dev)`);
+        }
         
         const missing = requiredProperties.filter(prop => !client[prop]);
         
