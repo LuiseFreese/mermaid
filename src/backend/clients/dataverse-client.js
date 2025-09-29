@@ -321,22 +321,41 @@ class DataverseClient {
     /**
      * Get solutions from Dataverse
      */
-    async getSolutions() {
+    async getSolutions(options = {}) {
         try {
             const token = await this.getAccessToken();
             
-            const response = await axios.get(
-                `${this.dataverseUrl}/api/data/v9.2/solutions`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'OData-MaxVersion': '4.0',
-                        'OData-Version': '4.0'
-                    }
+            // Build query parameters
+            const queryParams = new URLSearchParams();
+            
+            // Filter by managed/unmanaged if specified
+            if (options.includeManaged === false || options.includeUnmanaged === false) {
+                if (options.includeManaged === false && options.includeUnmanaged !== false) {
+                    queryParams.append('$filter', 'ismanaged eq false');
+                } else if (options.includeUnmanaged === false && options.includeManaged !== false) {
+                    queryParams.append('$filter', 'ismanaged eq true');
                 }
-            );
+            }
+            
+            // Add limit if specified
+            if (options.limit && options.limit > 0) {
+                queryParams.append('$top', options.limit.toString());
+            }
+            
+            // Select specific fields to reduce response size
+            queryParams.append('$select', 'solutionid,uniquename,friendlyname,version,ismanaged,_publisherid_value,description,installedon,modifiedon');
+            
+            const url = `${this.dataverseUrl}/api/data/v9.2/solutions${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+            
+            const response = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'OData-MaxVersion': '4.0',
+                    'OData-Version': '4.0'
+                }
+            });
 
             return {
                 success: true,

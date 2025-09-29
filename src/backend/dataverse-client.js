@@ -1580,43 +1580,43 @@ class DataverseClient {
   }
 
   async getSolutions() {
-    const q = `/solutions?$select=solutionid,uniquename,friendlyname,_publisherid_value&$expand=publisherid($select=publisherid,uniquename,customizationprefix)&$orderby=friendlyname asc`;
-    const d = await this._req('get', q);
-    const allSolutions = (d.value || []).map(s => ({
-      solutionid: s.solutionid,
-      uniquename: s.uniquename,
-      friendlyname: s.friendlyname,
-      _publisherid_value: s._publisherid_value,
-      publisherid: s.publisherid ? {
-        publisherid: s.publisherid.publisherid,
-        uniquename: s.publisherid.uniquename,
-        customizationprefix: s.publisherid.customizationprefix
-      } : null
-    }));
+    // Start with the most basic query possible
+    const q = `/solutions?$select=solutionid,uniquename,friendlyname`;
+    console.log(`GET ${this.baseUrl}${q}`);
+    
+    try {
+      const d = await this._req('get', q);
+      console.log(`✅ Solutions query successful, found ${d.value?.length || 0} solutions`);
+      
+      const allSolutions = (d.value || []).map(s => ({
+        solutionid: s.solutionid,
+        uniquename: s.uniquename,
+        friendlyname: s.friendlyname,
+        _publisherid_value: null,
+        publisherid: null
+      }));
 
-    // Filter out Microsoft system solutions to show only user-created solutions
-    const userSolutions = allSolutions.filter(solution => {
-      const publisherName = solution.publisherid?.uniquename?.toLowerCase() || '';
-      const solutionName = solution.uniquename?.toLowerCase() || '';
-      
-      // Exclude Microsoft publishers and system solutions
-      const isMicrosoftPublisher = publisherName.includes('microsoft') || 
-                                publisherName.includes('msdyn') || 
-                                publisherName.includes('dynamics') ||
-                                publisherName === 'defaultpublisher';
-      
-      // Exclude system solutions by name patterns
-      const isSystemSolution = solutionName.startsWith('msft_') ||
-                              solutionName.startsWith('msdyn_') ||
-                              solutionName.startsWith('msdynce_') ||
-                              solutionName === 'default' ||
-                              solutionName === 'system' ||
-                              solutionName === 'basic';
-      
-      return !isMicrosoftPublisher && !isSystemSolution;
-    });
+      // Filter out Microsoft system solutions to show only user-created solutions
+      const userSolutions = allSolutions.filter(solution => {
+        const solutionName = solution.uniquename?.toLowerCase() || '';
+        
+        // Exclude system solutions by name patterns
+        const isSystemSolution = solutionName.startsWith('msft_') ||
+                                solutionName.startsWith('msdyn_') ||
+                                solutionName.startsWith('msdynce_') ||
+                                solutionName === 'default' ||
+                                solutionName === 'system' ||
+                                solutionName === 'basic';
+        
+        return !isSystemSolution;
+      });
 
-    return userSolutions;
+      console.log(`✅ Filtered to ${userSolutions.length} user solutions`);
+      return { success: true, solutions: userSolutions };
+    } catch (error) {
+      console.log(`❌ Solutions query failed: ${error.message}`);
+      return { success: false, message: error.message, solutions: [] };
+    }
   }
 
   // Helper method to check if authentication is properly configured

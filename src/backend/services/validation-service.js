@@ -197,14 +197,6 @@ class ValidationService extends BaseService {
                                     customEntities: result.entities.length,
                                     confidence: 'low'
                                 };
-                                result.warnings.push(this.createWarning({
-                                    type: 'cdm_detection_failed',
-                                    severity: 'info',
-                                    message: 'CDM detection unavailable',
-                                    suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
-                                    category: 'cdm',
-                                    autoFixable: false
-                                }));
                             }
                         }
                     } catch (cdmDetectionError) {
@@ -217,14 +209,6 @@ class ValidationService extends BaseService {
                             customEntities: result.entities.length,
                             confidence: 'low'
                         };
-                        result.warnings.push(this.createWarning({
-                            type: 'cdm_detection_failed',
-                            severity: 'info',
-                            message: 'CDM detection unavailable',
-                            suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
-                            category: 'cdm',
-                            autoFixable: false
-                        }));
                     }
                 }
 
@@ -1389,23 +1373,30 @@ class ValidationService extends BaseService {
             // First validate to get the current warnings
             const validationResult = await this.validateERD({ mermaidContent, options });
             
-            console.log('🔧 DEBUG: Validation result:', {
+            console.log('🔧 DEBUG: Validation result structure:', {
                 success: validationResult.success,
+                hasData: !!validationResult.data,
+                dataKeys: validationResult.data ? Object.keys(validationResult.data) : [],
                 errorMessage: validationResult.error?.message || validationResult.message,
-                warningsCount: validationResult.warnings?.length
+                directWarningsCount: validationResult.warnings?.length,
+                dataWarningsCount: validationResult.data?.warnings?.length
             });
             
             // Only fail if there are actual parsing/structure errors, not just warnings
-            if (!validationResult.success && validationResult.errors && validationResult.errors.length > 0) {
+            if (!validationResult.success && validationResult.data?.errors && validationResult.data.errors.length > 0) {
                 return this.createError('Failed to validate ERD for individual fix', validationResult.error);
             }
 
+            // Extract the validation data from the wrapped result
+            const validationData = validationResult.data || {};
+            const warnings = validationData.warnings || [];
+
             // Find the specific warning to fix
-            const warningToFix = validationResult.warnings.find(w => w.id === warningId);
+            const warningToFix = warnings.find(w => w.id === warningId);
             console.log('🔧 DEBUG: Warning search result:', {
                 warningId,
                 warningFound: !!warningToFix,
-                availableWarningIds: validationResult.warnings.map(w => w.id)
+                availableWarningIds: warnings.map(w => w.id)
             });
             
             if (!warningToFix) {
@@ -1420,7 +1411,7 @@ class ValidationService extends BaseService {
                             warningType: 'unknown',
                             description: 'Warning already resolved (not found in current validation)'
                         },
-                        remainingWarnings: validationResult.warnings || []
+                        remainingWarnings: warnings
                     });
                     console.log('🔧 DEBUG: Success result created:', { success: successResult.success });
                     return successResult;
@@ -1462,7 +1453,7 @@ class ValidationService extends BaseService {
                     warningType: warningToFix.type,
                     description: fixResult.appliedFix
                 },
-                remainingWarnings: finalValidation.warnings || []
+                remainingWarnings: finalValidation.data?.warnings || []
             });
             console.log('🔧 DEBUG: Final success result:', { success: finalResult.success });
             return finalResult;
@@ -2750,6 +2741,22 @@ class ValidationService extends BaseService {
      */
     escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Perform basic CDM detection when advanced detection is unavailable
+     * @param {Array} entities - Array of entities to check
+     * @returns {Object} CDM detection result
+     */
+    performBasicCDMDetection(entities) {
+        return {
+            matches: [],
+            detectedCDM: [],
+            totalEntities: entities.length,
+            cdmEntities: 0,
+            customEntities: entities.length,
+            confidence: 'low'
+        };
     }
 }
 

@@ -25,43 +25,10 @@ class DataverseRepository extends BaseRepository {
      * @returns {Promise<Object>} DataverseClient instance
      */
     async getClient(config = null) {
-        
-        // Return mock client for tests
-        if (process.env.NODE_ENV === 'test') {
-            return {
-                getPublishers: () => Promise.resolve([
-                    { id: 'pub1', uniqueName: 'testpub', friendlyName: 'Test Publisher', prefix: 'test' }
-                ]),
-                getSolutions: () => Promise.resolve([
-                    { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }
-                ]),
-                getGlobalChoiceSets: () => Promise.resolve({
-                    all: [
-                        { id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }
-                    ],
-                    grouped: {
-                        custom: [{ id: 'choice1', name: 'test_choice', displayName: 'Test Choice' }],
-                        builtIn: []
-                    },
-                    summary: { total: 1, custom: 1, builtIn: 0 }
-                }),
-                getSolutionComponents: () => Promise.resolve([
-                    { componentid: 'comp1', componenttype: 1, solutionid: 'sol1' }
-                ]),
-                createEntity: () => Promise.resolve({ success: true, entityId: 'entity1' }),
-                integrateCDMEntities: () => Promise.resolve({ success: true }),
-                ensurePublisher: () => Promise.resolve({ id: 'pub1', uniqueName: 'testpub' }),
-                ensureSolution: () => Promise.resolve({ solutionid: 'sol1', uniquename: 'testsolution' }),
-                createPublisher: () => Promise.resolve({ publisherid: 'pub1', uniquename: 'testpub', friendlyname: 'Test Publisher' }),
-                createSolution: () => Promise.resolve({ solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' }),
-                createRelationship: () => Promise.resolve({ success: true, relationshipId: 'rel1' }),
-                addToSolution: () => Promise.resolve({ success: true }),
-                exportSolution: () => Promise.resolve({ success: true, solutionZip: 'base64data' }),
-                importSolution: () => Promise.resolve({ success: true }),
-                updateGlobalChoiceSet: () => Promise.resolve({ success: true }),
-                createGlobalChoiceSet: () => Promise.resolve({ success: true, choiceSetId: 'choice1' })
-            };
-        }
+        console.log('🔗 DataverseRepository.getClient: Creating real Dataverse client', {
+            useClientSecret: process.env.USE_CLIENT_SECRET === 'true',
+            useManagedIdentity: process.env.USE_MANAGED_IDENTITY === 'true'
+        });
         
         try {
             // Use provided config or get from config repository
@@ -399,7 +366,24 @@ class DataverseRepository extends BaseRepository {
             const client = await this.getClient(config);
             const result = await client.getSolutions(options);
             
-            return this.createSuccess(result, 'Solutions retrieved successfully');
+            console.log('🔍 DataverseRepository DEBUG: result from client:', {
+                success: result.success,
+                hasSolutions: !!result.solutions,
+                solutionsType: typeof result.solutions,
+                solutionsLength: Array.isArray(result.solutions) ? result.solutions.length : 'not array'
+            });
+            
+            if (result.success) {
+                const successResult = this.createSuccess(result.solutions || [], 'Solutions retrieved successfully');
+                console.log('🔍 DataverseRepository createSuccess result:', {
+                    hasData: !!successResult.data,
+                    dataType: typeof successResult.data,
+                    dataLength: Array.isArray(successResult.data) ? successResult.data.length : 'not array'
+                });
+                return successResult;
+            } else {
+                throw new Error(result.message || 'Failed to retrieve solutions');
+            }
         });
     }
 
