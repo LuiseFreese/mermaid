@@ -31,12 +31,14 @@ cd mermaid
 - Deploy Azure infrastructure (App Service, Managed Identity, etc.)
 - Configure secure managed identity authentication
 - Set up Dataverse application user with proper permissions
+- Configure Power Platform Environment ID for deployment history solution links
 
 **The deploy script will:**
 - Build the React frontend locally using Vite
 - Package only necessary backend files (no node_modules)
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
+- Enable deployment history tracking with Power Platform integration
 
 ## Local Development Setup
 
@@ -151,12 +153,31 @@ CLIENT_SECRET=your-client-secret
 # Dataverse Configuration
 DATAVERSE_URL=https://your-org.crm4.dynamics.com/
 
+# Power Platform Environment ID (IMPORTANT for correct solution URLs)
+# Find this in Power Platform Admin Center > Environments > Your Environment > Details
+# This is different from the Dataverse Organization ID and is required for proper Power Apps solution links
+POWER_PLATFORM_ENVIRONMENT_ID=your-power-platform-environment-id
+
 # Development Settings
 NODE_ENV=development
 PORT=8080
 LOG_REQUEST_BODY=true
 LOG_LEVEL=debug
 ```
+
+**Finding Your Power Platform Environment ID:**
+
+The Power Platform Environment ID is required for deployment history solution links. You can find it using either of these methods:
+
+**Method 1: Power Apps Maker Portal (Recommended)**
+1. **Navigate to Power Apps**: Go to [make.powerapps.com](https://make.powerapps.com)
+2. **Access Session Details**: Click the settings gear icon (⚙️) in the top-right corner
+3. **Select "Session details"**: From the dropdown menu
+4. **Copy Environment ID**: The Environment ID is displayed in the session details dialog
+
+**Method 2: Environment URL**
+Look at your environment URL - the GUID after `/environments/` is your Environment ID.
+
 
 ### Step 3: Start Development Servers
 
@@ -209,6 +230,7 @@ TENANT_ID=your-tenant-id
 CLIENT_ID=$clientId
 CLIENT_SECRET=$newSecret
 DATAVERSE_URL=https://your-org.crm4.dynamics.com/
+POWER_PLATFORM_ENVIRONMENT_ID=your-power-platform-environment-id
 NODE_ENV=development
 PORT=8080
 LOG_REQUEST_BODY=true

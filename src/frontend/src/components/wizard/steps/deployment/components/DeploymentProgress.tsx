@@ -21,20 +21,24 @@ export const DeploymentProgress: React.FC<DeploymentProgressProps> = ({
   }
 
   return (
-    <div className={className} style={{ padding: '16px 0' }}>
+    <div className={className} style={{ padding: '20px' }}>
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: '8px', 
-        marginBottom: '8px' 
+        gap: '16px', 
+        marginBottom: '12px',
+        padding: '4px 0'
       }}>
-        <Spinner size="small" />
+        <Spinner size="small" style={{ flexShrink: 0 }} />
         <Text weight="semibold">Deploying to Dataverse...</Text>
       </div>
       {progress && (
         <Text 
           size={200} 
-          style={{ color: tokens.colorNeutralForeground2 }}
+          style={{ 
+            color: tokens.colorNeutralForeground2,
+            marginLeft: '36px' // Align with text above
+          }}
         >
           {progress}
         </Text>

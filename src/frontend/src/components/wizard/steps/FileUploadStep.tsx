@@ -334,29 +334,26 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         }, wizardData.entityChoice);
         
         console.log('🔧 DEBUG: Validation result structure:', {
-          hasData: !!validationResult.data,
-          hasEntities: !!validationResult.data?.entities,
-          entitiesCount: validationResult.data?.entities?.length || 0,
-          entitiesPreview: validationResult.data?.entities?.slice(0, 2)?.map(e => e.name) || [],
+          hasEntities: !!validationResult.entities,
+          entitiesCount: validationResult.entities?.length || 0,
+          entitiesPreview: validationResult.entities?.slice(0, 2)?.map((e: any) => e.name) || [],
           validationResultKeys: Object.keys(validationResult),
-          dataKeys: validationResult.data ? Object.keys(validationResult.data) : [],
-          // Check if entities are at top level
-          hasTopLevelEntities: !!validationResult.entities,
-          topLevelEntitiesCount: validationResult.entities?.length || 0,
-          topLevelEntitiesPreview: validationResult.entities?.slice(0, 2)?.map(e => e.name) || []
+          hasCustomEntities: !!validationResult.customEntities,
+          customEntitiesCount: validationResult.customEntities?.length || 0,
+          hasCdmEntities: !!validationResult.cdmEntities,
+          cdmEntitiesCount: validationResult.cdmEntities?.length || 0
         });
         
         // Update wizard data with corrected information from backend
-        // Try both data wrapper and direct access
-        const entities = validationResult.data?.entities || validationResult.entities || [];
-        const relationships = validationResult.data?.relationships || validationResult.relationships || [];
-        const correctedERD = validationResult.data?.correctedERD || validationResult.correctedERD || content;
-        const validationResults = validationResult.data || validationResult;
+        const entities = validationResult.entities || [];
+        const relationships = validationResult.relationships || [];
+        const correctedERD = validationResult.correctedERD || content;
+        const validationResults = validationResult;
         
         console.log('🔧 DEBUG: Extracted data:', {
           entitiesCount: entities.length,
           relationshipsCount: relationships.length,
-          entitiesNames: entities.map(e => e.name)
+          entitiesNames: entities.map((e: any) => e.name)
         });
         
         updateWizardData({
@@ -367,7 +364,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         });
         
         // CDM Detection Logic - use backend results if available
-        const cdmDetection = validationResult.data?.cdmDetection;
+        const cdmDetection = validationResult.cdmDetection;
         if (cdmDetection && cdmDetection.detectedCDM) {
           const detectedEntities = cdmDetection.detectedCDM.map((match: any) => match.originalEntity?.name).filter(Boolean);
           updateWizardData({ 
@@ -585,17 +582,17 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
           
           console.log('🔧 DEBUG: Revalidation completed with entityChoice:', {
             entityChoice,
-            warningsCount: revalidationResult.data?.warnings?.length || 0,
-            autoFixableWarnings: revalidationResult.data?.warnings?.filter((w: any) => w.autoFixable).length || 0,
-            totalValidationResults: revalidationResult.data || revalidationResult
+            warningsCount: revalidationResult.warnings?.length || 0,
+            autoFixableWarnings: revalidationResult.warnings?.filter((w: any) => w.autoFixable).length || 0,
+            totalValidationResults: revalidationResult
           });
 
           console.log('🔧 DEBUG: About to update wizard data with new validation results');
           
           // Ensure we completely replace validation results, not merge them
           updateWizardData({
-            validationResults: revalidationResult.data || revalidationResult, // This should completely replace the old validation results
-            correctedErdContent: revalidationResult.data?.correctedERD || originalErdContent
+            validationResults: revalidationResult, // This should completely replace the old validation results
+            correctedErdContent: revalidationResult.correctedERD || originalErdContent
           });
 
           console.log('🔧 DEBUG: Wizard data updated successfully');
@@ -705,29 +702,36 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         options: {}
       });
 
-      if (fixResult.success && fixResult.data?.fixedContent) {
-        console.log('🔧 DEBUG: Individual fix applied successfully:', fixResult.data.appliedFix);
+      console.log('🔧 DEBUG: Fix result received:', fixResult);
+
+      // Cast to any to handle the actual API response structure which has a data wrapper
+      const result = fixResult as any;
+
+      if (result.success && (result.fixedContent || result.data?.fixedContent)) {
+        console.log('🔧 DEBUG: Individual fix applied successfully:', result.appliedFix || result.data?.appliedFix);
+        
+        const fixedContent = result.fixedContent || result.data?.fixedContent;
         
         // Update the corrected ERD content
         updateWizardData({
-          correctedErdContent: fixResult.data.fixedContent,
+          correctedErdContent: fixedContent,
           fixedIssues: new Set([...fixedIssues, warningId])
         });
 
         // Re-validate to get updated warnings
         const revalidationResult = await ApiService.validateFile({
           name: uploadedFile?.name || 'fixed.mmd',
-          content: fixResult.data.fixedContent,
-          size: fixResult.data.fixedContent.length,
+          content: fixedContent,
+          size: fixedContent.length,
           lastModified: Date.now()
         }, wizardData.entityChoice);
 
         updateWizardData({
-          validationResults: revalidationResult.data || revalidationResult
+          validationResults: revalidationResult
         });
 
       } else {
-        console.error('Individual fix failed:', fixResult.error || fixResult.message || 'Unknown error');
+        console.error('Individual fix failed:', result.error || result.message || result.data?.error || result.data?.message || 'Unknown error');
       }
     } catch (error) {
       console.error('Error applying individual fix:', error);

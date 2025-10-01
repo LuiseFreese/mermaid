@@ -10,6 +10,7 @@ export interface DeploymentSummary {
     solutionName: string;
     publisherName: string;
     version?: string;
+    solutionId?: string;
   };
   summary?: {
     totalEntities: number;
@@ -19,6 +20,11 @@ export interface DeploymentSummary {
     totalAttributes: number;
     cdmEntities: number;
     customEntities: number;
+    cdmEntityNames: string[];
+    customEntityNames: string[];
+    cdmEntitiesAdded?: string[];
+    globalChoicesAdded?: string[];
+    globalChoicesCreated?: string[];
   };
   deploymentLogs?: string[];
   metadata?: {
@@ -42,6 +48,11 @@ export interface DeploymentDetails {
     totalAttributes: number;
     cdmEntities: number;
     customEntities: number;
+    cdmEntityNames: string[];
+    customEntityNames: string[];
+    cdmEntitiesAdded?: string[];
+    globalChoicesAdded?: string[];
+    globalChoicesCreated?: string[];
   };
   deploymentLogs: string[];
   duration?: number;

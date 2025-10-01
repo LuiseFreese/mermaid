@@ -39,7 +39,7 @@ class DeploymentHistoryService extends BaseService {
      */
     async recordDeployment(deploymentData) {
         return this.executeOperation('recordDeployment', async () => {
-            const deploymentId = this.generateDeploymentId();
+            const deploymentId = deploymentData.deploymentId || this.generateDeploymentId();
             const timestamp = new Date().toISOString();
             
             // Create deployment record
@@ -49,15 +49,15 @@ class DeploymentHistoryService extends BaseService {
                 environmentSuffix: deploymentData.environmentSuffix || 'default',
                 erdContent: deploymentData.erdContent,
                 status: deploymentData.status || 'pending',
-                summary: this.generateDeploymentSummary(deploymentData),
-                deploymentLogs: deploymentData.logs || [],
+                summary: deploymentData.summary || this.generateDeploymentSummary(deploymentData),
+                deploymentLogs: deploymentData.deploymentLogs || deploymentData.logs || [],
                 duration: deploymentData.duration || null,
-                solutionInfo: {
+                solutionInfo: deploymentData.solutionInfo || {
                     solutionName: deploymentData.solutionName,
                     publisherName: deploymentData.publisherName,
                     version: deploymentData.version
                 },
-                metadata: {
+                metadata: deploymentData.metadata || {
                     userAgent: deploymentData.userAgent,
                     deploymentMethod: 'web-ui',
                     previousDeploymentId: await this.getLatestDeploymentId(deploymentData.environmentSuffix)
@@ -121,21 +121,28 @@ class DeploymentHistoryService extends BaseService {
     async getDeploymentHistory(environmentSuffix, limit = 20) {
         return this.executeOperation('getDeploymentHistory', async () => {
             const indexFile = path.join(this.storageDir, `${environmentSuffix || 'default'}_index.json`);
+            console.log('🔍 DEBUG: Looking for index file:', indexFile);
             
             try {
                 const indexData = await fs.readFile(indexFile, 'utf8');
                 const index = JSON.parse(indexData);
+                console.log('🔍 DEBUG: Index data loaded, deployments count:', index.deployments?.length);
                 
                 // Sort by timestamp (newest first) and limit
                 const sortedDeployments = index.deployments
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                     .slice(0, limit);
                 
+                console.log('🔍 DEBUG: Sorted deployments after limit:', sortedDeployments.length);
+                
                 // Load full deployment data
                 const fullDeployments = await Promise.all(
                     sortedDeployments.map(async (summary) => {
                         try {
-                            return await this.getDeploymentById(summary.deploymentId);
+                            console.log('🔍 DEBUG: Loading deployment:', summary.deploymentId);
+                            const deployment = await this.getDeploymentById(summary.deploymentId);
+                            console.log('🔍 DEBUG: Loaded deployment result:', deployment ? 'SUCCESS' : 'NULL');
+                            return deployment;
                         } catch (error) {
                             console.warn(`Failed to load deployment ${summary.deploymentId}:`, error);
                             return summary; // Return summary if full record fails to load
@@ -143,13 +150,17 @@ class DeploymentHistoryService extends BaseService {
                     })
                 );
                 
-                return fullDeployments.filter(d => d !== null);
+                const filtered = fullDeployments.filter(d => d !== null);
+                console.log('🔍 DEBUG: Final deployments count after filtering:', filtered.length);
+                return filtered;
                 
             } catch (error) {
                 if (error.code === 'ENOENT') {
+                    console.log('🔍 DEBUG: Index file not found, returning empty array');
                     // No deployments yet
                     return [];
                 }
+                console.error('🔍 DEBUG: Error reading index file:', error);
                 throw error;
             }
         });
@@ -163,14 +174,19 @@ class DeploymentHistoryService extends BaseService {
     async getDeploymentById(deploymentId) {
         return this.executeOperation('getDeploymentById', async () => {
             const recordFile = path.join(this.storageDir, `${deploymentId}.json`);
+            console.log('🔍 DEBUG: Looking for deployment file:', recordFile);
             
             try {
                 const recordData = await fs.readFile(recordFile, 'utf8');
-                return JSON.parse(recordData);
+                const deployment = JSON.parse(recordData);
+                console.log('🔍 DEBUG: Successfully loaded deployment:', deploymentId);
+                return deployment;
             } catch (error) {
                 if (error.code === 'ENOENT') {
+                    console.log('🔍 DEBUG: Deployment file not found:', recordFile);
                     return null;
                 }
+                console.error('🔍 DEBUG: Error loading deployment file:', error);
                 throw error;
             }
         });
@@ -233,14 +249,19 @@ class DeploymentHistoryService extends BaseService {
     generateDeploymentSummary(deploymentData) {
         const entities = this.parseEntitiesFromERD(deploymentData.erdContent || '');
         
+        const cdmEntities = entities.filter(e => e.isCdm);
+        const customEntities = entities.filter(e => !e.isCdm);
+        
         return {
             totalEntities: entities.length,
             entitiesAdded: [], // Will be filled in by comparison with previous deployment
             entitiesModified: [],
             entitiesRemoved: [],
             totalAttributes: entities.reduce((sum, entity) => sum + (entity.attributes || []).length, 0),
-            cdmEntities: entities.filter(e => e.isCdm).length,
-            customEntities: entities.filter(e => !e.isCdm).length
+            cdmEntities: cdmEntities.length,
+            customEntities: customEntities.length,
+            cdmEntityNames: cdmEntities.map(e => e.name),
+            customEntityNames: customEntities.map(e => e.name)
         };
     }
 

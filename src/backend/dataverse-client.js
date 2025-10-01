@@ -1693,6 +1693,50 @@ class DataverseClient {
     }
   }
 
+  /**
+   * Get a single global choice set by name
+   * @param {string} choiceName - Name of the choice set to retrieve
+   * @returns {Promise<Object>} Single choice set data
+   */
+  async getGlobalChoiceSet(choiceName) {
+    console.log('🎯 Getting single global choice set:', choiceName);
+    
+    try {
+      // Check if we have valid authentication configuration before making any calls
+      if (!this._isAuthConfigured()) {
+        console.log('⚠️ No Dataverse authentication configured');
+        return null;
+      }
+      
+      // Query for specific global choice set by name
+      const oDataQuery = `GlobalOptionSetDefinitions?$filter=Name eq '${choiceName}'&$select=Name,DisplayName,Description,IsManaged`;
+      const result = await this._get(oDataQuery);
+      
+      if (!result.value || result.value.length === 0) {
+        console.log('❌ Choice set not found:', choiceName);
+        return null;
+      }
+      
+      const choice = result.value[0];
+      const processedChoice = {
+        id: choice.Name,
+        name: choice.Name,
+        displayName: choice.DisplayName?.UserLocalizedLabel?.Label || choice.DisplayName?.LocalizedLabels?.[0]?.Label || choice.Name,
+        description: choice.Description?.UserLocalizedLabel?.Label || choice.Description?.LocalizedLabels?.[0]?.Label || '',
+        isManaged: choice.IsManaged,
+        isCustom: !choice.IsManaged,
+        prefix: choice.Name.includes('_') ? choice.Name.split('_')[0] : ''
+      };
+      
+      console.log('✅ Found choice set:', { name: processedChoice.name, displayName: processedChoice.displayName });
+      return processedChoice;
+      
+    } catch (error) {
+      console.error('❌ Error fetching single global choice set:', error);
+      return null;
+    }
+  }
+
   async addGlobalChoicesToSolution(selectedChoices, solutionUniqueName) {
     console.log(`🎨 Adding ${selectedChoices.length} existing global choices to solution: ${solutionUniqueName}`);
     console.log('🔍 DEBUG: selectedChoices format:', JSON.stringify(selectedChoices, null, 2));

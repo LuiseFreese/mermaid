@@ -212,7 +212,7 @@ class ValidationService extends BaseService {
                     }
                 }
 
-                // Step 2.5: Set isCdm flag on entities based on user choice and CDM detection
+                // Step 2.5: Set isCdm flag on entities based on CDM detection and user choice
                 console.log('🔧 DEBUG: CDM Flag Setting - Initial state:', {
                     entityChoice: options.entityChoice,
                     hasCdmDetection: !!result.cdmDetection,
@@ -220,7 +220,8 @@ class ValidationService extends BaseService {
                     matches: result.cdmDetection?.matches?.map(m => ({ original: m.originalEntity?.name, cdm: m.cdmEntity?.logicalName })) || []
                 });
                 
-                if (options.entityChoice === 'cdm' && result.cdmDetection?.matches?.length > 0) {
+                // Always mark entities as CDM if they match CDM entities (for display purposes)
+                if (result.cdmDetection?.matches?.length > 0) {
                     const cdmEntityNames = result.cdmDetection.matches.map(match => match.originalEntity?.name || match.name).filter(Boolean);
                     console.log('🔧 DEBUG: CDM Entity Names extracted:', cdmEntityNames);
                     console.log('🔧 DEBUG: Available entity names:', result.entities.map(e => e.name));
@@ -235,16 +236,13 @@ class ValidationService extends BaseService {
                     });
                     
                     this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
+                        entityChoice: options.entityChoice || 'none',
                         cdmEntityNames,
                         entitiesWithCdmFlags: result.entities.map(e => ({ name: e.name, isCdm: e.isCdm }))
                     });
                 } else {
-                    // If user chose custom or no CDM detected, all entities are custom
-                    console.log('🔧 DEBUG: Setting all entities as custom because:', {
-                        entityChoice: options.entityChoice,
-                        cdmMatches: result.cdmDetection?.matches?.length || 0
-                    });
+                    // If no CDM entities detected, all entities are custom
+                    console.log('🔧 DEBUG: Setting all entities as custom because no CDM matches found');
                     
                     result.entities = result.entities.map(entity => ({
                         ...entity,
@@ -252,7 +250,7 @@ class ValidationService extends BaseService {
                     }));
                     
                     this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
+                        entityChoice: options.entityChoice || 'none',
                         allEntitiesCustom: true,
                         entityCount: result.entities.length
                     });
@@ -1383,12 +1381,12 @@ class ValidationService extends BaseService {
             });
             
             // Only fail if there are actual parsing/structure errors, not just warnings
-            if (!validationResult.success && validationResult.data?.errors && validationResult.data.errors.length > 0) {
-                return this.createError('Failed to validate ERD for individual fix', validationResult.error);
+            if (!validationResult.success && validationResult.errors && validationResult.errors.length > 0) {
+                return this.createError('Failed to validate ERD for individual fix', validationResult.errors);
             }
 
             // Extract the validation data from the wrapped result
-            const validationData = validationResult.data || {};
+            const validationData = validationResult.data || validationResult;
             const warnings = validationData.warnings || [];
 
             // Find the specific warning to fix

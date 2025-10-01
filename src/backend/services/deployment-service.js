@@ -18,6 +18,7 @@ class DeploymentService extends BaseService {
         this.publisherService = dependencies.publisherService;
         this.solutionService = dependencies.solutionService;
         this.globalChoicesService = dependencies.globalChoicesService;
+        this.deploymentHistoryService = dependencies.deploymentHistoryService;
         this.mermaidParser = dependencies.mermaidParser;
         this.cdmRegistry = dependencies.cdmRegistry;
         
@@ -274,6 +275,53 @@ class DeploymentService extends BaseService {
                 // Step 9: Finalize deployment
                 progress('finalizing', 'Finalizing deployment...');
                 results.summary = this.generateDeploymentSummary(results);
+                
+                // Step 10: Record deployment in history
+                if (this.deploymentHistoryService) {
+                    try {
+                        // Extract publisher and solution information
+                        const publisherData = publisherResult?.data || publisherResult;
+                        const solutionData = solution;
+                        
+                        // Create deployment summary with actual CDM/custom entity information
+                        const deploymentSummary = {
+                            totalEntities: cdmEntities.length + customEntities.length,
+                            entitiesAdded: [...cdmEntities.map(e => e.name || e.originalEntity?.name), ...customEntities.map(e => e.name)],
+                            entitiesModified: [],
+                            entitiesRemoved: [],
+                            totalAttributes: parseResult.entities.reduce((sum, entity) => sum + (entity.attributes?.length || 0), 0),
+                            cdmEntities: cdmEntities.length,
+                            customEntities: customEntities.length,
+                            cdmEntityNames: cdmEntities.map(e => e.name || e.originalEntity?.name),
+                            customEntityNames: customEntities.map(e => e.name),
+                            // Add global choices information from deployment results
+                            globalChoicesAdded: await this.extractGlobalChoiceNames(config.selectedChoices || [], 'selected'),
+                            globalChoicesCreated: await this.extractGlobalChoiceNames(config.customChoices || [], 'custom')
+                        };
+                        
+                        await this.deploymentHistoryService.recordDeployment({
+                            deploymentId: deploymentId,
+                            environmentSuffix: 'default',
+                            status: 'success',
+                            erdContent: config.mermaidContent,
+                            summary: deploymentSummary,
+                            solutionInfo: {
+                                solutionName: solutionData?.friendlyname || config.solutionDisplayName || config.solutionName,
+                                publisherName: publisherData?.friendlyname || publisherData?.displayname || 'Default Publisher',
+                                publisherPrefix: publisherData?.customizationprefix || publisherData?.prefix,
+                                solutionId: solutionData?.solutionid
+                            },
+                            deploymentLogs: [], // Could be enhanced to include actual logs
+                            metadata: {
+                                deploymentMethod: 'web-ui'
+                            }
+                        });
+                        console.log(`✅ Deployment ${deploymentId} recorded in history with solution: ${solutionData?.friendlyname}`);
+                    } catch (historyError) {
+                        console.warn(`⚠️ Failed to record deployment history: ${historyError.message}`);
+                        // Don't fail the deployment if history recording fails
+                    }
+                }
                 
                 // Update deployment tracking
                 this.updateDeploymentStatus(deploymentId, 'completed', results.summary);
@@ -860,6 +908,88 @@ class DeploymentService extends BaseService {
             deployment.message = message;
             deployment.lastUpdate = new Date();
         }
+    }
+
+    /**
+     * Extract global choice names with display names from configuration
+     * @param {Array} choices - Array of choice configurations
+     * @param {string} type - Type of choices ('selected' for existing, 'custom' for new)
+     * @returns {Promise<Array>} Array of choice display names
+     */
+    async extractGlobalChoiceNames(choices, type = 'selected') {
+        if (!choices || !Array.isArray(choices)) {
+            return [];
+        }
+
+        const results = [];
+
+        for (const choice of choices) {
+            try {
+                let choiceName;
+                let displayName;
+
+                if (typeof choice === 'string') {
+                    choiceName = choice;
+                } else if (choice && typeof choice === 'object') {
+                    choiceName = choice.name || choice.displayName || choice.logicalName || choice.label || choice.id;
+                }
+
+                if (!choiceName) {
+                    continue;
+                }
+
+                if (type === 'selected') {
+                    // For selected (existing) choices, fetch from Dataverse to get display name
+                    try {
+                        const choiceResult = await this.globalChoicesService.getGlobalChoice(choiceName);
+                        
+                        if (choiceResult.success && choiceResult.data) {
+                            displayName = choiceResult.data.displayName || choiceResult.data.DisplayName || choiceName;
+                        } else {
+                            // If we can't fetch from Dataverse, format the technical name nicely
+                            displayName = this.formatTechnicalName(choiceName);
+                        }
+                    } catch (error) {
+                        this.log('Warning: Could not get display name for choice', { choiceName, error: error.message });
+                        // If API fails, format the technical name nicely as fallback
+                        displayName = this.formatTechnicalName(choiceName);
+                    }
+                } else {
+                    // For custom choices, use the display name from the configuration
+                    displayName = choice.displayName || choice.DisplayName || choiceName;
+                }
+
+                results.push(displayName);
+            } catch (error) {
+                this.log('Error processing choice for display name', { choice, error: error.message });
+                // Add fallback name
+                const fallbackName = typeof choice === 'string' ? choice : (choice?.name || 'Unknown Choice');
+                results.push(fallbackName);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Format technical names to be more human-readable
+     * @param {string} technicalName - Technical name to format
+     * @returns {string} Formatted display name
+     */
+    formatTechnicalName(technicalName) {
+        if (!technicalName || typeof technicalName !== 'string') {
+            return technicalName;
+        }
+
+        // Handle common patterns:
+        // goal_fiscalperiod -> Goal Fiscal Period
+        // teamchoice -> Team Choice
+        // new_customchoice -> New Custom Choice
+        
+        return technicalName
+            .split(/[_-]/) // Split on underscores and hyphens
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Title case each word
+            .join(' '); // Join with spaces
     }
 }
 

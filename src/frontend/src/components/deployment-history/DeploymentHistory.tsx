@@ -21,20 +21,22 @@ import {
   DialogTitle,
   DialogContent,
   DialogBody,
-  DialogActions
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel
 } from '@fluentui/react-components';
 import {
   HistoryRegular,
   CalendarLtrRegular,
-  CheckmarkCircleRegular,
   ErrorCircleRegular,
   ClockRegular,
-  EyeRegular,
-  ArrowSyncRegular,
   ArrowLeftRegular,
-  DismissRegular
+  DismissRegular,
+  LinkRegular
 } from '@fluentui/react-icons';
 import { DeploymentHistoryService } from '../../services/deploymentHistoryService';
+import { ApiService } from '../../services/apiService';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
 import { ThemeToggle } from '../common/ThemeToggle';
 
@@ -59,6 +61,9 @@ const useStyles = makeStyles({
   headerContent: {
     maxWidth: '1200px',
     margin: '0 auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
   },
   content: {
     maxWidth: '1200px',
@@ -88,6 +93,18 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     border: `1px solid var(--color-border)`,
   },
+  tableRowEven: {
+    backgroundColor: 'transparent',
+    '&:hover': {
+      backgroundColor: tokens.colorNeutralBackground1Hover,
+    },
+  },
+  tableRowOdd: {
+    backgroundColor: tokens.colorNeutralBackground2,
+    '&:hover': {
+      backgroundColor: tokens.colorNeutralBackground2Hover,
+    },
+  },
   statusBadge: {
     marginLeft: '8px',
   },
@@ -104,6 +121,18 @@ const useStyles = makeStyles({
   },
 });
 
+// Helper function to generate Power Platform solution URL
+const generateSolutionUrl = async (solutionId: string): Promise<string> => {
+  try {
+    const config = await ApiService.getConfig();
+    return `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutions/${solutionId}`;
+  } catch (error) {
+    console.error('Failed to fetch environment config:', error);
+    // Return null if API fails - solution link won't be shown
+    throw new Error('Unable to generate solution URL: environment configuration not available');
+  }
+};
+
 interface DeploymentHistoryProps {}
 
 export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
@@ -111,25 +140,36 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const [deployments, setDeployments] = useState<DeploymentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedEnvironment] = useState('v2fixed');
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentSummary | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [solutionUrl, setSolutionUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadDeploymentHistory();
-  }, [selectedEnvironment]);
+  }, []);
 
   const loadDeploymentHistory = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await DeploymentHistoryService.getDeploymentHistory(selectedEnvironment, 50);
+      const response = await DeploymentHistoryService.getDeploymentHistory('default', 50);
+      
+      console.log('🔧 DEBUG: Deployment History API Response:', {
+        success: response.success,
+        count: response.count,
+        environmentSuffix: response.environmentSuffix,
+        deploymentsLength: response.deployments?.length || 0,
+        deployments: response.deployments,
+        fullResponse: response
+      });
       
       if (response.success) {
         setDeployments(response.deployments);
+        console.log('🔧 DEBUG: Set deployments state:', response.deployments);
       } else {
         setError('Failed to load deployment history');
+        console.log('🔧 DEBUG: API returned success=false');
       }
     } catch (err) {
       console.error('Error loading deployment history:', err);
@@ -147,17 +187,10 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }
   };
 
-  const formatDuration = (duration?: number) => {
-    if (!duration) return 'N/A';
-    const seconds = Math.floor(duration / 1000);
-    const minutes = Math.floor(seconds / 60);
-    return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckmarkCircleRegular style={{ color: 'var(--color-success)' }} />;
+        return null; // No icon for success - text is sufficient
       case 'failed':
         return <ErrorCircleRegular style={{ color: 'var(--color-error)' }} />;
       case 'pending':
@@ -180,17 +213,25 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }
   };
 
-  const handleViewDetails = (deploymentId: string) => {
+  const handleViewDetails = async (deploymentId: string) => {
     const deployment = deployments.find(d => d.deploymentId === deploymentId);
     if (deployment) {
       setSelectedDeployment(deployment);
       setShowDetailsModal(true);
+      
+      // Generate solution URL if solution ID exists
+      if (deployment.solutionInfo?.solutionId) {
+        try {
+          const url = await generateSolutionUrl(deployment.solutionInfo.solutionId);
+          setSolutionUrl(url);
+        } catch (error) {
+          console.error('Failed to generate solution URL:', error);
+          setSolutionUrl(null);
+        }
+      } else {
+        setSolutionUrl(null);
+      }
     }
-  };
-
-  const handleCompare = (deploymentId: string) => {
-    console.log('Compare deployment:', deploymentId);
-    // TODO: Open deployment comparison view
   };
 
   if (loading) {
@@ -215,11 +256,15 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
             </div>
           </div>
           <div className={styles.headerContent}>
-            <Title1 style={{ color: 'var(--color-banner-text)', marginBottom: '8px' }}>
+            <Title1 as="h1" style={{ 
+              color: 'var(--color-banner-text)'
+            }}>
               <HistoryRegular style={{ marginRight: '12px' }} />
               Deployment History
             </Title1>
-            <Text style={{ color: 'var(--color-banner-text)', opacity: 0.9 }}>
+            <Text size={400} style={{ 
+              color: 'var(--color-banner-text-secondary)'
+            }}>
               View and manage your solution deployment history
             </Text>
           </div>
@@ -257,11 +302,15 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
             </div>
           </div>
           <div className={styles.headerContent}>
-            <Title1 style={{ color: 'var(--color-banner-text)', marginBottom: '8px' }}>
+            <Title1 as="h1" style={{ 
+              color: 'var(--color-banner-text)'
+            }}>
               <HistoryRegular style={{ marginRight: '12px' }} />
               Deployment History
             </Title1>
-            <Text style={{ color: 'var(--color-banner-text)', opacity: 0.9 }}>
+            <Text size={400} style={{ 
+              color: 'var(--color-banner-text-secondary)'
+            }}>
               View and manage your solution deployment history
             </Text>
           </div>
@@ -322,7 +371,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
             <HistoryRegular style={{ fontSize: '64px', color: 'var(--color-text-secondary)' }} />
             <Title2>No Deployments Found</Title2>
             <Text style={{ color: 'var(--color-text-secondary)' }}>
-              No deployment history found for the {selectedEnvironment} environment.
+              No deployment history found.
               <br />
               Start by deploying a solution using the wizard.
             </Text>
@@ -378,18 +427,21 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
           <Table arial-label="Deployment history table">
             <TableHeader>
               <TableRow>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Solution</TableHeaderCell>
-                <TableHeaderCell>Publisher</TableHeaderCell>
-                <TableHeaderCell>Date</TableHeaderCell>
-                <TableHeaderCell>Duration</TableHeaderCell>
-                <TableHeaderCell>Entities</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Status</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Solution</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Publisher</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Date</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Tables</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {deployments.map((deployment) => (
-                <TableRow key={deployment.deploymentId}>
+              {deployments.map((deployment, index) => (
+                <TableRow 
+                  key={deployment.deploymentId}
+                  onClick={() => handleViewDetails(deployment.deploymentId)}
+                  className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
+                  style={{ cursor: 'pointer' }}
+                >
                   <TableCell>
                     <TableCellLayout>
                       {getStatusIcon(deployment.status)}
@@ -404,7 +456,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                   </TableCell>
                   <TableCell>
                     <TableCellLayout>
-                      <Text weight="semibold">{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
+                      <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
                     </TableCellLayout>
                   </TableCell>
                   <TableCell>
@@ -420,37 +472,10 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                   </TableCell>
                   <TableCell>
                     <TableCellLayout>
-                      <Text>{formatDuration(deployment.duration)}</Text>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
                       <Text weight="semibold">{deployment.summary?.totalEntities || 0}</Text>
                       <Text size={200} style={{ marginLeft: '4px', opacity: 0.7 }}>
                         ({deployment.summary?.cdmEntities || 0} CDM, {deployment.summary?.customEntities || 0} custom)
                       </Text>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
-                      <Button 
-                        size="small" 
-                        appearance="subtle"
-                        icon={<EyeRegular />}
-                        onClick={() => handleViewDetails(deployment.deploymentId)}
-                        className={styles.actionButton}
-                      >
-                        Details
-                      </Button>
-                      <Button 
-                        size="small" 
-                        appearance="subtle"
-                        icon={<ArrowSyncRegular />}
-                        onClick={() => handleCompare(deployment.deploymentId)}
-                        className={styles.actionButton}
-                      >
-                        Compare
-                      </Button>
                     </TableCellLayout>
                   </TableCell>
                 </TableRow>
@@ -479,94 +504,227 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
             </DialogTitle>
             <DialogContent>
               <DialogBody>
-                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '16px' }}>
-                  <strong>Deployment ID:</strong>
-                  <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{selectedDeployment.deploymentId}</span>
-                  
-                  <strong>Status:</strong>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {getStatusIcon(selectedDeployment.status)}
-                    <Badge appearance="tint" color={getStatusColor(selectedDeployment.status)}>
-                      {selectedDeployment.status}
-                    </Badge>
-                  </div>
-                  
-                  <strong>Solution Name:</strong>
-                  <span>{selectedDeployment.solutionInfo?.solutionName || 'N/A'}</span>
-                  
-                  <strong>Publisher:</strong>
-                  <span>{selectedDeployment.solutionInfo?.publisherName || 'N/A'}</span>
-                  
-                  <strong>Environment:</strong>
-                  <Badge appearance="outline">{selectedDeployment.environmentSuffix}</Badge>
-                  
-                  <strong>Started:</strong>
-                  <span>{formatDate(selectedDeployment.timestamp)}</span>
-                  
-                  <strong>Completed:</strong>
-                  <span>{selectedDeployment.completedAt ? formatDate(selectedDeployment.completedAt) : 'N/A'}</span>
-                  
-                  <strong>Duration:</strong>
-                  <span>{formatDuration(selectedDeployment.duration)}</span>
-                  
-                  <strong>Total Entities:</strong>
-                  <span>{selectedDeployment.summary?.totalEntities || 0}</span>
-                  
-                  <strong>CDM Entities:</strong>
-                  <span>{selectedDeployment.summary?.cdmEntities || 0}</span>
-                  
-                  <strong>Custom Entities:</strong>
-                  <span>{selectedDeployment.summary?.customEntities || 0}</span>
-                  
-                  <strong>Total Attributes:</strong>
-                  <span>{selectedDeployment.summary?.totalAttributes || 0}</span>
-                </div>
-                
-                {selectedDeployment.summary?.entitiesAdded && selectedDeployment.summary.entitiesAdded.length > 0 && (
-                  <div style={{ marginTop: '24px' }}>
-                    <strong>Entities Added:</strong>
-                    <div style={{ marginTop: '8px' }}>
-                      {selectedDeployment.summary?.entitiesAdded?.map(entity => (
-                        <Badge key={entity} appearance="tint" color="brand" style={{ margin: '2px' }}>
-                          {entity}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {selectedDeployment.summary?.entitiesModified && selectedDeployment.summary.entitiesModified.length > 0 && (
-                  <div style={{ marginTop: '16px' }}>
-                    <strong>Entities Modified:</strong>
-                    <div style={{ marginTop: '8px' }}>
-                      {selectedDeployment.summary?.entitiesModified?.map(entity => (
-                        <Badge key={entity} appearance="tint" color="warning" style={{ margin: '2px' }}>
-                          {entity}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {selectedDeployment.summary?.entitiesRemoved && selectedDeployment.summary.entitiesRemoved.length > 0 && (
-                  <div style={{ marginTop: '16px' }}>
-                    <strong>Entities Removed:</strong>
-                    <div style={{ marginTop: '8px' }}>
-                      {selectedDeployment.summary?.entitiesRemoved?.map(entity => (
-                        <Badge key={entity} appearance="tint" color="danger" style={{ margin: '2px' }}>
-                          {entity}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <Accordion multiple collapsible>
+                  {/* Deployment Details Accordion */}
+                  <AccordionItem value="details">
+                    <AccordionHeader>Deployment Details</AccordionHeader>
+                    <AccordionPanel>
+                      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px' }}>
+                        <strong>Status:</strong>
+                        <span style={{ color: selectedDeployment.status === 'success' ? tokens.colorPaletteGreenForeground1 : tokens.colorPaletteRedForeground1 }}>
+                          {selectedDeployment.status}
+                        </span>
+                        
+                        <strong>Solution Name:</strong>
+                        <span>{selectedDeployment.solutionInfo?.solutionName || 'N/A'}</span>
+                        
+                        <strong>Publisher:</strong>
+                        <span>{selectedDeployment.solutionInfo?.publisherName || 'N/A'}</span>
+                        
+                        {selectedDeployment.solutionInfo?.solutionId && solutionUrl && (
+                          <>
+                            <strong>Solution Link:</strong>
+                            <div>
+                              <a 
+                                href={solutionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '6px',
+                                  color: tokens.colorBrandForeground1,
+                                  textDecoration: 'none'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.textDecoration = 'underline';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.textDecoration = 'none';
+                                }}
+                              >
+                                <LinkRegular style={{ fontSize: '14px' }} />
+                                Open in Power Platform
+                              </a>
+                            </div>
+                          </>
+                        )}
+                        
+                        <strong>Deployed:</strong>
+                        <span>{formatDate(selectedDeployment.timestamp)}</span>
+                        
+                        <strong>Total Entities:</strong>
+                        <span>{selectedDeployment.summary?.totalEntities || 0}</span>
+                        
+                        <strong>Total Attributes:</strong>
+                        <span>{selectedDeployment.summary?.totalAttributes || 0}</span>
+                      </div>
+                    </AccordionPanel>
+                  </AccordionItem>
+
+                  {/* Deployed Entities Accordion */}
+                  <AccordionItem value="entities">
+                    <AccordionHeader>Deployed Tables</AccordionHeader>
+                    <AccordionPanel>
+                      {/* CDM Entities Section */}
+                      {((selectedDeployment.summary?.cdmEntityNames && selectedDeployment.summary.cdmEntityNames.length > 0) ||
+                        (selectedDeployment.summary?.cdmEntitiesAdded && selectedDeployment.summary.cdmEntitiesAdded.length > 0)) && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <strong>CDM Tables</strong>
+                          </div>
+                          <Text size={200} style={{ color: '#666', marginBottom: '8px', display: 'block' }}>
+                            Common Data Model tables
+                          </Text>
+                          <div style={{ marginTop: '8px' }}>
+                            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                              {selectedDeployment.summary?.cdmEntityNames?.map(entityName => (
+                                <li key={entityName}>{entityName}</li>
+                              ))}
+                              {selectedDeployment.summary?.cdmEntitiesAdded?.map(entityName => (
+                                <li key={entityName}>{entityName}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Custom Entities Section */}
+                      {selectedDeployment.summary?.customEntityNames && selectedDeployment.summary.customEntityNames.length > 0 && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <strong>Custom Tables</strong>
+                          </div>
+                          <Text size={200} style={{ color: '#666', marginBottom: '8px', display: 'block' }}>
+                            Custom tables created specifically for this solution
+                          </Text>
+                          <div style={{ marginTop: '8px' }}>
+                            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                              {selectedDeployment.summary.customEntityNames.map(entityName => (
+                                <li key={entityName}>{entityName}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Fallback for legacy data without detailed entity names */}
+                      {(!selectedDeployment.summary?.cdmEntityNames && !selectedDeployment.summary?.customEntityNames && 
+                        !selectedDeployment.summary?.cdmEntitiesAdded) && (
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '16px' }}>
+                            <strong>CDM Tables:</strong>
+                            <span>{selectedDeployment.summary?.cdmEntities || 0}</span>
+                            
+                            <strong>Custom Tables:</strong>
+                            <span>{selectedDeployment.summary?.customEntities || 0}</span>
+                          </div>
+                          {(selectedDeployment.summary?.cdmEntities || selectedDeployment.summary?.customEntities) && (
+                            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px', fontSize: '12px', color: '#666' }}>
+                              <em>Detailed entity information not available for deployments created before the latest update.</em>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Show message if no entities */}
+                      {(!selectedDeployment.summary?.cdmEntityNames?.length && !selectedDeployment.summary?.customEntityNames?.length && 
+                        !selectedDeployment.summary?.cdmEntitiesAdded?.length && !selectedDeployment.summary?.cdmEntities && 
+                        !selectedDeployment.summary?.customEntities) && (
+                        <div>
+                          <span style={{ color: '#888', fontStyle: 'italic' }}>No entities were deployed</span>
+                        </div>
+                      )}
+                    </AccordionPanel>
+                  </AccordionItem>
+
+                  {/* More Accordion */}
+                  <AccordionItem value="more">
+                    <AccordionHeader>More</AccordionHeader>
+                    <AccordionPanel>
+                      {/* Global Choices Section */}
+                      {((selectedDeployment.summary?.globalChoicesAdded && selectedDeployment.summary.globalChoicesAdded.length > 0) ||
+                        (selectedDeployment.summary?.globalChoicesCreated && selectedDeployment.summary.globalChoicesCreated.length > 0)) && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                            <strong>Global Choices</strong>
+                          </div>
+                          <Text size={200} style={{ color: '#666', marginBottom: '8px', display: 'block' }}>
+                            Option sets added to your solution
+                          </Text>
+                          {selectedDeployment.summary?.globalChoicesAdded && selectedDeployment.summary.globalChoicesAdded.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <Text size={100} weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>Added:</Text>
+                              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                {selectedDeployment.summary.globalChoicesAdded.map(choice => (
+                                  <li key={choice}>{choice}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {selectedDeployment.summary?.globalChoicesCreated && selectedDeployment.summary.globalChoicesCreated.length > 0 && (
+                            <div>
+                              <Text size={100} weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>Created:</Text>
+                              <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                {selectedDeployment.summary.globalChoicesCreated.map(choice => (
+                                  <li key={choice}>{choice}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Legacy Entities Added/Modified/Removed - only if they don't duplicate CDM entities */}
+                      {selectedDeployment.summary?.entitiesAdded && selectedDeployment.summary.entitiesAdded.length > 0 && 
+                       !selectedDeployment.summary?.cdmEntityNames && !selectedDeployment.summary?.cdmEntitiesAdded && (
+                        <div style={{ marginTop: '16px' }}>
+                          <strong>Entities Added:</strong>
+                          <ul style={{ margin: '8px 0 0 20px' }}>
+                            {selectedDeployment.summary?.entitiesAdded?.map(entity => (
+                              <li key={entity}>{entity}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {selectedDeployment.summary?.entitiesModified && selectedDeployment.summary.entitiesModified.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <strong>Entities Modified:</strong>
+                          <ul style={{ margin: '8px 0 0 20px' }}>
+                            {selectedDeployment.summary?.entitiesModified?.map(entity => (
+                              <li key={entity}>{entity}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {selectedDeployment.summary?.entitiesRemoved && selectedDeployment.summary.entitiesRemoved.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <strong>Entities Removed:</strong>
+                          <ul style={{ margin: '8px 0 0 20px' }}>
+                            {selectedDeployment.summary?.entitiesRemoved?.map(entity => (
+                              <li key={entity}>{entity}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Show message if no additional information */}
+                      {(!selectedDeployment.summary?.globalChoicesAdded?.length && 
+                        !selectedDeployment.summary?.globalChoicesCreated?.length &&
+                        !selectedDeployment.summary?.entitiesAdded?.length &&
+                        !selectedDeployment.summary?.entitiesModified?.length &&
+                        !selectedDeployment.summary?.entitiesRemoved?.length) && (
+                        <div>
+                          <span style={{ color: '#888', fontStyle: 'italic' }}>No additional deployment information available</span>
+                        </div>
+                      )}
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
               </DialogBody>
             </DialogContent>
-            <DialogActions>
-              <Button appearance="primary" onClick={() => setShowDetailsModal(false)}>
-                Close
-              </Button>
-            </DialogActions>
           </DialogSurface>
         </Dialog>
       )}

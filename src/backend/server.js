@@ -123,6 +123,10 @@ async function initializeComponents() {
       logger: console
     });
 
+    const deploymentHistoryService = new DeploymentHistoryService({
+      logger: console
+    });
+
     const deploymentService = new DeploymentService({
       dataverseRepository: dataverseRepo,
       configRepository: configRepo,
@@ -130,11 +134,8 @@ async function initializeComponents() {
       globalChoicesService,
       solutionService,
       publisherService,
+      deploymentHistoryService,
       mermaidParser: new MermaidERDParser(), // Add the missing Mermaid parser
-      logger: console
-    });
-
-    const deploymentHistoryService = new DeploymentHistoryService({
       logger: console
     });
 
@@ -688,6 +689,20 @@ async function handleApiRoutes(pathname, req, res, components) {
     case 'admin/logs':
       if (req.method === 'GET') {
         return components.adminController.getLogs(req, res);
+      }
+      break;
+
+    case 'config':
+      if (req.method === 'GET') {
+        // Return configuration data needed by the frontend
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            powerPlatformEnvironmentId: process.env.POWER_PLATFORM_ENVIRONMENT_ID
+          }
+        }));
+        return;
       }
       break;
 
