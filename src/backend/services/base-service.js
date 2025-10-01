@@ -92,14 +92,14 @@ class BaseService {
      * @param {Array} errors - Any errors that occurred
      * @returns {Object} Standardized result object
      */
-    createResult(success, data = {}, message = '', errors = []) {
+    createResult(success, data = null, message = '', errors = []) {
         return {
             success,
+            data,
             message,
             errors,
             timestamp: new Date().toISOString(),
-            service: this.name,
-            ...data
+            service: this.name
         };
     }
 
@@ -109,7 +109,7 @@ class BaseService {
      * @param {string} message - Success message
      * @returns {Object} Success result
      */
-    createSuccess(data = {}, message = 'Operation completed successfully') {
+    createSuccess(data = null, message = 'Operation completed successfully') {
         return this.createResult(true, data, message);
     }
 
@@ -120,7 +120,7 @@ class BaseService {
      * @param {Object} data - Additional data
      * @returns {Object} Error result
      */
-    createError(message, errors = [], data = {}) {
+    createError(message, errors = [], data = null) {
         return this.createResult(false, data, message, errors);
     }
 

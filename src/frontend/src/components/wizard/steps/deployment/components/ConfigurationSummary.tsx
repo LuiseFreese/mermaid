@@ -215,7 +215,7 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
         <AccordionPanel>
           <div className={fileUploadStyles.accordionContent}>
             <div className={fileUploadStyles.entityCard}>
-              {cdmEntities.length > 0 ? (
+              {wizardData.entityChoice === 'cdm' && cdmEntities.length > 0 ? (
                 <>
                   <div className={fileUploadStyles.entityHeader}>
                     <Text className={fileUploadStyles.entityName}>Using existing CDM entities</Text>
@@ -248,10 +248,16 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
                     No CDM entities detected in your ERD
                   </Text>
                 </div>
-              ) : (
+              ) : !wizardData.entityChoice ? (
                 <div className={fileUploadStyles.entityDescription}>
                   <Text style={{ color: tokens.colorNeutralForeground3 }}>
                     CDM entities detected but no integration choice selected
+                  </Text>
+                </div>
+              ) : (
+                <div className={fileUploadStyles.entityDescription}>
+                  <Text style={{ color: tokens.colorNeutralForeground3 }}>
+                    CDM integration configured
                   </Text>
                 </div>
               )}

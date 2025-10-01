@@ -6,10 +6,16 @@ const axios = require('axios');
 
 class DataverseClient {
   constructor(cfg = {}) {
-    this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || '').replace(/\/$/, '');
-    this.tenantId = cfg.tenantId || cfg.TENANT_ID;
-    this.clientId = cfg.clientId || cfg.CLIENT_ID;
+    this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || process.env.DATAVERSE_URL || '').replace(/\/$/, '');
+    this.tenantId = cfg.tenantId || cfg.TENANT_ID || process.env.TENANT_ID;
+    this.clientId = cfg.clientId || cfg.CLIENT_ID || process.env.CLIENT_ID;
+    this.clientSecret = cfg.clientSecret || cfg.CLIENT_SECRET || process.env.CLIENT_SECRET;
     this.managedIdentityClientId = cfg.managedIdentityClientId || cfg.MANAGED_IDENTITY_CLIENT_ID || process.env.MANAGED_IDENTITY_CLIENT_ID;
+    
+    // Support for client secret authentication (local development)
+    this.useClientSecret = cfg.useClientSecret || 
+                           process.env.USE_CLIENT_SECRET === 'true' ||
+                           (this.clientSecret && this.clientId && this.tenantId);
     
     // Support for federated credentials and managed identity
     this.useFederatedCredential = cfg.useFederatedCredential || 
@@ -18,7 +24,7 @@ class DataverseClient {
     // Support for managed identity (Azure App Service, Container Instances, VMs, etc.)
     this.useManagedIdentity = cfg.useManagedIdentity || 
                               process.env.USE_MANAGED_IDENTITY === 'true' ||
-                              !this.useFederatedCredential;
+                              (!this.useClientSecret && !this.useFederatedCredential);
     
     // For federated credentials, we need the assertion token or file path
     this.clientAssertion = cfg.clientAssertion || process.env.CLIENT_ASSERTION;
@@ -50,7 +56,14 @@ class DataverseClient {
     if (this._token && now < (this._tokenExp - 60)) return this._token;
 
     // Determine authentication method based on configuration
-    if (this.useManagedIdentity && this.useFederatedCredential) {
+    if (this.useClientSecret) {
+      // Use client secret authentication (local development)
+      this._log('🔐 AUTHENTICATION: Using Client Secret');
+      if (!this.tenantId || !this.clientId || !this.clientSecret) {
+        throw new Error('Missing tenantId/clientId/clientSecret for client secret authentication.');
+      }
+      this._token = await this._getTokenWithClientSecret();
+    } else if (this.useManagedIdentity && this.useFederatedCredential) {
       // Use managed identity WITH federated credentials (workload identity pattern)
       this._log('🔐 AUTHENTICATION: Using Managed Identity + Federated Credentials');
       this._token = await this._getManagedIdentityWithFederatedCredentials();
@@ -69,7 +82,7 @@ class DataverseClient {
       }
       this._token = await this._getTokenWithClientAssertion();
     } else {
-      throw new Error('Authentication method not configured. Must use either managed identity or federated credentials.');
+      throw new Error('Authentication method not configured. Must use client secret, managed identity, or federated credentials.');
     }
 
     // Set expiration time for all authentication methods
@@ -241,6 +254,43 @@ class DataverseClient {
 
     this._log(' OK   Federated credential token acquired.');
     return tokenRes.data.access_token;
+  }
+
+  /**
+   * Get access token using client secret (local development)
+   */
+  async _getTokenWithClientSecret() {
+    this._log(' Requesting token with client secret (local development)...');
+    
+    try {
+      const tokenRes = await axios.post(
+        `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+        new URLSearchParams({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          grant_type: 'client_credentials',
+          scope: `${this.baseUrl}/.default`
+        }).toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+
+      this._log(' OK   Client secret token acquired.');
+      return tokenRes.data.access_token;
+      
+    } catch (error) {
+      // Log detailed error information for debugging
+      const errorDetails = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      };
+      
+      this._err(' Failed to get client secret token:');
+      this._err(' Error details:', JSON.stringify(errorDetails, null, 2));
+      
+      throw new Error(`Client secret authentication failed: ${error.message}`);
+    }
   }
 
   async _req(method, url, data) {
@@ -1530,43 +1580,43 @@ class DataverseClient {
   }
 
   async getSolutions() {
-    const q = `/solutions?$select=solutionid,uniquename,friendlyname,_publisherid_value&$expand=publisherid($select=publisherid,uniquename,customizationprefix)&$orderby=friendlyname asc`;
-    const d = await this._req('get', q);
-    const allSolutions = (d.value || []).map(s => ({
-      solutionid: s.solutionid,
-      uniquename: s.uniquename,
-      friendlyname: s.friendlyname,
-      _publisherid_value: s._publisherid_value,
-      publisherid: s.publisherid ? {
-        publisherid: s.publisherid.publisherid,
-        uniquename: s.publisherid.uniquename,
-        customizationprefix: s.publisherid.customizationprefix
-      } : null
-    }));
+    // Start with the most basic query possible
+    const q = `/solutions?$select=solutionid,uniquename,friendlyname`;
+    console.log(`GET ${this.baseUrl}${q}`);
+    
+    try {
+      const d = await this._req('get', q);
+      console.log(`✅ Solutions query successful, found ${d.value?.length || 0} solutions`);
+      
+      const allSolutions = (d.value || []).map(s => ({
+        solutionid: s.solutionid,
+        uniquename: s.uniquename,
+        friendlyname: s.friendlyname,
+        _publisherid_value: null,
+        publisherid: null
+      }));
 
-    // Filter out Microsoft system solutions to show only user-created solutions
-    const userSolutions = allSolutions.filter(solution => {
-      const publisherName = solution.publisherid?.uniquename?.toLowerCase() || '';
-      const solutionName = solution.uniquename?.toLowerCase() || '';
-      
-      // Exclude Microsoft publishers and system solutions
-      const isMicrosoftPublisher = publisherName.includes('microsoft') || 
-                                publisherName.includes('msdyn') || 
-                                publisherName.includes('dynamics') ||
-                                publisherName === 'defaultpublisher';
-      
-      // Exclude system solutions by name patterns
-      const isSystemSolution = solutionName.startsWith('msft_') ||
-                              solutionName.startsWith('msdyn_') ||
-                              solutionName.startsWith('msdynce_') ||
-                              solutionName === 'default' ||
-                              solutionName === 'system' ||
-                              solutionName === 'basic';
-      
-      return !isMicrosoftPublisher && !isSystemSolution;
-    });
+      // Filter out Microsoft system solutions to show only user-created solutions
+      const userSolutions = allSolutions.filter(solution => {
+        const solutionName = solution.uniquename?.toLowerCase() || '';
+        
+        // Exclude system solutions by name patterns
+        const isSystemSolution = solutionName.startsWith('msft_') ||
+                                solutionName.startsWith('msdyn_') ||
+                                solutionName.startsWith('msdynce_') ||
+                                solutionName === 'default' ||
+                                solutionName === 'system' ||
+                                solutionName === 'basic';
+        
+        return !isSystemSolution;
+      });
 
-    return userSolutions;
+      console.log(`✅ Filtered to ${userSolutions.length} user solutions`);
+      return { success: true, solutions: userSolutions };
+    } catch (error) {
+      console.log(`❌ Solutions query failed: ${error.message}`);
+      return { success: false, message: error.message, solutions: [] };
+    }
   }
 
   // Helper method to check if authentication is properly configured
@@ -1640,6 +1690,50 @@ class DataverseClient {
         grouped: { custom: [], builtIn: [] },
         summary: { total: 0, custom: 0, builtIn: 0 }
       };
+    }
+  }
+
+  /**
+   * Get a single global choice set by name
+   * @param {string} choiceName - Name of the choice set to retrieve
+   * @returns {Promise<Object>} Single choice set data
+   */
+  async getGlobalChoiceSet(choiceName) {
+    console.log('🎯 Getting single global choice set:', choiceName);
+    
+    try {
+      // Check if we have valid authentication configuration before making any calls
+      if (!this._isAuthConfigured()) {
+        console.log('⚠️ No Dataverse authentication configured');
+        return null;
+      }
+      
+      // Query for specific global choice set by name
+      const oDataQuery = `GlobalOptionSetDefinitions?$filter=Name eq '${choiceName}'&$select=Name,DisplayName,Description,IsManaged`;
+      const result = await this._get(oDataQuery);
+      
+      if (!result.value || result.value.length === 0) {
+        console.log('❌ Choice set not found:', choiceName);
+        return null;
+      }
+      
+      const choice = result.value[0];
+      const processedChoice = {
+        id: choice.Name,
+        name: choice.Name,
+        displayName: choice.DisplayName?.UserLocalizedLabel?.Label || choice.DisplayName?.LocalizedLabels?.[0]?.Label || choice.Name,
+        description: choice.Description?.UserLocalizedLabel?.Label || choice.Description?.LocalizedLabels?.[0]?.Label || '',
+        isManaged: choice.IsManaged,
+        isCustom: !choice.IsManaged,
+        prefix: choice.Name.includes('_') ? choice.Name.split('_')[0] : ''
+      };
+      
+      console.log('✅ Found choice set:', { name: processedChoice.name, displayName: processedChoice.displayName });
+      return processedChoice;
+      
+    } catch (error) {
+      console.error('❌ Error fetching single global choice set:', error);
+      return null;
     }
   }
 

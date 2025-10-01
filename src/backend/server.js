@@ -9,7 +9,19 @@
 const http = require('http');
 const url  = require('url');
 const path = require('path');
-require('dotenv').config();
+
+// Load environment variables - check .env.local first (for local dev), then .env
+const fs = require('fs');
+const envLocalPath = path.join(__dirname, '../../.env.local');
+const envPath = path.join(__dirname, '../../.env');
+
+if (fs.existsSync(envLocalPath)) {
+  require('dotenv').config({ path: envLocalPath });
+} else if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
+} else {
+  require('dotenv').config(); // fallback to default behavior
+}
 
 // --- Import New Architecture Layers ------------------------------------
 
@@ -22,6 +34,7 @@ const { AdminController } = require('./controllers/admin-controller');
 // Services
 const { ValidationService } = require('./services/validation-service');
 const { DeploymentService } = require('./services/deployment-service');
+const { DeploymentHistoryService } = require('./services/deployment-history-service');
 const { PublisherService } = require('./services/publisher-service');
 const { GlobalChoicesService } = require('./services/global-choices-service');
 const { SolutionService } = require('./services/solution-service');
@@ -110,6 +123,10 @@ async function initializeComponents() {
       logger: console
     });
 
+    const deploymentHistoryService = new DeploymentHistoryService({
+      logger: console
+    });
+
     const deploymentService = new DeploymentService({
       dataverseRepository: dataverseRepo,
       configRepository: configRepo,
@@ -117,6 +134,7 @@ async function initializeComponents() {
       globalChoicesService,
       solutionService,
       publisherService,
+      deploymentHistoryService,
       mermaidParser: new MermaidERDParser(), // Add the missing Mermaid parser
       logger: console
     });
@@ -124,7 +142,8 @@ async function initializeComponents() {
     // Initialize middleware
     const requestLogger = new RequestLoggerMiddleware({
       logger: console,
-      includeBody: process.env.LOG_REQUEST_BODY === 'true'
+      includeBody: process.env.LOG_REQUEST_BODY === 'true',
+      maxBodySize: 10 * 1024 * 1024 // 10MB to handle large ERD files
     });
 
     const errorHandler = new ErrorHandlerMiddleware({
@@ -153,6 +172,9 @@ async function initializeComponents() {
       deploymentService,
       streamingMiddleware: streamingHandler
     });
+
+    // Set deployment history service on the deployment controller
+    deploymentController.setDeploymentHistoryService(deploymentHistoryService);
 
     const adminController = new AdminController(
       publisherService,
@@ -271,19 +293,7 @@ async function handleCleanup(req, res) {
 // --- publishers endpoint handler ---------------------------------------
 async function handleGetPublishers(req, res) {
   try {
-    // Return mock data for tests and development (since managed identity doesn't work on localhost)
-    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
-      const mockPublishers = [
-        { id: 'pub1', uniqueName: 'testpub', friendlyName: 'Test Publisher', prefix: 'test' },
-        { id: 'pub2', uniqueName: 'devpub', friendlyName: 'Development Publisher', prefix: 'dev' },
-        { id: 'pub3', uniqueName: 'localpub', friendlyName: 'Local Publisher', prefix: 'local' }
-      ];
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ success: true, publishers: mockPublishers }));
-      return;
-    }
-    
-    // Create DataverseRepository with managed identity
+    // Create DataverseRepository with proper authentication
     const configRepo = new ConfigurationRepository({
       logger: console
     });
@@ -316,37 +326,29 @@ async function handleGetPublishers(req, res) {
 
 async function handleGetSolutions(req, res) {
   try {
-    // Return mock data for tests and development (since managed identity doesn't work on localhost)
-    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
-      const mockSolutions = [
-        { solutionid: 'sol1', uniquename: 'testsolution', friendlyname: 'Test Solution' },
-        { solutionid: 'sol2', uniquename: 'devsolution', friendlyname: 'Development Solution' },
-        { solutionid: 'sol3', uniquename: 'localsolution', friendlyname: 'Local Solution' }
-      ];
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ success: true, solutions: mockSolutions }));
-      return;
-    }
-    
-    // Create DataverseRepository with managed identity
-    const configRepo = new ConfigurationRepository({
-      logger: console
+    const result = await appComponents.solutionService.getSolutions();
+    console.log('🔍 DEBUG: SolutionService result:', {
+      success: result.success,
+      hasData: !!result.data,
+      dataType: typeof result.data,
+      dataLength: Array.isArray(result.data) ? result.data.length : 'not array'
     });
-    
-    const dataverseRepo = new DataverseRepository({
-      configurationRepository: configRepo,
-      DataverseClient: DataverseClient,
-      logger: console
-    });
-    
-    const result = await dataverseRepo.getSolutions();
     
     if (!result.success) {
       throw new Error(result.error || 'Failed to get solutions');
     }
     
-    res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ success: true, solutions: result.data }));
+    const response = { success: true, solutions: result.data };
+    console.log('🔍 DEBUG: Final response:', {
+      solutionsCount: response.solutions.length,
+      responseSize: JSON.stringify(response).length + ' bytes'
+    });
+    
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
+    res.end(JSON.stringify(response));
     
   } catch (error) {
     console.error('Failed to get solutions:', error);
@@ -362,81 +364,7 @@ async function handleGetSolutions(req, res) {
 // --- global choices endpoint handler -----------------------------------
 async function handleGetGlobalChoices(req, res) {
   try {
-    // Return mock data for tests and development (since managed identity doesn't work on localhost)
-    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
-      const mockGlobalChoices = {
-        all: [
-          { id: 'gc1', logicalName: 'cr123_priority', displayName: 'Priority', isCustom: true, options: [
-            { value: 1, label: 'Low' },
-            { value: 2, label: 'Medium' },
-            { value: 3, label: 'High' },
-            { value: 4, label: 'Critical' }
-          ]},
-          { id: 'gc2', logicalName: 'cr123_status', displayName: 'Status', isCustom: true, options: [
-            { value: 1, label: 'Active' },
-            { value: 2, label: 'Inactive' },
-            { value: 3, label: 'Pending' }
-          ]},
-          { id: 'gc3', logicalName: 'cr123_category', displayName: 'Category', isCustom: true, options: [
-            { value: 1, label: 'General' },
-            { value: 2, label: 'Technical' },
-            { value: 3, label: 'Business' }
-          ]},
-          { id: 'gc4', logicalName: 'statecode', displayName: 'State Code', isCustom: false, options: [
-            { value: 0, label: 'Active' },
-            { value: 1, label: 'Inactive' }
-          ]},
-          { id: 'gc5', logicalName: 'statuscode', displayName: 'Status Reason', isCustom: false, options: [
-            { value: 1, label: 'Active' },
-            { value: 2, label: 'Inactive' }
-          ]}
-        ],
-        grouped: {
-          custom: [
-            { id: 'gc1', logicalName: 'cr123_priority', displayName: 'Priority', options: [
-              { value: 1, label: 'Low' },
-              { value: 2, label: 'Medium' },
-              { value: 3, label: 'High' },
-              { value: 4, label: 'Critical' }
-            ]},
-            { id: 'gc2', logicalName: 'cr123_status', displayName: 'Status', options: [
-              { value: 1, label: 'Active' },
-              { value: 2, label: 'Inactive' },
-              { value: 3, label: 'Pending' }
-            ]},
-            { id: 'gc3', logicalName: 'cr123_category', displayName: 'Category', options: [
-              { value: 1, label: 'General' },
-              { value: 2, label: 'Technical' },
-              { value: 3, label: 'Business' }
-            ]}
-          ],
-          builtIn: [
-            { id: 'gc4', logicalName: 'statecode', displayName: 'State Code', options: [
-              { value: 0, label: 'Active' },
-              { value: 1, label: 'Inactive' }
-            ]},
-            { id: 'gc5', logicalName: 'statuscode', displayName: 'Status Reason', options: [
-              { value: 1, label: 'Active' },
-              { value: 2, label: 'Inactive' }
-            ]}
-          ]
-        },
-        summary: { 
-          total: 5, 
-          custom: 3, 
-          builtIn: 2 
-        }
-      };
-      
-      res.writeHead(200, {'Content-Type':'application/json'});
-      res.end(JSON.stringify({ 
-        success: true, 
-        ...mockGlobalChoices
-      }));
-      return;
-    }
-    
-    // Create DataverseRepository with managed identity
+    // Create DataverseRepository with proper authentication
     const configRepo = new ConfigurationRepository({
       logger: console
     });
@@ -572,7 +500,12 @@ async function routeRequest(pathname, req, res, components) {
     return handleHealthCheck(req, res, components);
   }
 
-  // 404 Not Found
+  // --- SPA fallback: serve React app for all other GET routes (except above) ---
+  if (req.method === 'GET') {
+    return components.wizardController.serveReactApp(req, res);
+  }
+
+  // 404 Not Found (for non-GET or truly unknown)
   await components.errorHandler.handle404(req, res);
 }
 
@@ -678,6 +611,32 @@ async function handleApiRoutes(pathname, req, res, components) {
     }
   }
 
+  // Deployment history routes
+  if (route.startsWith('deployments/')) {
+    const deploymentsRoute = route.replace('deployments/', '');
+    
+    // Handle /api/deployments/history
+    if (deploymentsRoute === 'history') {
+      if (req.method === 'GET') {
+        return components.deploymentController.getDeploymentHistory(req, res);
+      }
+    }
+    
+    // Handle /api/deployments/compare
+    if (deploymentsRoute === 'compare') {
+      if (req.method === 'GET') {
+        return components.deploymentController.compareDeployments(req, res);
+      }
+    }
+    
+    // Handle /api/deployments/{id}/details
+    if (deploymentsRoute.endsWith('/details')) {
+      if (req.method === 'GET') {
+        return components.deploymentController.getDeploymentDetails(req, res);
+      }
+    }
+  }
+
   // API routes
   switch (route) {
     case 'validate':
@@ -730,6 +689,20 @@ async function handleApiRoutes(pathname, req, res, components) {
     case 'admin/logs':
       if (req.method === 'GET') {
         return components.adminController.getLogs(req, res);
+      }
+      break;
+
+    case 'config':
+      if (req.method === 'GET') {
+        // Return configuration data needed by the frontend
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            powerPlatformEnvironmentId: process.env.POWER_PLATFORM_ENVIRONMENT_ID
+          }
+        }));
+        return;
       }
       break;
 

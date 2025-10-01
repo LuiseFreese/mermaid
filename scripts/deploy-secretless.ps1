@@ -25,6 +25,10 @@
     Note: Application users are normally created during setup-secretless.ps1
     This parameter is mainly for new Dataverse environments with existing infrastructure
 
+.PARAMETER PowerPlatformEnvironmentId
+    Power Platform Environment ID (GUID) for generating solution links
+    Find this in Power Platform Admin Center or your environment URL
+
 .PARAMETER SkipBuild
     Skip the frontend build step
 
@@ -36,8 +40,8 @@
     .\scripts\deploy-secretless.ps1
     
 .EXAMPLE
-    # Deploy to specific environment with Dataverse URL
-    .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "dev" -DataverseUrl "https://your-org.crm.dynamics.com"
+    # Deploy to specific environment with Dataverse URL and Power Platform Environment ID
+    .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "dev" -DataverseUrl "https://your-org.crm.dynamics.com" -PowerPlatformEnvironmentId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 .EXAMPLE
     # Deploy specific resources
@@ -63,6 +67,9 @@ param(
     [string]$DataverseUrl = $null,
     
     [Parameter(Mandatory = $false)]
+    [string]$PowerPlatformEnvironmentId = $null,
+    
+    [Parameter(Mandatory = $false)]
     [switch]$SkipBuild,
     
     [Parameter(Mandatory = $false)]
@@ -75,6 +82,43 @@ param(
 # Error handling
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+# ---------- .env file helper ----------
+function Update-EnvFile {
+    param(
+        [string]$Key,
+        [string]$Value,
+        [string]$EnvFilePath = ".env"
+    )
+    
+    if (-not (Test-Path $EnvFilePath)) {
+        # Create new .env file
+        Write-Host "Creating new .env file..." -ForegroundColor Cyan
+        New-Item -Path $EnvFilePath -ItemType File -Force | Out-Null
+    }
+    
+    $envContent = Get-Content $EnvFilePath -ErrorAction SilentlyContinue
+    $keyExists = $false
+    $newContent = @()
+    
+    foreach ($line in $envContent) {
+        if ($line -match "^$Key=") {
+            # Update existing key
+            $newContent += "$Key=$Value"
+            $keyExists = $true
+        } else {
+            $newContent += $line
+        }
+    }
+    
+    if (-not $keyExists) {
+        # Add new key
+        $newContent += "$Key=$Value"
+    }
+    
+    $newContent | Set-Content $EnvFilePath
+    Write-Host "Updated .env file: $Key" -ForegroundColor Cyan
+}
 
 # Load configuration file if specified
 if ($ConfigFile -and (Test-Path $ConfigFile)) {
@@ -447,13 +491,87 @@ if ($DataverseUrl) {
     }
 }
 
+# Add Power Platform Environment ID if provided, or get it from existing App Service settings
+if ($PowerPlatformEnvironmentId) {
+    Write-Host "   └─ Setting POWER_PLATFORM_ENVIRONMENT_ID: $PowerPlatformEnvironmentId" -ForegroundColor Gray
+    $runtimeSettings += "POWER_PLATFORM_ENVIRONMENT_ID=$PowerPlatformEnvironmentId"
+} else {
+    # Try to get existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings
+    try {
+        $existingPowerPlatformId = az webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query "[?name=='POWER_PLATFORM_ENVIRONMENT_ID'].value" -o tsv 2>$null
+        if ($existingPowerPlatformId) {
+            Write-Host "   └─ Using existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings" -ForegroundColor Gray
+            $runtimeSettings += "POWER_PLATFORM_ENVIRONMENT_ID=$existingPowerPlatformId"
+        } else {
+            Write-Warning "POWER_PLATFORM_ENVIRONMENT_ID not provided and not found in App Service settings. Solution links may not work correctly."
+        }
+    } catch {
+        Write-Warning "Could not retrieve existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings."
+    }
+}
+
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings $runtimeSettings | Out-Null
+
+# Update local .env file with the same configuration for local development
+Write-Host "Updating local .env file for development consistency..." -ForegroundColor Cyan
+if ($DataverseUrl) {
+    Update-EnvFile -Key "DATAVERSE_URL" -Value $DataverseUrl
+} elseif ($existingSettings) {
+    Update-EnvFile -Key "DATAVERSE_URL" -Value $existingSettings
+}
+
+if ($PowerPlatformEnvironmentId) {
+    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
+} elseif ($existingPowerPlatformId) {
+    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $existingPowerPlatformId
+}
 
 # Restart to ensure runtime takes effect
 Write-Host "Restarting App Service to apply runtime changes..." -ForegroundColor Yellow
 az webapp restart --name $AppName --resource-group $ResourceGroup | Out-Null
 
 Write-Host "Node.js runtime configuration completed" -ForegroundColor Green
+
+# Warm up the App Service before deployment to prevent connection timeouts
+function Start-AppServiceWarmup {
+    param(
+        [string]$AppUrl,
+        [int]$WarmupAttempts = 3,
+        [int]$DelaySeconds = 5
+    )
+    
+    Write-Host "Warming up App Service to prevent deployment timeouts..." -ForegroundColor Cyan
+    Write-Host "URL: $AppUrl" -ForegroundColor Gray
+    
+    for ($i = 1; $i -le $WarmupAttempts; $i++) {
+        try {
+            Write-Host "  Warmup attempt $i of $WarmupAttempts..." -ForegroundColor Yellow
+            
+            # Call health endpoint to warm up the server
+            $response = Invoke-WebRequest -Uri "$AppUrl/health" -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+            
+            if ($response.StatusCode -eq 200) {
+                Write-Host "  ✓ Warmup attempt $i successful (HTTP $($response.StatusCode))" -ForegroundColor Green
+            } else {
+                Write-Host "  ⚠ Warmup attempt $i returned HTTP $($response.StatusCode)" -ForegroundColor Yellow
+            }
+        }
+        catch {
+            Write-Host "  ⚠ Warmup attempt $i failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        
+        if ($i -lt $WarmupAttempts) {
+            Write-Host "  Waiting $DelaySeconds seconds before next attempt..." -ForegroundColor Gray
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+    
+    Write-Host "App Service warmup completed" -ForegroundColor Green
+}
+
+# Get the app URL for warmup
+$AppUrl = "https://$AppName.azurewebsites.net"
+Start-AppServiceWarmup -AppUrl $AppUrl -WarmupAttempts 3 -DelaySeconds 5
 
 # Deploy to App Service
 Write-Host "Deploying application with retry logic..." -ForegroundColor Cyan

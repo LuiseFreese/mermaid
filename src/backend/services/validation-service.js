@@ -197,14 +197,6 @@ class ValidationService extends BaseService {
                                     customEntities: result.entities.length,
                                     confidence: 'low'
                                 };
-                                result.warnings.push(this.createWarning({
-                                    type: 'cdm_detection_failed',
-                                    severity: 'info',
-                                    message: 'CDM detection unavailable',
-                                    suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
-                                    category: 'cdm',
-                                    autoFixable: false
-                                }));
                             }
                         }
                     } catch (cdmDetectionError) {
@@ -217,18 +209,10 @@ class ValidationService extends BaseService {
                             customEntities: result.entities.length,
                             confidence: 'low'
                         };
-                        result.warnings.push(this.createWarning({
-                            type: 'cdm_detection_failed',
-                            severity: 'info',
-                            message: 'CDM detection unavailable',
-                            suggestion: 'CDM entity matching is not available in this session. Manual entity creation will be used.',
-                            category: 'cdm',
-                            autoFixable: false
-                        }));
                     }
                 }
 
-                // Step 2.5: Set isCdm flag on entities based on user choice and CDM detection
+                // Step 2.5: Set isCdm flag on entities based on CDM detection and user choice
                 console.log('🔧 DEBUG: CDM Flag Setting - Initial state:', {
                     entityChoice: options.entityChoice,
                     hasCdmDetection: !!result.cdmDetection,
@@ -236,7 +220,8 @@ class ValidationService extends BaseService {
                     matches: result.cdmDetection?.matches?.map(m => ({ original: m.originalEntity?.name, cdm: m.cdmEntity?.logicalName })) || []
                 });
                 
-                if (options.entityChoice === 'cdm' && result.cdmDetection?.matches?.length > 0) {
+                // Always mark entities as CDM if they match CDM entities (for display purposes)
+                if (result.cdmDetection?.matches?.length > 0) {
                     const cdmEntityNames = result.cdmDetection.matches.map(match => match.originalEntity?.name || match.name).filter(Boolean);
                     console.log('🔧 DEBUG: CDM Entity Names extracted:', cdmEntityNames);
                     console.log('🔧 DEBUG: Available entity names:', result.entities.map(e => e.name));
@@ -251,16 +236,13 @@ class ValidationService extends BaseService {
                     });
                     
                     this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
+                        entityChoice: options.entityChoice || 'none',
                         cdmEntityNames,
                         entitiesWithCdmFlags: result.entities.map(e => ({ name: e.name, isCdm: e.isCdm }))
                     });
                 } else {
-                    // If user chose custom or no CDM detected, all entities are custom
-                    console.log('🔧 DEBUG: Setting all entities as custom because:', {
-                        entityChoice: options.entityChoice,
-                        cdmMatches: result.cdmDetection?.matches?.length || 0
-                    });
+                    // If no CDM entities detected, all entities are custom
+                    console.log('🔧 DEBUG: Setting all entities as custom because no CDM matches found');
                     
                     result.entities = result.entities.map(entity => ({
                         ...entity,
@@ -268,7 +250,7 @@ class ValidationService extends BaseService {
                     }));
                     
                     this.log('setCdmFlags', { 
-                        entityChoice: options.entityChoice,
+                        entityChoice: options.entityChoice || 'none',
                         allEntitiesCustom: true,
                         entityCount: result.entities.length
                     });
@@ -1389,23 +1371,30 @@ class ValidationService extends BaseService {
             // First validate to get the current warnings
             const validationResult = await this.validateERD({ mermaidContent, options });
             
-            console.log('🔧 DEBUG: Validation result:', {
+            console.log('🔧 DEBUG: Validation result structure:', {
                 success: validationResult.success,
+                hasData: !!validationResult.data,
+                dataKeys: validationResult.data ? Object.keys(validationResult.data) : [],
                 errorMessage: validationResult.error?.message || validationResult.message,
-                warningsCount: validationResult.warnings?.length
+                directWarningsCount: validationResult.warnings?.length,
+                dataWarningsCount: validationResult.data?.warnings?.length
             });
             
             // Only fail if there are actual parsing/structure errors, not just warnings
             if (!validationResult.success && validationResult.errors && validationResult.errors.length > 0) {
-                return this.createError('Failed to validate ERD for individual fix', validationResult.error);
+                return this.createError('Failed to validate ERD for individual fix', validationResult.errors);
             }
 
+            // Extract the validation data from the wrapped result
+            const validationData = validationResult.data || validationResult;
+            const warnings = validationData.warnings || [];
+
             // Find the specific warning to fix
-            const warningToFix = validationResult.warnings.find(w => w.id === warningId);
+            const warningToFix = warnings.find(w => w.id === warningId);
             console.log('🔧 DEBUG: Warning search result:', {
                 warningId,
                 warningFound: !!warningToFix,
-                availableWarningIds: validationResult.warnings.map(w => w.id)
+                availableWarningIds: warnings.map(w => w.id)
             });
             
             if (!warningToFix) {
@@ -1420,7 +1409,7 @@ class ValidationService extends BaseService {
                             warningType: 'unknown',
                             description: 'Warning already resolved (not found in current validation)'
                         },
-                        remainingWarnings: validationResult.warnings || []
+                        remainingWarnings: warnings
                     });
                     console.log('🔧 DEBUG: Success result created:', { success: successResult.success });
                     return successResult;
@@ -1462,7 +1451,7 @@ class ValidationService extends BaseService {
                     warningType: warningToFix.type,
                     description: fixResult.appliedFix
                 },
-                remainingWarnings: finalValidation.warnings || []
+                remainingWarnings: finalValidation.data?.warnings || []
             });
             console.log('🔧 DEBUG: Final success result:', { success: finalResult.success });
             return finalResult;
@@ -2750,6 +2739,22 @@ class ValidationService extends BaseService {
      */
     escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Perform basic CDM detection when advanced detection is unavailable
+     * @param {Array} entities - Array of entities to check
+     * @returns {Object} CDM detection result
+     */
+    performBasicCDMDetection(entities) {
+        return {
+            matches: [],
+            detectedCDM: [],
+            totalEntities: entities.length,
+            cdmEntities: 0,
+            customEntities: entities.length,
+            confidence: 'low'
+        };
     }
 }
 

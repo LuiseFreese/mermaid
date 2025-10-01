@@ -46,8 +46,24 @@ class SolutionService extends BaseService {
 
             const result = await this.dataverseRepository.getSolutions(queryOptions);
             
+            console.log('🔍 SolutionService DEBUG: Raw result from DataverseRepository:', {
+                success: result.success,
+                hasData: result.data ? true : false,
+                dataType: typeof result.data,
+                dataLength: Array.isArray(result.data) ? result.data.length : 'not array',
+                resultKeys: Object.keys(result || {}),
+                dataKeys: result.data ? Object.keys(result.data).slice(0, 5) : 'no data'
+            });
+            
             if (result.success) {
-                return this.createSuccess(result.data, 'Solutions retrieved successfully');
+                const successResult = this.createSuccess(result.data, 'Solutions retrieved successfully');
+                console.log('🔍 SolutionService DEBUG: Final success result:', {
+                    success: successResult.success,
+                    hasData: !!successResult.data,
+                    dataType: typeof successResult.data,
+                    dataLength: Array.isArray(successResult.data) ? successResult.data.length : 'not array'
+                });
+                return successResult;
             } else {
                 return this.createError('Failed to retrieve solutions', [result.message]);
             }

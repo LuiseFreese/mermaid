@@ -13,6 +13,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Smart Validation & Auto-Fix**: Real-time ERD validation with one-click fixes for common issues ([see all validations](docs/VALIDATION-AND-AUTOFIX.md))
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
+- **Deployment History**: Track all deployments with solution links and detailed entity information
 - **Zero-Trust Security**: Managed identity authentication with no stored secrets
 - **Multiple Themes**: Light mode, dark mode, pink mode 💖, and retro neon mode 🌈✨
 

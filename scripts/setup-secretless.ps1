@@ -38,7 +38,7 @@ Write-Success "App Service configuration completed"redentials (no client secrets
 
 .EXAMPLE
     # Unattended mode (for CI/CD)
-    .\scripts\setup-secretless.ps1 -Unattended -DataverseUrl "https://org12345.crm4.dynamics.com" -ResourceGroup "rg-mermaid-dev" -Location "westeurope"
+    .\scripts\setup-secretless.ps1 -Unattended -DataverseUrl "https://org12345.crm4.dynamics.com" -PowerPlatformEnvironmentId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ResourceGroup "rg-mermaid-dev" -Location "westeurope"
 
 .NOTES
     Prerequisites:
@@ -51,6 +51,7 @@ Write-Success "App Service configuration completed"redentials (no client secrets
 param(
     [Parameter(Mandatory = $false)] [switch]$Unattended,
     [Parameter(Mandatory = $false)] [string]$DataverseUrl,
+    [Parameter(Mandatory = $false)] [string]$PowerPlatformEnvironmentId,
     [Parameter(Mandatory = $false)] [string]$ResourceGroup,
     [Parameter(Mandatory = $false)] [string]$Location = "West Europe",
     [Parameter(Mandatory = $false)] [string]$AppRegistrationName,
@@ -65,6 +66,43 @@ function Write-Success { param($Message) Write-Host "✅ $Message" -ForegroundCo
 function Write-Info    { param($Message) Write-Host "ℹ️  $Message" -ForegroundColor Cyan }
 function Write-Warning { param($Message) Write-Host "⚠️  $Message" -ForegroundColor Yellow }
 function Write-Error   { param($Message) Write-Host "❌ $Message" -ForegroundColor Red }
+
+# ---------- .env file helper ----------
+function Update-EnvFile {
+    param(
+        [string]$Key,
+        [string]$Value,
+        [string]$EnvFilePath = ".env"
+    )
+    
+    if (-not (Test-Path $EnvFilePath)) {
+        # Create new .env file
+        Write-Info "Creating new .env file..."
+        New-Item -Path $EnvFilePath -ItemType File -Force | Out-Null
+    }
+    
+    $envContent = Get-Content $EnvFilePath -ErrorAction SilentlyContinue
+    $keyExists = $false
+    $newContent = @()
+    
+    foreach ($line in $envContent) {
+        if ($line -match "^$Key=") {
+            # Update existing key
+            $newContent += "$Key=$Value"
+            $keyExists = $true
+        } else {
+            $newContent += $line
+        }
+    }
+    
+    if (-not $keyExists) {
+        # Add new key
+        $newContent += "$Key=$Value"
+    }
+    
+    $newContent | Set-Content $EnvFilePath
+    Write-Info "Updated .env file: $Key"
+}
 
 # Error handling
 $ErrorActionPreference = "Stop"
@@ -269,6 +307,17 @@ if (-not $DataverseUrl -and -not $Unattended) {
     if (-not $DataverseUrl.EndsWith("/")) {
         $DataverseUrl = $DataverseUrl + "/"
     }
+    
+    Write-Host ""
+    Write-Info "Power Platform Environment ID is needed to generate solution links."
+    Write-Info "You can find this in the Power Platform Admin Center or in your environment URL."
+    
+    do {
+        $PowerPlatformEnvironmentId = Read-Host "Enter Power Platform Environment ID"
+        if (-not $PowerPlatformEnvironmentId -or $PowerPlatformEnvironmentId.Length -ne 36) {
+            Write-Warning "Please enter a valid GUID (36 characters with dashes)"
+        }
+    } while (-not $PowerPlatformEnvironmentId -or $PowerPlatformEnvironmentId.Length -ne 36)
 }
 
 if ($DataverseUrl) {
@@ -276,6 +325,19 @@ if ($DataverseUrl) {
     az webapp config appsettings set --name $AppServiceName --resource-group $ResourceGroup --settings `
         "DATAVERSE_URL=$DataverseUrl" | Out-Null
     Write-Success "Dataverse URL configured: $DataverseUrl"
+    
+    # Update local .env file
+    Update-EnvFile -Key "DATAVERSE_URL" -Value $DataverseUrl
+}
+
+if ($PowerPlatformEnvironmentId) {
+    Write-Info "Setting Power Platform Environment ID configuration..."
+    az webapp config appsettings set --name $AppServiceName --resource-group $ResourceGroup --settings `
+        "POWER_PLATFORM_ENVIRONMENT_ID=$PowerPlatformEnvironmentId" | Out-Null
+    Write-Success "Power Platform Environment ID configured: $PowerPlatformEnvironmentId"
+    
+    # Update local .env file
+    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
 }
 
 # ---------- 8. Create Dataverse Application User ----------

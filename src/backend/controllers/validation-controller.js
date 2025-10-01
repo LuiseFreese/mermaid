@@ -39,6 +39,15 @@ class ValidationController extends BaseController {
             // Parse request body
             const data = await this.parseRequestBody(req);
             
+            // Debug: Log what data was received
+            console.log('🔧 DEBUG: Validation Controller - Received data:', {
+                keys: Object.keys(data),
+                hasMermaidContent: !!data.mermaidContent,
+                mermaidContentType: typeof data.mermaidContent,
+                mermaidContentLength: data.mermaidContent?.length,
+                rawData: JSON.stringify(data).substring(0, 200) + '...'
+            });
+            
             // Validate required fields
             this.validateRequiredFields(data, ['mermaidContent']);
             
@@ -60,28 +69,31 @@ class ValidationController extends BaseController {
 
             // Send response
             if (result.success) {
+                // Access the validation data from the wrapped result
+                const validationData = result.data || {};
                 this.sendSuccess(res, {
-                    validation: result.validation,
-                    entities: result.entities,
-                    relationships: result.relationships,
-                    warnings: result.warnings,
-                    correctedERD: result.correctedERD,
-                    summary: result.summary,
-                    cdmDetection: result.cdmDetection
+                    validation: validationData.validation,
+                    entities: validationData.entities,
+                    relationships: validationData.relationships,
+                    warnings: validationData.warnings,
+                    correctedERD: validationData.correctedERD,
+                    summary: validationData.summary,
+                    cdmDetection: validationData.cdmDetection
                 });
             } else {
                 // Return 422 for validation with warnings - include full validation data
+                const validationData = result.data || {};
                 this.sendJson(res, 422, {
                     success: false,
                     message: result.message,
                     errors: result.errors,
-                    validation: result.validation,
-                    entities: result.entities,
-                    relationships: result.relationships,
-                    warnings: result.warnings,
-                    correctedERD: result.correctedERD,
-                    summary: result.summary,
-                    cdmDetection: result.cdmDetection
+                    validation: validationData.validation,
+                    entities: validationData.entities,
+                    relationships: validationData.relationships,
+                    warnings: validationData.warnings,
+                    correctedERD: validationData.correctedERD,
+                    summary: validationData.summary,
+                    cdmDetection: validationData.cdmDetection
                 });
             }
 
@@ -196,11 +208,12 @@ class ValidationController extends BaseController {
 
             // Send response
             if (result.success) {
+                const fixData = result.data || {};
                 this.sendSuccess(res, {
-                    fixedContent: result.fixedContent,
-                    appliedFixes: result.appliedFixes,
-                    remainingWarnings: result.remainingWarnings,
-                    summary: result.summary
+                    fixedContent: fixData.fixedContent,
+                    appliedFixes: fixData.appliedFixes,
+                    remainingWarnings: fixData.remainingWarnings,
+                    summary: fixData.summary
                 });
             } else {
                 this.sendError(res, 422, result.message);
@@ -311,7 +324,19 @@ class ValidationController extends BaseController {
                 }
             });
             
-            this.sendJson(res, 200, result);
+            // Extract the data from the wrapped service result
+            if (result.success) {
+                this.sendJson(res, 200, {
+                    success: true,
+                    data: result.data
+                });
+            } else {
+                this.sendJson(res, 422, {
+                    success: false,
+                    message: result.message,
+                    error: result.error
+                });
+            }
         } catch (error) {
             this.log('fixWarning error', error);
             this.sendJson(res, 500, {

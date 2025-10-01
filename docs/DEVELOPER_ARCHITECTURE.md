@@ -13,6 +13,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
+- **Deployment History** - Comprehensive tracking with solution links and Power Platform integration
 - **Enterprise Security** - Managed Identity authentication
 - **Two-Step Deployment** - Separate infrastructure setup and application deployment
 
@@ -42,6 +43,7 @@ graph TB
         Context[Wizard Context]
         Services[API Services]
         Components[Fluent UI Components]
+        HistoryModal[Deployment History Modal<br/>Solution Links & Details]
     end
 
     %% Development Server
@@ -63,13 +65,15 @@ graph TB
         subgraph "Controller Layer"
             WizardCtrl[Wizard Controller<br/>Static Files & React App]
             ValidationCtrl[Validation Controller<br/>ERD Processing]
-            DeploymentCtrl[Deployment Controller<br/>Solution Creation]
+            DeploymentCtrl[Deployment Controller<br/>Solution Creation & History]
             AdminCtrl[Admin Controller<br/>Management APIs]
+            ConfigCtrl[Config Controller<br/>Environment Settings]
         end
         
         subgraph "Service Layer"
             ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detect]
             DeploymentSvc[Deployment Service<br/>Solution Orchestration]
+            DeploymentHistorySvc[Deployment History Service<br/>Tracking & Retrieval]
             PublisherSvc[Publisher Service<br/>Publisher Management]
             ChoicesSvc[Global Choices Service<br/>Option Set Management]
             SolutionSvc[Solution Service<br/>Solution Operations]
@@ -85,18 +89,25 @@ graph TB
             DataverseClient[Dataverse Client<br/>API Integration]
             ManagedIdentity[Managed Identity<br/>Authentication]
         end
+        
+        subgraph "Data Storage"
+            DeploymentFiles[Deployment History<br/>JSON Files by Environment]
+            IndexFiles[Deployment Index<br/>Environment-specific]
+        end
     end
 
     %% External Services
     subgraph "Microsoft Cloud"
         Dataverse[Microsoft Dataverse]
         EntraID[Microsoft Entra ID<br/>Authentication]
+        PowerPlatform[Power Platform<br/>Solution Links]
     end
 
     %% Frontend Flow (simplified to reduce crossing)
     UI --> Router
     Router --> Components
     Components --> Context
+    Components --> HistoryModal
     Context --> Services
     Services --> ViteProxy
     ViteProxy -.->|API Proxy /api/*| HTTP
@@ -112,6 +123,7 @@ graph TB
     Stream --> ValidationCtrl  
     Stream --> DeploymentCtrl
     Stream --> AdminCtrl
+    Stream --> ConfigCtrl
     
     %% Service Dependencies (grouped by controller)
     ValidationCtrl --> ValidationSvc
@@ -119,8 +131,13 @@ graph TB
     ValidationSvc --> DataverseRepo
     
     DeploymentCtrl --> DeploymentSvc
+    DeploymentCtrl --> DeploymentHistorySvc
     DeploymentSvc --> DataverseRepo
     DeploymentSvc --> ConfigRepo
+    DeploymentHistorySvc --> DeploymentFiles
+    DeploymentHistorySvc --> IndexFiles
+    
+    ConfigCtrl --> ConfigRepo
     
     AdminCtrl --> PublisherSvc
     AdminCtrl --> ChoicesSvc
@@ -134,17 +151,20 @@ graph TB
     ConfigRepo --> ManagedIdentity
     DataverseClient --> Dataverse
     DataverseClient --> EntraID
+    HistoryModal -.->|Solution URLs| PowerPlatform
 
     %% Styling
     classDef frontend fill:#e1f5fe
     classDef backend fill:#f3e5f5
     classDef service fill:#e8f5e8
     classDef external fill:#fff3e0
+    classDef storage fill:#f0f4ff
     
-    class UI,Router,Context,Services,Components frontend
-    class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl backend
-    class ValidationSvc,DeploymentSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
-    class Dataverse,EntraID,ManagedIdentity,Parser,DataverseClient external
+    class UI,Router,Context,Services,Components,HistoryModal frontend
+    class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl,ConfigCtrl backend
+    class ValidationSvc,DeploymentSvc,DeploymentHistorySvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
+    class Dataverse,EntraID,ManagedIdentity,Parser,DataverseClient,PowerPlatform external
+    class DeploymentFiles,IndexFiles storage
 ```
 
 
@@ -378,6 +398,69 @@ export const App: React.FC = () => {
 - **Context**: For sharing state across components
 - **Error Boundaries**: Graceful error handling
 - **Code Splitting**: Lazy loading for optimal performance
+
+### 6. Deployment History Feature (`src/frontend/src/components/deployment-history/`)
+
+**Purpose**: Comprehensive deployment tracking and management system that provides users with detailed visibility into their Dataverse solution deployments.
+
+**Technology Stack**:
+- **React 18** with TypeScript and Fluent UI v9 components
+- **Modal Dialog Interface** with expandable accordions for deployment details
+- **API Integration** with backend deployment history service
+- **Power Platform Integration** with direct solution links
+
+**Key Features**:
+- **Complete Deployment Tracking**: Records all deployments with timestamps, status, and detailed entity information
+- **Solution Links**: Direct links to Power Platform solutions with dynamic environment ID configuration
+- **Deployment Details**: Expandable accordions showing deployed entities, columns, and relationships
+- **Status Visualization**: Clear success/failure indicators with detailed error information
+- **Table Styling**: Alternating row backgrounds and professional column formatting
+- **Environment Integration**: Configurable Power Platform environment ID for accurate solution URLs
+
+**Component Architecture**:
+```typescript
+// Main deployment history modal component
+export const DeploymentHistory: React.FC = () => {
+  // Solution URL generation with environment ID
+  const generateSolutionUrl = (solutionId: string) => {
+    if (!config?.powerPlatformEnvironmentId) {
+      throw new Error('Power Platform Environment ID not configured');
+    }
+    return `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutions/${solutionId}`;
+  };
+  
+  // Deployment history display with accordions
+  return (
+    <Dialog modal open={isOpen} onOpenChange={onOpenChange}>
+      <DialogSurface style={{ maxWidth: '90vw', width: '1200px' }}>
+        {/* Deployment history table with solution links */}
+        {/* Expandable deployment details with entity information */}
+      </DialogSurface>
+    </Dialog>
+  );
+};
+```
+
+**Backend Integration**:
+- **DeploymentController**: Handles deployment history API endpoints
+- **DeploymentHistoryService**: Manages deployment data persistence and retrieval
+- **Configuration API**: Provides Power Platform environment ID for solution links
+- **File-based Storage**: JSON files for deployment tracking with environment-specific organization
+
+**Configuration Management**:
+- **Environment ID Setup**: Configured via PowerShell scripts during Azure deployment
+- **API Configuration**: Backend `/api/config` endpoint provides frontend with environment settings
+- **Dynamic Solution Links**: Real-time URL generation based on configured environment
+- **Security Compliance**: No hardcoded environment-specific values in source code
+
+**User Experience Features**:
+- **Professional Table Design**: Alternating row backgrounds and bold column headers
+- **Expandable Details**: Deployment and entity accordions for comprehensive information viewing
+- **Direct Navigation**: Solution links open Power Platform in new tabs for seamless workflow
+- **Responsive Design**: Modal scales appropriately for different screen sizes
+- **Loading States**: Proper loading indicators during data fetching
+
+This deployment history system provides enterprise-grade deployment tracking with seamless Power Platform integration, enabling users to effectively manage and monitor their Dataverse solution deployments.
 
 ## FileUploadStep Modular Architecture
 

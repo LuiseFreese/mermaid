@@ -333,15 +333,34 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
           lastModified: file.lastModified
         }, wizardData.entityChoice);
         
-        // Use corrected ERD from backend if available, otherwise use original
-        const correctedERD = validationResult.correctedERD || content;
+        console.log('🔧 DEBUG: Validation result structure:', {
+          hasEntities: !!validationResult.entities,
+          entitiesCount: validationResult.entities?.length || 0,
+          entitiesPreview: validationResult.entities?.slice(0, 2)?.map((e: any) => e.name) || [],
+          validationResultKeys: Object.keys(validationResult),
+          hasCustomEntities: !!validationResult.customEntities,
+          customEntitiesCount: validationResult.customEntities?.length || 0,
+          hasCdmEntities: !!validationResult.cdmEntities,
+          cdmEntitiesCount: validationResult.cdmEntities?.length || 0
+        });
         
         // Update wizard data with corrected information from backend
+        const entities = validationResult.entities || [];
+        const relationships = validationResult.relationships || [];
+        const correctedERD = validationResult.correctedERD || content;
+        const validationResults = validationResult;
+        
+        console.log('🔧 DEBUG: Extracted data:', {
+          entitiesCount: entities.length,
+          relationshipsCount: relationships.length,
+          entitiesNames: entities.map((e: any) => e.name)
+        });
+        
         updateWizardData({
           correctedErdContent: correctedERD,
-          parsedEntities: validationResult.entities || [],
-          parsedRelationships: validationResult.relationships || [],
-          validationResults: validationResult
+          parsedEntities: entities,
+          parsedRelationships: relationships,
+          validationResults: validationResults
         });
         
         // CDM Detection Logic - use backend results if available
@@ -683,20 +702,27 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         options: {}
       });
 
-      if (fixResult.success && fixResult.fixedContent) {
-        console.log('🔧 DEBUG: Individual fix applied successfully:', fixResult.appliedFix);
+      console.log('🔧 DEBUG: Fix result received:', fixResult);
+
+      // Cast to any to handle the actual API response structure which has a data wrapper
+      const result = fixResult as any;
+
+      if (result.success && (result.fixedContent || result.data?.fixedContent)) {
+        console.log('🔧 DEBUG: Individual fix applied successfully:', result.appliedFix || result.data?.appliedFix);
+        
+        const fixedContent = result.fixedContent || result.data?.fixedContent;
         
         // Update the corrected ERD content
         updateWizardData({
-          correctedErdContent: fixResult.fixedContent,
+          correctedErdContent: fixedContent,
           fixedIssues: new Set([...fixedIssues, warningId])
         });
 
         // Re-validate to get updated warnings
         const revalidationResult = await ApiService.validateFile({
           name: uploadedFile?.name || 'fixed.mmd',
-          content: fixResult.fixedContent,
-          size: fixResult.fixedContent.length,
+          content: fixedContent,
+          size: fixedContent.length,
           lastModified: Date.now()
         }, wizardData.entityChoice);
 
@@ -705,7 +731,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
         });
 
       } else {
-        console.error('Individual fix failed:', fixResult.error || 'Unknown error');
+        console.error('Individual fix failed:', result.error || result.message || result.data?.error || result.data?.message || 'Unknown error');
       }
     } catch (error) {
       console.error('Error applying individual fix:', error);
@@ -1314,14 +1340,14 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                       Your ERD structure is valid but has issues that should be addressed before deployment.
                     </MessageBarBody>
                   </MessageBar>
-                ) : (
+                ) : (!validationError && (
                   <MessageBar intent="success" className={styles.validationMessageBar}>
                     <MessageBarBody>
                       <strong>ERD validation complete</strong><br />
                       Your ERD structure looks good! No issues found.
                     </MessageBarBody>
                   </MessageBar>
-                )}
+                ))}
 
                 {/* Choice Column Issues */}
                 {hasChoiceIssues && (
@@ -1537,8 +1563,17 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                         </AccordionItem>
                       </Accordion>
 
-                      {/* Only show Complete ERD, ERD Diagram and Parsed Schema Overview when there are no validation issues */}
-                      {!hasAnyIssues && (
+                      {/* Show Complete ERD, ERD Diagram and Parsed Schema Overview when file is processed */}
+                      {(() => {
+                        console.log('🔍 DEBUG: Parsed Schema Display Condition Check:', {
+                          parsedEntitiesLength: parsedEntities.length,
+                          hasAnyIssues,
+                          shouldShow: parsedEntities.length > 0 || !hasAnyIssues,
+                          parsedEntities: parsedEntities,
+                          validationError
+                        });
+                        return (parsedEntities.length > 0 || !hasAnyIssues);
+                      })() && (
                         <>
                           {/* Complete ERD Display */}
                           <Accordion multiple collapsible defaultOpenItems={["complete-erd"]} className={styles.schemaAccordion}>
@@ -1721,7 +1756,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
               appearance="primary"
               size="large"
               className={styles.nextButton}
-              disabled={!uploadedFile || !(entityChoice || !cdmDetected) || hasAnyIssues}
+              disabled={!uploadedFile || !(entityChoice || !cdmDetected) || (parsedEntities.length === 0)}
               onClick={onNext}
             >
               Next: Solution & Publisher

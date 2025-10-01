@@ -249,6 +249,24 @@ export class ApiService {
       throw error;
     }
   }
+
+  /**
+   * Get configuration data from the backend
+   */
+  static async getConfig(): Promise<{ powerPlatformEnvironmentId: string }> {
+    try {
+      const response: AxiosResponse<any> = await api.get('/config');
+      
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.error || 'Failed to fetch configuration');
+      }
+    } catch (error) {
+      console.error('Config fetch error:', error);
+      throw error;
+    }
+  }
 }
 
 export default ApiService;
