@@ -12,6 +12,9 @@ dist/
 coverage/
 .github
 
+# Deployment data (contains personal/environment-specific information)
+data/
+
 # Backup files
 *.backup
 *.bak
