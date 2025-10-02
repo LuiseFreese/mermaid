@@ -1,282 +1,382 @@
 /**
  * Unit tests for BaseService
  * Tests common service functionality and patterns
+ * @module tests/unit/services/base-service.test
  */
 
 const { BaseService } = require('../../../src/backend/services/base-service');
 
+// ============================================================================
+// Test Fixtures & Constants
+// ============================================================================
+
+const FIXTURES = {
+    mockDependencies: {
+        dataverseRepository: { name: 'MockDataverseRepo' },
+        configRepository: { name: 'MockConfigRepo' }
+    },
+
+    testData: {
+        simpleResult: { success: true, data: 'test' },
+        failureResult: { success: false, error: 'validation failed' },
+        errorMessage: 'Operation failed',
+        inputValid: { name: 'test', value: 123 },
+        inputMissing: { name: 'test' },
+        inputEmpty: { name: '', value: null }
+    },
+
+    schemas: {
+        basic: { name: 'string', count: 'number' },
+        optional: { name: 'string', optional: 'number' }
+    }
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Creates a mock logger instance
+ * @returns {Object} Mock logger
+ */
+const createMockLogger = () => ({
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn()
+});
+
+/**
+ * Creates base service with default or custom dependencies
+ * @param {Object} customDeps - Custom dependencies to override defaults
+ * @returns {Object} Service instance and mocks
+ */
+const createBaseService = (customDeps = {}) => {
+    const mockLogger = createMockLogger();
+    const dependencies = {
+        ...FIXTURES.mockDependencies,
+        logger: mockLogger,
+        ...customDeps
+    };
+
+    const service = new BaseService(dependencies);
+
+    return { service, mockLogger, dependencies };
+};
+
+/**
+ * Extracts log call arguments for easier assertions
+ * @param {Function} logFn - Mock log function
+ * @param {number} callIndex - Index of call to extract
+ * @returns {Array} Call arguments
+ */
+const getLogCall = (logFn, callIndex = 0) => logFn.mock.calls[callIndex];
+
+// ============================================================================
+// Test Suite
+// ============================================================================
+
 describe('BaseService', () => {
-  let baseService;
-  let mockDependencies;
-  let mockLogger;
+    let service;
+    let mockLogger;
+    let dependencies;
 
-  beforeEach(() => {
-    mockLogger = {
-      log: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn()
-    };
-
-    mockDependencies = {
-      dataverseRepository: { name: 'MockDataverseRepo' },
-      configRepository: { name: 'MockConfigRepo' },
-      logger: mockLogger
-    };
-
-    baseService = new BaseService(mockDependencies);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('constructor', () => {
-    it('should initialize with dependencies', () => {
-      expect(baseService.name).toBe('BaseService');
-      expect(baseService.dependencies).toBe(mockDependencies);
-      expect(baseService.dataverseRepository).toBe(mockDependencies.dataverseRepository);
-      expect(baseService.configRepository).toBe(mockDependencies.configRepository);
-      expect(baseService.logger).toBe(mockLogger);
+    beforeEach(() => {
+        ({ service, mockLogger, dependencies } = createBaseService());
     });
 
-    it('should use console as default logger', () => {
-      const service = new BaseService({});
-      expect(service.logger).toBe(console);
+    afterEach(() => {
+        jest.clearAllMocks();
     });
 
-    it('should handle empty dependencies', () => {
-      const service = new BaseService();
-      expect(service.dependencies).toEqual({});
-      expect(service.logger).toBe(console);
-    });
-  });
+    // ==========================================================================
+    // Constructor Tests
+    // ==========================================================================
 
-  describe('logging methods', () => {
-    it('should log actions with service name', () => {
-      baseService.log('testAction', { data: 'test' });
-      
-      expect(mockLogger.log).toHaveBeenCalledWith(
-        '🔧 BaseService.testAction',
-        { data: 'test' }
-      );
-    });
+    describe('constructor', () => {
+        test('should initialize with dependencies', () => {
+            expect(service.name).toBe('BaseService');
+            expect(service.dependencies).toBe(dependencies);
+            expect(service.dataverseRepository).toBe(dependencies.dataverseRepository);
+            expect(service.configRepository).toBe(dependencies.configRepository);
+            expect(service.logger).toBe(mockLogger);
+        });
 
-    it('should log warnings with service name', () => {
-      baseService.warn('test warning', { code: 'WARN001' });
-      
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        '⚠️ BaseService: test warning',
-        { code: 'WARN001' }
-      );
-    });
+        test('should use console as default logger', () => {
+            const serviceWithoutLogger = new BaseService({});
+            expect(serviceWithoutLogger.logger).toBe(console);
+        });
 
-    it('should log errors with service name', () => {
-      const testError = new Error('Test error');
-      baseService.error('test error message', testError);
-      
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        '❌ BaseService: test error message',
-        'Test error'
-      );
+        test('should handle empty dependencies', () => {
+            const serviceEmpty = new BaseService();
+            expect(serviceEmpty.dependencies).toEqual({});
+            expect(serviceEmpty.logger).toBe(console);
+        });
     });
 
-    it('should handle error logging without error object', () => {
-      baseService.error('test error message');
-      
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        '❌ BaseService: test error message',
-        null
-      );
-    });
-  });
+    // ==========================================================================
+    // Logging Methods Tests
+    // ==========================================================================
 
-  describe('validateDependencies', () => {
-    it('should pass validation when all dependencies are present', () => {
-      expect(() => {
-        baseService.validateDependencies(['dataverseRepository', 'logger']);
-      }).not.toThrow();
-    });
+    describe('logging methods', () => {
+        describe('log', () => {
+            test('should log actions with service name', () => {
+                service.log('testAction', { data: 'test' });
 
-    it('should throw error when dependencies are missing', () => {
-      expect(() => {
-        baseService.validateDependencies(['missingDep1', 'missingDep2']);
-      }).toThrow('BaseService missing required dependencies: missingDep1, missingDep2');
-    });
+                expect(mockLogger.log).toHaveBeenCalledWith(
+                    '🔧 BaseService.testAction',
+                    { data: 'test' }
+                );
+            });
+        });
 
-    it('should handle empty required dependencies array', () => {
-      expect(() => {
-        baseService.validateDependencies([]);
-      }).not.toThrow();
-    });
-  });
+        describe('warn', () => {
+            test('should log warnings with service name', () => {
+                service.warn('test warning', { code: 'WARN001' });
 
-  describe('executeOperation', () => {
-    it('should execute operation successfully and log timing', async () => {
-      const mockOperation = jest.fn().mockResolvedValue({ success: true, data: 'test' });
-      
-      const result = await baseService.executeOperation('testOp', mockOperation, { id: 123 });
-      
-      expect(mockOperation).toHaveBeenCalled();
-      expect(result).toEqual({ success: true, data: 'test' });
-      
-      expect(mockLogger.log).toHaveBeenCalledWith(
-        '🔧 BaseService.testOp',
-        { starting: true, id: 123 }
-      );
-      
-      expect(mockLogger.log).toHaveBeenCalledWith(
-        '🔧 BaseService.testOp',
-        expect.objectContaining({
-          completed: true,
-          success: true,
-          id: 123,
-          duration: expect.stringMatching(/\d+ms/)
-        })
-      );
+                expect(mockLogger.warn).toHaveBeenCalledWith(
+                    '⚠️ BaseService: test warning',
+                    { code: 'WARN001' }
+                );
+            });
+        });
+
+        describe('error', () => {
+            test('should log errors with service name', () => {
+                const testError = new Error('Test error');
+                service.error('test error message', testError);
+
+                expect(mockLogger.error).toHaveBeenCalledWith(
+                    '❌ BaseService: test error message',
+                    'Test error'
+                );
+            });
+
+            test('should handle error logging without error object', () => {
+                service.error('test error message');
+
+                expect(mockLogger.error).toHaveBeenCalledWith(
+                    '❌ BaseService: test error message',
+                    null
+                );
+            });
+        });
     });
 
-    it('should handle operation failures and log errors', async () => {
-      const testError = new Error('Operation failed');
-      const mockOperation = jest.fn().mockRejectedValue(testError);
-      
-      await expect(
-        baseService.executeOperation('failOp', mockOperation)
-      ).rejects.toThrow('failOp failed: Operation failed');
-      
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringMatching(/❌ BaseService: failOp failed after \d+ms/),
-        'Operation failed'
-      );
+    // ==========================================================================
+    // Validate Dependencies Tests
+    // ==========================================================================
+
+    describe('validateDependencies', () => {
+        test('should pass validation when all dependencies are present', () => {
+            expect(() => {
+                service.validateDependencies(['dataverseRepository', 'logger']);
+            }).not.toThrow();
+        });
+
+        test('should throw error when dependencies are missing', () => {
+            expect(() => {
+                service.validateDependencies(['missingDep1', 'missingDep2']);
+            }).toThrow('BaseService missing required dependencies: missingDep1, missingDep2');
+        });
+
+        test('should handle empty required dependencies array', () => {
+            expect(() => {
+                service.validateDependencies([]);
+            }).not.toThrow();
+        });
     });
 
-    it('should handle operations with success=false as successful completion', async () => {
-      const mockOperation = jest.fn().mockResolvedValue({ success: false, error: 'validation failed' });
-      
-      const result = await baseService.executeOperation('testOp', mockOperation);
-      
-      expect(result).toEqual({ success: false, error: 'validation failed' });
-      expect(mockLogger.log).toHaveBeenCalledWith(
-        '🔧 BaseService.testOp',
-        expect.objectContaining({
-          completed: true,
-          success: false
-        })
-      );
-    });
-  });
+    // ==========================================================================
+    // Execute Operation Tests
+    // ==========================================================================
 
-  describe('result creation methods', () => {
-    it('should create standardized result object', () => {
-      const result = baseService.createResult(true, { count: 5 }, 'Success', []);
-      
-      expect(result).toEqual({
-        success: true,
-        message: 'Success',
-        errors: [],
-        timestamp: expect.any(String),
-        service: 'BaseService',
-        count: 5
-      });
-      
-      expect(new Date(result.timestamp)).toBeInstanceOf(Date);
-    });
+    describe('executeOperation', () => {
+        test('should execute operation successfully and log timing', async () => {
+            const mockOperation = jest.fn().mockResolvedValue(FIXTURES.testData.simpleResult);
 
-    it('should create success result', () => {
-      const result = baseService.createSuccess({ items: [] }, 'All good');
-      
-      expect(result).toEqual({
-        success: true,
-        message: 'All good',
-        errors: [],
-        timestamp: expect.any(String),
-        service: 'BaseService',
-        items: []
-      });
-    });
+            const result = await service.executeOperation('testOp', mockOperation, { id: 123 });
 
-    it('should create success result with default message', () => {
-      const result = baseService.createSuccess({ id: 123 });
-      
-      expect(result.message).toBe('Operation completed successfully');
-      expect(result.success).toBe(true);
-    });
+            expect(mockOperation).toHaveBeenCalled();
+            expect(result).toEqual(FIXTURES.testData.simpleResult);
 
-    it('should create error result', () => {
-      const result = baseService.createError('Something went wrong', ['ERR001'], { code: 500 });
-      
-      expect(result).toEqual({
-        success: false,
-        message: 'Something went wrong',
-        errors: ['ERR001'],
-        timestamp: expect.any(String),
-        service: 'BaseService',
-        code: 500
-      });
-    });
-  });
+            // Check starting log
+            const [startMsg, startData] = getLogCall(mockLogger.log, 0);
+            expect(startMsg).toBe('🔧 BaseService.testOp');
+            expect(startData).toEqual({ starting: true, id: 123 });
 
-  describe('validateInput', () => {
-    it('should pass validation with all required fields present', () => {
-      const input = { name: 'test', value: 123 };
-      
-      expect(() => {
-        baseService.validateInput(input, ['name', 'value']);
-      }).not.toThrow();
+            // Check completion log
+            const [endMsg, endData] = getLogCall(mockLogger.log, 1);
+            expect(endMsg).toBe('🔧 BaseService.testOp');
+            expect(endData).toMatchObject({
+                completed: true,
+                success: true,
+                id: 123
+            });
+            expect(endData.duration).toMatch(/\d+ms/);
+        });
+
+        test('should handle operation failures and log errors', async () => {
+            const testError = new Error(FIXTURES.testData.errorMessage);
+            const mockOperation = jest.fn().mockRejectedValue(testError);
+
+            await expect(
+                service.executeOperation('failOp', mockOperation)
+            ).rejects.toThrow(`failOp failed: ${FIXTURES.testData.errorMessage}`);
+
+            expect(mockLogger.error).toHaveBeenCalledWith(
+                expect.stringMatching(/❌ BaseService: failOp failed after \d+ms/),
+                FIXTURES.testData.errorMessage
+            );
+        });
+
+        test('should handle operations with success=false as successful completion', async () => {
+            const mockOperation = jest.fn().mockResolvedValue(FIXTURES.testData.failureResult);
+
+            const result = await service.executeOperation('testOp', mockOperation);
+
+            expect(result).toEqual(FIXTURES.testData.failureResult);
+
+            const [, endData] = getLogCall(mockLogger.log, 1);
+            expect(endData).toMatchObject({
+                completed: true,
+                success: false
+            });
+        });
     });
 
-    it('should throw error for missing required fields', () => {
-      const input = { name: 'test' };
-      
-      expect(() => {
-        baseService.validateInput(input, ['name', 'value', 'type']);
-      }).toThrow('Missing required parameters: value, type');
+    // ==========================================================================
+    // Result Creation Methods Tests
+    // ==========================================================================
+
+    describe('result creation methods', () => {
+        describe('createResult', () => {
+            test('should create standardized result object', () => {
+                const result = service.createResult(true, { count: 5 }, 'Success', []);
+
+                // Core properties that should always be present
+                expect(result).toEqual(
+                    expect.objectContaining({
+                        success: true,
+                        message: 'Success',
+                        errors: [],
+                        service: 'BaseService',
+                        timestamp: expect.any(String)
+                    })
+                );
+
+                // Verify timestamp is valid
+                expect(new Date(result.timestamp)).toBeInstanceOf(Date);
+            });
+        });
+
+        describe('createSuccess', () => {
+            test('should create success result', () => {
+                const result = service.createSuccess({ items: [] }, 'All good');
+
+                expect(result).toEqual(
+                    expect.objectContaining({
+                        success: true,
+                        message: 'All good',
+                        errors: [],
+                        service: 'BaseService',
+                        timestamp: expect.any(String)
+                    })
+                );
+
+                expect(new Date(result.timestamp)).toBeInstanceOf(Date);
+            });
+
+            test('should create success result with default message', () => {
+                const result = service.createSuccess({ id: 123 });
+
+                expect(result.message).toBe('Operation completed successfully');
+                expect(result.success).toBe(true);
+                expect(result.timestamp).toBeDefined();
+            });
+        });
+
+        describe('createError', () => {
+            test('should create error result', () => {
+                const result = service.createError('Something went wrong', ['ERR001'], { code: 500 });
+
+                expect(result).toEqual(
+                    expect.objectContaining({
+                        success: false,
+                        message: 'Something went wrong',
+                        errors: ['ERR001'],
+                        service: 'BaseService',
+                        timestamp: expect.any(String)
+                    })
+                );
+
+                expect(new Date(result.timestamp)).toBeInstanceOf(Date);
+            });
+        });
     });
 
-    it('should treat empty string as missing', () => {
-      const input = { name: '', value: null };
-      
-      expect(() => {
-        baseService.validateInput(input, ['name', 'value']);
-      }).toThrow('Missing required parameters: name, value');
+    // ==========================================================================
+    // Validate Input Tests
+    // ==========================================================================
+
+    describe('validateInput', () => {
+        test('should pass validation with all required fields present', () => {
+            expect(() => {
+                service.validateInput(FIXTURES.testData.inputValid, ['name', 'value']);
+            }).not.toThrow();
+        });
+
+        test('should throw error for missing required fields', () => {
+            expect(() => {
+                service.validateInput(FIXTURES.testData.inputMissing, ['name', 'value', 'type']);
+            }).toThrow('Missing required parameters: value, type');
+        });
+
+        test('should treat empty string as missing', () => {
+            expect(() => {
+                service.validateInput(FIXTURES.testData.inputEmpty, ['name', 'value']);
+            }).toThrow('Missing required parameters: name, value');
+        });
+
+        test('should validate parameter types when schema provided', () => {
+            const input = { name: 'test', count: '123' };
+
+            expect(() => {
+                service.validateInput(input, ['name'], FIXTURES.schemas.basic);
+            }).toThrow("Parameter 'count' must be of type number, got string");
+        });
+
+        test('should allow optional parameters in schema', () => {
+            const input = { name: 'test' };
+
+            expect(() => {
+                service.validateInput(input, ['name'], FIXTURES.schemas.optional);
+            }).not.toThrow();
+        });
+
+        test('should handle empty input and no requirements', () => {
+            expect(() => {
+                service.validateInput({}, []);
+            }).not.toThrow();
+        });
     });
 
-    it('should validate parameter types when schema provided', () => {
-      const input = { name: 'test', count: '123' };
-      const schema = { name: 'string', count: 'number' };
-      
-      expect(() => {
-        baseService.validateInput(input, ['name'], schema);
-      }).toThrow("Parameter 'count' must be of type number, got string");
-    });
+    // ==========================================================================
+    // Error Handling Tests
+    // ==========================================================================
 
-    it('should allow optional parameters in schema', () => {
-      const input = { name: 'test' };
-      const schema = { name: 'string', optional: 'number' };
-      
-      expect(() => {
-        baseService.validateInput(input, ['name'], schema);
-      }).not.toThrow();
-    });
+    describe('error handling', () => {
+        test('should preserve original error context in executeOperation', async () => {
+            const originalError = new Error('Database connection failed');
+            originalError.code = 'DB_ERROR';
 
-    it('should handle empty input and no requirements', () => {
-      expect(() => {
-        baseService.validateInput({}, []);
-      }).not.toThrow();
-    });
-  });
+            const mockOperation = jest.fn().mockRejectedValue(originalError);
 
-  describe('error handling', () => {
-    it('should preserve original error context in executeOperation', async () => {
-      const originalError = new Error('Database connection failed');
-      originalError.code = 'DB_ERROR';
-      
-      const mockOperation = jest.fn().mockRejectedValue(originalError);
-      
-      try {
-        await baseService.executeOperation('dbOp', mockOperation);
-      } catch (error) {
-        expect(error.message).toBe('dbOp failed: Database connection failed');
-      }
+            try {
+                await service.executeOperation('dbOp', mockOperation);
+                fail('Should have thrown error');
+            } catch (error) {
+                expect(error.message).toBe('dbOp failed: Database connection failed');
+            }
+        });
     });
-  });
 });
