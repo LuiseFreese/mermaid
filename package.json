@@ -13,7 +13,7 @@
     "build:frontend": "cd src/frontend && npm run build",
     "install:all": "npm install && cd src/frontend && npm install",
     "test": "node tests/run-tests.js",
-    "test:unit": "jest tests/unit --coverage --coverageDirectory=coverage/unit --detectOpenHandles --forceExit",
+    "test:unit": "FORCE_COLOR=1 jest tests/unit --coverage --coverageDirectory=coverage/unit --detectOpenHandles --forceExit",
     "test:integration": "jest tests/integration --coverage --coverageDirectory=coverage/integration --detectOpenHandles --forceExit",
     "test:e2e": "jest --config=jest-e2e.config.js",
     "test:watch": "jest --watch --detectOpenHandles",
