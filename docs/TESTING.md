@@ -280,7 +280,7 @@ npm run test:e2e -- --testNamePattern="Screen Reader Support"
 - **Form control labeling** and association validation
 
 **3. Keyboard Navigation Support**
-- **Tab order testing** through wizard interface
+- **Tab order testing** through the wizard interface
 - **Focus management** across step progression
 - **Keyboard-only operation** verification
 - **Interactive element accessibility** via keyboard

@@ -127,7 +127,7 @@ Note: Removed inline comment to avoid parse error.
 Prevents conflicts with Dataverse system columns:
 
 **Detected conflicts:**
-- `ownerid` - Conflicts with ownership system
+- `ownerid` - Conflicts with an ownership system
 - `statecode` - Conflicts with built-in status
 - `statuscode` - Conflicts with built-in status reason
 
