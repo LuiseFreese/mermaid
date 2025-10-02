@@ -54,7 +54,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 
 ### Step 2: Solution & Publisher Configuration
 - **Solution Name**: Name for your Dataverse solution (e.g., "Customer Management") or choose from an existing solution
-- **Publisher Selection**: Choose existing publisher or create new one with the React interface
+- **Publisher Selection**: Choose an existing publisher or create a new one with the React interface
 - **Publisher Prefix**: 3-8 character prefix (e.g., "cmgt") with real-time validation
 - Select **Next** to continue
 

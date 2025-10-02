@@ -20,7 +20,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 ### Architecture Overview
 
 - **Frontend**: React 18 + TypeScript + Fluent UI v9 (built with Vite)
-  - **Modular Architecture**: All wizard steps fully modularized with clean separation of concerns
+  - **Modular Architecture**: All wizard steps are fully modularized with clean separation of concerns
   - **FileUploadStep**: Modular components, hooks, types, and utilities for ERD processing
   - **SolutionSetupStep**: Modular configuration forms with reusable components and business logic
   - **DeploymentStep**: Modular deployment interface with summary, progress, and results components
@@ -180,7 +180,7 @@ graph TB
 - **Vite** for fast development and optimized production builds
 
 **Key Features**:
-- Multi-step wizard interface with progress tracking
+- Multistep wizard interface with progress tracking
 - Real-time form validation and user feedback
 - File upload with drag-and-drop support
 - Publisher and solution management UI
@@ -331,7 +331,7 @@ erDiagram
 - **Modern CSS** with responsive design patterns
 
 **Key Features**:
-- **Multi-step Wizard**: Progressive disclosure with clear navigation
+- **Multistep Wizard**: Progressive disclosure with clear navigation
 - **Real-time Validation**: Live ERD syntax checking with auto-corrections
 - **File Upload**: Drag-and-drop support with validation
 - **Publisher Management**: Visual selection and creation interface
@@ -343,12 +343,12 @@ erDiagram
 **Step 1: ERD Upload & Validation**
 - Modern file upload with drag-and-drop support
 - Real-time syntax validation with detailed error messages
-- Auto-correction suggestions with preview
+- Autocorrection suggestions with preview
 - **CDM Detection**: Visual indication of Common Data Model matches
 - **ERD Rendering**: Live Mermaid diagram display after validation
 - Entity and relationship preview with expandable details
 
-**Modular Architecture**: The FileUploadStep has been completely modularized using modern React patterns with clean separation of concerns. See [FileUploadStep Modular Architecture](#fileuploadstep-modular-architecture) section for detailed implementation.
+**Modular Architecture**: The FileUploadStep has been completely modularized using modern React patterns with clean separation of concerns. See [The FileUploadStep Modular Architecture](#fileuploadstep-modular-architecture) section for detailed implementation.
 
 **Step 2: Solution & Publisher Configuration**
 - Clean form design with Fluent UI components
@@ -356,7 +356,7 @@ erDiagram
 - New publisher creation with prefix validation
 - Solution name validation and conflict checking
 
-**Modular Architecture**: The SolutionSetupStep has been completely modularized using modern React patterns with extracted components and business logic hooks. See [SolutionSetupStep Modular Architecture](#solutionsetupstep-modular-architecture) section for detailed implementation.
+**Modular Architecture**: The SolutionSetupStep has been completely modularized using modern React patterns with extracted components and business logic hooks. See [The SolutionSetupStep Modular Architecture](#solutionsetupstep-modular-architecture) section for detailed implementation.
 
 **Step 3: Global Choices Management (Optional)**
 - Modular global choices step with comprehensive choice management
@@ -445,12 +445,12 @@ export const DeploymentHistory: React.FC = () => {
 - **DeploymentController**: Handles deployment history API endpoints
 - **DeploymentHistoryService**: Manages deployment data persistence and retrieval
 - **Configuration API**: Provides Power Platform environment ID for solution links
-- **File-based Storage**: JSON files for deployment tracking with environment-specific organization
+- **File-based Storage**: JSON files for deployment tracking with an environment-specific organization
 
 **Configuration Management**:
 - **Environment ID Setup**: Configured via PowerShell scripts during Azure deployment
 - **API Configuration**: Backend `/api/config` endpoint provides frontend with environment settings
-- **Dynamic Solution Links**: Real-time URL generation based on configured environment
+- **Dynamic Solution Links**: Real-time URL generation based on the configured environment
 - **Security Compliance**: No hardcoded environment-specific values in source code
 
 **User Experience Features**:
@@ -553,7 +553,7 @@ interface CDMDetectionCardProps {
 }
 ```
 - Visual presentation of CDM entity matches
-- User choice interface for CDM vs custom entities
+- User choice interface for CDM vs. custom entities
 - Confidence indicators and entity details
 
 **ERDValidationPanel**
@@ -640,7 +640,7 @@ export const useERDValidation = () => {
 ```
 - Comprehensive ERD structure validation
 - Issue detection with severity levels
-- Integration with validation rules engine
+- Integration with the validation rules engine
 
 **useAutoFix**
 ```typescript
@@ -657,7 +657,7 @@ export const useAutoFix = () => {
 ```
 - Intelligent fix suggestion generation
 - Content modification and validation
-- Progress tracking for fix application
+- Progress tracking for a fix application
 
 **useMermaidRenderer**
 ```typescript
@@ -794,7 +794,7 @@ solution-setup/
 - **Types**: Comprehensive TypeScript definitions
 
 **2. Reusability**
-- SearchableDropdown extracted as reusable component
+- SearchableDropdown extracted as a reusable component
 - Configuration hooks usable across different forms
 - Validation utilities applicable to other wizard steps
 
@@ -849,13 +849,13 @@ deployment/
 ### Design Principles
 
 **1. Component Separation**
-- **ConfigurationSummary**: Pure presentation of solution, publisher, entities, and relationships
+- **ConfigurationSummary**: Pure presentation of a solution, publisher, entities, and relationships
 - **DeploymentProgress**: Real-time streaming deployment progress with logs
 - **DeploymentResults**: Success/error result display with detailed feedback
 - **DeploymentControls**: Navigation buttons and deployment trigger
 
 **2. Business Logic Abstraction**
-- **useConfigurationSummary**: Aggregates wizard data into deployment-ready format
+- **useConfigurationSummary**: Aggregates wizard data into a deployment-ready format
 - **useDeploymentStatus**: Manages deployment state and API integration
 - **useDeploymentProgress**: Handles streaming progress updates and error states
 
@@ -955,7 +955,7 @@ src/frontend/src/components/wizard/steps/global-choices/
 ### Testing Strategy
 
 **Comprehensive Test Coverage**: 19/19 tests passing across all components and utilities
-- **Component Tests (8 tests)**: UI rendering, props handling, and user interactions
+- **Component Tests (8 tests)**: UI rendering, prop handling, and user interactions
 - **Hook Tests (5 tests)**: Selection logic, validation, and file upload functionality
 - **Integration Tests (6 tests)**: Full step integration and modular component interaction
 
@@ -1059,14 +1059,14 @@ interface CustomChoicesUploadProps {
 - Maps service data to component-compatible formats
 
 **useChoiceSelection**: Selection state management
-- Manages selected choices in wizard context
+- Manages selected choices in the wizard context
 - Provides selection, deselection, and bulk operations
 - Validates selection state and provides error feedback
 
 **useFileUpload**: File processing and validation
 - Handles file upload with progress tracking
-- Parses JSON files and validates format
-- Integrates uploaded choices with wizard state
+- Parses JSON files and validates a format
+- Integrates uploaded choices with the wizard state
 
 **useChoicesValidation**: Step validation logic
 - Always returns valid since global choices are optional
@@ -1128,7 +1128,7 @@ interface CustomChoicesUploadProps {
 **After Modularization**: Clean separation across 5 components and 4 hooks
 
 **Benefits Achieved**:
-- **Maintainability**: Each component has single responsibility
+- **Maintainability**: Each component has a single responsibility
 - **Testability**: Comprehensive test coverage with isolated testing
 - **Reusability**: Components can be used independently or in other contexts
 - **Scalability**: Easy to extend with new features or choice types
@@ -1318,7 +1318,7 @@ GET /api/solution-status?solution=SolutionName
 
 **Authentication**: Uses Azure Managed Identity for passwordless authentication with proper headers and token management
 
-**Entity Creation Flow**: Validates connection → Creates/validates publisher → Creates/validates solution → Creates entities with metadata → Adds to solution → Creates columns and relationships
+**Entity Creation Flow**: Validates connection → Creates/validates publisher → Creates/validates a solution → Creates entities with metadata → Adds to a solution → Creates columns and relationships
 
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
            
@@ -1400,7 +1400,7 @@ validateConfiguration() {
 - **Automatic Detection**: Analyzes entity names and attributes to identify potential CDM matches
 - **Smart Mapping**: Matches entities like "Contact" → "contact"
 - **Attribute Analysis**: Compares entity attributes against CDM entity schemas
-- **User Choice**: Provides option to use CDM entities or create custom entities
+- **User Choice**: Provides an option to use CDM entities or create custom entities
 - **Relationship Preservation**: Maintains relationships between CDM and custom entities
 
 **Detection Algorithm**:
@@ -1473,18 +1473,18 @@ validateConfiguration() {
 **Duplicate Detection Process**:
 1. Fetch all existing global choices using `GlobalOptionSetDefinitions?$select=Name`
 2. Convert existing names to lowercase for case-insensitive comparison
-3. Check if choice name (with publisher prefix) already exists
-4. If duplicate found, skip creation but attempt to add existing choice to solution
+3. Check if a choice name (with publisher prefix) already exists
+4. If a duplicate is found, skip creation but attempt to add the existing choice to a solution
 
 **Creation and Verification Workflow**:
 1. **Create Choice Set**: POST to `/GlobalOptionSetDefinitions` with choice metadata
 2. **Multi-Attempt Verification**: Try up to 5 times with progressive delays (3s, 5s, 7s, 9s, 10s)
-3. **Fallback Verification**: Use comprehensive global choices list if direct lookup fails
-4. **Solution Addition**: Add successfully created/found choices to target solution
+3. **Fallback Verification**: Use a comprehensive global choices list if a direct lookup fails
+4. **Solution Addition**: Add successfully created/found choices to target a solution
 
 **API Constraints and Workarounds**:
 
-The Dataverse API has several limitations that required specific workarounds:
+The Dataverse API has several limitations that require specific workarounds:
 
 | **Issue** | **Problem** | **Workaround** |
 |-----------|-------------|----------------|
@@ -1495,7 +1495,7 @@ The Dataverse API has several limitations that required specific workarounds:
 
 ### ERD Validation
 
-**Purpose**: Provide comprehensive validation with auto-correction capabilities.
+**Purpose**: Provide comprehensive validation with autocorrection capabilities.
 
 **Validation Features**:
 - **Syntax checking** with specific error locations
@@ -1521,15 +1521,15 @@ The Dataverse API has several limitations that required specific workarounds:
 - **React Integration**: Seamless integration with Fluent UI components
 
 **Implementation Details**:
-- **Library**: Mermaid.js loaded as npm dependency in React frontend
-- **Trigger**: Diagram renders when "Use Corrected ERD" button is clicked
+- **Library**: Mermaid.js loaded as a npm dependency in React frontend
+- **Trigger**: Diagram renders when the "Use Corrected ERD" button is clicked
 - **Container**: Dedicated React component with proper styling
 - **Error Handling**: Graceful fallback if diagram cannot be rendered
 
 **User Experience Flow**:
 1. **Upload & Validate**: User uploads ERD, sees validation results with corrections
-2. **Apply Corrections**: User clicks "Use Corrected ERD" button
-3. **Visual Confirmation**: React component displays rendered Mermaid diagram above schema overview
+2. **Apply Corrections**: User clicks the "Use Corrected ERD" button
+3. **Visual Confirmation**: React component displays the rendered Mermaid diagram above schema overview
 4. **Proceed**: User can visually verify structure before deployment
 
 **Technical Implementation** (React + TypeScript):
@@ -1603,7 +1603,7 @@ The parser supports the following relationship scenarios:
 > **Important**: Direct many-to-many syntax like `}o--o{` is not supported. Always use explicit junction tables for many-to-many relationships.
 
 
-## Data Flow (please use CTRL + or CMD + ) 🙈
+## Data Flow (please use CTRL + or CMD +) 🙈
 
 ```mermaid
 sequenceDiagram
@@ -1701,7 +1701,7 @@ sequenceDiagram
 **When**: During initial setup and configuration  
 **Duration**: One-time setup
 
-All authentication is handled through managed identity and federated credentials - no secrets or manual role assignments required.
+All authentication is handled through managed identity and federated credentials - no secrets or manual role assignments are required.
 
 #### Runtime Permissions (Permanent)
 
@@ -1846,15 +1846,15 @@ This section provides a comprehensive analysis of how the frontend, backend, and
 - **Admin Flow**: AdminController → Publisher/Choices/Solution Services → Dataverse Repository
 
 #### External Integration
-- **Authentication**: All Dataverse operations authenticate via Microsoft Entra ID
+- **Authentication**: All Dataverse operations are authenticated via Microsoft Entra ID
 - **Configuration**: Settings stored as environment variables in App Service
 - **Data Storage**: All entities and metadata stored in Microsoft Dataverse
   - Static files → Static file serving
 
 #### Service Layer
-Services use dependency injection pattern with repositories for data access.
-});
+Services use a dependency injection pattern with repositories for data access.
 
+```typescript
 const deploymentService = new DeploymentService({
   dataverseRepository: dataverseRepo,
   configRepository: configRepo,
@@ -1914,7 +1914,7 @@ The architecture is prepared for authentication with:
 - Repository pattern can handle user context
 - Service layer can implement authorization logic
 
-### Development vs Production Architecture
+### Development vs. Production Architecture
 
 **Development**: Vite proxy routes `/api/*` to backend on port 8080  
 **Production**: Custom HTTP server serves both static React files and API endpoints  

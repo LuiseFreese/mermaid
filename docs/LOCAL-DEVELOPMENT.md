@@ -1,6 +1,6 @@
 # Local Development Setup
 
-This guide helps you set up local development environment for the Mermaid to Dataverse application using client secret authentication.
+This guide helps you set up a local development environment for the Mermaid to Dataverse application using client secret authentication.
 
 ## Why Local Development?
 

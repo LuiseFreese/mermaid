@@ -10,7 +10,7 @@ When converting Mermaid ERD files to Dataverse entities, this web application au
 
 Referential relationships (also called "lookup relationships") in Dataverse are:
 - **Non-owning relationships** where the parent doesn't "own" the child record
-- **Default cascade behavior**: When parent is deleted, the child record remains but loses its reference
+- **Default cascade behavior**: When the parent is deleted, the child record remains but loses its reference
 - **Multiple allowed**: A child entity can have multiple referential relationships to different parents
 - **Safer option**: No risk of cascade delete conflicts or multiple parental relationship errors
 
@@ -20,7 +20,7 @@ The web application creates these relationships using Dataverse's native lookup 
 
 Mermaid ERD syntax uses the same notation (`||--o{`) for all one-to-many relationships, regardless of whether they represent:
 - **Ownership relationships** (parent owns child, should be parental in Dataverse)
-- **Reference relationships** (parent is referenced by child, should be lookup in Dataverse)
+- **Reference relationships** (parent is referenced by child, should be looked up in Dataverse)
 
 Since Mermaid cannot distinguish between these two types, we default to the **safer option** that:
 1. **Prevents API errors** - Avoids "multiple parental relationships" conflicts
@@ -94,7 +94,7 @@ erDiagram
 - **Additional attributes**: Junction table can store relationship-specific data (like `enrollment_date`, `grade`)
 - **Better performance**: More efficient than native Dataverse many-to-many relationships
 - **Flexibility**: Easier to modify and extend the relationship structure
-- **Auto-correction**: The system can fix common junction table modeling issues automatically
+- **Autocorrection**: The system can fix common junction table modeling issues automatically
 
 **Real-world examples** from the included sample files:
 - `simple-sales.mmd`: ORDER ↔ PRODUCT via ORDER_ITEM junction
@@ -122,7 +122,7 @@ The system now includes enhanced detection and handling for junction table patte
 
 ## When You Might Want Parental Relationships
 
-Parental relationships provide stronger data integrity through cascade delete behavior. Consider upgrading to parental relationships in Dataverse when:
+Parental relationships provide stronger data integrity through a cascade of delete behavior. Consider upgrading to parental relationships in Dataverse when:
 
 ### Strong Ownership Scenarios
 - **Account → Contact**: Account truly "owns" the contact

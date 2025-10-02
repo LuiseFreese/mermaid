@@ -4,7 +4,7 @@ This guide explains how to deploy and use the Mermaid-to-Dataverse application. 
 
 ## Table of Contents
 
-1. [Quick Start - Azure Deployment (Recommended)](#quick-start-azure-deployment-recommended)
+1. [Quick Start - Azure Deployment (Recommended)](#quick-start---azure-deployment-recommended)
 2. [Local Development Setup](#local-development-setup)
 3. [Prerequisites](#prerequisites)
 4. [Azure Deployment Process](#azure-deployment-process)
@@ -30,10 +30,10 @@ cd mermaid
 - Create App Registration with federated credentials
 - Deploy Azure infrastructure (App Service, Managed Identity, etc.)
 - Configure secure managed identity authentication
-- Set up Dataverse application user with proper permissions
+- Set up a Dataverse application user with proper permissions
 - Configure Power Platform Environment ID for deployment history solution links
 
-**The deploy script will:**
+**The deployment script will:**
 - Build the React frontend locally using Vite
 - Package only necessary backend files (no node_modules)
 - Deploy to Azure App Service with proper static file serving
@@ -57,15 +57,15 @@ cd mermaid
 ```
 
 **The local setup process will:**
-- Create App Registration with client secret (if needed)
-- Set up Dataverse Application User with System Customizer role
+- Create App Registration with a client secret (if needed)
+- Set up Dataverse Application User with a System Customizer role
 - Generate `.env.local` file with authentication configuration
 - Configure local environment for development
 
 **The dev script will:**
 - Load environment variables from `.env.local`
-- Start backend server with real Dataverse authentication
-- Start frontend development server with hot reload
+- Start a backend server with real Dataverse authentication
+- Start a frontend development server with hot reload
 - Enable API proxy for seamless development
 
 ## Prerequisites
@@ -80,7 +80,7 @@ cd mermaid
 6. **Appropriate permissions**:
    - **Azure**: Contributor or Owner on subscription
    - **Microsoft Entra ID**: Application Administrator (to create app registrations)
-   - **Dataverse**: System Administrator (to create application users and assign System Customizer role)
+   - **Dataverse**: System Administrator (to create application users and assign a System Customizer role)
 
 ### For Local Development:
 
@@ -133,7 +133,7 @@ Then configure the Dataverse Application User:
 **This script will:**
 - Find your existing App Registration and Service Principal
 - Create a Dataverse Application User linked to your App Registration
-- Assign System Customizer role for table creation permissions
+- Assign a System Customizer role for table creation permissions
 - Verify the configuration is working correctly
 
 ### Step 2: Create Local Environment Configuration
@@ -252,14 +252,14 @@ The local development setup uses **client secret authentication** with these key
 
 **Authentication Process:**
 1. Backend loads credentials from `.env.local`
-2. Uses client secret to get access token from Azure AD
+2. Uses client secret to get an access token from Azure AD
 3. Calls Dataverse API with the access token
 4. Dataverse validates the token and maps it to the Application User
 5. Operations are authorized based on the Application User's security roles
 
 **Important Notes:**
 - Client secrets expire (usually 1-2 years) and need to be renewed
-- The Application User must have System Customizer role for table operations
+- The Application User must have a System Customizer role for table operations
 - The Service Principal Object ID links the App Registration to the Dataverse Application User
 
 ## What Gets Deployed
@@ -409,7 +409,7 @@ The deployment uses **enterprise-grade security** with multiple layers of protec
 
 ## Deploying Code Updates
 
-After the initial infrastructure setup, you can deploy code changes using the deploy script:
+After the initial infrastructure setup, you can deploy code changes using the deployment script:
 
 ```powershell
 # Deploy code updates to existing infrastructure
@@ -429,7 +429,7 @@ This script will:
 The deployment process ensures **zero secrets required**:
 - No secrets stored anywhere in the system
 - Managed Identity provides secure, passwordless authentication
-- All configuration stored as environment variables in App Service
+- All configurations are stored as environment variables in App Service
 - Federated credentials enable secure token exchange
 
 ### Idempotent Deployments
@@ -452,7 +452,7 @@ Both scripts are **idempotent** and can be run multiple times safely:
 
 **Deployment script will:**
 - Always deploy fresh application code
-- Rebuild frontend for latest changes
+- Rebuild frontend for the latest changes
 - Update runtime configuration
 - Ensure optimal performance
 
@@ -491,7 +491,7 @@ Both scripts are **idempotent** and can be run multiple times safely:
   ```
 
 **Problem: "Application User not found" or "401 Unauthorized" in backend logs**
-- **Cause**: App Registration and Dataverse Application User not properly linked
+- **Cause**: App Registration and Dataverse Application User are not properly linked
 - **Solution**: 
   ```powershell
   # Verify and recreate the Application User
@@ -503,16 +503,16 @@ Both scripts are **idempotent** and can be run multiple times safely:
 
 ### General Issues
 
-**Problem: Azure CLI not authenticated**
+**Problem: Azure CLI is not authenticated**
 - **Solution**: `az login` and select the correct subscription with `az account set --subscription "your-subscription"`
 
 **Problem: Insufficient permissions in Dataverse**
-- **Cause**: User account doesn't have System Administrator role
+- **Cause**: A user account doesn't have a System Administrator role
 - **Solution**: Ask your Dataverse administrator to grant System Administrator permissions temporarily for setup
 
 **Problem: Node.js version too old**
 - **Cause**: Node.js version below 18
-- **Solution**: Install Node.js 18+ from [nodejs.org](https://nodejs.org)
+- **Solution**: Install Node.js 18+ from [Node.js.org](https://nodejs.org)
 
 ### Getting Help
 
