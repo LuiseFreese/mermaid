@@ -1,7 +1,7 @@
 /**
- * Test file for enhanced naming convention validation and fixes
+ * Test file for naming convention validation and fixes
  * Tests the comprehensive naming validation system
- * @module tests/unit/services/enhanced-naming-validation.test
+ * @module tests/unit/services/validation-naming.test
  */
 
 const { ValidationService } = require('../../../src/backend/services/validation-service');
@@ -226,7 +226,7 @@ const extractWarnings = (result) => {
 // Test Suite
 // ============================================================================
 
-describe('Enhanced Naming Convention Validation', () => {
+describe('Naming Convention Validation', () => {
     let validationService;
     // eslint-disable-next-line no-unused-vars
     let mermaidParser;

@@ -1,6 +1,6 @@
 /**
  * Test file for bulk fix functionality
- * Tests the enhanced validation and bulk fix system
+ * Tests the validation and bulk fix system
  * @module tests/unit/services/validation-bulk-fix.test
  */
 
@@ -163,7 +163,7 @@ const createValidationService = () => {
 // Test Suite
 // ============================================================================
 
-describe('Enhanced Validation - Bulk Fix', () => {
+describe('Validation - Bulk Fix', () => {
     let validationService;
     let mermaidParser;
     let mockLogger;
@@ -328,10 +328,10 @@ describe('Enhanced Validation - Bulk Fix', () => {
     });
 
     // ==========================================================================
-    // Enhanced Relationship Validation Tests
+    // Relationship Validation Tests
     // ==========================================================================
 
-    describe('Enhanced relationship validation', () => {
+    describe('Relationship validation', () => {
         test('should detect missing foreign keys', async () => {
             const result = await validationService.validateERD({
                 mermaidContent: FIXTURES.erdTemplates.missingForeignKey
