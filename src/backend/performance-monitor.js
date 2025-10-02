@@ -49,12 +49,18 @@ class PerformanceMonitor {
             endTime,
             duration,
             metadata: operationData.metadata,
-            results: {
-                success: results.success,
+            results: results ? {
+                success: results.success !== undefined ? results.success : false,
                 entitiesCreated: results.entitiesCreated || 0,
                 relationshipsCreated: results.relationshipsCreated || 0,
                 errors: results.errors?.length || 0,
                 apiCalls: results.performance?.apiCalls || 0
+            } : {
+                success: false,
+                entitiesCreated: 0,
+                relationshipsCreated: 0,
+                errors: 0,
+                apiCalls: 0
             }
         };
 

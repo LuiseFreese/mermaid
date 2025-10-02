@@ -3,7 +3,7 @@ export interface DeploymentSummary {
   deploymentId: string;
   timestamp: string;
   environmentSuffix: string;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'success' | 'failed' | 'rolled-back';
   completedAt?: string;
   duration?: number;
   solutionInfo?: {
@@ -25,10 +25,33 @@ export interface DeploymentSummary {
     cdmEntitiesAdded?: string[];
     globalChoicesAdded?: string[];
     globalChoicesCreated?: string[];
+    operationType?: 'deploy' | 'rollback';
+  };
+  rollbackData?: {
+    relationships: any[];
+    customEntities: Array<{
+      name: string;
+      logicalName: string;
+      displayName?: string;
+    }>;
+    globalChoicesCreated: string[];
+  };
+  rollbackInfo?: {
+    rollbackId: string;
+    rollbackTimestamp: string;
+    rollbackResults?: {
+      relationshipsDeleted?: number;
+      entitiesDeleted?: number;
+      globalChoicesDeleted?: number;
+      solutionDeleted?: boolean;
+      publisherDeleted?: boolean;
+      errors?: string[];
+      warnings?: string[];
+    };
   };
   deploymentLogs?: string[];
   metadata?: {
-    deploymentMethod: 'web-ui' | 'api';
+    deploymentMethod: 'web-ui' | 'api' | 'rollback';
     previousDeploymentId?: string;
   };
 }
@@ -37,7 +60,7 @@ export interface DeploymentDetails {
   deploymentId: string;
   timestamp: string;
   environmentSuffix: string;
-  status: 'pending' | 'success' | 'failed';
+  status: 'pending' | 'success' | 'failed' | 'rolled-back';
   completedAt?: string;
   erdContent: string;
   summary: {

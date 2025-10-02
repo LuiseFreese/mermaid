@@ -296,6 +296,20 @@ class DeploymentService extends BaseService {
                             customEntityNames: customEntities.map(e => e.name),
                             // Add global choices information from deployment results
                             globalChoicesAdded: await this.extractGlobalChoiceNames(config.selectedChoices || [], 'selected'),
+                            globalChoicesCreated: await this.extractGlobalChoiceNames(config.customChoices || [], 'custom'),
+                            // Add relationship information for rollback
+                            relationshipsCreated: results.relationshipsCreated || 0,
+                            totalRelationships: parseResult.relationships?.length || 0
+                        };
+                        
+                        // Include relationship details for rollback capability
+                        const rollbackData = {
+                            relationships: parseResult.relationships || [],
+                            customEntities: customEntities.map(e => ({
+                                name: e.name,
+                                logicalName: e.logicalName || e.name,
+                                displayName: e.displayName || e.name
+                            })),
                             globalChoicesCreated: await this.extractGlobalChoiceNames(config.customChoices || [], 'custom')
                         };
                         
@@ -305,6 +319,7 @@ class DeploymentService extends BaseService {
                             status: 'success',
                             erdContent: config.mermaidContent,
                             summary: deploymentSummary,
+                            rollbackData: rollbackData, // Add rollback data
                             solutionInfo: {
                                 solutionName: solutionData?.friendlyname || config.solutionDisplayName || config.solutionName,
                                 publisherName: publisherData?.friendlyname || publisherData?.displayname || 'Default Publisher',

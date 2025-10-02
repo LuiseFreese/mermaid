@@ -388,6 +388,27 @@ class DataverseRepository extends BaseRepository {
     }
 
     /**
+     * Get solution by ID
+     * @param {string} solutionId - Solution ID
+     * @param {Object} config - Optional Dataverse configuration
+     * @returns {Promise<Object>} Solution result
+     */
+    async getSolutionById(solutionId, config = null) {
+        return this.executeOperation('getSolutionById', async () => {
+            const client = await this.getClient(config);
+            const result = await client.getSolutions({ filter: `solutionid eq ${solutionId}` });
+            
+            if (result.success && result.solutions && result.solutions.length > 0) {
+                return this.createSuccess(result.solutions[0], 'Solution retrieved successfully');
+            } else if (result.success) {
+                return this.createSuccess(null, 'Solution not found');
+            } else {
+                throw new Error(result.message || 'Failed to retrieve solution');
+            }
+        });
+    }
+
+    /**
      * Create solution
      * @param {Object} solutionData - Solution configuration
      * @param {Object} config - Optional Dataverse configuration
@@ -438,6 +459,33 @@ class DataverseRepository extends BaseRepository {
             const result = await client.deleteSolution(solutionName, options);
             
             return this.createSuccess(result, 'Solution deleted successfully');
+        });
+    }
+
+    /**
+     * Rollback a deployment
+     * @param {Object} deploymentData - Deployment data containing entities, relationships, etc.
+     * @param {Function} progressCallback - Optional callback for progress updates
+     * @param {Object} config - Optional Dataverse configuration
+     * @returns {Promise<Object>} Rollback result
+     */
+    async rollbackDeployment(deploymentData, progressCallback = null, config = null) {
+        return this.executeOperation('rollbackDeployment', async () => {
+            const client = await this.getClient(config);
+            const result = await client.rollbackDeployment(deploymentData, progressCallback);
+            
+            // The rollback client returns a results object with detailed information
+            // Consider it successful if there are no fatal errors (errors array can have non-fatal warnings)
+            // Or if the solution was deleted (main goal achieved)
+            if (result.solutionDeleted || result.errors.length === 0) {
+                return this.createSuccess(result, 'Rollback completed successfully');
+            } else {
+                // Return the result with error details
+                return this.createSuccess({
+                    ...result,
+                    partialSuccess: true
+                }, `Rollback completed with ${result.errors.length} errors`);
+            }
         });
     }
 
