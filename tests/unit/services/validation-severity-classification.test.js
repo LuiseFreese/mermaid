@@ -1,8 +1,11 @@
 /**
  * Test file for severity classification and individual warning fixes
  * Tests validation with severity levels and granular fix capabilities
- * @module tests/unit/services/validation-severity-fixes.test
+ * @module tests/unit/services/validation-severity-classification.test
  */
+
+// Mock console.warn BEFORE imports to suppress CDM warnings
+const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
 const { ValidationService } = require('../../../src/backend/services/validation-service');
 const { MermaidERDParser } = require('../../../src/backend/mermaid-parser');
@@ -156,21 +159,17 @@ const hasMethod = (service, methodName) =>
 
 describe('Validation - Severity Classification & Individual Fixes', () => {
     let validationService;
-    let consoleWarnSpy;
 
     beforeAll(() => {
-        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         validationService = createValidationService();
     });
 
     afterAll(() => {
-        if (consoleWarnSpy) {
-            consoleWarnSpy.mockRestore();
-        }
+        consoleWarnSpy.mockRestore();
     });
 
     afterEach(() => {
-        jest.clearAllMocks();
+        consoleWarnSpy.mockClear();
     });
 
     // ==========================================================================
