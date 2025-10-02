@@ -8,9 +8,9 @@ logs/
 src/logs/
 .DS_Store
 .vscode/
+.idea
 dist/
 coverage/
-.github
 
 # Deployment data (contains personal/environment-specific information)
 data/
