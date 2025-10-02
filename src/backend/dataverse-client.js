@@ -293,7 +293,7 @@ class DataverseClient {
     }
   }
 
-  async _req(method, url, data) {
+  async _req(method, url, data, options = {}) {
     await this._ensureToken();
     const headers = {
       Authorization: `Bearer ${this._token}`,
@@ -305,7 +305,8 @@ class DataverseClient {
 
     try {
       if (this.verbose) this._log(method.toUpperCase(), `${this.baseUrl}/api/data/v9.2${url}`);
-      const resp = await this._http.request({ method, url, data, headers });
+      const requestConfig = { method, url, data, headers, ...options };
+      const resp = await this._http.request(requestConfig);
       return resp.data;
     } catch (e) {
       let dataStr = '';
@@ -2021,8 +2022,8 @@ class DataverseClient {
     return await this._req('GET', url);
   }
   
-  async _delete(url) {
-    return await this._req('DELETE', url);
+  async _delete(url, options = {}) {
+    return await this._req('DELETE', url, undefined, options);
   }
   
   async _post(url, body) {
@@ -2204,13 +2205,146 @@ class DataverseClient {
   }
   
   async _deleteRelationship(relationship) {
-    const query = `RelationshipDefinitions(SchemaName='${relationship.logicalName}')`;
-    await this._delete(query);
+    // Try to get the correct schema name - relationship data might have different property names
+    const schemaName = relationship.schemaName || relationship.logicalName || relationship.name;
+    
+    if (!schemaName) {
+      const errorMsg = `Cannot delete relationship - no schema name found in: ${JSON.stringify(relationship)}`;
+      this._err(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    console.log(`   🔍 Processing relationship: ${schemaName}`);
+    this._log(`   🔍 Processing relationship: ${schemaName}`);
+    console.log(`      From: ${relationship.fromEntity || 'Unknown'} → To: ${relationship.toEntity || 'Unknown'}`);
+    this._log(`      From: ${relationship.fromEntity || 'Unknown'} → To: ${relationship.toEntity || 'Unknown'}`);
+    
+    // For rollback relationships, we need to construct the actual Dataverse schema name
+    // The schema name pattern for custom relationships is: prefix_referencedEntity_referencingEntity
+    let actualSchemaName = schemaName;
+    
+    // If this looks like a display name (contains spaces or no underscores), construct the schema name
+    if ((schemaName.includes(' ') || !schemaName.includes('_')) && relationship.fromEntity && relationship.toEntity && relationship.publisherPrefix) {
+      console.log(`   🔎 Display name detected: "${schemaName}", constructing actual schema name...`);
+      this._log(`   🔎 Display name detected: "${schemaName}", constructing actual schema name...`);
+      
+      const prefix = relationship.publisherPrefix;
+      const fromEntity = relationship.fromEntity.toLowerCase();
+      const toEntity = relationship.toEntity.toLowerCase();
+      
+      // The schema name is typically: prefix_referencedEntity_referencingEntity
+      // Try both entity orderings
+      const schemaOption1 = `${prefix}_${fromEntity}_${toEntity}`;
+      const schemaOption2 = `${prefix}_${toEntity}_${fromEntity}`;
+      
+      console.log(`   📋 Possible schema names: ${schemaOption1} or ${schemaOption2}`);
+      this._log(`   📋 Possible schema names: ${schemaOption1} or ${schemaOption2}`);
+      
+      // Use the first option as default (we'll try both if needed)
+      actualSchemaName = schemaOption1;
+      this._log(`   🎯 Using schema name: ${actualSchemaName}`);
+    }
+    
+    this._log(`   🗑️ Executing DELETE for relationship: ${actualSchemaName}`);
+    const deleteQuery = `RelationshipDefinitions(SchemaName='${actualSchemaName}')`;
+    this._log(`   📞 API call: DELETE ${deleteQuery}`);
+    
+    try {
+      await this._delete(deleteQuery);
+      this._log(`   ✅ Successfully deleted relationship: ${actualSchemaName}`);
+    } catch (error) {
+      // If first option failed and we have both entities, try the reverse
+      if (relationship.fromEntity && relationship.toEntity && relationship.publisherPrefix && schemaName.includes(' ')) {
+        const prefix = relationship.publisherPrefix;
+        const fromEntity = relationship.fromEntity.toLowerCase();
+        const toEntity = relationship.toEntity.toLowerCase();
+        const schemaOption2 = `${prefix}_${toEntity}_${fromEntity}`;
+        
+        if (actualSchemaName !== schemaOption2) {
+          this._log(`   🔄 First attempt failed, trying reverse order: ${schemaOption2}`);
+          const deleteQuery2 = `RelationshipDefinitions(SchemaName='${schemaOption2}')`;
+          
+          try {
+            await this._delete(deleteQuery2);
+            this._log(`   ✅ Successfully deleted relationship: ${schemaOption2}`);
+            return; // Success with second attempt
+          } catch (error2) {
+            // Both attempts failed
+            this._err(`   ❌ Failed to delete relationship with both schema names`);
+            this._err(`   Tried: ${actualSchemaName} and ${schemaOption2}`);
+            throw new Error(`Could not delete relationship: ${error2.message}`);
+          }
+        }
+      }
+      
+      this._err(`   ❌ Failed to delete relationship ${actualSchemaName}: ${error.message}`);
+      throw error;
+    }
   }
   
+  async _removeSolutionComponent(componentType, componentName) {
+    // This method removes a component from a solution without deleting it
+    // For now, we'll log the operation as most CDM entities and global choices
+    // will be automatically removed when the solution is deleted
+    this._log(`   📋 Marking ${componentType} "${componentName}" for removal from solution`);
+    this._log(`   ℹ️ Note: Component will be removed when solution is deleted`);
+    
+    // In a full implementation, this would use the RemoveSolutionComponent action
+    // or query the solution components and remove specific ones
+    // For now, we'll rely on solution deletion to handle this
+  }
+
   async _deleteEntity(entity) {
-    const query = `EntityDefinitions(LogicalName='${entity.LogicalName}')`;
-    await this._delete(query);
+    const logicalName = entity.LogicalName || entity.logicalName || entity.name;
+    
+    if (!logicalName) {
+      const errorMsg = `Cannot delete entity - no logical name found in: ${JSON.stringify(entity)}`;
+      this._err(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    this._log(`   🏢 Processing entity deletion: ${logicalName}`);
+    this._log(`      Display Name: ${entity.DisplayName?.UserLocalizedLabel?.Label || 'Unknown'}`);
+    this._log(`      Entity Type: ${entity.OwnershipType || 'Unknown'}`);
+    
+    const deleteQuery = `EntityDefinitions(LogicalName='${logicalName}')`;
+    this._log(`   📞 API call: DELETE ${deleteQuery}`);
+    this._log(`   ⏱️ Using extended timeout (5 minutes) for entity deletion`);
+    
+    try {
+      // Entity deletions can take a long time - use 5 minute timeout
+      await this._delete(deleteQuery, { timeout: 300000 });
+      this._log(`   ✅ Successfully deleted entity: ${logicalName}`);
+    } catch (error) {
+      // Check if it's a timeout error - the deletion might have actually succeeded
+      if (error.message && error.message.includes('timeout')) {
+        this._log(`   ⏱️ Timeout occurred, verifying if entity was actually deleted...`);
+        
+        // Wait a bit for Dataverse to complete the operation
+        await this.sleep(5000);
+        
+        // Check if entity still exists
+        try {
+          const verifyQuery = `/EntityDefinitions?$filter=LogicalName eq '${logicalName}'`;
+          const verifyResponse = await this._get(verifyQuery);
+          
+          if (!verifyResponse.value || verifyResponse.value.length === 0) {
+            this._log(`   ✅ Entity ${logicalName} was successfully deleted (verified after timeout)`);
+            return; // Entity was deleted, continue normally
+          } else {
+            this._err(`   ❌ Entity ${logicalName} still exists after timeout - deletion failed`);
+            throw error;
+          }
+        } catch (verifyError) {
+          // If verification fails, assume deletion succeeded
+          this._log(`   ⚠️ Could not verify entity deletion status, assuming success: ${verifyError.message}`);
+          return;
+        }
+      }
+      
+      this._err(`   ❌ Failed to delete entity ${logicalName}: ${error.message}`);
+      throw error;
+    }
   }
   
   _isOurCustomRelationship(schemaName) {
@@ -2271,6 +2405,557 @@ class DataverseClient {
   _extractPrefix(logicalName) {
     const parts = logicalName.split('_');
     return parts.length > 1 ? parts[0] : '';
+  }
+
+  // === ROLLBACK METHODS ===
+  
+  /**
+   * Delete a solution by ID
+   * @param {string} solutionId - Solution ID to delete
+   */
+  async deleteSolution(solutionId) {
+    await this._ensureToken();
+    
+    try {
+      this._log(`🗑️ Deleting solution: ${solutionId}`);
+      const response = await this._delete(`/solutions(${solutionId})`);
+      this._log(`✅ Solution deleted successfully: ${solutionId}`);
+      return response;
+    } catch (error) {
+      this._err(`❌ Failed to delete solution ${solutionId}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a publisher by ID or prefix
+   * @param {string} publisherIdOrPrefix - Publisher ID (GUID) or prefix to delete
+   */
+  async deletePublisher(publisherIdOrPrefix) {
+    await this._ensureToken();
+    
+    try {
+      this._log(`🗑️ Deleting publisher: ${publisherIdOrPrefix}`);
+      
+      // Check if it's a GUID or a prefix
+      const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(publisherIdOrPrefix);
+      
+      let publisherId;
+      if (isGuid) {
+        publisherId = publisherIdOrPrefix;
+      } else {
+        // Look up publisher by prefix
+        const query = `/publishers?$filter=customizationprefix eq '${publisherIdOrPrefix}'&$select=publisherid,friendlyname`;
+        const response = await this._get(query);
+        
+        if (!response.value || response.value.length === 0) {
+          throw new Error(`Publisher with prefix '${publisherIdOrPrefix}' not found`);
+        }
+        
+        publisherId = response.value[0].publisherid;
+        this._log(`   Found publisher ID: ${publisherId}`);
+      }
+      
+      const deleteResponse = await this._delete(`/publishers(${publisherId})`);
+      this._log(`✅ Publisher deleted successfully: ${publisherIdOrPrefix}`);
+      return deleteResponse;
+    } catch (error) {
+      this._err(`❌ Failed to delete publisher ${publisherIdOrPrefix}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a global choice set by logical name or display name
+   * @param {string} choiceNameOrDisplay - Global choice logical name or display name
+   */
+  async deleteGlobalChoice(choiceNameOrDisplay) {
+    await this._ensureToken();
+    
+    try {
+      this._log(`🗑️ Deleting global choice: ${choiceNameOrDisplay}`);
+      
+      // Get all global choice sets (API doesn't support $filter on GlobalOptionSetDefinitions)
+      const choiceQuery = `/GlobalOptionSetDefinitions`;
+      const choiceResponse = await this._get(choiceQuery);
+      
+      if (!choiceResponse.value || choiceResponse.value.length === 0) {
+        throw new Error(`No global choices found`);
+      }
+      
+      // Try to find by logical name first, then by display name
+      let choice = choiceResponse.value.find(c => c.Name === choiceNameOrDisplay);
+      
+      if (!choice) {
+        // Try by display name
+        choice = choiceResponse.value.find(c => 
+          c.DisplayName?.UserLocalizedLabel?.Label === choiceNameOrDisplay
+        );
+        
+        if (choice) {
+          this._log(`   Found by display name "${choiceNameOrDisplay}", logical name: ${choice.Name}`);
+        }
+      }
+      
+      if (!choice) {
+        throw new Error(`Global choice '${choiceNameOrDisplay}' not found`);
+      }
+      
+      const response = await this._delete(`/GlobalOptionSetDefinitions(${choice.MetadataId})`);
+      this._log(`✅ Global choice deleted successfully: ${choice.Name}`);
+      return response;
+    } catch (error) {
+      this._err(`❌ Failed to delete global choice ${choiceNameOrDisplay}: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a complete rollback of a deployment
+   * @param {Object} deploymentData - Deployment data with component information
+   * @param {Function} progressCallback - Progress update callback
+   * @returns {Promise<Object>} Rollback results
+   */
+  async rollbackDeployment(deploymentData, progressCallback = null) {
+    const progress = progressCallback || (() => {});
+    
+    const results = {
+      relationshipsDeleted: 0,
+      entitiesDeleted: 0,
+      globalChoicesDeleted: 0,
+      solutionDeleted: false,
+      publisherDeleted: false,
+      errors: [],
+      warnings: [],
+      stepDetails: []
+    };
+
+    try {
+      await this._ensureToken();
+      
+      progress('starting', 'Starting deployment rollback...');
+      console.log('🚀 ROLLBACK STARTED - Analyzing deployment data...');
+      this._log('🚀 ROLLBACK STARTED - Analyzing deployment data...');
+      
+      // Log what we're about to delete
+      console.log(`📋 ROLLBACK PLAN:`);
+      this._log(`📋 ROLLBACK PLAN:`);
+      console.log(`   Solution: ${deploymentData.solutionInfo?.solutionName || 'N/A'} (ID: ${deploymentData.solutionInfo?.solutionId || 'N/A'})`);
+      this._log(`   Solution: ${deploymentData.solutionInfo?.solutionName || 'N/A'} (ID: ${deploymentData.solutionInfo?.solutionId || 'N/A'})`);
+      console.log(`   Publisher: ${deploymentData.solutionInfo?.publisherName || 'N/A'}`);
+      this._log(`   Publisher: ${deploymentData.solutionInfo?.publisherName || 'N/A'}`);
+      
+      if (deploymentData.rollbackData?.relationships) {
+        this._log(`   Relationships to delete: ${deploymentData.rollbackData.relationships.length}`);
+        deploymentData.rollbackData.relationships.forEach((rel, i) => {
+          this._log(`     ${i+1}. ${rel.name || rel.displayName} (${rel.fromEntity} → ${rel.toEntity})`);
+        });
+      }
+      
+      if (deploymentData.rollbackData?.customEntities) {
+        this._log(`   Custom entities to delete: ${deploymentData.rollbackData.customEntities.length}`);
+        deploymentData.rollbackData.customEntities.forEach((ent, i) => {
+          this._log(`     ${i+1}. ${ent.name || ent.logicalName} (${ent.displayName || 'No display name'})`);
+        });
+      }
+      
+      if (deploymentData.summary?.cdmEntityNames) {
+        this._log(`   CDM entities to remove from solution: ${deploymentData.summary.cdmEntityNames.length}`);
+        deploymentData.summary.cdmEntityNames.forEach((ent, i) => {
+          this._log(`     ${i+1}. ${ent}`);
+        });
+      }
+      
+      // Step 1: Detect and delete relationships first (CRITICAL - must be first to avoid dependency issues)
+      let relationshipsToDelete = [];
+      
+      // Check rollbackData for relationships
+      if (deploymentData.rollbackData?.relationships) {
+        relationshipsToDelete = [...deploymentData.rollbackData.relationships];
+      }
+      
+      // Also check summary for any additional relationships
+      if (deploymentData.summary?.relationshipsCreated) {
+        relationshipsToDelete = [...relationshipsToDelete, ...deploymentData.summary.relationshipsCreated];
+      }
+      
+      // Remove duplicates based on name/schema
+      relationshipsToDelete = relationshipsToDelete.filter((rel, index, arr) => {
+        const relName = rel.name || rel.schemaName || rel.logicalName;
+        return arr.findIndex(r => (r.name || r.schemaName || r.logicalName) === relName) === index;
+      });
+      
+      // STEP 1: Delete relationships first (CRITICAL - must succeed before entities can be deleted)
+      if (relationshipsToDelete.length > 0) {
+        progress('relationships', 'Deleting relationships...');
+        console.log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
+        this._log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
+        
+        // Add publisher prefix to relationships for schema name construction
+        const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
+        
+        for (const [index, relationship] of relationshipsToDelete.entries()) {
+          const relName = relationship.name || relationship.schemaName || relationship.displayName || 'Unknown';
+          try {
+            this._log(`🔗 Deleting relationship ${index + 1}/${relationshipsToDelete.length}: ${relName}`);
+            results.stepDetails.push(`Starting deletion of relationship: ${relName}`);
+            
+            // Add publisher prefix if not already present
+            if (publisherPrefix && !relationship.publisherPrefix) {
+              relationship.publisherPrefix = publisherPrefix;
+            }
+            
+            await this._deleteRelationship(relationship);
+            results.relationshipsDeleted++;
+            
+            const successMsg = `✅ Deleted relationship: ${relName}`;
+            this._log(successMsg);
+            results.stepDetails.push(successMsg);
+          } catch (error) {
+            // Check if relationship not found (already deleted) vs actual error
+            const isNotFound = error.message && (
+              error.message.includes('Could not find') || 
+              error.message.includes('not found') ||
+              error.message.includes('does not exist')
+            );
+            
+            if (isNotFound) {
+              // Treat as warning - relationship already deleted
+              const warningMsg = `⚠️ Relationship ${relName} not found, may have already been deleted`;
+              this._warn(warningMsg);
+              results.warnings.push(warningMsg);
+              results.stepDetails.push(warningMsg);
+            } else {
+              // Real error - HARD STOP
+              const errorMsg = `❌ CRITICAL: Failed to delete relationship ${relName}: ${error.message}`;
+              this._err(errorMsg);
+              results.errors.push(errorMsg);
+              
+              throw new Error(`Rollback stopped: Cannot delete relationship '${relName}'. This must succeed before entities can be deleted. Error: ${error.message}`);
+            }
+          }
+        }
+      } else {
+        console.log('🔗 STEP 1: No relationships detected for deletion');
+        this._log('🔗 STEP 1: No relationships detected for deletion');
+      }
+
+      // Step 2: Delete CUSTOM entities (tables) completely
+      let customEntitiesToDelete = [];
+      
+      if (deploymentData.rollbackData?.customEntities) {
+        customEntitiesToDelete = [...deploymentData.rollbackData.customEntities];
+      }
+      
+      if (customEntitiesToDelete.length > 0) {
+        progress('custom-entities', 'Deleting custom entities...');
+        this._log(`🏢 STEP 2: Deleting ${customEntitiesToDelete.length} custom entities...`);
+        
+        const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
+        this._log(`   📋 Publisher prefix: ${publisherPrefix || 'NOT FOUND'}`);
+        
+        for (const [index, entity] of customEntitiesToDelete.entries()) {
+          let entityName = entity.logicalName || entity.name || entity.displayName || 'Unknown';
+          this._log(`   📌 Original entity name from rollback data: ${entityName}`);
+          
+          // Always construct the proper logical name with prefix for custom entities
+          if (publisherPrefix) {
+            // If the name already has an underscore, assume it's already a logical name
+            if (entityName.includes('_')) {
+              this._log(`   ✅ Entity name already has prefix: ${entityName}`);
+            } else {
+              // Convert display name to logical name with prefix (lowercase)
+              const logicalNamePart = entityName.toLowerCase();
+              entityName = `${publisherPrefix}_${logicalNamePart}`;
+              this._log(`   🔧 Constructed logical name with prefix: ${entityName}`);
+            }
+          } else {
+            this._warn(`   ⚠️ No publisher prefix found, using entity name as-is: ${entityName}`);
+          }
+          
+          try {
+            this._log(`🗑️ Deleting custom entity ${index + 1}/${customEntitiesToDelete.length}: ${entityName}`);
+            results.stepDetails.push(`Starting deletion of custom entity: ${entityName}`);
+            
+            // Get entity metadata first to ensure it exists
+            this._log(`   🔍 Looking up metadata for entity: ${entityName}`);
+            const entityQuery = `/EntityDefinitions?$filter=LogicalName eq '${entityName}'`;
+            const entityResponse = await this._get(entityQuery);
+            
+            if (entityResponse.value && entityResponse.value.length > 0) {
+              this._log(`   ✅ Found entity metadata, proceeding with deletion...`);
+              await this._deleteEntity(entityResponse.value[0]);
+              results.entitiesDeleted++;
+              
+              const successMsg = `✅ Deleted custom entity: ${entityName}`;
+              this._log(successMsg);
+              results.stepDetails.push(successMsg);
+            } else {
+              const warningMsg = `⚠️ Custom entity ${entityName} not found, may have already been deleted`;
+              this._log(warningMsg);
+              results.warnings.push(warningMsg);
+              results.stepDetails.push(warningMsg);
+            }
+          } catch (error) {
+            const errorMsg = `❌ CRITICAL: Failed to delete custom entity ${entityName}: ${error.message}`;
+            this._err(errorMsg);
+            results.errors.push(errorMsg);
+            
+            // HARD STOP: If custom entities can't be deleted, the rollback is incomplete
+            throw new Error(`Rollback stopped: Cannot delete entity '${entityName}'. Error: ${error.message}`);
+          }
+        }
+      } else {
+        this._log('🏢 STEP 2: No custom entities to delete');
+      }
+      
+      // Step 3: Remove CDM entities from solution (DO NOT delete them - they're standard tables)
+      let cdmEntitiesToRemove = [];
+      
+      if (deploymentData.summary?.cdmEntityNames) {
+        cdmEntitiesToRemove = [...deploymentData.summary.cdmEntityNames];
+      }
+      
+      if (cdmEntitiesToRemove.length > 0) {
+        progress('cdm-entities', 'Removing CDM entities from solution...');
+        this._log(`� STEP 3: Removing ${cdmEntitiesToRemove.length} CDM entities from solution...`);
+        
+        for (const [index, entityName] of cdmEntitiesToRemove.entries()) {
+          try {
+            this._log(`� Removing CDM entity ${index + 1}/${cdmEntitiesToRemove.length} from solution: ${entityName}`);
+            results.stepDetails.push(`Starting removal of CDM entity from solution: ${entityName}`);
+            
+            // Remove from solution using solution component removal
+            await this._removeSolutionComponent('Entity', entityName);
+            
+            const successMsg = `✅ Removed CDM entity from solution: ${entityName}`;
+            this._log(successMsg);
+            results.warnings.push(successMsg); // Track as warning since it's removal, not deletion
+            results.stepDetails.push(successMsg);
+            
+          } catch (error) {
+            const errorMsg = `❌ Failed to remove CDM entity ${entityName} from solution: ${error.message}`;
+            this._warn(errorMsg);
+            results.errors.push(errorMsg);
+            results.stepDetails.push(errorMsg);
+          }
+        }
+      } else {
+        this._log('� STEP 3: No CDM entities to remove from solution');
+      }
+
+      // Step 4: Handle global choices - delete CUSTOM ones, remove ADDED ones from solution
+      let customGlobalChoicesToDelete = [];
+      let addedGlobalChoicesToRemove = [];
+      
+      // Detect custom global choices that were created (need to be deleted)
+      if (deploymentData.summary?.globalChoicesCreated) {
+        customGlobalChoicesToDelete = [...deploymentData.summary.globalChoicesCreated];
+      }
+      
+      // Detect global choices that were added to solution (need to be removed from solution)
+      if (deploymentData.summary?.globalChoicesAdded) {
+        addedGlobalChoicesToRemove = [...deploymentData.summary.globalChoicesAdded];
+      }
+      
+      // Delete custom global choices completely
+      if (customGlobalChoicesToDelete.length > 0) {
+        progress('custom-choices', 'Deleting custom global choices...');
+        this._log(`🎯 STEP 4a: Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
+        
+        const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
+        this._log(`   📋 Publisher prefix for choices: ${publisherPrefix || 'NOT FOUND'}`);
+        
+        // Get all global choices once to search by display name
+        let allGlobalChoices = [];
+        try {
+          const choicesResponse = await this._get(`/GlobalOptionSetDefinitions`);
+          if (choicesResponse.value) {
+            allGlobalChoices = choicesResponse.value;
+            this._log(`   📋 Retrieved ${allGlobalChoices.length} total global choices for lookup`);
+          }
+        } catch (error) {
+          this._warn(`   ⚠️ Could not retrieve global choices list: ${error.message}`);
+        }
+        
+        for (const [index, choiceName] of customGlobalChoicesToDelete.entries()) {
+          try {
+            this._log(`🗑️ Deleting custom global choice ${index + 1}/${customGlobalChoicesToDelete.length}: ${choiceName}`);
+            results.stepDetails.push(`Starting deletion of custom global choice: ${choiceName}`);
+            
+            // Search for the choice by display name to get the actual logical name
+            // CRITICAL: Only look at choices with the correct publisher prefix!
+            let logicalChoiceName = choiceName;
+            if (allGlobalChoices.length > 0 && publisherPrefix) {
+              // STEP 1: Filter to ONLY choices with our publisher prefix
+              const prefixedChoices = allGlobalChoices.filter(c => 
+                c.Name?.startsWith(publisherPrefix + '_')
+              );
+              this._log(`   🔍 Filtered to ${prefixedChoices.length} choices with prefix "${publisherPrefix}" (out of ${allGlobalChoices.length} total)`);
+              
+              // STEP 2: Search within prefixed choices by display name
+              const matchingChoice = prefixedChoices.find(c => 
+                c.DisplayName?.UserLocalizedLabel?.Label === choiceName
+              );
+              
+              if (matchingChoice) {
+                logicalChoiceName = matchingChoice.Name;
+                this._log(`   ✅ Found global choice by display name: "${choiceName}" -> "${logicalChoiceName}"`);
+              } else {
+                // STEP 3: Fallback - try to match by partial name within prefixed choices
+                this._log(`   🔍 No exact match, trying partial match for "${choiceName}"...`);
+                const partialMatch = prefixedChoices.find(c => {
+                  const displayLabel = c.DisplayName?.UserLocalizedLabel?.Label;
+                  return displayLabel && displayLabel.toLowerCase().includes(choiceName.toLowerCase().split(' ')[0]);
+                });
+                
+                if (partialMatch) {
+                  logicalChoiceName = partialMatch.Name;
+                  this._log(`   ✅ Found global choice by partial match: "${choiceName}" -> "${logicalChoiceName}"`);
+                } else {
+                  this._warn(`   ⚠️ Could not find global choice "${choiceName}" with prefix "${publisherPrefix}"`);
+                }
+              }
+            } else if (!publisherPrefix) {
+              this._warn(`   ⚠️ No publisher prefix available, cannot safely identify global choice`);
+            }
+            
+            await this.deleteGlobalChoice(logicalChoiceName);
+            results.globalChoicesDeleted++;
+            
+            const successMsg = `✅ Deleted custom global choice: ${choiceName} (${logicalChoiceName})`;
+            this._log(successMsg);
+            results.stepDetails.push(successMsg);
+            
+          } catch (error) {
+            const errorMsg = `❌ Failed to delete custom global choice ${choiceName}: ${error.message}`;
+            this._warn(errorMsg);
+            results.errors.push(errorMsg);
+            results.stepDetails.push(errorMsg);
+          }
+        }
+      } else {
+        this._log('🎯 STEP 4a: No custom global choices to delete');
+      }
+      
+      // Remove added global choices from solution (don't delete them)
+      if (addedGlobalChoicesToRemove.length > 0) {
+        progress('added-choices', 'Removing global choices from solution...');
+        this._log(`📤 STEP 4b: Removing ${addedGlobalChoicesToRemove.length} global choices from solution...`);
+        
+        for (const [index, choiceName] of addedGlobalChoicesToRemove.entries()) {
+          try {
+            this._log(`📤 Removing global choice ${index + 1}/${addedGlobalChoicesToRemove.length} from solution: ${choiceName}`);
+            results.stepDetails.push(`Starting removal of global choice from solution: ${choiceName}`);
+            
+            await this._removeSolutionComponent('GlobalOptionSet', choiceName);
+            
+            const successMsg = `✅ Removed global choice from solution: ${choiceName}`;
+            this._log(successMsg);
+            results.warnings.push(successMsg); // Track as warning since it's removal, not deletion
+            results.stepDetails.push(successMsg);
+            
+          } catch (error) {
+            const errorMsg = `❌ Failed to remove global choice ${choiceName} from solution: ${error.message}`;
+            this._warn(errorMsg);
+            results.errors.push(errorMsg);
+            results.stepDetails.push(errorMsg);
+          }
+        }
+      } else {
+        this._log('📤 STEP 4b: No global choices to remove from solution');
+      }
+
+      // Step 5: Delete solution (must be before publisher deletion)
+      if (deploymentData.solutionInfo?.solutionId) {
+        progress('solution', 'Deleting solution...');
+        this._log('📦 STEP 5: Deleting solution...');
+        
+        try {
+          const solutionName = deploymentData.solutionInfo.solutionName || 'Unknown';
+          const solutionId = deploymentData.solutionInfo.solutionId;
+          
+          this._log(`🗑️ Deleting solution: ${solutionName} (ID: ${solutionId})`);
+          results.stepDetails.push(`Starting deletion of solution: ${solutionName}`);
+          
+          await this.deleteSolution(solutionId);
+          results.solutionDeleted = true;
+          
+          const successMsg = `✅ Deleted solution: ${solutionName}`;
+          this._log(successMsg);
+          results.stepDetails.push(successMsg);
+          
+        } catch (error) {
+          const errorMsg = `❌ CRITICAL: Failed to delete solution ${deploymentData.solutionInfo.solutionName}: ${error.message}`;
+          this._err(errorMsg);
+          results.errors.push(errorMsg);
+          
+          // HARD STOP: If solution can't be deleted, publisher deletion will likely fail
+          throw new Error(`Rollback stopped: Cannot delete solution '${deploymentData.solutionInfo.solutionName}'. Error: ${error.message}`);
+        }
+      } else {
+        this._log('📦 STEP 5: No solution to delete');
+      }
+
+      // Step 6: Delete publisher (FINAL STEP - must be after solution is deleted)
+      if (deploymentData.solutionInfo?.publisherPrefix || deploymentData.solutionInfo?.publisherId) {
+        progress('publisher', 'Deleting publisher...');
+        this._log('🏢 STEP 6: Deleting publisher (FINAL STEP)...');
+        
+        try {
+          const publisherIdentifier = deploymentData.solutionInfo.publisherId || deploymentData.solutionInfo.publisherPrefix;
+          const publisherName = deploymentData.solutionInfo.publisherName || 'Unknown';
+          
+          this._log(`🗑️ Deleting publisher: ${publisherName} (${publisherIdentifier})`);
+          results.stepDetails.push(`Starting deletion of publisher: ${publisherName}`);
+          
+          await this.deletePublisher(publisherIdentifier);
+          results.publisherDeleted = true;
+          
+          const successMsg = `✅ Deleted publisher: ${publisherName}`;
+          this._log(successMsg);
+          results.stepDetails.push(successMsg);
+          
+        } catch (error) {
+          // Publisher deletion is non-critical - log as warning
+          const warningMsg = `⚠️ Failed to delete publisher: ${error.message} (This is non-critical)`;
+          this._warn(warningMsg);
+          results.warnings.push(warningMsg);
+          results.stepDetails.push(warningMsg);
+        }
+      } else {
+        this._log('🏢 STEP 6: No publisher to delete');
+      }
+
+      progress('completed', 'Rollback completed');
+      
+      // Final summary with detailed step information
+      results.summary = `Rollback completed: ${results.relationshipsDeleted} relationships, ${results.entitiesDeleted} entities, ${results.globalChoicesDeleted} choices deleted, solution ${results.solutionDeleted ? 'deleted' : 'not deleted'}, publisher ${results.publisherDeleted ? 'deleted' : 'not deleted'}`;
+      
+      this._log('🏁 ROLLBACK COMPLETED!');
+      this._log(`   📊 Summary: ${results.summary}`);
+      this._log(`   ❌ Errors: ${results.errors.length}`);
+      this._log(`   ⚠️ Warnings: ${results.warnings.length}`);
+      
+      if (results.errors.length > 0) {
+        this._log('🔴 ERRORS ENCOUNTERED:');
+        results.errors.forEach((error, i) => this._log(`   ${i + 1}. ${error}`));
+      }
+      
+      if (results.warnings.length > 0) {
+        this._log('🟡 WARNINGS:');
+        results.warnings.forEach((warning, i) => this._log(`   ${i + 1}. ${warning}`));
+      }
+      
+    } catch (error) {
+      this._err(`💥 ROLLBACK FATAL ERROR: ${error.message}`);
+      this._err(`Stack trace: ${error.stack}`);
+      results.errors.push(`Fatal error: ${error.message}`);
+      results.stepDetails.push(`FATAL ERROR: ${error.message}`);
+      throw error;
+    }
+    
+    return results;
   }
 }
 

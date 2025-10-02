@@ -24,7 +24,9 @@ import {
   Accordion,
   AccordionHeader,
   AccordionItem,
-  AccordionPanel
+  AccordionPanel,
+  MessageBar,
+  MessageBarBody
 } from '@fluentui/react-components';
 import {
   HistoryRegular,
@@ -33,7 +35,12 @@ import {
   ClockRegular,
   ArrowLeftRegular,
   DismissRegular,
-  LinkRegular
+  LinkRegular,
+  ArrowUndoRegular,
+  WarningRegular,
+  ChevronDownRegular,
+  ChevronRightRegular,
+  CheckmarkCircleRegular
 } from '@fluentui/react-icons';
 import { DeploymentHistoryService } from '../../services/deploymentHistoryService';
 import { ApiService } from '../../services/apiService';
@@ -143,9 +150,33 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const [selectedDeployment, setSelectedDeployment] = useState<DeploymentSummary | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [solutionUrl, setSolutionUrl] = useState<string | null>(null);
+  
+  // Rollback state
+  const [showRollbackModal, setShowRollbackModal] = useState(false);
+  const [rollbackDeployment, setRollbackDeployment] = useState<DeploymentSummary | null>(null);
+  const [rollbackLoading, setRollbackLoading] = useState(false);
+  const [rollbackProgress, setRollbackProgress] = useState<string>('');
+  const [rollbackCandidate, setRollbackCandidate] = useState<{
+    canRollback: boolean;
+    reason?: string;
+    deploymentInfo?: any;
+  } | null>(null);
+  
+  // Expandable row state for rollback details
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // Environment ID for solution history links
+  const [environmentId, setEnvironmentId] = useState<string>('');
 
   useEffect(() => {
     loadDeploymentHistory();
+    
+    // Fetch environment ID once for solution history links
+    ApiService.getConfig().then(config => {
+      setEnvironmentId(config.powerPlatformEnvironmentId);
+    }).catch(err => {
+      console.error('Failed to get environment ID:', err);
+    });
   }, []);
 
   const loadDeploymentHistory = async () => {
@@ -165,8 +196,21 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       });
       
       if (response.success) {
-        setDeployments(response.deployments);
-        console.log('🔧 DEBUG: Set deployments state:', response.deployments);
+        // Filter out rollback records - only show original deployments
+        const originalDeployments = response.deployments.filter((deployment: DeploymentSummary) => {
+          const isRollbackRecord = deployment.summary?.operationType === 'rollback' || 
+                                   deployment.metadata?.deploymentMethod === 'rollback';
+          return !isRollbackRecord;
+        });
+        
+        console.log('🔧 DEBUG: Filtered deployments:', {
+          totalCount: response.deployments.length,
+          originalCount: originalDeployments.length,
+          filteredOutCount: response.deployments.length - originalDeployments.length
+        });
+        
+        setDeployments(originalDeployments);
+        console.log('🔧 DEBUG: Set deployments state (excluding rollback records):', originalDeployments);
       } else {
         setError('Failed to load deployment history');
         console.log('🔧 DEBUG: API returned success=false');
@@ -177,6 +221,18 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const toggleRowExpansion = (deploymentId: string) => {
+    setExpandedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(deploymentId)) {
+        newSet.delete(deploymentId);
+      } else {
+        newSet.add(deploymentId);
+      }
+      return newSet;
+    });
   };
 
   const formatDate = (timestamp: string) => {
@@ -195,6 +251,8 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         return <ErrorCircleRegular style={{ color: 'var(--color-error)' }} />;
       case 'pending':
         return <ClockRegular style={{ color: 'var(--color-warning)' }} />;
+      case 'rolled-back':
+        return null; // No icon - text is sufficient
       default:
         return <ClockRegular />;
     }
@@ -208,6 +266,8 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         return 'danger' as const;
       case 'pending':
         return 'warning' as const;
+      case 'rolled-back':
+        return 'informative' as const;
       default:
         return 'subtle' as const;
     }
@@ -219,8 +279,18 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       setSelectedDeployment(deployment);
       setShowDetailsModal(true);
       
-      // Generate solution URL if solution ID exists
-      if (deployment.solutionInfo?.solutionId) {
+      // For rolled-back deployments, show solution history instead of specific solution
+      if (deployment.status === 'rolled-back') {
+        try {
+          const config = await ApiService.getConfig();
+          const historyUrl = `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutionsHistory`;
+          setSolutionUrl(historyUrl);
+        } catch (error) {
+          console.error('Failed to generate solution history URL:', error);
+          setSolutionUrl(null);
+        }
+      } else if (deployment.solutionInfo?.solutionId) {
+        // For active deployments, show the specific solution
         try {
           const url = await generateSolutionUrl(deployment.solutionInfo.solutionId);
           setSolutionUrl(url);
@@ -232,6 +302,123 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         setSolutionUrl(null);
       }
     }
+  };
+
+  // Rollback functionality
+  const handleRollbackClick = async (event: React.MouseEvent, deployment: DeploymentSummary) => {
+    event.stopPropagation(); // Prevent triggering row click (view details)
+    
+    try {
+      // Check if rollback is possible
+      const response = await fetch(`/api/rollback/${deployment.deploymentId}/can-rollback`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setRollbackCandidate(result.data);
+        setRollbackDeployment(deployment);
+        setShowRollbackModal(true);
+      } else {
+        alert(`Cannot rollback: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error checking rollback capability:', error);
+      alert('Error checking rollback capability. Please try again.');
+    }
+  };
+
+  const executeRollback = async () => {
+    if (!rollbackDeployment) return;
+    
+    setRollbackLoading(true);
+    setRollbackProgress('Initializing rollback...');
+    
+    try {
+      const response = await fetch(`/api/rollback/${rollbackDeployment.deploymentId}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({ confirm: true })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Handle Server-Sent Events for progress updates
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                // Update progress message based on stage
+                if (data.stage === 'relationships') {
+                  setRollbackProgress('Deleting relationships...');
+                } else if (data.stage === 'custom-entities') {
+                  setRollbackProgress('Deleting custom entities...');
+                } else if (data.stage === 'cdm-entities') {
+                  setRollbackProgress('Removing CDM entities from solution...');
+                } else if (data.stage === 'custom-choices') {
+                  setRollbackProgress('Deleting custom global choices...');
+                } else if (data.stage === 'added-choices') {
+                  setRollbackProgress('Removing global choices from solution...');
+                } else if (data.stage === 'solution') {
+                  setRollbackProgress('Deleting solution...');
+                } else if (data.stage === 'publisher') {
+                  setRollbackProgress('Deleting publisher...');
+                } else if (data.message) {
+                  setRollbackProgress(data.message);
+                }
+                
+                if (data.status === 'completed') {
+                  setRollbackProgress('Rollback completed successfully!');
+                  setTimeout(() => {
+                    setShowRollbackModal(false);
+                    setRollbackLoading(false);
+                    loadDeploymentHistory(); // Refresh the list
+                  }, 1500);
+                  return;
+                } else if (data.status === 'error') {
+                  throw new Error(data.message);
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError);
+              }
+            }
+          }
+        }
+        
+        // If we exit the loop without seeing 'completed', ensure we stop loading
+        setRollbackProgress('Rollback completed!');
+        setTimeout(() => {
+          setShowRollbackModal(false);
+          setRollbackLoading(false);
+          loadDeploymentHistory();
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Rollback failed:', error);
+      setRollbackProgress(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTimeout(() => {
+        setRollbackLoading(false);
+      }, 3000);
+    }
+  };
+
+  const canShowRollbackButton = (deployment: DeploymentSummary) => {
+    return deployment.status === 'success' && deployment.rollbackData;
   };
 
   if (loading) {
@@ -432,54 +619,240 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                 <TableHeaderCell style={{ fontWeight: 'bold' }}>Publisher</TableHeaderCell>
                 <TableHeaderCell style={{ fontWeight: 'bold' }}>Date</TableHeaderCell>
                 <TableHeaderCell style={{ fontWeight: 'bold' }}>Tables</TableHeaderCell>
+                <TableHeaderCell style={{ fontWeight: 'bold' }}>Actions</TableHeaderCell>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {deployments.map((deployment, index) => (
-                <TableRow 
-                  key={deployment.deploymentId}
-                  onClick={() => handleViewDetails(deployment.deploymentId)}
-                  className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <TableCell>
-                    <TableCellLayout>
-                      {getStatusIcon(deployment.status)}
-                      <Badge 
-                        appearance="tint" 
-                        color={getStatusColor(deployment.status)}
-                        className={styles.statusBadge}
-                      >
-                        {deployment.status}
-                      </Badge>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
-                      <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
-                      <Text>{deployment.solutionInfo?.publisherName || 'N/A'}</Text>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
-                      <CalendarLtrRegular style={{ marginRight: '4px' }} />
-                      <Text>{formatDate(deployment.timestamp)}</Text>
-                    </TableCellLayout>
-                  </TableCell>
-                  <TableCell>
-                    <TableCellLayout>
-                      <Text weight="semibold">{deployment.summary?.totalEntities || 0}</Text>
-                      <Text size={200} style={{ marginLeft: '4px', opacity: 0.7 }}>
-                        ({deployment.summary?.cdmEntities || 0} CDM, {deployment.summary?.customEntities || 0} custom)
-                      </Text>
-                    </TableCellLayout>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {deployments.map((deployment, index) => {
+                const isExpanded = expandedRows.has(deployment.deploymentId);
+                const hasRollbackInfo = deployment.status === 'rolled-back' && deployment.rollbackInfo;
+                
+                return (
+                  <React.Fragment key={deployment.deploymentId}>
+                    <TableRow 
+                      className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
+                          {hasRollbackInfo && (
+                            <Button
+                              appearance="transparent"
+                              size="small"
+                              icon={isExpanded ? <ChevronDownRegular /> : <ChevronRightRegular />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleRowExpansion(deployment.deploymentId);
+                              }}
+                              style={{ minWidth: '24px', padding: '0 4px' }}
+                            />
+                          )}
+                          {getStatusIcon(deployment.status)}
+                          <Badge 
+                            appearance="tint" 
+                            color={getStatusColor(deployment.status)}
+                            className={styles.statusBadge}
+                          >
+                            {deployment.status}
+                          </Badge>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
+                          <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
+                          <Text>{deployment.solutionInfo?.publisherName || 'N/A'}</Text>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
+                          <CalendarLtrRegular style={{ marginRight: '4px' }} />
+                          <Text>{formatDate(deployment.timestamp)}</Text>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
+                          <Text weight="semibold">{deployment.summary?.totalEntities || 0}</Text>
+                          <Text size={200} style={{ marginLeft: '4px', opacity: 0.7 }}>
+                            ({deployment.summary?.cdmEntities || 0} CDM, {deployment.summary?.customEntities || 0} custom)
+                          </Text>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell>
+                        <TableCellLayout>
+                          {canShowRollbackButton(deployment) && (
+                            <Button
+                              appearance="subtle"
+                              size="small"
+                              icon={<ArrowUndoRegular />}
+                              onClick={(e) => handleRollbackClick(e, deployment)}
+                              title="Rollback this deployment"
+                              style={{ color: tokens.colorPaletteRedForeground1 }}
+                            >
+                              Rollback
+                            </Button>
+                          )}
+                        </TableCellLayout>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {/* Expandable Rollback Details Row */}
+                    {hasRollbackInfo && isExpanded && deployment.rollbackInfo && (
+                      <TableRow className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}>
+                        <TableCell colSpan={6} style={{ padding: '16px 32px', backgroundColor: tokens.colorNeutralBackground3 }}>
+                          {(() => {
+                            const rollbackInfo = deployment.rollbackInfo!;
+                            const results = rollbackInfo.rollbackResults;
+                            
+                            return (
+                              <div style={{ 
+                                border: `1px solid ${tokens.colorNeutralStroke1}`, 
+                                borderRadius: '8px', 
+                                padding: '16px',
+                                backgroundColor: tokens.colorNeutralBackground1
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                                  <ArrowUndoRegular style={{ marginRight: '8px', color: tokens.colorPaletteRedForeground1 }} />
+                                  <Text weight="semibold" size={400}>Rollback Details</Text>
+                                </div>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Rolled back at:</Text>
+                                    <div>
+                                      <CalendarLtrRegular style={{ marginRight: '4px', fontSize: '14px' }} />
+                                      <Text weight="semibold">{formatDate(rollbackInfo.rollbackTimestamp)}</Text>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Solution History:</Text>
+                                    <div>
+                                      {environmentId ? (
+                                        <a
+                                          href={`https://make.powerapps.com/environments/${environmentId}/solutionsHistory`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            color: tokens.colorBrandForeground1,
+                                            textDecoration: 'none',
+                                            fontSize: '14px'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.textDecoration = 'underline';
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.textDecoration = 'none';
+                                          }}
+                                        >
+                                          <LinkRegular style={{ fontSize: '12px' }} />
+                                          View in Power Platform
+                                        </a>
+                                      ) : (
+                                        <Text size={200} style={{ opacity: 0.5 }}>Loading...</Text>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {results && (
+                                <>
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Relationships deleted:</Text>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                      <Text weight="semibold">{results.relationshipsDeleted || 0}</Text>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Tables deleted:</Text>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                      <Text weight="semibold">{results.entitiesDeleted || 0}</Text>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Global choices deleted:</Text>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                      <Text weight="semibold">{results.globalChoicesDeleted || 0}</Text>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <Text size={200} style={{ opacity: 0.7 }}>Solution deleted:</Text>
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                      {results.solutionDeleted ? (
+                                        <>
+                                          <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                          <Text weight="semibold">Yes</Text>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ErrorCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteRedForeground1, fontSize: '14px' }} />
+                                          <Text weight="semibold">No</Text>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {results.publisherDeleted !== undefined && (
+                                    <div>
+                                      <Text size={200} style={{ opacity: 0.7 }}>Publisher deleted:</Text>
+                                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                                        {results.publisherDeleted ? (
+                                          <>
+                                            <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                            <Text weight="semibold">Yes</Text>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <WarningRegular style={{ marginRight: '4px', color: tokens.colorPaletteYellowForeground1, fontSize: '14px' }} />
+                                            <Text weight="semibold">No</Text>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {results.errors && results.errors.length > 0 && (
+                                    <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                                      <Text size={200} style={{ opacity: 0.7, display: 'block', marginBottom: '4px' }}>Errors ({results.errors.length}):</Text>
+                                      <div style={{ 
+                                        backgroundColor: tokens.colorPaletteRedBackground3, 
+                                        padding: '8px', 
+                                        borderRadius: '4px',
+                                        maxHeight: '100px',
+                                        overflowY: 'auto'
+                                      }}>
+                                        {results.errors.map((error: string, idx: number) => (
+                                          <div key={idx} style={{ display: 'flex', alignItems: 'start', marginBottom: '4px' }}>
+                                            <ErrorCircleRegular style={{ marginRight: '4px', marginTop: '2px', flexShrink: 0, fontSize: '12px' }} />
+                                            <Text size={200}>{error}</Text>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
+              );
+            })}
             </TableBody>
           </Table>
         </div>
@@ -521,9 +894,11 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                         <strong>Publisher:</strong>
                         <span>{selectedDeployment.solutionInfo?.publisherName || 'N/A'}</span>
                         
-                        {selectedDeployment.solutionInfo?.solutionId && solutionUrl && (
+                        {solutionUrl && (
                           <>
-                            <strong>Solution Link:</strong>
+                            <strong>
+                              {selectedDeployment.status === 'rolled-back' ? 'Solution History:' : 'Solution Link:'}
+                            </strong>
                             <div>
                               <a 
                                 href={solutionUrl}
@@ -544,7 +919,9 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                 }}
                               >
                                 <LinkRegular style={{ fontSize: '14px' }} />
-                                Open in Power Platform
+                                {selectedDeployment.status === 'rolled-back' 
+                                  ? 'View Solution History' 
+                                  : 'Open in Power Platform'}
                               </a>
                             </div>
                           </>
@@ -723,6 +1100,128 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                     </AccordionPanel>
                   </AccordionItem>
                 </Accordion>
+              </DialogBody>
+            </DialogContent>
+          </DialogSurface>
+        </Dialog>
+      )}
+
+      {/* Rollback Confirmation Modal */}
+      {showRollbackModal && rollbackDeployment && rollbackCandidate && (
+        <Dialog 
+          open={showRollbackModal}
+          onOpenChange={(_, data) => setShowRollbackModal(data.open)}
+        >
+          <DialogSurface style={{ maxWidth: '600px' }}>
+            <DialogTitle>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <WarningRegular style={{ color: tokens.colorPaletteRedForeground1 }} />
+                  Confirm Rollback
+                </span>
+                <Button
+                  appearance="subtle"
+                  icon={<DismissRegular />}
+                  onClick={() => setShowRollbackModal(false)}
+                  disabled={rollbackLoading}
+                />
+              </div>
+            </DialogTitle>
+            <DialogContent>
+              <DialogBody>
+                {rollbackCandidate.canRollback ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <MessageBar intent="warning" style={{ width: '100%' }}>
+                      <MessageBarBody>
+                        <Text weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>
+                          Warning: This action cannot be undone
+                        </Text>
+                        <Text size={300}>
+                          This will permanently delete the following components from your Dataverse environment:
+                        </Text>
+                      </MessageBarBody>
+                    </MessageBar>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <Text weight="semibold">Solution:</Text>
+                        <Text style={{ marginLeft: '8px' }}>{rollbackDeployment.solutionInfo?.solutionName}</Text>
+                      </div>
+                      
+                      {rollbackCandidate.deploymentInfo && (
+                        <>
+                          <div>
+                            <Text weight="semibold">Custom Entities:</Text>
+                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.entitiesCount || 0} entities will be deleted</Text>
+                          </div>
+                          
+                          <div>
+                            <Text weight="semibold">Relationships:</Text>
+                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.relationshipsCount || 0} relationships will be deleted</Text>
+                          </div>
+                          
+                          <div>
+                            <Text weight="semibold">Global Choices:</Text>
+                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.globalChoicesCount || 0} global choices will be deleted</Text>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {rollbackLoading ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px' }}>
+                        <Spinner size="large" />
+                        <MessageBar intent="info" style={{ width: '100%' }}>
+                          <MessageBarBody>
+                            <Text weight="semibold">{rollbackProgress}</Text>
+                          </MessageBarBody>
+                        </MessageBar>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                        <Button 
+                          appearance="subtle" 
+                          onClick={() => setShowRollbackModal(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          appearance="primary"
+                          onClick={executeRollback}
+                          style={{ backgroundColor: tokens.colorPaletteRedBackground3 }}
+                        >
+                          <ArrowUndoRegular style={{ marginRight: '4px' }} />
+                          Confirm Rollback
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ 
+                      padding: '16px', 
+                      backgroundColor: tokens.colorPaletteRedBackground1,
+                      borderRadius: tokens.borderRadiusMedium,
+                      border: `1px solid ${tokens.colorPaletteRedBorder1}`
+                    }}>
+                      <Text weight="semibold" style={{ color: tokens.colorPaletteRedForeground1 }}>
+                        Rollback Not Available
+                      </Text>
+                      <Text size={300} style={{ display: 'block', marginTop: '8px' }}>
+                        {rollbackCandidate.reason}
+                      </Text>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button 
+                        appearance="primary" 
+                        onClick={() => setShowRollbackModal(false)}
+                      >
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </DialogBody>
             </DialogContent>
           </DialogSurface>

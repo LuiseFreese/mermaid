@@ -57,6 +57,8 @@ class DeploymentHistoryService extends BaseService {
                     publisherName: deploymentData.publisherName,
                     version: deploymentData.version
                 },
+                // Add rollback data for undo functionality
+                rollbackData: deploymentData.rollbackData || null,
                 metadata: deploymentData.metadata || {
                     userAgent: deploymentData.userAgent,
                     deploymentMethod: 'web-ui',
@@ -97,6 +99,7 @@ class DeploymentHistoryService extends BaseService {
             if (updateData.logs) record.deploymentLogs = [...record.deploymentLogs, ...updateData.logs];
             if (updateData.error) record.error = updateData.error;
             if (updateData.summary) record.summary = { ...record.summary, ...updateData.summary };
+            if (updateData.rollbackInfo) record.rollbackInfo = updateData.rollbackInfo;
 
             // Update completion timestamp
             if (updateData.status === 'success' || updateData.status === 'failed') {

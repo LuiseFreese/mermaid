@@ -30,6 +30,7 @@ const { WizardController } = require('./controllers/wizard-controller');
 const ValidationController = require('./controllers/validation-controller');
 const DeploymentController = require('./controllers/deployment-controller');
 const { AdminController } = require('./controllers/admin-controller');
+const RollbackController = require('./controllers/rollback-controller');
 
 // Services
 const { ValidationService } = require('./services/validation-service');
@@ -38,6 +39,7 @@ const { DeploymentHistoryService } = require('./services/deployment-history-serv
 const { PublisherService } = require('./services/publisher-service');
 const { GlobalChoicesService } = require('./services/global-choices-service');
 const { SolutionService } = require('./services/solution-service');
+const { RollbackService } = require('./services/rollback-service');
 
 // Repositories
 const { DataverseRepository } = require('./repositories/dataverse-repository');
@@ -139,6 +141,12 @@ async function initializeComponents() {
       logger: console
     });
 
+    const rollbackService = new RollbackService({
+      dataverseRepository: dataverseRepo,
+      deploymentHistoryService,
+      logger: console
+    });
+
     // Initialize middleware
     const requestLogger = new RequestLoggerMiddleware({
       logger: console,
@@ -182,6 +190,8 @@ async function initializeComponents() {
       solutionService
     );
 
+    const rollbackController = new RollbackController(rollbackService);
+
     appComponents = {
       // Repositories
       configRepo,
@@ -190,6 +200,7 @@ async function initializeComponents() {
       // Services
       validationService,
       deploymentService,
+      rollbackService,
       globalChoicesService,
       publisherService,
       solutionService,
@@ -205,6 +216,7 @@ async function initializeComponents() {
       wizardController,
       validationController,
       deploymentController,
+      rollbackController,
       adminController
     };
 
@@ -633,6 +645,50 @@ async function handleApiRoutes(pathname, req, res, components) {
     if (deploymentsRoute.endsWith('/details')) {
       if (req.method === 'GET') {
         return components.deploymentController.getDeploymentDetails(req, res);
+      }
+    }
+  }
+
+  // Rollback routes
+  if (route.startsWith('rollback/')) {
+    const rollbackRoute = route.replace('rollback/', '');
+    
+    // Handle /api/rollback/{deploymentId}/can-rollback
+    if (rollbackRoute.endsWith('/can-rollback')) {
+      if (req.method === 'GET') {
+        const deploymentId = rollbackRoute.replace('/can-rollback', '');
+        return components.rollbackController.checkRollbackCapability(req, res, deploymentId);
+      }
+    }
+    
+    // Handle /api/rollback/{deploymentId}/execute
+    if (rollbackRoute.endsWith('/execute')) {
+      if (req.method === 'POST') {
+        const deploymentId = rollbackRoute.replace('/execute', '');
+        return components.rollbackController.executeRollback(req, res, deploymentId);
+      }
+    }
+    
+    // Handle /api/rollback/{rollbackId}/status
+    if (rollbackRoute.endsWith('/status')) {
+      if (req.method === 'GET') {
+        const rollbackId = rollbackRoute.replace('/status', '');
+        return components.rollbackController.getRollbackStatus(req, res, rollbackId);
+      }
+    }
+    
+    // Handle /api/rollback/history/{deploymentId}
+    if (rollbackRoute.startsWith('history/')) {
+      if (req.method === 'GET') {
+        const deploymentId = rollbackRoute.replace('history/', '');
+        return components.rollbackController.getRollbackHistory(req, res, deploymentId);
+      }
+    }
+    
+    // Handle /api/rollback/active
+    if (rollbackRoute === 'active') {
+      if (req.method === 'GET') {
+        return components.rollbackController.getActiveRollbacks(req, res);
       }
     }
   }
