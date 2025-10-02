@@ -65,13 +65,13 @@ The application automatically validates Mermaid ERD files and provides one-click
 ## 🔧 Auto-Fix Behaviors
 
 ### Entity Fixes
-- **Missing Primary Key**: Adds `string id PK` as primary key
+- **Missing Primary Key**: Adds `string id PK` as a primary key
 - **Multiple Primary Keys**: Keeps first PK, removes others
 - **Duplicate Columns**: Merges duplicates, preserving constraints and descriptions
 - **Invalid Names**: Sanitizes names to follow Dataverse conventions
 
 ### Relationship Fixes
-- **Missing Entity**: Creates missing entity with basic structure
+- **Missing Entity**: Creates a missing entity with basic structure
 - **Missing Foreign Key**: Adds proper FK attribute to entity
 - **Foreign Key Naming**: Renames FK to follow `{entity}_id` convention
 - **Many-to-Many**: Creates junction table with proper relationships
@@ -80,8 +80,8 @@ The application automatically validates Mermaid ERD files and provides one-click
 
 ### Dataverse Fixes
 - **Status Columns**: Removes status columns (Dataverse uses built-in status)
-- **Choice Columns**: Converts to string type for valid Mermaid rendering
-- **System Conflicts**: Renames conflicting attributes with prefix
+- **Choice Columns**: Converts to a string type for valid Mermaid rendering
+- **System Conflicts**: Renames conflicting attributes with a prefix
 
 ### Naming Fixes
 - **Invalid Characters**: Removes/replaces invalid characters
@@ -97,7 +97,7 @@ The application automatically validates Mermaid ERD files and provides one-click
 - Fix buttons appear for auto-fixable issues
 
 ### One-Click Fixes
-- Click "Fix this" button on any warning
+- Click the "Fix this" button on any warning
 - Fix applied automatically
 - Warning disappears on success
 - ERD content updated in real-time
