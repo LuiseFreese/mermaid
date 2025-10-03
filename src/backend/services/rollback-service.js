@@ -23,12 +23,95 @@ class RollbackService extends BaseService {
     }
 
     /**
+     * Validate rollback configuration against dependency rules
+     * @param {Object} options - Rollback options
+     * @param {Object} rollbackData - Current deployment rollback data
+     * @returns {Object} Validation result with errors and warnings
+     */
+    validateRollbackConfiguration(options, rollbackData) {
+        const errors = [];
+        const warnings = [];
+
+        // Ensure options has all required properties with defaults
+        const config = {
+            relationships: options.relationships !== undefined ? options.relationships : true,
+            customEntities: options.customEntities !== undefined ? options.customEntities : true,
+            cdmEntities: options.cdmEntities !== undefined ? options.cdmEntities : true,
+            globalChoices: options.globalChoices !== undefined ? options.globalChoices : true,
+            solution: options.solution !== undefined ? options.solution : true,
+            publisher: options.publisher !== undefined ? options.publisher : true
+        };
+
+        // Rule 1: Cannot delete custom tables without deleting relationships first
+        if (config.customEntities && !config.relationships) {
+            const relationshipCount = rollbackData.relationships?.length || 0;
+            if (relationshipCount > 0) {
+                errors.push(
+                    `Cannot delete custom tables without deleting relationships first. ` +
+                    `Found ${relationshipCount} relationship(s) that must be deleted.`
+                );
+            }
+        }
+
+        // Rule 2: Cannot delete solution if entities still exist
+        if (config.solution) {
+            const hasCustomEntities = !config.customEntities && 
+                                     rollbackData.customEntities?.length > 0;
+            const hasCdmEntities = !config.cdmEntities && 
+                                  rollbackData.cdmEntities?.length > 0;
+            
+            if (hasCustomEntities || hasCdmEntities) {
+                const entityTypes = [];
+                if (hasCustomEntities) entityTypes.push('custom entities');
+                if (hasCdmEntities) entityTypes.push('CDM entities');
+                
+                errors.push(
+                    `Cannot delete solution while it contains ${entityTypes.join(' and ')}. ` +
+                    `All entities must be removed first.`
+                );
+            }
+        }
+
+        // Rule 3: Cannot delete publisher if solution still exists
+        if (config.publisher && !config.solution) {
+            if (rollbackData.solutionName) {
+                errors.push(
+                    `Cannot delete publisher without deleting solution first. ` +
+                    `Solution "${rollbackData.solutionName}" must be deleted.`
+                );
+            }
+        }
+
+        // Rule 4: Global choices may be referenced by entities (warning only)
+        if (config.globalChoices && (!config.customEntities || !config.cdmEntities)) {
+            warnings.push(
+                'Deleting global choices while entities still exist may cause references to break. ' +
+                'Consider removing all entities first.'
+            );
+        }
+
+        // Check if at least one component is selected
+        const hasSelection = Object.values(config).some(v => v === true);
+        if (!hasSelection) {
+            errors.push('At least one component must be selected for rollback');
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors,
+            warnings,
+            config
+        };
+    }
+
+    /**
      * Execute rollback of a deployment
      * @param {string} deploymentId - Deployment ID to rollback
      * @param {Function} progressCallback - Progress update callback
+     * @param {Object} rollbackOptions - Optional granular rollback options
      * @returns {Promise<Object>} Rollback result
      */
-    async rollbackDeployment(deploymentId, progressCallback) {
+    async rollbackDeployment(deploymentId, progressCallback, rollbackOptions = {}) {
         const rollbackId = this.generateRollbackId();
         
         // Start performance monitoring
@@ -73,6 +156,34 @@ class RollbackService extends BaseService {
             }
             console.log(`✅ ROLLBACK SERVICE: Validation passed`);
 
+            // Validate rollback configuration options
+            console.log(`🔍 ROLLBACK SERVICE: Validating rollback configuration...`);
+            const validation = this.validateRollbackConfiguration(
+                rollbackOptions.options || {
+                    relationships: true,
+                    customEntities: true,
+                    cdmEntities: true,
+                    globalChoices: true,
+                    solution: true,
+                    publisher: true
+                },
+                deployment.rollbackData
+            );
+
+            if (!validation.valid) {
+                const errorMessage = `Invalid rollback configuration: ${validation.errors.join('; ')}`;
+                console.error(`❌ ROLLBACK SERVICE: ${errorMessage}`);
+                throw new Error(errorMessage);
+            }
+
+            // Log warnings if any
+            if (validation.warnings.length > 0) {
+                console.warn(`⚠️ ROLLBACK SERVICE: Warnings: ${validation.warnings.join('; ')}`);
+            }
+
+            console.log(`✅ ROLLBACK SERVICE: Configuration validated`);
+            console.log(`📋 ROLLBACK SERVICE: Using options:`, validation.config);
+
             progress('validating', 'Validating rollback requirements...');
             
             // Step 2: Validate rollback preconditions
@@ -86,13 +197,14 @@ class RollbackService extends BaseService {
             
             this.updateRollbackStatus(rollbackId, 'executing');
             
-            console.log(`🔗 ROLLBACK SERVICE: About to call dataverse rollback...`);
+            console.log(`🔗 ROLLBACK SERVICE: About to call dataverse rollback with options...`);
             const rollbackResponse = await this.dataverseRepository.rollbackDeployment(
                 deployment, 
                 (status, message) => {
                     console.log(`📊 ROLLBACK PROGRESS: ${status} - ${message}`);
                     progress(status, message);
-                }
+                },
+                validation.config  // Pass validated configuration to repository
             );
             console.log(`✅ ROLLBACK SERVICE: Dataverse rollback completed!`);
 

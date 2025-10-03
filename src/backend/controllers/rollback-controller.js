@@ -58,9 +58,10 @@ class RollbackController {
             }
         }
         
-        const { confirm } = body;
+        const { confirm, options } = body;
         console.log('🎯 ROLLBACK CONTROLLER: Parsed body =', JSON.stringify(body));
         console.log('🎯 ROLLBACK CONTROLLER: confirm value =', confirm, 'type:', typeof confirm);
+        console.log('🎯 ROLLBACK CONTROLLER: options value =', JSON.stringify(options));
 
         // Require explicit confirmation
         if (!confirm) {
@@ -79,8 +80,12 @@ class RollbackController {
                 return this.sendError(res, 400, capability.reason);
             }
 
-            console.log('🎯 ROLLBACK CONTROLLER: Starting rollback service call...');
-            const result = await this.rollbackService.rollbackDeployment(deploymentId);
+            console.log('🎯 ROLLBACK CONTROLLER: Starting rollback service call with options...');
+            const result = await this.rollbackService.rollbackDeployment(
+                deploymentId,
+                null,  // No progress callback in controller (using JSON response, not SSE)
+                { options }  // Pass rollback options
+            );
             console.log('🎯 ROLLBACK CONTROLLER: Rollback service call completed!');
             
             const response = {
