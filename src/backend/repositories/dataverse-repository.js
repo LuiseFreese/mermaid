@@ -466,13 +466,13 @@ class DataverseRepository extends BaseRepository {
      * Rollback a deployment
      * @param {Object} deploymentData - Deployment data containing entities, relationships, etc.
      * @param {Function} progressCallback - Optional callback for progress updates
-     * @param {Object} config - Optional Dataverse configuration
+     * @param {Object} config - Rollback configuration (granular options)
      * @returns {Promise<Object>} Rollback result
      */
     async rollbackDeployment(deploymentData, progressCallback = null, config = null) {
         return this.executeOperation('rollbackDeployment', async () => {
-            const client = await this.getClient(config);
-            const result = await client.rollbackDeployment(deploymentData, progressCallback);
+            const client = await this.getClient();
+            const result = await client.rollbackDeployment(deploymentData, progressCallback, config);
             
             // The rollback client returns a results object with detailed information
             // Consider it successful if there are no fatal errors (errors array can have non-fatal warnings)

@@ -80,6 +80,7 @@ class RollbackController {
                 return this.sendError(res, 400, capability.reason);
             }
 
+            console.log('🎯 ROLLBACK CONTROLLER: Received options from request:', JSON.stringify(options, null, 2));
             console.log('🎯 ROLLBACK CONTROLLER: Starting rollback service call with options...');
             const result = await this.rollbackService.rollbackDeployment(
                 deploymentId,

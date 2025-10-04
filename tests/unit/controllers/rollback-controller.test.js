@@ -189,7 +189,7 @@ describe('RollbackController', () => {
 
       await controller.executeRollback(req, res, 'deploy_12345_test');
 
-      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test');
+      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test', null, expect.any(Object));
       expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
         'Content-Type': 'application/json'
       }));
@@ -393,7 +393,7 @@ describe('RollbackController', () => {
 
       // Verify complete flow executed
       expect(mockService.canRollback).toHaveBeenCalledWith('deploy_12345_test');
-      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test');
+      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test', null, expect.any(Object));
       expect(res.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
       expect(res.end).toHaveBeenCalled();
       
