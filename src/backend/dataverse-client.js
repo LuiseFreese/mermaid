@@ -477,48 +477,19 @@ class DataverseClient {
   }
 
   async createSolution(uniqueName, friendlyName, { publisherId, description } = {}) {
-    // Debug logging to see what parameters we're receiving
-    console.log('🔧 DEBUG: createSolution parameters:', {
-      uniqueName: {
-        value: uniqueName,
-        type: typeof uniqueName,
-        isString: typeof uniqueName === 'string'
-      },
-      friendlyName: {
-        value: friendlyName,
-        type: typeof friendlyName,
-        isString: typeof friendlyName === 'string'
-      },
-      publisherId: {
-        value: publisherId,
-        type: typeof publisherId,
-        isString: typeof publisherId === 'string'
-      },
-      description: {
-        value: description,
-        type: typeof description,
-        isString: typeof description === 'string'
-      }
-    });
-
     const payload = {
-      uniquename: String(uniqueName), // Ensure it's a string
-      friendlyname: String(friendlyName || uniqueName), // Ensure it's a string
-      description: String(description || `Solution created by Mermaid to Dataverse Converter`) // Ensure it's a string
+      uniquename: String(uniqueName),
+      friendlyname: String(friendlyName || uniqueName),
+      description: String(description || `Solution created by Mermaid to Dataverse Converter`)
     };
     
     // Include publisher reference - try both methods
     if (publisherId) {
       // Method 1: OData binding (preferred)
       payload['publisherid@odata.bind'] = `/publishers(${publisherId})`;
-      
-      // Method 2: Direct reference (fallback)
-      // payload['_publisherid_value'] = publisherId;
     } else {
-      console.log('🚨 WARNING: No publisherId provided to createSolution!');
+      this._warn('No publisherId provided to createSolution');
     }
-    
-    console.log('🔧 DEBUG: createSolution final payload:', JSON.stringify(payload, null, 2));
     
     this._log(' POST', `${this.baseUrl}/api/data/v9.2/solutions`);
     const res = await this._req('post', '/solutions', payload);
@@ -1201,12 +1172,10 @@ class DataverseClient {
     key = key.toLowerCase();
     
     // Debug logging
-    console.log(`❗ ENTITY RESOLUTION DEBUG: '${name}' → '${key}', cdmMap has ${Object.keys(cdmMap || {}).length} entries: [${Object.keys(cdmMap || {}).join(', ')}]`);
     
     // Check if this is a CDM entity (from the map)
     const cdm = cdmMap?.[key];
     if (cdm) {
-      console.log(`❗ FOUND CDM IN MAP: ${key} → ${cdm}`);
       this._log(` 🔍 Resolved CDM entity: ${key} → ${cdm}`);
       return cdm;
     }
@@ -1226,11 +1195,9 @@ class DataverseClient {
     };
     
     if (commonCdmEntities[key]) {
-      console.log(`❗ FALLBACK CDM MATCH: ${key} → ${commonCdmEntities[key]}`);
       return commonCdmEntities[key];
     }
     
-    console.log(`❗ NO CDM MATCH, USING CUSTOM: ${key} → ${publisherPrefix}_${key}`);
     
     // If not CDM, it's a custom entity - apply prefix
     const customLogicalName = `${publisherPrefix}_${key}`;
@@ -1280,14 +1247,11 @@ class DataverseClient {
 
     // Build a map of UI name → CDM logical name
     const cdmMap = {};
-    console.log(`❗ CDM MAP BUILDING: Starting with ${cdmEntities.length} CDM entities`);
     for (const m of cdmEntities) {
       const uiName = m?.originalEntity?.name;
       const logical = m?.cdmEntity?.logicalName;
-      console.log(`❗ CDM ENTITY: UI='${uiName}', Logical='${logical}'`);
       if (uiName && logical) cdmMap[uiName.toLowerCase()] = logical.toLowerCase();
     }
-    console.log(`❗ FINAL CDM MAP: ${JSON.stringify(cdmMap)}`);
 
     // Wait longer for entities to be fully provisioned
     this._log(' Ensuring entities are fully provisioned before creating relationships...');
@@ -1740,7 +1704,6 @@ class DataverseClient {
 
   async addGlobalChoicesToSolution(selectedChoices, solutionUniqueName) {
     console.log(`🎨 Adding ${selectedChoices.length} existing global choices to solution: ${solutionUniqueName}`);
-    console.log('🔍 DEBUG: selectedChoices format:', JSON.stringify(selectedChoices, null, 2));
     
     let added = 0;
     let failed = 0;
@@ -1751,7 +1714,6 @@ class DataverseClient {
       try {
         // Extract the choice name - handle both string and object formats
         choiceName = typeof choice === 'string' ? choice : (choice.name || choice.value || choice);
-        console.log(`🔍 DEBUG: Processing choice:`, { originalChoice: choice, extractedName: choiceName });
         
         // Get the MetadataId of the global choice set by name
         // Since $filter is not supported, we'll get all and find the matching one
@@ -2282,18 +2244,6 @@ class DataverseClient {
     }
   }
   
-  async _removeSolutionComponent(componentType, componentName) {
-    // This method removes a component from a solution without deleting it
-    // For now, we'll log the operation as most CDM entities and global choices
-    // will be automatically removed when the solution is deleted
-    this._log(`   📋 Marking ${componentType} "${componentName}" for removal from solution`);
-    this._log(`   ℹ️ Note: Component will be removed when solution is deleted`);
-    
-    // In a full implementation, this would use the RemoveSolutionComponent action
-    // or query the solution components and remove specific ones
-    // For now, we'll rely on solution deletion to handle this
-  }
-
   async _deleteEntity(entity) {
     const logicalName = entity.LogicalName || entity.logicalName || entity.name;
     
@@ -2514,10 +2464,25 @@ class DataverseClient {
    * Execute a complete rollback of a deployment
    * @param {Object} deploymentData - Deployment data with component information
    * @param {Function} progressCallback - Progress update callback
+   * @param {Object} config - Rollback configuration (granular options)
    * @returns {Promise<Object>} Rollback results
    */
-  async rollbackDeployment(deploymentData, progressCallback = null) {
+  async rollbackDeployment(deploymentData, progressCallback = null, config = null) {
     const progress = progressCallback || (() => {});
+    
+    // Default config: rollback everything
+    const rollbackConfig = config || {
+      relationships: true,
+      customEntities: true,
+      cdmEntities: true,
+      customGlobalChoices: true,
+      addedGlobalChoices: true,
+      solution: true,
+      publisher: true
+    };
+    
+    console.log('🎯 ROLLBACK CONFIG:', JSON.stringify(rollbackConfig));
+    this._log(`🎯 ROLLBACK CONFIG: ${JSON.stringify(rollbackConfig)}`);
     
     const results = {
       relationshipsDeleted: 0,
@@ -2534,15 +2499,11 @@ class DataverseClient {
       await this._ensureToken();
       
       progress('starting', 'Starting deployment rollback...');
-      console.log('🚀 ROLLBACK STARTED - Analyzing deployment data...');
       this._log('🚀 ROLLBACK STARTED - Analyzing deployment data...');
       
       // Log what we're about to delete
-      console.log(`📋 ROLLBACK PLAN:`);
       this._log(`📋 ROLLBACK PLAN:`);
-      console.log(`   Solution: ${deploymentData.solutionInfo?.solutionName || 'N/A'} (ID: ${deploymentData.solutionInfo?.solutionId || 'N/A'})`);
       this._log(`   Solution: ${deploymentData.solutionInfo?.solutionName || 'N/A'} (ID: ${deploymentData.solutionInfo?.solutionId || 'N/A'})`);
-      console.log(`   Publisher: ${deploymentData.solutionInfo?.publisherName || 'N/A'}`);
       this._log(`   Publisher: ${deploymentData.solutionInfo?.publisherName || 'N/A'}`);
       
       if (deploymentData.rollbackData?.relationships) {
@@ -2586,9 +2547,8 @@ class DataverseClient {
       });
       
       // STEP 1: Delete relationships first (CRITICAL - must succeed before entities can be deleted)
-      if (relationshipsToDelete.length > 0) {
+      if (rollbackConfig.relationships && relationshipsToDelete.length > 0) {
         progress('relationships', 'Deleting relationships...');
-        console.log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
         this._log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
         
         // Add publisher prefix to relationships for schema name construction
@@ -2636,8 +2596,11 @@ class DataverseClient {
           }
         }
       } else {
-        console.log('🔗 STEP 1: No relationships detected for deletion');
-        this._log('🔗 STEP 1: No relationships detected for deletion');
+        if (!rollbackConfig.relationships) {
+          this._log('🔗 STEP 1: Skipping relationships (not selected in config)');
+        } else {
+          this._log('🔗 STEP 1: No relationships detected for deletion');
+        }
       }
 
       // Step 2: Delete CUSTOM entities (tables) completely
@@ -2647,7 +2610,7 @@ class DataverseClient {
         customEntitiesToDelete = [...deploymentData.rollbackData.customEntities];
       }
       
-      if (customEntitiesToDelete.length > 0) {
+      if (rollbackConfig.customEntities && customEntitiesToDelete.length > 0) {
         progress('custom-entities', 'Deleting custom entities...');
         this._log(`🏢 STEP 2: Deleting ${customEntitiesToDelete.length} custom entities...`);
         
@@ -2706,60 +2669,34 @@ class DataverseClient {
           }
         }
       } else {
-        this._log('🏢 STEP 2: No custom entities to delete');
+        if (!rollbackConfig.customEntities) {
+          this._log('🏢 STEP 2: Skipping custom entities (not selected in config)');
+        } else {
+          this._log('🏢 STEP 2: No custom entities to delete');
+        }
       }
       
       // Step 3: Remove CDM entities from solution (DO NOT delete them - they're standard tables)
-      let cdmEntitiesToRemove = [];
-      
-      if (deploymentData.summary?.cdmEntityNames) {
-        cdmEntitiesToRemove = [...deploymentData.summary.cdmEntityNames];
-      }
-      
-      if (cdmEntitiesToRemove.length > 0) {
-        progress('cdm-entities', 'Removing CDM entities from solution...');
-        this._log(`� STEP 3: Removing ${cdmEntitiesToRemove.length} CDM entities from solution...`);
-        
-        for (const [index, entityName] of cdmEntitiesToRemove.entries()) {
-          try {
-            this._log(`� Removing CDM entity ${index + 1}/${cdmEntitiesToRemove.length} from solution: ${entityName}`);
-            results.stepDetails.push(`Starting removal of CDM entity from solution: ${entityName}`);
-            
-            // Remove from solution using solution component removal
-            await this._removeSolutionComponent('Entity', entityName);
-            
-            const successMsg = `✅ Removed CDM entity from solution: ${entityName}`;
-            this._log(successMsg);
-            results.warnings.push(successMsg); // Track as warning since it's removal, not deletion
-            results.stepDetails.push(successMsg);
-            
-          } catch (error) {
-            const errorMsg = `❌ Failed to remove CDM entity ${entityName} from solution: ${error.message}`;
-            this._warn(errorMsg);
-            results.errors.push(errorMsg);
-            results.stepDetails.push(errorMsg);
-          }
-        }
+      // NOTE: This feature is currently disabled because the Dataverse Web API does not support
+      // the RemoveSolutionComponent action. CDM entities can only be removed from solutions manually.
+      if (rollbackConfig.cdmEntities) {
+        this._log('🏢 STEP 3: CDM entity removal from solution is not supported via Web API');
+        this._log('   ℹ️  To remove CDM entities: Open solution in Power Platform → Select entity → Remove');
+        results.warnings.push('CDM entity removal from solution requires manual action in Power Platform UI');
       } else {
-        this._log('� STEP 3: No CDM entities to remove from solution');
+        this._log('🏢 STEP 3: Skipping CDM entities (not selected in config)');
       }
 
-      // Step 4: Handle global choices - delete CUSTOM ones, remove ADDED ones from solution
+      // Step 4: Handle global choices - delete CUSTOM ones only
       let customGlobalChoicesToDelete = [];
-      let addedGlobalChoicesToRemove = [];
       
       // Detect custom global choices that were created (need to be deleted)
       if (deploymentData.summary?.globalChoicesCreated) {
         customGlobalChoicesToDelete = [...deploymentData.summary.globalChoicesCreated];
       }
       
-      // Detect global choices that were added to solution (need to be removed from solution)
-      if (deploymentData.summary?.globalChoicesAdded) {
-        addedGlobalChoicesToRemove = [...deploymentData.summary.globalChoicesAdded];
-      }
-      
       // Delete custom global choices completely
-      if (customGlobalChoicesToDelete.length > 0) {
+      if (rollbackConfig.customGlobalChoices && customGlobalChoicesToDelete.length > 0) {
         progress('custom-choices', 'Deleting custom global choices...');
         this._log(`🎯 STEP 4a: Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
         
@@ -2835,39 +2772,15 @@ class DataverseClient {
           }
         }
       } else {
-        this._log('🎯 STEP 4a: No custom global choices to delete');
+        if (!rollbackConfig.customGlobalChoices) {
+          this._log('🎯 STEP 4a: Skipping custom global choices (not selected in config)');
+        } else {
+          this._log('🎯 STEP 4a: No custom global choices to delete');
+        }
       }
       
-      // Remove added global choices from solution (don't delete them)
-      if (addedGlobalChoicesToRemove.length > 0) {
-        progress('added-choices', 'Removing global choices from solution...');
-        this._log(`📤 STEP 4b: Removing ${addedGlobalChoicesToRemove.length} global choices from solution...`);
-        
-        for (const [index, choiceName] of addedGlobalChoicesToRemove.entries()) {
-          try {
-            this._log(`📤 Removing global choice ${index + 1}/${addedGlobalChoicesToRemove.length} from solution: ${choiceName}`);
-            results.stepDetails.push(`Starting removal of global choice from solution: ${choiceName}`);
-            
-            await this._removeSolutionComponent('GlobalOptionSet', choiceName);
-            
-            const successMsg = `✅ Removed global choice from solution: ${choiceName}`;
-            this._log(successMsg);
-            results.warnings.push(successMsg); // Track as warning since it's removal, not deletion
-            results.stepDetails.push(successMsg);
-            
-          } catch (error) {
-            const errorMsg = `❌ Failed to remove global choice ${choiceName} from solution: ${error.message}`;
-            this._warn(errorMsg);
-            results.errors.push(errorMsg);
-            results.stepDetails.push(errorMsg);
-          }
-        }
-      } else {
-        this._log('📤 STEP 4b: No global choices to remove from solution');
-      }
-
       // Step 5: Delete solution (must be before publisher deletion)
-      if (deploymentData.solutionInfo?.solutionId) {
+      if (rollbackConfig.solution && deploymentData.solutionInfo?.solutionId) {
         progress('solution', 'Deleting solution...');
         this._log('📦 STEP 5: Deleting solution...');
         
@@ -2894,11 +2807,15 @@ class DataverseClient {
           throw new Error(`Rollback stopped: Cannot delete solution '${deploymentData.solutionInfo.solutionName}'. Error: ${error.message}`);
         }
       } else {
-        this._log('📦 STEP 5: No solution to delete');
+        if (!rollbackConfig.solution) {
+          this._log('📦 STEP 5: Skipping solution (not selected in config)');
+        } else {
+          this._log('📦 STEP 5: No solution to delete');
+        }
       }
 
       // Step 6: Delete publisher (FINAL STEP - must be after solution is deleted)
-      if (deploymentData.solutionInfo?.publisherPrefix || deploymentData.solutionInfo?.publisherId) {
+      if (rollbackConfig.publisher && (deploymentData.solutionInfo?.publisherPrefix || deploymentData.solutionInfo?.publisherId)) {
         progress('publisher', 'Deleting publisher...');
         this._log('🏢 STEP 6: Deleting publisher (FINAL STEP)...');
         
@@ -2924,13 +2841,41 @@ class DataverseClient {
           results.stepDetails.push(warningMsg);
         }
       } else {
-        this._log('🏢 STEP 6: No publisher to delete');
+        if (!rollbackConfig.publisher) {
+          this._log('🏢 STEP 6: Skipping publisher (not selected in config)');
+        } else {
+          this._log('🏢 STEP 6: No publisher to delete');
+        }
       }
 
       progress('completed', 'Rollback completed');
       
-      // Final summary with detailed step information
-      results.summary = `Rollback completed: ${results.relationshipsDeleted} relationships, ${results.entitiesDeleted} entities, ${results.globalChoicesDeleted} choices deleted, solution ${results.solutionDeleted ? 'deleted' : 'not deleted'}, publisher ${results.publisherDeleted ? 'deleted' : 'not deleted'}`;
+      // Build a descriptive summary based on what was actually done
+      let summaryParts = [];
+      if (results.relationshipsDeleted > 0) summaryParts.push(`${results.relationshipsDeleted} relationship(s) deleted`);
+      if (results.entitiesDeleted > 0) summaryParts.push(`${results.entitiesDeleted} entity/entities deleted`);
+      if (results.globalChoicesDeleted > 0) summaryParts.push(`${results.globalChoicesDeleted} global choice(s) deleted`);
+      if (results.solutionDeleted) summaryParts.push('solution deleted');
+      if (results.publisherDeleted) summaryParts.push('publisher deleted');
+      
+      let summaryText = summaryParts.length > 0 ? summaryParts.join(', ') : 'no components removed';
+      
+      // Add warnings/limitations note if present
+      if (results.warnings.length > 0) {
+        const webApiLimitations = results.warnings.filter(w => 
+          w.includes('not supported') || 
+          w.includes('manual removal required') || 
+          w.includes('Web API')
+        ).length;
+        
+        if (webApiLimitations > 0) {
+          summaryText += ` (${webApiLimitations} operation(s) require manual completion - see warnings)`;
+        } else if (results.warnings.length > 0) {
+          summaryText += ` (${results.warnings.length} warning(s))`;
+        }
+      }
+      
+      results.summary = `Rollback completed: ${summaryText}`;
       
       this._log('🏁 ROLLBACK COMPLETED!');
       this._log(`   📊 Summary: ${results.summary}`);

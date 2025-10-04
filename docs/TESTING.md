@@ -102,12 +102,17 @@ curl "http://localhost:8080/api/solution-status?solution=TestSolution"
 
 **Frontend Unit Tests:**
 ```bash
-# Run frontend unit tests
+# Run frontend unit tests (Vitest with TypeScript)
 cd src/frontend && npm test
 
 # Run specific test suite
 npm test -- tests/unit/solution-setup/
+
+# Run with coverage
+npm test -- --coverage
 ```
+
+**Note**: Frontend tests use Vitest and TypeScript (`.test.ts` files), while backend tests use Jest and JavaScript (`.test.js` files). This separation ensures optimal tooling and prevents configuration conflicts.
 
 ### Deployment Testing
 
@@ -152,25 +157,48 @@ This project includes a comprehensive testing suite to ensure code quality and p
 
 ### Test Structure
 
-The project uses **Jest** and **Vitest** as testing frameworks with organized test suites:
+The project uses **Jest** for backend testing and **Vitest** for frontend testing as separate, isolated testing frameworks:
 
 ```
 tests/
-├── unit/              # Backend component isolation tests
+├── unit/              # Backend component isolation tests (Jest)
 │   ├── services/      # Business logic testing
 │   ├── controllers/   # Request/response handling
 │   ├── middleware/    # CORS, security, validation
 │   ├── clients/       # External API integration
 │   └── parsers/       # ERD parsing logic
-├── integration/       # API endpoint testing
-├── e2e/              # Full workflow testing
+├── integration/       # API endpoint testing (Jest)
+├── e2e/              # Full workflow testing (Jest + Puppeteer)
 └── fixtures/         # Test data and mocks
 
 src/frontend/tests/
 ├── unit/              # Frontend component tests (Vitest)
-│   └── solution-setup/  # Wizard step components and hooks
+│   ├── solution-setup/  # Wizard step components and hooks
+│   └── deployment/      # Deployment utility tests
+├── accessibility/     # Accessibility tests (Vitest)
 └── __tests__/         # General component tests
 ```
+
+### Testing Framework Configuration
+
+**Backend Tests (Jest)**:
+- **Configuration**: `jest.config.json`
+- **Test Pattern**: `**/tests/**/*.test.js` (JavaScript only)
+- **Environment**: Node.js
+- **Test Suites**: 31 suites with 536 tests
+- **Coverage**: Backend services, controllers, middleware, and utilities
+
+**Frontend Tests (Vitest)**:
+- **Configuration**: `src/frontend/vitest.config.ts`
+- **Test Pattern**: `src/frontend/tests/**/*.test.ts` (TypeScript)
+- **Environment**: jsdom (browser simulation)
+- **Framework**: Vitest with React Testing Library
+- **Run Command**: `cd src/frontend && npm test`
+
+**Separation Strategy**:
+- Jest handles all `.test.js` files in the `tests/` directory
+- Vitest handles all `.test.ts` files in the `src/frontend/tests/` directory
+- This separation prevents configuration conflicts and allows optimal tooling for each environment
 
 ### Running Tests
 
@@ -200,8 +228,10 @@ The test suite includes comprehensive coverage across all application layers:
 #### Unit Tests
 - **Location**: `tests/unit/`
 - **Framework**: Jest with Node.js environment
+- **File Pattern**: `*.test.js` (JavaScript only)
 - **Coverage**: Services, controllers, middleware, utilities
 - **Mock Strategy**: Automated mocking of external dependencies
+- **Test Count**: 536 tests across 31 suites
 
 #### Integration Tests  
 - **Location**: `tests/integration/`

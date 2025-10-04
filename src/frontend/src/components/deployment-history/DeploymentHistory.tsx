@@ -26,7 +26,9 @@ import {
   AccordionItem,
   AccordionPanel,
   MessageBar,
-  MessageBarBody
+  MessageBarBody,
+  Checkbox,
+  Tooltip
 } from '@fluentui/react-components';
 import {
   HistoryRegular,
@@ -40,7 +42,10 @@ import {
   WarningRegular,
   ChevronDownRegular,
   ChevronRightRegular,
-  CheckmarkCircleRegular
+  CheckmarkCircleRegular,
+  InfoRegular,
+  CheckmarkRegular,
+  DismissCircleRegular
 } from '@fluentui/react-icons';
 import { DeploymentHistoryService } from '../../services/deploymentHistoryService';
 import { ApiService } from '../../services/apiService';
@@ -162,6 +167,16 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     deploymentInfo?: any;
   } | null>(null);
   
+  // Granular rollback options (cdmEntities removed - automatically handled with solution deletion)
+  const [rollbackOptions, setRollbackOptions] = useState({
+    relationships: true,
+    customEntities: true,
+    customGlobalChoices: true,
+    solution: true,
+    publisher: true
+  });
+  const [rollbackValidationErrors, setRollbackValidationErrors] = useState<string[]>([]);
+  
   // Expandable row state for rollback details
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
@@ -253,6 +268,8 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         return <ClockRegular style={{ color: 'var(--color-warning)' }} />;
       case 'rolled-back':
         return null; // No icon - text is sufficient
+      case 'modified':
+        return null; // No icon - text is sufficient
       default:
         return <ClockRegular />;
     }
@@ -268,6 +285,8 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         return 'warning' as const;
       case 'rolled-back':
         return 'informative' as const;
+      case 'modified':
+        return 'warning' as const; // Orange/yellow for modified
       default:
         return 'subtle' as const;
     }
@@ -304,6 +323,190 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }
   };
 
+  // Rollback option dependency helpers
+  const validateRollbackOptions = (options: typeof rollbackOptions): string[] => {
+    const errors: string[] = [];
+    const info = rollbackCandidate?.deploymentInfo;
+    
+    if (!info) return errors;
+    
+    // Rule 1: Custom tables require relationships deleted first
+    if (options.customEntities && !options.relationships && info.relationships?.length > 0) {
+      errors.push('Cannot delete custom tables without deleting relationships first');
+    }
+    
+    // Rule 2: Solution requires custom entities removed (CDM entities are automatically removed with solution)
+    if (options.solution) {
+      const hasCustomEntities = info.entities?.custom?.length > 0;
+      
+      if (hasCustomEntities && !options.customEntities) {
+        errors.push('Cannot delete solution without removing custom tables first');
+      }
+    }
+    
+    // Rule 3: Publisher requires solution deleted
+    if (options.publisher && !options.solution && info.solution) {
+      errors.push('Cannot delete publisher without deleting solution first');
+    }
+    
+    return errors;
+  };
+  
+  const canUncheckOption = (option: keyof typeof rollbackOptions): boolean => {
+    const tempOptions = { ...rollbackOptions, [option]: false };
+    const errors = validateRollbackOptions(tempOptions);
+    return errors.length === 0;
+  };
+  
+  const getDisabledReason = (option: keyof typeof rollbackOptions): string | undefined => {
+    const info = rollbackCandidate?.deploymentInfo;
+    if (!info) return undefined;
+    
+    switch (option) {
+      case 'relationships':
+        // Relationships must be deleted if custom tables are selected
+        if (rollbackOptions.customEntities && info.relationships?.length > 0) {
+          return 'Required because custom tables are selected (relationships must be deleted first)';
+        }
+        break;
+      case 'customEntities':
+        if (rollbackOptions.solution && info.entities?.custom?.length > 0) {
+          return 'Required because solution is selected';
+        }
+        break;
+      case 'solution':
+        if (rollbackOptions.publisher && info.solution) {
+          return 'Required because publisher is selected (publisher must be deleted last)';
+        }
+        break;
+      case 'publisher':
+        // Publisher is independent - can be unchecked freely
+        break;
+      case 'customGlobalChoices':
+        // Custom global choices are independent - can be unchecked freely
+        break;
+    }
+    
+    return undefined;
+  };
+  
+  const handleRollbackOptionChange = (option: keyof typeof rollbackOptions, checked: boolean) => {
+    const newOptions = { ...rollbackOptions };
+    const info = rollbackCandidate?.deploymentInfo;
+    
+    if (!info) return;
+    
+    if (checked) {
+      // Auto-select dependencies
+      newOptions[option] = true;
+      
+      switch (option) {
+        case 'customEntities':
+          // Auto-select relationships (custom tables require relationships deleted first)
+          if (info.relationships?.length > 0) {
+            newOptions.relationships = true;
+          }
+          break;
+        case 'solution':
+          // Auto-select custom entities (CDM entities are automatically removed with solution)
+          if (info.entities?.custom?.length > 0) {
+            newOptions.customEntities = true;
+            // Auto-select relationships if custom tables exist
+            if (info.relationships?.length > 0) {
+              newOptions.relationships = true;
+            }
+          }
+          break;
+        case 'publisher':
+          // Publisher requires solution to be deleted first
+          newOptions.publisher = true;
+          if (info.solution) {
+            newOptions.solution = true;
+            // Also select custom entities in the solution
+            if (info.entities?.custom?.length > 0) {
+              newOptions.customEntities = true;
+              if (info.relationships?.length > 0) {
+                newOptions.relationships = true;
+              }
+            }
+          }
+          break;
+      }
+    } else {
+      // Only allow uncheck if it doesn't violate dependencies
+      if (canUncheckOption(option)) {
+        newOptions[option] = false;
+        
+        // Auto-deselect dependents
+        switch (option) {
+          case 'relationships':
+            // Deselect custom tables if relationships unchecked
+            newOptions.customEntities = false;
+            newOptions.solution = false;
+            newOptions.publisher = false;
+            break;
+          case 'customEntities':
+            // Deselect solution and publisher
+            newOptions.solution = false;
+            newOptions.publisher = false;
+            break;
+          case 'solution':
+            // Deselect publisher when solution is unchecked
+            newOptions.publisher = false;
+            break;
+          case 'publisher':
+            // Publisher has no dependents - just uncheck it
+            break;
+          case 'customGlobalChoices':
+            // Custom global choices have no dependents - just uncheck it
+            break;
+        }
+      }
+    }
+    
+    setRollbackOptions(newOptions);
+    setRollbackValidationErrors(validateRollbackOptions(newOptions));
+  };
+
+  const handleSelectAllRollback = () => {
+    setRollbackOptions({
+      relationships: true,
+      customEntities: true,
+      customGlobalChoices: true,
+      solution: true,
+      publisher: true
+    });
+    setRollbackValidationErrors([]);
+  };
+
+  const handleDeselectAllRollback = () => {
+    setRollbackOptions({
+      relationships: false,
+      customEntities: false,
+      customGlobalChoices: false,
+      solution: false,
+      publisher: false
+    });
+    setRollbackValidationErrors([]);
+  };
+
+  const isAllSelected = () => {
+    const info = rollbackCandidate?.deploymentInfo;
+    if (!info) return false;
+    
+    // Check if all available options are selected
+    // Note: CDM tables are automatically removed with solution, so no separate check needed
+    let allSelected = true;
+    
+    if (info.relationships?.length > 0 && !rollbackOptions.relationships) allSelected = false;
+    if (info.entities?.custom?.length > 0 && !rollbackOptions.customEntities) allSelected = false;
+    if (info.globalChoices?.custom?.length > 0 && !rollbackOptions.customGlobalChoices) allSelected = false;
+    if (info.solution && !rollbackOptions.solution) allSelected = false;
+    if (info.publisher && !rollbackOptions.publisher) allSelected = false;
+    
+    return allSelected;
+  };
+
   // Rollback functionality
   const handleRollbackClick = async (event: React.MouseEvent, deployment: DeploymentSummary) => {
     event.stopPropagation(); // Prevent triggering row click (view details)
@@ -314,8 +517,27 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       const result = await response.json();
       
       if (result.success) {
+        console.log('� Rollback candidate data:', result.data);
+        console.log('� DeploymentInfo:', result.data.deploymentInfo);
+        console.log('🔍 Solution:', result.data.deploymentInfo?.solution);
+        console.log('🔍 Publisher:', result.data.deploymentInfo?.publisher);
+        console.log('🔍 Entities:', result.data.deploymentInfo?.entities);
+        console.log('🔍 CDM:', result.data.deploymentInfo?.entities?.cdm);
+        console.log('🔍 Custom:', result.data.deploymentInfo?.entities?.custom);
+        
         setRollbackCandidate(result.data);
         setRollbackDeployment(deployment);
+        
+        // Reset rollback options to all selected by default
+        setRollbackOptions({
+          relationships: true,
+          customEntities: true,
+          customGlobalChoices: true,
+          solution: true,
+          publisher: true
+        });
+        setRollbackValidationErrors([]);
+        
         setShowRollbackModal(true);
       } else {
         alert(`Cannot rollback: ${result.error}`);
@@ -329,17 +551,34 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const executeRollback = async () => {
     if (!rollbackDeployment) return;
     
+    // Validate options before sending
+    const errors = validateRollbackOptions(rollbackOptions);
+    if (errors.length > 0) {
+      setRollbackValidationErrors(errors);
+      return;
+    }
+    
     setRollbackLoading(true);
     setRollbackProgress('Initializing rollback...');
     
     try {
+      // Build options to send to backend - automatically include cdmEntities when solution is selected
+      const backendOptions = {
+        ...rollbackOptions,
+        // CDM entities are automatically removed when solution is deleted
+        cdmEntities: rollbackOptions.solution
+      };
+      
       const response = await fetch(`/api/rollback/${rollbackDeployment.deploymentId}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'text/event-stream'
         },
-        body: JSON.stringify({ confirm: true })
+        body: JSON.stringify({ 
+          confirm: true,
+          options: backendOptions
+        })
       });
 
       if (!response.ok) {
@@ -418,7 +657,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   };
 
   const canShowRollbackButton = (deployment: DeploymentSummary) => {
-    return deployment.status === 'success' && deployment.rollbackData;
+    return (deployment.status === 'success' || deployment.status === 'modified') && deployment.rollbackData;
   };
 
   if (loading) {
@@ -625,7 +864,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
             <TableBody>
               {deployments.map((deployment, index) => {
                 const isExpanded = expandedRows.has(deployment.deploymentId);
-                const hasRollbackInfo = deployment.status === 'rolled-back' && deployment.rollbackInfo;
+                const hasRollbackInfo = (deployment.status === 'rolled-back' || deployment.status === 'modified') && deployment.rollbackInfo;
                 
                 return (
                   <React.Fragment key={deployment.deploymentId}>
@@ -705,7 +944,8 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                         <TableCell colSpan={6} style={{ padding: '16px 32px', backgroundColor: tokens.colorNeutralBackground3 }}>
                           {(() => {
                             const rollbackInfo = deployment.rollbackInfo!;
-                            const results = rollbackInfo.rollbackResults;
+                            const rollbacks = rollbackInfo.rollbacks || [rollbackInfo]; // Support both old and new format
+                            const isModified = deployment.status === 'modified';
                             
                             return (
                               <div style={{ 
@@ -714,142 +954,214 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                 padding: '16px',
                                 backgroundColor: tokens.colorNeutralBackground1
                               }}>
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                                  <ArrowUndoRegular style={{ marginRight: '8px', color: tokens.colorPaletteRedForeground1 }} />
-                                  <Text weight="semibold" size={400}>Rollback Details</Text>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <ArrowUndoRegular style={{ marginRight: '8px', color: tokens.colorPaletteRedForeground1 }} />
+                                    <Text weight="semibold" size={400}>
+                                      {isModified ? 'Partial Rollback History' : 'Complete Rollback Details'}
+                                    </Text>
+                                  </div>
+                                  {isModified && (
+                                    <Badge appearance="filled" color="warning">Partially Rolled Back</Badge>
+                                  )}
                                 </div>
-                                
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Rolled back at:</Text>
-                                    <div>
-                                      <CalendarLtrRegular style={{ marginRight: '4px', fontSize: '14px' }} />
-                                      <Text weight="semibold">{formatDate(rollbackInfo.rollbackTimestamp)}</Text>
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Solution History:</Text>
-                                    <div>
-                                      {environmentId ? (
-                                        <a
-                                          href={`https://make.powerapps.com/environments/${environmentId}/solutionsHistory`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            color: tokens.colorBrandForeground1,
-                                            textDecoration: 'none',
-                                            fontSize: '14px'
-                                          }}
-                                          onMouseEnter={(e) => {
-                                            e.currentTarget.style.textDecoration = 'underline';
-                                          }}
-                                          onMouseLeave={(e) => {
-                                            e.currentTarget.style.textDecoration = 'none';
-                                          }}
-                                        >
-                                          <LinkRegular style={{ fontSize: '12px' }} />
-                                          View in Power Platform
-                                        </a>
-                                      ) : (
-                                        <Text size={200} style={{ opacity: 0.5 }}>Loading...</Text>
+
+                                {rollbacks.map((rollback: any, idx: number) => {
+                                  const results = rollback.rollbackResults || rollback;
+                                  const timestamp = rollback.rollbackTimestamp;
+                                  const options = rollback.rollbackOptions;
+
+                                  return (
+                                    <div 
+                                      key={idx} 
+                                      style={{ 
+                                        marginBottom: rollbacks.length > 1 && idx < rollbacks.length - 1 ? '24px' : '0',
+                                        paddingBottom: rollbacks.length > 1 && idx < rollbacks.length - 1 ? '24px' : '0',
+                                        borderBottom: rollbacks.length > 1 && idx < rollbacks.length - 1 ? `1px solid ${tokens.colorNeutralStroke2}` : 'none'
+                                      }}
+                                    >
+                                      {rollbacks.length > 1 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                          <Badge appearance="tint" color="informative">Rollback #{idx + 1}</Badge>
+                                        </div>
                                       )}
-                                    </div>
-                                  </div>
-                                  
-                                  {results && (
-                                <>
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Relationships deleted:</Text>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                      <Text weight="semibold">{results.relationshipsDeleted || 0}</Text>
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Tables deleted:</Text>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                      <Text weight="semibold">{results.entitiesDeleted || 0}</Text>
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Global choices deleted:</Text>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                      <Text weight="semibold">{results.globalChoicesDeleted || 0}</Text>
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <Text size={200} style={{ opacity: 0.7 }}>Solution deleted:</Text>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                      {results.solutionDeleted ? (
-                                        <>
-                                          <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                          <Text weight="semibold">Yes</Text>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ErrorCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteRedForeground1, fontSize: '14px' }} />
-                                          <Text weight="semibold">No</Text>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  {results.publisherDeleted !== undefined && (
-                                    <div>
-                                      <Text size={200} style={{ opacity: 0.7 }}>Publisher deleted:</Text>
-                                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        {results.publisherDeleted ? (
+
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                                        <div>
+                                          <Text size={200} style={{ opacity: 0.7 }}>Rolled back at:</Text>
+                                          <div>
+                                            <CalendarLtrRegular style={{ marginRight: '4px', fontSize: '14px' }} />
+                                            <Text weight="semibold">{formatDate(timestamp)}</Text>
+                                          </div>
+                                        </div>
+                                        
+                                        {idx === 0 && (
+                                          <div>
+                                            <Text size={200} style={{ opacity: 0.7 }}>
+                                              {options?.solution ? 'Solution History:' : 'Solution:'}
+                                            </Text>
+                                            <div>
+                                              {environmentId ? (
+                                                <a
+                                                  href={
+                                                    options?.solution 
+                                                      ? `https://make.powerapps.com/environments/${environmentId}/solutionsHistory`
+                                                      : `https://make.powerapps.com/environments/${environmentId}/solutions/${deployment.solutionInfo?.solutionId}`
+                                                  }
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    color: tokens.colorBrandForeground1,
+                                                    textDecoration: 'none',
+                                                    fontSize: '14px'
+                                                  }}
+                                                  onMouseEnter={(e) => {
+                                                    e.currentTarget.style.textDecoration = 'underline';
+                                                  }}
+                                                  onMouseLeave={(e) => {
+                                                    e.currentTarget.style.textDecoration = 'none';
+                                                  }}
+                                                >
+                                                  <LinkRegular style={{ fontSize: '12px' }} />
+                                                  View in Power Platform
+                                                </a>
+                                              ) : (
+                                                <Text size={200} style={{ opacity: 0.5 }}>Loading...</Text>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {results && (
                                           <>
-                                            <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                            <Text weight="semibold">Yes</Text>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <WarningRegular style={{ marginRight: '4px', color: tokens.colorPaletteYellowForeground1, fontSize: '14px' }} />
-                                            <Text weight="semibold">No</Text>
+                                            <div>
+                                              <Text size={200} style={{ opacity: 0.7 }}>Relationships deleted:</Text>
+                                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                                <Text weight="semibold">{results.relationshipsDeleted || 0}</Text>
+                                              </div>
+                                            </div>
+                                            
+                                            <div>
+                                              <Text size={200} style={{ opacity: 0.7 }}>Tables deleted:</Text>
+                                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                                <Text weight="semibold">{results.entitiesDeleted || 0}</Text>
+                                              </div>
+                                            </div>
+                                            
+                                            <div>
+                                              <Text size={200} style={{ opacity: 0.7 }}>Global choices deleted:</Text>
+                                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                                <Text weight="semibold">{results.globalChoicesDeleted || 0}</Text>
+                                              </div>
+                                            </div>
+                                            
+                                            <div>
+                                              <Text size={200} style={{ opacity: 0.7 }}>Solution deleted:</Text>
+                                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                {results.solutionDeleted ? (
+                                                  <>
+                                                    <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                                    <Text weight="semibold">Yes</Text>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <ErrorCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteYellowForeground1, fontSize: '14px' }} />
+                                                    <Text weight="semibold">No</Text>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </div>
+                                            
+                                            {results.publisherDeleted !== undefined && (
+                                              <div>
+                                                <Text size={200} style={{ opacity: 0.7 }}>Publisher deleted:</Text>
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                  {results.publisherDeleted ? (
+                                                    <>
+                                                      <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
+                                                      <Text weight="semibold">Yes</Text>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <WarningRegular style={{ marginRight: '4px', color: tokens.colorPaletteYellowForeground1, fontSize: '14px' }} />
+                                                      <Text weight="semibold">No</Text>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {results.errors && results.errors.length > 0 && (
+                                              <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                                                <Text size={200} style={{ opacity: 0.7, display: 'block', marginBottom: '4px' }}>Errors ({results.errors.length}):</Text>
+                                                <div style={{ 
+                                                  backgroundColor: tokens.colorPaletteRedBackground3, 
+                                                  padding: '8px', 
+                                                  borderRadius: '4px',
+                                                  maxHeight: '100px',
+                                                  overflowY: 'auto'
+                                                }}>
+                                                  {results.errors.map((error: string, errorIdx: number) => (
+                                                    <div key={errorIdx} style={{ display: 'flex', alignItems: 'start', marginBottom: '4px' }}>
+                                                      <ErrorCircleRegular style={{ marginRight: '4px', marginTop: '2px', flexShrink: 0, fontSize: '12px' }} />
+                                                      <Text size={200}>{error}</Text>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
                                           </>
                                         )}
                                       </div>
-                                    </div>
-                                  )}
-                                  
-                                  {results.errors && results.errors.length > 0 && (
-                                    <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
-                                      <Text size={200} style={{ opacity: 0.7, display: 'block', marginBottom: '4px' }}>Errors ({results.errors.length}):</Text>
-                                      <div style={{ 
-                                        backgroundColor: tokens.colorPaletteRedBackground3, 
-                                        padding: '8px', 
-                                        borderRadius: '4px',
-                                        maxHeight: '100px',
-                                        overflowY: 'auto'
-                                      }}>
-                                        {results.errors.map((error: string, idx: number) => (
-                                          <div key={idx} style={{ display: 'flex', alignItems: 'start', marginBottom: '4px' }}>
-                                            <ErrorCircleRegular style={{ marginRight: '4px', marginTop: '2px', flexShrink: 0, fontSize: '12px' }} />
-                                            <Text size={200}>{error}</Text>
+
+                                      {/* Show what was selected in this rollback */}
+                                      {options && (
+                                        <div style={{ marginTop: '16px', padding: '12px', backgroundColor: tokens.colorNeutralBackground3, borderRadius: '4px' }}>
+                                          <Text size={200} weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>Components Selected:</Text>
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {options.relationships && <Badge appearance="filled" color="brand" size="small">Relationships</Badge>}
+                                            {options.customEntities && <Badge appearance="filled" color="brand" size="small">Custom Tables</Badge>}
+                                            {options.customGlobalChoices && <Badge appearance="filled" color="brand" size="small">Custom Global Choices</Badge>}
+                                            {/* Legacy support for old rollbacks that used 'globalChoices' */}
+                                            {options.globalChoices && !options.customGlobalChoices && <Badge appearance="filled" color="brand" size="small">Global Choices</Badge>}
+                                            {options.solution && <Badge appearance="filled" color="brand" size="small">Solution</Badge>}
+                                            {options.publisher && <Badge appearance="filled" color="brand" size="small">Publisher</Badge>}
                                           </div>
-                                        ))}
-                                      </div>
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                  </TableRow>
-                )}
+                                  );
+                                })}
+
+                                {isModified && (
+                                  <div style={{ 
+                                    marginTop: '16px', 
+                                    padding: '12px', 
+                                    backgroundColor: tokens.colorPaletteYellowBackground2, 
+                                    borderRadius: '4px',
+                                    border: `1px solid ${tokens.colorPaletteYellowBorder1}`
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <WarningRegular style={{ color: tokens.colorPaletteYellowForeground1 }} />
+                                      <Text size={300} weight="semibold">Additional components can still be rolled back</Text>
+                                    </div>
+                                    <Text size={200} style={{ marginTop: '4px', display: 'block' }}>
+                                      Click the Rollback button again to remove additional components from this deployment.
+                                    </Text>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </React.Fragment>
               );
             })}
@@ -1112,13 +1424,10 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
           open={showRollbackModal}
           onOpenChange={(_, data) => setShowRollbackModal(data.open)}
         >
-          <DialogSurface style={{ maxWidth: '600px' }}>
-            <DialogTitle>
+          <DialogSurface style={{ maxWidth: '700px', width: '700px', padding: 0, boxSizing: 'border-box' }}>
+            <DialogTitle style={{ padding: '20px 20px 16px 20px', margin: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <WarningRegular style={{ color: tokens.colorPaletteRedForeground1 }} />
-                  Confirm Rollback
-                </span>
+                <span>Confirm Rollback</span>
                 <Button
                   appearance="subtle"
                   icon={<DismissRegular />}
@@ -1127,51 +1436,207 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                 />
               </div>
             </DialogTitle>
-            <DialogContent>
-              <DialogBody>
+            <DialogContent style={{ padding: 0, margin: 0, boxSizing: 'border-box', width: '100%', display: 'block' }}>
+              <DialogBody style={{ 
+                padding: '0 20px 20px 20px', 
+                margin: 0, 
+                boxSizing: 'border-box', 
+                width: '100%', 
+                maxWidth: '100%',
+                display: 'block',
+                gridTemplateColumns: 'none',
+                columnCount: 1
+              }}>
                 {rollbackCandidate.canRollback ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <MessageBar intent="warning" style={{ width: '100%' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '16px', 
+                    boxSizing: 'border-box', 
+                    width: '100%',
+                    columnSpan: 'all'
+                  }}>
+                    <MessageBar intent="warning" style={{ boxSizing: 'border-box', width: '100%' }}>
                       <MessageBarBody>
                         <Text weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>
                           Warning: This action cannot be undone
                         </Text>
                         <Text size={300}>
-                          This will permanently delete the following components from your Dataverse environment:
+                          This will permanently delete the following components from your Dataverse environment
                         </Text>
                       </MessageBarBody>
                     </MessageBar>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div>
-                        <Text weight="semibold">Solution:</Text>
-                        <Text style={{ marginLeft: '8px' }}>{rollbackDeployment.solutionInfo?.solutionName}</Text>
-                      </div>
+                    {/* Validation Errors */}
+                    {rollbackValidationErrors.length > 0 && (
+                      <MessageBar intent="error" style={{ boxSizing: 'border-box', width: '100%' }}>
+                        <MessageBarBody>
+                          <Text weight="semibold" style={{ display: 'block', marginBottom: '4px' }}>
+                            Invalid Configuration
+                          </Text>
+                          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                            {rollbackValidationErrors.map((error, idx) => (
+                              <li key={idx}><Text size={300}>{error}</Text></li>
+                            ))}
+                          </ul>
+                        </MessageBarBody>
+                      </MessageBar>
+                    )}
+
+                    {/* Granular Rollback Options */}
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '12px',
+                      boxSizing: 'border-box',
+                      width: '100%'
+                    }}>
+                      <div style={{ 
+                        padding: '16px',
+                        border: `1px solid ${tokens.colorNeutralStroke2}`,
+                        borderRadius: tokens.borderRadiusMedium,
+                        backgroundColor: tokens.colorNeutralBackground1,
+                        boxSizing: 'border-box',
+                        width: '100%'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <Text weight="semibold" size={400}>
+                            Select components to rollback:
+                          </Text>
+                          <Button
+                            appearance="subtle"
+                            size="small"
+                            icon={isAllSelected() ? <DismissCircleRegular /> : <CheckmarkRegular />}
+                            onClick={isAllSelected() ? handleDeselectAllRollback : handleSelectAllRollback}
+                          >
+                            {isAllSelected() ? 'Deselect All' : 'Select All'}
+                          </Button>
+                        </div>
+                        <Text size={300} style={{ color: tokens.colorNeutralForeground3, display: 'block', marginBottom: '16px' }}>
+                          Uncheck items you want to keep. Dependencies will be automatically managed.
+                        </Text>
                       
-                      {rollbackCandidate.deploymentInfo && (
-                        <>
-                          <div>
-                            <Text weight="semibold">Custom Entities:</Text>
-                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.entitiesCount || 0} entities will be deleted</Text>
-                          </div>
-                          
-                          <div>
-                            <Text weight="semibold">Relationships:</Text>
-                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.relationshipsCount || 0} relationships will be deleted</Text>
-                          </div>
-                          
-                          <div>
-                            <Text weight="semibold">Global Choices:</Text>
-                            <Text style={{ marginLeft: '8px' }}>{rollbackCandidate.deploymentInfo.globalChoicesCount || 0} global choices will be deleted</Text>
-                          </div>
-                        </>
-                      )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box', width: '100%' }}>
+                          {/* Publisher */}
+                          {rollbackCandidate.deploymentInfo?.publisher && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <Checkbox
+                                checked={rollbackOptions.publisher}
+                                onChange={(_, data) => handleRollbackOptionChange('publisher', data.checked as boolean)}
+                                disabled={!!getDisabledReason('publisher')}
+                                label={
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text weight="semibold">Publisher ({rollbackCandidate.deploymentInfo.publisher.uniqueName})</Text>
+                                    {getDisabledReason('publisher') && (
+                                      <Tooltip content={getDisabledReason('publisher') || ''} relationship="label">
+                                        <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {/* Solution */}
+                          {rollbackCandidate.deploymentInfo?.solution && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <Checkbox
+                                checked={rollbackOptions.solution}
+                                onChange={(_, data) => handleRollbackOptionChange('solution', data.checked as boolean)}
+                                disabled={!!getDisabledReason('solution')}
+                                label={
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text weight="semibold">Solution ({rollbackCandidate.deploymentInfo.solution.uniqueName})</Text>
+                                    <Tooltip 
+                                      content={
+                                        getDisabledReason('solution')
+                                          ? `${getDisabledReason('solution')}. Note: Deleting the solution will also remove any built-in global choices and CDM tables that were added to it (they remain in the environment, just removed from the solution).`
+                                          : "Deleting the solution will also remove any built-in global choices and CDM tables that were added to it (they remain in the environment, just removed from the solution)."
+                                      }
+                                      relationship="label"
+                                    >
+                                      <InfoRegular style={{ color: getDisabledReason('solution') ? tokens.colorPaletteRedForeground1 : tokens.colorNeutralForeground3, cursor: 'help' }} />
+                                    </Tooltip>
+                                  </div>
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {/* Custom Tables */}
+                          {rollbackCandidate.deploymentInfo?.entities?.custom?.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <Checkbox
+                                checked={rollbackOptions.customEntities}
+                                onChange={(_, data) => handleRollbackOptionChange('customEntities', data.checked as boolean)}
+                                disabled={!!getDisabledReason('customEntities')}
+                                label={
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text weight="semibold">Custom Tables ({rollbackCandidate.deploymentInfo.entities.custom.length})</Text>
+                                    {getDisabledReason('customEntities') && (
+                                      <Tooltip content={getDisabledReason('customEntities') || ''} relationship="label">
+                                        <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {/* Relationships */}
+                          {rollbackCandidate.deploymentInfo?.relationships?.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <Checkbox
+                                checked={rollbackOptions.relationships}
+                                onChange={(_, data) => handleRollbackOptionChange('relationships', data.checked as boolean)}
+                                disabled={!!getDisabledReason('relationships')}
+                                label={
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text weight="semibold">Relationships ({rollbackCandidate.deploymentInfo.relationships.length})</Text>
+                                    {getDisabledReason('relationships') && (
+                                      <Tooltip content={getDisabledReason('relationships') || ''} relationship="label">
+                                        <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                }
+                              />
+                            </div>
+                          )}
+
+                          {/* Custom Global Choices (created by us) */}
+                          {rollbackCandidate.deploymentInfo?.globalChoices?.custom && 
+                           rollbackCandidate.deploymentInfo.globalChoices.custom.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <Checkbox
+                                checked={rollbackOptions.customGlobalChoices}
+                                onChange={(_, data) => handleRollbackOptionChange('customGlobalChoices', data.checked as boolean)}
+                                disabled={!!getDisabledReason('customGlobalChoices')}
+                                label={
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text weight="semibold">
+                                      Custom Global Choices ({rollbackCandidate.deploymentInfo.globalChoices.custom.length})
+                                    </Text>
+                                    {getDisabledReason('customGlobalChoices') && (
+                                      <Tooltip content={getDisabledReason('customGlobalChoices') || ''} relationship="label">
+                                        <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {rollbackLoading ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px', boxSizing: 'border-box', width: '100%' }}>
                         <Spinner size="large" />
-                        <MessageBar intent="info" style={{ width: '100%' }}>
+                        <MessageBar intent="info" style={{ boxSizing: 'border-box', width: '100%' }}>
                           <MessageBarBody>
                             <Text weight="semibold">{rollbackProgress}</Text>
                           </MessageBarBody>

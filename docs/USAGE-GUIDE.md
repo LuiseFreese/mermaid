@@ -335,6 +335,96 @@ erDiagram
 - **Mixed Solution**: CDM entities + custom entities in single deployment
 - **Optimized**: Best of both worlds - standard CDM + business-specific entities
 
+---
+
+## 5. Rollback Deployments
+
+The application provides **modular rollback** functionality, giving you granular control over which components to remove from Dataverse while preserving deployment history.
+
+### Accessing Rollback
+
+1. Navigate to **Deployment History** (view past deployments)
+2. Find the deployment you want to rollback
+3. Click the **"Rollback"** button
+4. Select components to remove
+
+### Rollback Options
+
+You can choose exactly what to rollback:
+
+#### Available Components
+
+- **Relationships** - Remove relationship metadata
+- **Custom Entities** - Delete custom tables created by deployment
+- **Global Choices** - Delete custom global choice sets
+- **Solution** - Remove the solution container
+- **Publisher** - Delete the publisher
+
+#### Dependency Rules
+
+The system automatically enforces safe rollback order:
+
+1. **Custom Entities** require **Relationships** to be deleted first (auto-selected)
+2. **Solution** requires all **Custom Entities** + **CDM Entities** to be removed (auto-selected)
+3. **Publisher** requires **Solution** to be deleted first (auto-selected)
+
+### Multiple Rollbacks
+
+You can perform **multiple sequential rollbacks** on the same deployment:
+
+**Example Workflow:**
+
+1. **First Rollback**: Remove only relationships
+   - Status: `modified` (other components remain)
+   - Badge: Shows "Relationships" rolled back
+
+2. **Second Rollback**: Remove custom entities
+   - Status: `modified` (solution/publisher remain)
+   - Badge: Shows "Custom Entities" rolled back
+
+3. **Third Rollback**: Remove solution and publisher
+   - Status: `rolled-back` (all components deleted)
+   - Badge: Shows "Solution, Publisher" rolled back
+
+**Smart Tracking:**
+- System tracks what was deleted in each rollback
+- Prevents attempting to delete already-removed components
+- Each rollback shows only the components selected for that specific operation
+- Deployment status updates automatically:
+  - **`deployed`** - Active deployment with all components
+  - **`modified`** - Partial rollback (some components remain)
+  - **`rolled-back`** - Complete rollback (all components deleted)
+
+### Rollback Best Practices
+
+#### ⚠️ Important Considerations
+
+
+1. **Relationships First**: Always delete relationships before entities
+2. **CDM vs Custom**: CDM entities are only removed from solution, not from Dataverse
+3. **Publisher Dependencies**: Cannot delete publisher if solution exists
+4. **Irreversible**: Rollback cannot be undone (re-deploy if needed)
+
+
+### Viewing Rollback History
+
+Each deployment card in the history shows:
+- **Status badge** (deployed/modified/rolled-back)
+- **Rollback badges** listing what was rolled back in each operation
+- **Rollback numbering** in chronological order
+- **Component details** for each rollback
+
+**Example Display:**
+```
+Deployment: university_v1.0
+Status: modified
+Rollbacks:
+  #1 - Relationships (Jan 15, 2025)
+  #2 - Custom Entities (Jan 16, 2025)
+```
+
+---
+
 ### Global Choices Integration Example
 
 For entities that need choice columns, upload a global choices JSON file:
