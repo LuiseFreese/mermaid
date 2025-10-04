@@ -665,6 +665,8 @@ async function handleApiRoutes(pathname, req, res, components) {
     if (rollbackRoute.endsWith('/execute')) {
       if (req.method === 'POST') {
         const deploymentId = rollbackRoute.replace('/execute', '');
+        // Read request body before passing to controller
+        req.rawBody = await readRequestBody(req);
         return components.rollbackController.executeRollback(req, res, deploymentId);
       }
     }

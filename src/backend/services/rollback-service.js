@@ -359,7 +359,7 @@ class RollbackService extends BaseService {
             console.log(`📝 ROLLBACK SERVICE: Recording rollback...`);
             progress('recording', 'Recording rollback...');
             
-            await this.recordRollback(deployment, rollbackResults, rollbackId);
+            await this.recordRollback(deployment, rollbackResults, rollbackId, validation.config);
 
             // Determine if this was a complete or partial rollback
             // Pass rollback history to check what's already been rolled back
@@ -384,7 +384,7 @@ class RollbackService extends BaseService {
                 rollbackId,
                 rollbackTimestamp: new Date().toISOString(),
                 rollbackResults,
-                rollbackOptions: selectedOptions  // Store ORIGINAL user selection, not validation.config
+                rollbackOptions: validation.config  // Store the validated/normalized config that was actually used
             });
 
             // Store the latest rollback at the top level for easy access
@@ -392,7 +392,7 @@ class RollbackService extends BaseService {
                 rollbackId,
                 rollbackTimestamp: new Date().toISOString(),
                 rollbackResults,
-                rollbackOptions: selectedOptions
+                rollbackOptions: validation.config
             };
 
             await this.deploymentHistoryService.updateDeployment(deploymentId, updateData);
@@ -481,7 +481,7 @@ class RollbackService extends BaseService {
      * @param {Object} rollbackResults - Rollback operation results
      * @param {string} rollbackId - Rollback operation ID
      */
-    async recordRollback(originalDeployment, rollbackResults, rollbackId) {
+    async recordRollback(originalDeployment, rollbackResults, rollbackId, selectedOptions = {}) {
         const rollbackRecord = {
             deploymentId: rollbackId,
             originalDeploymentId: originalDeployment.deploymentId,
@@ -498,6 +498,15 @@ class RollbackService extends BaseService {
                     solutionDeleted: rollbackResults.solutionDeleted,
                     errors: rollbackResults.errors || [],
                     warnings: rollbackResults.warnings || []
+                },
+                componentsSelected: {
+                    relationships: selectedOptions.relationships || false,
+                    customEntities: selectedOptions.customEntities || false,
+                    cdmEntities: selectedOptions.cdmEntities || false,
+                    customGlobalChoices: selectedOptions.customGlobalChoices || false,
+                    addedGlobalChoices: selectedOptions.addedGlobalChoices || false,
+                    solution: selectedOptions.solution || false,
+                    publisher: selectedOptions.publisher || false
                 }
             },
             solutionInfo: {

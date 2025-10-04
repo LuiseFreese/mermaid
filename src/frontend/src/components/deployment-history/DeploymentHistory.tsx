@@ -573,7 +573,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream'
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ 
           confirm: true,
@@ -582,77 +582,47 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
-      // Handle Server-Sent Events for progress updates
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      // Handle JSON response (backend doesn't support SSE yet)
+      const data = await response.json();
       
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                // Update progress message based on stage
-                if (data.stage === 'relationships') {
-                  setRollbackProgress('Deleting relationships...');
-                } else if (data.stage === 'custom-entities') {
-                  setRollbackProgress('Deleting custom entities...');
-                } else if (data.stage === 'cdm-entities') {
-                  setRollbackProgress('Removing CDM entities from solution...');
-                } else if (data.stage === 'custom-choices') {
-                  setRollbackProgress('Deleting custom global choices...');
-                } else if (data.stage === 'added-choices') {
-                  setRollbackProgress('Removing global choices from solution...');
-                } else if (data.stage === 'solution') {
-                  setRollbackProgress('Deleting solution...');
-                } else if (data.stage === 'publisher') {
-                  setRollbackProgress('Deleting publisher...');
-                } else if (data.message) {
-                  setRollbackProgress(data.message);
-                }
-                
-                if (data.status === 'completed') {
-                  setRollbackProgress('Rollback completed successfully!');
-                  setTimeout(() => {
-                    setShowRollbackModal(false);
-                    setRollbackLoading(false);
-                    loadDeploymentHistory(); // Refresh the list
-                  }, 1500);
-                  return;
-                } else if (data.status === 'error') {
-                  throw new Error(data.message);
-                }
-              } catch (parseError) {
-                console.warn('Failed to parse SSE data:', parseError);
-              }
-            }
-          }
-        }
+      if (data.success) {
+        // Show success message in modal
+        const summary = data.summary || `${data.rollbackId}`;
+        setRollbackProgress(`✅ Rollback completed successfully!\n\n${summary}`);
         
-        // If we exit the loop without seeing 'completed', ensure we stop loading
-        setRollbackProgress('Rollback completed!');
+        // Wait a moment to let user see the success message
         setTimeout(() => {
-          setShowRollbackModal(false);
-          setRollbackLoading(false);
+          // Reload deployment history
           loadDeploymentHistory();
-        }, 1500);
+          
+          // Close the modal
+          setShowRollbackModal(false);
+          setRollbackDeployment(null);
+          setRollbackOptions({
+            relationships: true,
+            customEntities: true,
+            customGlobalChoices: true,
+            solution: true,
+            publisher: false
+          });
+          setRollbackLoading(false);
+        }, 2000); // Show success for 2 seconds before closing
+      } else {
+        throw new Error(data.error || 'Rollback failed');
       }
+      
     } catch (error) {
       console.error('Rollback failed:', error);
       setRollbackProgress(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTimeout(() => {
         setRollbackLoading(false);
       }, 3000);
+    } finally {
+      setRollbackLoading(false);
     }
   };
 
