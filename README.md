@@ -13,7 +13,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Smart Validation & Auto-Fix**: Real-time ERD validation with one-click fixes for common issues ([see all validations](docs/VALIDATION-AND-AUTOFIX.md))
 - **Relationship Support**: One-to-many relationships and junction tables for many-to-many
 - **Global Choice Integration**: Map to existing choice sets or create new ones
-- **Deployment History**: Track all deployments with solution links and detailed entity information
+- **Deployment History & Rollback**: Track all deployments with modular rollback - choose exactly what to remove (relationships, entities, solution, publisher)
 - **Zero-Trust Security**: Managed identity authentication with no stored secrets
 - **Multiple Themes**: Light mode, dark mode, pink mode 💖, and retro neon mode 🌈✨
 
@@ -165,6 +165,24 @@ erDiagram
 ```
 
 **Result**: Creates `Event` and `Location` tables with `Eventattendee` table as a junction table and adds the `Contact` and `Account` table to the solution. Will automatically create all relationships as defined.
+
+### Modular Rollback
+
+The application supports **granular rollback control** - choose exactly what to remove:
+
+- **View Deployment History**: See all past deployments with status badges
+- **Selective Rollback**: Choose which components to remove:
+  - Relationships
+  - Custom Entities (tables)
+  - CDM Entities (from solution only)
+  - Global Choices
+  - Solution
+  - Publisher
+- **Multiple Rollbacks**: Perform sequential rollbacks on the same deployment
+- **Smart Tracking**: System prevents duplicate deletions and tracks status automatically
+- **Status Badges**: Visual indicators show deployment state (`deployed`, `modified`, `rolled-back`)
+
+See [Usage Guide - Rollback Section](docs/USAGE-GUIDE.md#5-rollback-deployments) for detailed instructions.
 
 ## Documentation
 

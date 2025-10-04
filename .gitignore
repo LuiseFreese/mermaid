@@ -35,6 +35,8 @@ test-files/
 utputFormat
 *.tmp
 *.temp
+*.github
+
 
 # Project management
 TODO.md

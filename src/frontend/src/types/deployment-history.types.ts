@@ -3,7 +3,7 @@ export interface DeploymentSummary {
   deploymentId: string;
   timestamp: string;
   environmentSuffix: string;
-  status: 'pending' | 'success' | 'failed' | 'rolled-back';
+  status: 'pending' | 'success' | 'failed' | 'rolled-back' | 'modified';
   completedAt?: string;
   duration?: number;
   solutionInfo?: {
@@ -48,6 +48,48 @@ export interface DeploymentSummary {
       errors?: string[];
       warnings?: string[];
     };
+    rollbacks?: Array<{
+      rollbackId: string;
+      rollbackTimestamp: string;
+      rollbackOptions?: {
+        relationships?: boolean;
+        customEntities?: boolean;
+        cdmEntities?: boolean;
+        customGlobalChoices?: boolean;
+        solution?: boolean;
+        publisher?: boolean;
+      };
+      rollbackResults?: {
+        relationshipsDeleted?: number;
+        entitiesDeleted?: number;
+        globalChoicesDeleted?: number;
+        solutionDeleted?: boolean;
+        publisherDeleted?: boolean;
+        errors?: string[];
+        warnings?: string[];
+      };
+    }>;
+    lastRollback?: {
+      rollbackId: string;
+      rollbackTimestamp: string;
+      rollbackOptions?: {
+        relationships?: boolean;
+        customEntities?: boolean;
+        cdmEntities?: boolean;
+        customGlobalChoices?: boolean;
+        solution?: boolean;
+        publisher?: boolean;
+      };
+      rollbackResults?: {
+        relationshipsDeleted?: number;
+        entitiesDeleted?: number;
+        globalChoicesDeleted?: number;
+        solutionDeleted?: boolean;
+        publisherDeleted?: boolean;
+        errors?: string[];
+        warnings?: string[];
+      };
+    };
   };
   deploymentLogs?: string[];
   metadata?: {
@@ -60,7 +102,7 @@ export interface DeploymentDetails {
   deploymentId: string;
   timestamp: string;
   environmentSuffix: string;
-  status: 'pending' | 'success' | 'failed' | 'rolled-back';
+  status: 'pending' | 'success' | 'failed' | 'rolled-back' | 'modified';
   completedAt?: string;
   erdContent: string;
   summary: {
