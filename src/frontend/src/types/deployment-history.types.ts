@@ -41,8 +41,10 @@ export interface DeploymentSummary {
     rollbackTimestamp: string;
     rollbackResults?: {
       relationshipsDeleted?: number;
+      relationshipsSkipped?: number;
       entitiesDeleted?: number;
       globalChoicesDeleted?: number;
+      globalChoicesSkipped?: number;
       solutionDeleted?: boolean;
       publisherDeleted?: boolean;
       errors?: string[];
@@ -61,8 +63,10 @@ export interface DeploymentSummary {
       };
       rollbackResults?: {
         relationshipsDeleted?: number;
+        relationshipsSkipped?: number;
         entitiesDeleted?: number;
         globalChoicesDeleted?: number;
+        globalChoicesSkipped?: number;
         solutionDeleted?: boolean;
         publisherDeleted?: boolean;
         errors?: string[];
@@ -82,8 +86,10 @@ export interface DeploymentSummary {
       };
       rollbackResults?: {
         relationshipsDeleted?: number;
+        relationshipsSkipped?: number;
         entitiesDeleted?: number;
         globalChoicesDeleted?: number;
+        globalChoicesSkipped?: number;
         solutionDeleted?: boolean;
         publisherDeleted?: boolean;
         errors?: string[];

@@ -8,7 +8,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATAVERSE_URL = 'https://test.crm.dynamics.com';
 process.env.TENANT_ID = 'test-tenant-id';
 process.env.CLIENT_ID = 'test-client-id';
-process.env.USE_MANAGED_IDENTITY = 'true';
+process.env.USE_MANAGED_IDENTITY = 'false'; // Disable managed identity
 process.env.LOG_REQUEST_BODY = 'false';
 process.env.STREAM_CHUNK_SIZE = '1024';
 

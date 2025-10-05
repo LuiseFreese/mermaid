@@ -4,6 +4,7 @@ import { WizardShell } from './components/wizard/WizardShell';
 import { DeploymentHistory } from './components/deployment-history';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { AuthProvider } from './auth/AuthProvider';
 import { lightTheme, darkTheme, pinkTheme, neonTheme } from './styles/FluentTheme';
 import './styles/themes.css';
 
@@ -47,9 +48,11 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <AuthProvider requireAuth={true}>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

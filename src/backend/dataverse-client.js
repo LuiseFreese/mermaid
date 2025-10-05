@@ -971,13 +971,11 @@ class DataverseClient {
       // Custom primary column specified
       primaryColumnName = entity.primaryColumnName;
       primaryDisplayName = entity.primaryColumnDisplayName || entity.primaryColumnName;
-      console.log(`🔍 Using custom primary column: ${primaryColumnName} for entity ${entity.name}`);
     } else {
       // Default behavior - look for 'name' attribute or use default
       const nameAttr = entity.attributes?.find(attr => attr.name && attr.name.toLowerCase() === 'name');
       primaryColumnName = 'name';
       primaryDisplayName = nameAttr?.displayName || `${entity.displayName || entity.name} Name`;
-      console.log(`🔍 Using default primary column: name for entity ${entity.name}`);
     }
     
     const primarySchema = `${publisherPrefix}_${this._safeName(entity.name)}_${this._safeName(primaryColumnName)}`;

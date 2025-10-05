@@ -1,23 +1,6 @@
 /**
  * Request Logger Middleware
- * Logs all in        res.end = function(chunk, encoding) {
-            if (chunk) {
-                responseSize += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, encoding);
-            }
-
-            const duration = Date.now() - start;
-            const responseLogData = {
-                requestId,
-                statusCode: res.statusCode,
-                duration: `${duration}ms`,
-                responseSize: `${responseSize} bytes`,
-                contentType: res.getHeader('content-type')
-            };
-
-            this.logger.log(`[${requestId}] REQUEST END: ${res.statusCode} (${duration}ms)`, responseLogData);
-            
-            originalEnd.call(res, chunk, encoding);
-        }.bind(this);ts
+ * Logs all incoming requests and responses with timing and metadata
  */
 class RequestLoggerMiddleware {
     constructor(dependencies = {}) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMsal } from '@azure/msal-react';
 import { GlobalChoice, globalChoicesService } from '../services/globalChoicesService';
 
 interface UseGlobalChoicesResult {
@@ -14,6 +15,7 @@ export const useGlobalChoices = (): UseGlobalChoicesResult => {
   const [globalChoices, setGlobalChoices] = useState<GlobalChoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { accounts, inProgress } = useMsal();
 
   const fetchGlobalChoices = async () => {
     setLoading(true);
@@ -35,8 +37,11 @@ export const useGlobalChoices = (): UseGlobalChoicesResult => {
   };
 
   useEffect(() => {
-    fetchGlobalChoices();
-  }, []);
+    // Only fetch global choices after authentication completes
+    if (accounts.length > 0 && inProgress === 'none') {
+      fetchGlobalChoices();
+    }
+  }, [accounts.length, inProgress]);
 
   // Separate built-in and custom choices
   const builtInChoices = globalChoices.filter(choice => !choice.isCustom);

@@ -32,6 +32,8 @@ cd mermaid
 - Configure secure managed identity authentication
 - Set up a Dataverse application user with proper permissions
 - Configure Power Platform Environment ID for deployment history solution links
+- **Create Azure AD App Registration for user authentication** (tenant-based access control)
+- **Configure SPA platform for frontend authentication** (MSAL integration)
 
 **The deployment script will:**
 - Build the React frontend locally using Vite
@@ -39,6 +41,7 @@ cd mermaid
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
 - Enable deployment history tracking with Power Platform integration
+- **Inject Azure AD authentication configuration** into frontend build
 
 ## Local Development Setup
 

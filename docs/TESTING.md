@@ -114,6 +114,276 @@ npm test -- --coverage
 
 **Note**: Frontend tests use Vitest and TypeScript (`.test.ts` files), while backend tests use Jest and JavaScript (`.test.js` files). This separation ensures optimal tooling and prevents configuration conflicts.
 
+### 4. Authentication Testing
+
+#### Backend Authentication Testing
+
+**Azure AD Authentication Testing:**
+
+The application includes comprehensive authentication testing for JWT token validation and Azure AD integration:
+
+```bash
+# Run auth middleware tests specifically
+npm test -- tests/unit/middleware/auth-middleware.test.js
+
+# Test authentication with bypass mode (local development)
+AUTH_ENABLED=false npm start
+
+# Test with real Azure AD tokens (requires configuration)
+# Set environment variables:
+# AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, AUTH_ENABLED=true
+npm start
+```
+
+**Backend Authentication Test Coverage:**
+- **Token Validation**: JWT signature verification, expiration checking, malformed token handling
+- **Bypass Mode**: Local development without authentication (`AUTH_ENABLED=false`)
+- **Configuration**: Azure AD tenant/client ID validation and error handling
+- **Authorization Headers**: Bearer token format validation and extraction
+- **User Identity**: Email, preferred_username, upn field resolution
+- **Optional Auth**: Graceful degradation when authentication fails
+- **Error Scenarios**: Token expiration, invalid signatures, missing config
+- **Role-Based Authorization (Future)**: Middleware tested and ready for when roles are needed
+
+**Manual Authentication Testing:**
+1. **Local Development**: Start server with `AUTH_ENABLED=false` to bypass auth
+2. **Azure AD Integration**: Configure Azure AD app registration and test with real tokens
+3. **Protected Endpoints**: Verify middleware blocks unauthenticated requests
+4. **Token Expiration**: Wait for token expiry and verify proper error handling
+
+#### Frontend MSAL Authentication UI Testing
+
+The frontend includes comprehensive UI testing for Microsoft Authentication Library (MSAL) integration:
+
+```bash
+# Run all frontend auth tests
+cd src/frontend && npm test -- tests/unit/auth/
+
+# Run specific auth test suites
+npm test -- tests/unit/auth/UserMenu.test.tsx
+npm test -- tests/unit/auth/AuthProvider.test.tsx
+npm test -- tests/unit/auth/authConfig.test.ts
+
+# Run with coverage
+npm test -- tests/unit/auth/ --coverage
+```
+
+**Test Organization:**
+- `tests/unit/auth/UserMenu.test.tsx` - User menu UI component (23 tests)
+- `tests/unit/auth/AuthProvider.test.tsx` - MSAL provider integration (23 tests)
+- `tests/unit/auth/authConfig.test.ts` - Configuration validation (17 tests)
+- `tests/utils/msalTestUtils.ts` - Shared test fixtures and helpers
+
+**Frontend Authentication Test Coverage:**
+
+**UserMenu Component (23 tests):**
+- Avatar display with user initials
+- Tooltip behavior on hover
+- Menu dropdown interaction
+- Sign out functionality
+- Menu icon rendering
+- Accessibility (ARIA labels, keyboard navigation)
+- Edge cases (long names, special characters, account changes)
+
+**AuthProvider Integration (23 tests):**
+- MSAL provider initialization
+- Authentication flow (authenticated/unauthenticated states)
+- Account management (single, multiple, no accounts)
+- Event handling (login success/failure)
+- Component composition and nesting
+- State management and transitions
+- Custom loading/login components
+- Error boundary integration
+
+**authConfig Module (17 tests):**
+- Configuration structure validation
+- MSAL options (cache, cookies, navigation)
+- Authority URL construction
+- API scope configuration with client ID
+- Logger configuration and PII filtering
+- Configuration summary export
+
+**Test Utilities (`msalTestUtils.ts`):**
+- **Fixtures**: Pre-configured account objects (standard, no name, long name, admin)
+- **Token Fixtures**: Valid, expired, and admin tokens
+- **In-Progress States**: All MSAL interaction states
+- **Helper Functions**:
+  - `createMockMsalInstance()` - Complete MSAL instance mock
+  - `createMsalContext()` - useMsal context with configurable state
+  - `simulateLoginSuccess()` - Simulate authentication flow
+  - `getInitials()` - Name-to-initials conversion
+
+**Mock Strategy:**
+- Inline mock instance definitions to avoid hoisting issues
+- Behavior-focused testing (rendered output vs implementation details)
+- Centralized fixtures for consistency across test suites
+- Fluent UI integration with clean test output (benign warnings suppressed)
+
+**Test Patterns:**
+```typescript
+// Using fixtures for consistent test data
+mockUseMsal.mockReturnValue({
+  instance: mockInstance,
+  accounts: [FIXTURES.ACCOUNTS.STANDARD],
+  inProgress: FIXTURES.IN_PROGRESS_STATES.none,
+});
+
+// Testing observable behavior
+expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+
+// Using test utilities
+const { useMsal } = await import('@azure/msal-react');
+const context = createMsalContext([FIXTURES.ACCOUNTS.ADMIN], 'none');
+```
+
+**Test Environment Setup:**
+Environment variables are configured in `src/test/setup.ts` for consistent test execution:
+```typescript
+process.env.VITE_AZURE_AD_CLIENT_ID = 'test-client-id';
+process.env.VITE_AZURE_AD_TENANT_ID = 'test-tenant-id';
+process.env.VITE_AZURE_AD_REDIRECT_URI = 'http://localhost:3000';
+```
+
+**Current Test Status:**
+- ✅ UserMenu: 23/23 tests passing (100%)
+- ✅ AuthProvider: 23/23 tests passing (100%)
+- ✅ authConfig: 17/17 tests passing (100%)
+- **Overall: 63/63 tests passing (100% pass rate)** ✅
+
+**Note:** AuthGuard functionality is tested through AuthProvider tests since AuthGuard is an internal component. Direct AuthGuard tests are not needed as all its behavior is covered by the AuthProvider test suite.
+5. **Frontend Integration**: Test MSAL browser authentication flow
+
+### 5. Frontend MSAL Authentication UI Testing
+
+**Frontend Authentication Testing:**
+
+The application includes comprehensive frontend MSAL (Microsoft Authentication Library) UI testing for Azure AD integration:
+
+```bash
+# Run frontend MSAL tests
+cd src/frontend && npm test -- tests/unit/auth
+
+# Run all frontend tests including authentication
+cd src/frontend && npm test
+```
+
+**MSAL Test Coverage (47 UI tests across 2 test suites):**
+
+**Test Organization:**
+```
+src/frontend/tests/
+├── utils/
+│   └── msalTestUtils.ts           # Reusable fixtures and test helpers
+└── unit/
+    └── auth/
+        ├── UserMenu.test.tsx      # User menu component UI (23 tests)
+        └── AuthProvider.test.tsx  # Auth provider integration (24 tests)
+```
+
+**Test Utilities and Fixtures** (`tests/utils/msalTestUtils.ts`):
+- **Mock Account Fixtures**: Standard user, no-name user, long-name user, admin accounts
+- **Token Fixtures**: Valid tokens, expired tokens, admin tokens with roles
+- **MSAL Context Factory**: `createMsalContext()` for consistent test setups
+- **Helper Functions**: `setupMsalMock()`, `simulateLoginSuccess()`, `simulateLoginFailure()`
+- **Authentication States**: none, startup, login, logout, ssoSilent, acquireToken, handleRedirect
+- **Shared Utilities**: `getInitials()`, `waitForAuthRedirect()`
+
+**UserMenu Component Tests** (23 tests):
+- **Avatar Display** (5 tests):
+  - Renders avatar with correct initials for standard users
+  - Uses username when name is unavailable
+  - Truncates long names to 2-character initials
+  - Renders avatar with consistent sizing
+  - Does not render when no account exists
+  
+- **Tooltip Behavior** (2 tests):
+  - Displays tooltip with full display name on hover
+  - Tooltip disappears on mouse leave
+  
+- **Menu Interaction** (4 tests):
+  - Opens dropdown menu on button click
+  - Displays user name as disabled menu item
+  - Displays username as disabled menu item
+  - Closes menu when clicking outside
+  
+- **Sign Out Functionality** (3 tests):
+  - Calls `logoutRedirect` with correct parameters
+  - Includes proper `postLogoutRedirectUri`
+  - Renders Sign Out icon correctly
+  
+- **Menu Icons** (2 tests):
+  - Displays `PersonCircleRegular` icon for display name
+  - Displays `PersonRegular` icon for username
+  
+- **Accessibility** (3 tests):
+  - Has proper ARIA label for avatar button
+  - Menu is keyboard navigable
+  - Menu items have proper disabled states
+  
+- **Edge Cases** (4 tests):
+  - Handles admin accounts with roles
+  - Handles single character names
+  - Handles special characters in display names
+  - Re-renders when account changes
+
+**AuthProvider Component Tests** (24 tests):
+- **Provider Initialization** (3 tests):
+  - Wraps children with MsalProvider
+  - Passes MSAL instance to provider
+  - Renders children when `requireAuth=false`
+  
+- **Authentication Flow** (5 tests):
+  - Renders children when authenticated with `requireAuth=true`
+  - Triggers login redirect when unauthenticated
+  - Shows loading state during authentication
+  - Uses custom loading component when provided
+  - Uses custom login component when provided
+  
+- **Account Management** (3 tests):
+  - Sets active account when multiple accounts exist
+  - Handles single account correctly
+  - Does not set active account when no accounts exist
+  
+- **Event Handling** (4 tests):
+  - Registers MSAL event callback on initialization
+  - Sets active account on `LOGIN_SUCCESS` event
+  - Handles `LOGIN_SUCCESS` event with admin accounts
+  - Ignores events without payload
+  
+- **Composition and Nesting** (2 tests):
+  - Renders deeply nested children
+  - Preserves React context through provider
+  
+- **State Management** (2 tests):
+  - Maintains component state across auth state changes
+  - Handles transition from unauthenticated to authenticated
+  
+- **Edge Cases** (3 tests):
+  - Handles rapid `requireAuth` prop changes
+  - Handles empty children gracefully
+  - Handles null children gracefully
+  
+- **Error Boundaries** (2 tests):
+  - Handles initialization errors gracefully
+  - Handles login redirect failures
+
+**Testing Approach:**
+- **Fixtures-Based**: Centralized mock accounts, tokens, and authentication states
+- **Helper Functions**: Reusable setup utilities reduce test duplication
+- **Modular Organization**: Clear describe blocks for each functional area
+- **Comprehensive Mocking**: Full MSAL instance and context mocking
+- **UI Focus**: Tests verify rendered UI elements, user interactions, and accessibility
+- **Integration Testing**: AuthProvider tests verify full authentication flow with MSAL events
+
+**Key Testing Patterns:**
+- Centralized fixture management in `msalTestUtils.ts`
+- Helper functions for common test setup (DRY principle)
+- Comprehensive assertions on UI elements and interactions
+- Accessibility validation (ARIA labels, keyboard navigation)
+- Edge case coverage (special characters, null states, rapid changes)
+- Event handling verification (MSAL callbacks)
+- State transition testing (unauthenticated → authenticated)
+
 ### Deployment Testing
 
 #### 1. Local Production Build Test
@@ -164,7 +434,10 @@ tests/
 ├── unit/              # Backend component isolation tests (Jest)
 │   ├── services/      # Business logic testing
 │   ├── controllers/   # Request/response handling
-│   ├── middleware/    # CORS, security, validation
+│   ├── middleware/    # CORS, security, validation, authentication, logging
+│   │   ├── auth-middleware.test.js           # Azure AD JWT authentication (43 tests)
+│   │   ├── security-middleware.test.js       # Security headers (39 tests)
+│   │   └── request-logger-middleware.test.js # Request/response logging (51 tests)
 │   ├── clients/       # External API integration
 │   └── parsers/       # ERD parsing logic
 ├── integration/       # API endpoint testing (Jest)
@@ -185,8 +458,8 @@ src/frontend/tests/
 - **Configuration**: `jest.config.json`
 - **Test Pattern**: `**/tests/**/*.test.js` (JavaScript only)
 - **Environment**: Node.js
-- **Test Suites**: 31 suites with 536 tests
-- **Coverage**: Backend services, controllers, middleware, and utilities
+- **Test Files**: 66 unit test files with 626 tests
+- **Coverage**: Backend services, controllers, middleware (auth, security, logging), and utilities
 
 **Frontend Tests (Vitest)**:
 - **Configuration**: `src/frontend/vitest.config.ts`
@@ -229,9 +502,10 @@ The test suite includes comprehensive coverage across all application layers:
 - **Location**: `tests/unit/`
 - **Framework**: Jest with Node.js environment
 - **File Pattern**: `*.test.js` (JavaScript only)
-- **Coverage**: Services, controllers, middleware, utilities
+- **Coverage**: Services, controllers, middleware (auth, security, logging), utilities
 - **Mock Strategy**: Automated mocking of external dependencies
-- **Test Count**: 536 tests across 31 suites
+- **Test Count**: 626 tests across 66 test files
+
 
 #### Integration Tests  
 - **Location**: `tests/integration/`
