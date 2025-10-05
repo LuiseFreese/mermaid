@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { UserMenu } from '../auth/UserMenu';
+import { useMsal } from '@azure/msal-react';
 import {
   MOCK_ACCOUNT,
   MOCK_ACCOUNT_NO_NAME,
@@ -16,8 +17,7 @@ vi.mock('@azure/msal-react', () => ({
 }));
 
 const renderUserMenu = (useMsalMock: ReturnType<typeof mockUseMsal>) => {
-  const { useMsal } = vi.mocked(await import('@azure/msal-react'));
-  useMsal.mockImplementation(useMsalMock);
+  vi.mocked(useMsal).mockImplementation(useMsalMock as any);
 
   return render(
     <FluentProvider theme={webLightTheme}>

@@ -560,7 +560,7 @@ if (-not $SkipDataverseUser -and $DataverseUrl) {
 }
 
 # ---------- 10. Configure Application Logging ----------
-Write-Step "Configuring application logging"
+Write-Info "Configuring application logging"
 try {
     az webapp log config --name $AppServiceName --resource-group $ResourceGroup --application-logging filesystem --level information --query "applicationLogs.fileSystem.level" --output tsv | Out-Null
     Write-Success "Application logging enabled at Information level"

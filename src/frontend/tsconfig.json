@@ -43,7 +43,12 @@
     "vite.config.ts",
     "node_modules",
     "dist",
-    "../backend"
+    "../backend",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ],
   "references": [
     { "path": "./tsconfig.node.json" }

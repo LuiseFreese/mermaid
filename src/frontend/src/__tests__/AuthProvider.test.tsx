@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
 import { MOCK_ACCOUNT, createMockMsalInstance } from './utils/msalMocks';
 
 vi.mock('@azure/msal-react', () => ({
-  MsalProvider: ({ children, instance }: { children: React.ReactNode; instance: any }) => {
+  MsalProvider: ({ children }: { children: React.ReactNode; instance?: any }) => {
     return <div data-testid="msal-provider">{children}</div>;
   },
   AuthenticatedTemplate: ({ children }: { children: React.ReactNode }) => (
@@ -381,7 +381,7 @@ describe('AuthProvider', () => {
 
       const calls = vi.mocked(PublicClientApplication).mock.calls;
       const config = calls[calls.length - 1][0];
-      expect(config.cache.cacheLocation).toBe('sessionStorage');
+      expect(config.cache?.cacheLocation).toBe('sessionStorage');
     });
 
     it('does not store auth state in cookie by default', async () => {
@@ -397,7 +397,7 @@ describe('AuthProvider', () => {
 
       const calls = vi.mocked(PublicClientApplication).mock.calls;
       const config = calls[calls.length - 1][0];
-      expect(config.cache.storeAuthStateInCookie).toBe(false);
+      expect(config.cache?.storeAuthStateInCookie).toBe(false);
     });
   });
 });
