@@ -200,8 +200,10 @@ tests/
 ├── unit/              # Backend component isolation tests (Jest)
 │   ├── services/      # Business logic testing
 │   ├── controllers/   # Request/response handling
-│   ├── middleware/    # CORS, security, validation, authentication
-│   │   └── auth-middleware.test.js  # Azure AD JWT authentication (43 tests)
+│   ├── middleware/    # CORS, security, validation, authentication, logging
+│   │   ├── auth-middleware.test.js           # Azure AD JWT authentication (43 tests)
+│   │   ├── security-middleware.test.js       # Security headers (39 tests)
+│   │   └── request-logger-middleware.test.js # Request/response logging (51 tests)
 │   ├── clients/       # External API integration
 │   └── parsers/       # ERD parsing logic
 ├── integration/       # API endpoint testing (Jest)
@@ -222,8 +224,8 @@ src/frontend/tests/
 - **Configuration**: `jest.config.json`
 - **Test Pattern**: `**/tests/**/*.test.js` (JavaScript only)
 - **Environment**: Node.js
-- **Test Files**: 64 unit test files with 536 tests
-- **Coverage**: Backend services, controllers, middleware, and utilities
+- **Test Files**: 66 unit test files with 626 tests
+- **Coverage**: Backend services, controllers, middleware (auth, security, logging), and utilities
 
 **Frontend Tests (Vitest)**:
 - **Configuration**: `src/frontend/vitest.config.ts`
@@ -266,9 +268,10 @@ The test suite includes comprehensive coverage across all application layers:
 - **Location**: `tests/unit/`
 - **Framework**: Jest with Node.js environment
 - **File Pattern**: `*.test.js` (JavaScript only)
-- **Coverage**: Services, controllers, middleware, utilities, authentication
+- **Coverage**: Services, controllers, middleware (auth, security, logging), utilities
 - **Mock Strategy**: Automated mocking of external dependencies
-- **Test Count**: 536 tests across 64 test files
+- **Test Count**: 626 tests across 66 test files
+
 
 #### Integration Tests  
 - **Location**: `tests/integration/`
