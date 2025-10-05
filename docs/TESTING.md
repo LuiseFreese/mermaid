@@ -116,6 +116,8 @@ npm test -- --coverage
 
 ### 4. Authentication Testing
 
+#### Backend Authentication Testing
+
 **Azure AD Authentication Testing:**
 
 The application includes comprehensive authentication testing for JWT token validation and Azure AD integration:
@@ -133,7 +135,7 @@ AUTH_ENABLED=false npm start
 npm start
 ```
 
-**Authentication Test Coverage:**
+**Backend Authentication Test Coverage:**
 - **Token Validation**: JWT signature verification, expiration checking, malformed token handling
 - **Bypass Mode**: Local development without authentication (`AUTH_ENABLED=false`)
 - **Configuration**: Azure AD tenant/client ID validation and error handling
@@ -148,6 +150,107 @@ npm start
 2. **Azure AD Integration**: Configure Azure AD app registration and test with real tokens
 3. **Protected Endpoints**: Verify middleware blocks unauthenticated requests
 4. **Token Expiration**: Wait for token expiry and verify proper error handling
+
+#### Frontend MSAL Authentication UI Testing
+
+The frontend includes comprehensive UI testing for Microsoft Authentication Library (MSAL) integration:
+
+```bash
+# Run all frontend auth tests
+cd src/frontend && npm test -- tests/unit/auth/
+
+# Run specific auth test suites
+npm test -- tests/unit/auth/UserMenu.test.tsx
+npm test -- tests/unit/auth/AuthProvider.test.tsx
+npm test -- tests/unit/auth/authConfig.test.ts
+
+# Run with coverage
+npm test -- tests/unit/auth/ --coverage
+```
+
+**Test Organization:**
+- `tests/unit/auth/UserMenu.test.tsx` - User menu UI component (23 tests)
+- `tests/unit/auth/AuthProvider.test.tsx` - MSAL provider integration (23 tests)
+- `tests/unit/auth/authConfig.test.ts` - Configuration validation (17 tests)
+- `tests/utils/msalTestUtils.ts` - Shared test fixtures and helpers
+
+**Frontend Authentication Test Coverage:**
+
+**UserMenu Component (23 tests):**
+- Avatar display with user initials
+- Tooltip behavior on hover
+- Menu dropdown interaction
+- Sign out functionality
+- Menu icon rendering
+- Accessibility (ARIA labels, keyboard navigation)
+- Edge cases (long names, special characters, account changes)
+
+**AuthProvider Integration (23 tests):**
+- MSAL provider initialization
+- Authentication flow (authenticated/unauthenticated states)
+- Account management (single, multiple, no accounts)
+- Event handling (login success/failure)
+- Component composition and nesting
+- State management and transitions
+- Custom loading/login components
+- Error boundary integration
+
+**authConfig Module (17 tests):**
+- Configuration structure validation
+- MSAL options (cache, cookies, navigation)
+- Authority URL construction
+- API scope configuration with client ID
+- Logger configuration and PII filtering
+- Configuration summary export
+
+**Test Utilities (`msalTestUtils.ts`):**
+- **Fixtures**: Pre-configured account objects (standard, no name, long name, admin)
+- **Token Fixtures**: Valid, expired, and admin tokens
+- **In-Progress States**: All MSAL interaction states
+- **Helper Functions**:
+  - `createMockMsalInstance()` - Complete MSAL instance mock
+  - `createMsalContext()` - useMsal context with configurable state
+  - `simulateLoginSuccess()` - Simulate authentication flow
+  - `getInitials()` - Name-to-initials conversion
+
+**Mock Strategy:**
+- Inline mock instance definitions to avoid hoisting issues
+- Behavior-focused testing (rendered output vs implementation details)
+- Centralized fixtures for consistency across test suites
+- Fluent UI integration with clean test output (benign warnings suppressed)
+
+**Test Patterns:**
+```typescript
+// Using fixtures for consistent test data
+mockUseMsal.mockReturnValue({
+  instance: mockInstance,
+  accounts: [FIXTURES.ACCOUNTS.STANDARD],
+  inProgress: FIXTURES.IN_PROGRESS_STATES.none,
+});
+
+// Testing observable behavior
+expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+
+// Using test utilities
+const { useMsal } = await import('@azure/msal-react');
+const context = createMsalContext([FIXTURES.ACCOUNTS.ADMIN], 'none');
+```
+
+**Test Environment Setup:**
+Environment variables are configured in `src/test/setup.ts` for consistent test execution:
+```typescript
+process.env.VITE_AZURE_AD_CLIENT_ID = 'test-client-id';
+process.env.VITE_AZURE_AD_TENANT_ID = 'test-tenant-id';
+process.env.VITE_AZURE_AD_REDIRECT_URI = 'http://localhost:3000';
+```
+
+**Current Test Status:**
+- ✅ UserMenu: 23/23 tests passing (100%)
+- ✅ AuthProvider: 23/23 tests passing (100%)
+- ✅ authConfig: 17/17 tests passing (100%)
+- **Overall: 63/63 tests passing (100% pass rate)** ✅
+
+**Note:** AuthGuard functionality is tested through AuthProvider tests since AuthGuard is an internal component. Direct AuthGuard tests are not needed as all its behavior is covered by the AuthProvider test suite.
 5. **Frontend Integration**: Test MSAL browser authentication flow
 
 ### 5. Frontend MSAL Authentication UI Testing

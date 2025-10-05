@@ -2,6 +2,11 @@ import '@testing-library/jest-dom';
 import { vi, beforeAll, afterAll } from 'vitest';
 import { configureAxe } from 'jest-axe';
 
+// Set up test environment variables for MSAL
+process.env.VITE_AZURE_AD_CLIENT_ID = 'test-client-id';
+process.env.VITE_AZURE_AD_TENANT_ID = 'test-tenant-id';
+process.env.VITE_AZURE_AD_REDIRECT_URI = 'http://localhost:3000';
+
 // Configure axe for accessibility testing
 const axe = configureAxe({
   rules: {
