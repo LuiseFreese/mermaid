@@ -46,13 +46,25 @@ const jwksClient = require('jwks-rsa');
 // Configuration
 
 
-const AZURE_AD_TENANT_ID = process.env.AZURE_AD_TENANT_ID;
+function getConfig() {
 
 
-const AZURE_AD_CLIENT_ID = process.env.AZURE_AD_CLIENT_ID;
+  return {
 
 
-const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
+    AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
+
+
+    AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
+
+
+    AUTH_ENABLED: process.env.AUTH_ENABLED !== 'false',
+
+
+  };
+
+
+}
 
 
 
@@ -62,9 +74,10 @@ const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 let client = null;
 
 function getJwksClient() {
-  if (!client && AUTH_ENABLED) {
+  const config = getConfig();
+  if (!client && config.AUTH_ENABLED && config.AZURE_AD_TENANT_ID) {
     client = jwksClient({
-      jwksUri: `https://login.microsoftonline.com/${AZURE_AD_TENANT_ID}/discovery/v2.0/keys`,
+      jwksUri: `https://login.microsoftonline.com/${config.AZURE_AD_TENANT_ID}/discovery/v2.0/keys`,
       cache: true,
       cacheMaxAge: 86400000, // 24 hours
       rateLimit: true,
@@ -135,6 +148,9 @@ function verifyToken(token) {
   return new Promise((resolve, reject) => {
 
 
+    const config = getConfig();
+
+
     jwt.verify(
 
 
@@ -147,10 +163,10 @@ function verifyToken(token) {
       {
 
 
-        audience: AZURE_AD_CLIENT_ID, // Must match the client ID
+        audience: config.AZURE_AD_CLIENT_ID, // Must match the client ID
 
 
-        issuer: `https://login.microsoftonline.com/${AZURE_AD_TENANT_ID}/v2.0`, // Must match tenant
+        issuer: `https://login.microsoftonline.com/${config.AZURE_AD_TENANT_ID}/v2.0`, // Must match tenant
 
 
         algorithms: ['RS256'], // Azure AD uses RS256
@@ -201,10 +217,16 @@ function verifyToken(token) {
 async function authenticateToken(req, res, next) {
 
 
+  const config = getConfig();
+
+
+  
+
+
   // Bypass authentication if disabled (local development)
 
 
-  if (!AUTH_ENABLED) {
+  if (!config.AUTH_ENABLED) {
 
 
     console.log('[Auth] Authentication bypassed (AUTH_ENABLED=false)');
@@ -240,7 +262,7 @@ async function authenticateToken(req, res, next) {
   // Validate configuration
 
 
-  if (!AZURE_AD_TENANT_ID || !AZURE_AD_CLIENT_ID) {
+  if (!config.AZURE_AD_TENANT_ID || !config.AZURE_AD_CLIENT_ID) {
 
 
     console.error('[Auth] Missing Azure AD configuration');
@@ -477,10 +499,34 @@ async function authenticateToken(req, res, next) {
 async function optionalAuth(req, res, next) {
 
 
-  if (!AUTH_ENABLED) {
+  const config = getConfig();
 
 
-    req.user = null;
+  
+
+
+  if (!config.AUTH_ENABLED) {
+
+
+    console.log('[Auth] Optional authentication bypassed (AUTH_ENABLED=false)');
+
+
+    req.user = {
+
+
+      oid: 'local-dev-user',
+
+
+      email: 'dev@localhost',
+
+
+      name: 'Local Development User',
+
+
+      isAuthenticated: false,
+
+
+    };
 
 
     return next();
@@ -543,6 +589,9 @@ async function optionalAuth(req, res, next) {
   } catch (error) {
 
 
+    console.log(`[Auth] Optional authentication failed: ${error.message}`);
+
+
     req.user = null;
 
 
@@ -567,7 +616,7 @@ async function optionalAuth(req, res, next) {
  * Role-based Authorization Middleware
 
 
- * Usage: requireRole('Admin', 'PowerUser')
+ * Usage: requireRole('Admin', 'PowerUser') or requireRole(['Admin', 'PowerUser'])
 
 
  */
@@ -576,7 +625,46 @@ async function optionalAuth(req, res, next) {
 function requireRole(...allowedRoles) {
 
 
+  // Support both requireRole('Admin', 'PowerUser') and requireRole(['Admin', 'PowerUser'])
+
+
+  if (allowedRoles.length === 1 && Array.isArray(allowedRoles[0])) {
+
+
+    allowedRoles = allowedRoles[0];
+
+
+  }
+
+
+  
+
+
   return (req, res, next) => {
+
+
+    const config = getConfig();
+
+
+    
+
+
+    // Bypass role check if authentication is disabled
+
+
+    if (!config.AUTH_ENABLED) {
+
+
+      console.log('[Auth] Role check bypassed (AUTH_ENABLED=false)');
+
+
+      return next();
+
+
+    }
+
+
+    
 
 
     if (!req.user || !req.user.isAuthenticated) {
@@ -615,6 +703,9 @@ function requireRole(...allowedRoles) {
     if (!hasRole) {
 
 
+      console.log(`[Auth] Role check failed for ${req.user.email}: required [${allowedRoles.join(', ')}], user has [${userRoles.join(', ')}]`);
+
+
       res.writeHead(403, { 'Content-Type': 'application/json' });
 
 
@@ -627,13 +718,22 @@ function requireRole(...allowedRoles) {
         message: `This action requires one of the following roles: ${allowedRoles.join(', ')}`,
 
 
+        requiredRoles: allowedRoles,
+
+
+        userRoles: userRoles,
+
+
       }));
 
 
     }
 
 
+    
 
+
+    console.log(`[Auth] Role check passed for ${req.user.email}`);
 
 
     next();

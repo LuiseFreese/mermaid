@@ -560,7 +560,8 @@ describe('Authentication Middleware', () => {
       
       await authenticateToken(req, res, next);
       
-      assertUnauthorizedResponse(res);
+      expect(res.writeHead).toHaveBeenCalledWith(401, { 'Content-Type': 'application/json' });
+      expect(res.end).toHaveBeenCalled();
       const response = parseResponseJson(res);
       expect(response.error).toBe('Token Expired');
       expect(response.message).toContain('session has expired');
@@ -601,7 +602,8 @@ describe('Authentication Middleware', () => {
       
       await authenticateToken(req, res, next);
       
-      assertUnauthorizedResponse(res);
+      expect(res.writeHead).toHaveBeenCalledWith(401, { 'Content-Type': 'application/json' });
+      expect(res.end).toHaveBeenCalled();
       const response = parseResponseJson(res);
       expect(response.error).toBe('Invalid Token');
       expect(response.message).toContain('invalid');
@@ -621,7 +623,8 @@ describe('Authentication Middleware', () => {
       
       await authenticateToken(req, res, next);
       
-      assertUnauthorizedResponse(res);
+      expect(res.writeHead).toHaveBeenCalledWith(401, { 'Content-Type': 'application/json' });
+      expect(res.end).toHaveBeenCalled();
       const response = parseResponseJson(res);
       expect(response.error).toBe('Invalid Token');
       expect(next).not.toHaveBeenCalled();
