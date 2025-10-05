@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, beforeAll, afterAll } from 'vitest';
 import { configureAxe } from 'jest-axe';
 
 // Configure axe for accessibility testing
@@ -15,15 +15,26 @@ const axe = configureAxe({
 // Make axe available globally for tests
 (global as any).axe = axe;
 
-// Mock console methods to avoid noise in tests (temporarily disabled for debug)
-// global.console = {
-//   ...console,
-//   log: vi.fn(),
-//   debug: vi.fn(),
-//   info: vi.fn(),
-//   warn: vi.fn(),
-//   error: vi.fn(),
-// };
+// Suppress act() warnings from Fluent UI components
+// These are expected and benign for async state updates in Menu components
+const originalError = console.error;
+beforeAll(() => {
+  console.error = (...args: any[]) => {
+    const message = args[0];
+    if (
+      typeof message === 'string' &&
+      (message.includes('Warning: An update to') && message.includes('inside a test was not wrapped in act')) ||
+      (message.includes('Warning: ReactDOM.render'))
+    ) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+});
+
+afterAll(() => {
+  console.error = originalError;
+});
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

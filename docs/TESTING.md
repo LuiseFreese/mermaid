@@ -150,6 +150,137 @@ npm start
 4. **Token Expiration**: Wait for token expiry and verify proper error handling
 5. **Frontend Integration**: Test MSAL browser authentication flow
 
+### 5. Frontend MSAL Authentication UI Testing
+
+**Frontend Authentication Testing:**
+
+The application includes comprehensive frontend MSAL (Microsoft Authentication Library) UI testing for Azure AD integration:
+
+```bash
+# Run frontend MSAL tests
+cd src/frontend && npm test -- tests/unit/auth
+
+# Run all frontend tests including authentication
+cd src/frontend && npm test
+```
+
+**MSAL Test Coverage (47 UI tests across 2 test suites):**
+
+**Test Organization:**
+```
+src/frontend/tests/
+├── utils/
+│   └── msalTestUtils.ts           # Reusable fixtures and test helpers
+└── unit/
+    └── auth/
+        ├── UserMenu.test.tsx      # User menu component UI (23 tests)
+        └── AuthProvider.test.tsx  # Auth provider integration (24 tests)
+```
+
+**Test Utilities and Fixtures** (`tests/utils/msalTestUtils.ts`):
+- **Mock Account Fixtures**: Standard user, no-name user, long-name user, admin accounts
+- **Token Fixtures**: Valid tokens, expired tokens, admin tokens with roles
+- **MSAL Context Factory**: `createMsalContext()` for consistent test setups
+- **Helper Functions**: `setupMsalMock()`, `simulateLoginSuccess()`, `simulateLoginFailure()`
+- **Authentication States**: none, startup, login, logout, ssoSilent, acquireToken, handleRedirect
+- **Shared Utilities**: `getInitials()`, `waitForAuthRedirect()`
+
+**UserMenu Component Tests** (23 tests):
+- **Avatar Display** (5 tests):
+  - Renders avatar with correct initials for standard users
+  - Uses username when name is unavailable
+  - Truncates long names to 2-character initials
+  - Renders avatar with consistent sizing
+  - Does not render when no account exists
+  
+- **Tooltip Behavior** (2 tests):
+  - Displays tooltip with full display name on hover
+  - Tooltip disappears on mouse leave
+  
+- **Menu Interaction** (4 tests):
+  - Opens dropdown menu on button click
+  - Displays user name as disabled menu item
+  - Displays username as disabled menu item
+  - Closes menu when clicking outside
+  
+- **Sign Out Functionality** (3 tests):
+  - Calls `logoutRedirect` with correct parameters
+  - Includes proper `postLogoutRedirectUri`
+  - Renders Sign Out icon correctly
+  
+- **Menu Icons** (2 tests):
+  - Displays `PersonCircleRegular` icon for display name
+  - Displays `PersonRegular` icon for username
+  
+- **Accessibility** (3 tests):
+  - Has proper ARIA label for avatar button
+  - Menu is keyboard navigable
+  - Menu items have proper disabled states
+  
+- **Edge Cases** (4 tests):
+  - Handles admin accounts with roles
+  - Handles single character names
+  - Handles special characters in display names
+  - Re-renders when account changes
+
+**AuthProvider Component Tests** (24 tests):
+- **Provider Initialization** (3 tests):
+  - Wraps children with MsalProvider
+  - Passes MSAL instance to provider
+  - Renders children when `requireAuth=false`
+  
+- **Authentication Flow** (5 tests):
+  - Renders children when authenticated with `requireAuth=true`
+  - Triggers login redirect when unauthenticated
+  - Shows loading state during authentication
+  - Uses custom loading component when provided
+  - Uses custom login component when provided
+  
+- **Account Management** (3 tests):
+  - Sets active account when multiple accounts exist
+  - Handles single account correctly
+  - Does not set active account when no accounts exist
+  
+- **Event Handling** (4 tests):
+  - Registers MSAL event callback on initialization
+  - Sets active account on `LOGIN_SUCCESS` event
+  - Handles `LOGIN_SUCCESS` event with admin accounts
+  - Ignores events without payload
+  
+- **Composition and Nesting** (2 tests):
+  - Renders deeply nested children
+  - Preserves React context through provider
+  
+- **State Management** (2 tests):
+  - Maintains component state across auth state changes
+  - Handles transition from unauthenticated to authenticated
+  
+- **Edge Cases** (3 tests):
+  - Handles rapid `requireAuth` prop changes
+  - Handles empty children gracefully
+  - Handles null children gracefully
+  
+- **Error Boundaries** (2 tests):
+  - Handles initialization errors gracefully
+  - Handles login redirect failures
+
+**Testing Approach:**
+- **Fixtures-Based**: Centralized mock accounts, tokens, and authentication states
+- **Helper Functions**: Reusable setup utilities reduce test duplication
+- **Modular Organization**: Clear describe blocks for each functional area
+- **Comprehensive Mocking**: Full MSAL instance and context mocking
+- **UI Focus**: Tests verify rendered UI elements, user interactions, and accessibility
+- **Integration Testing**: AuthProvider tests verify full authentication flow with MSAL events
+
+**Key Testing Patterns:**
+- Centralized fixture management in `msalTestUtils.ts`
+- Helper functions for common test setup (DRY principle)
+- Comprehensive assertions on UI elements and interactions
+- Accessibility validation (ARIA labels, keyboard navigation)
+- Edge case coverage (special characters, null states, rapid changes)
+- Event handling verification (MSAL callbacks)
+- State transition testing (unauthenticated → authenticated)
+
 ### Deployment Testing
 
 #### 1. Local Production Build Test
