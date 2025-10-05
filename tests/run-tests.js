@@ -116,8 +116,9 @@ class TestRunner {
     this.log('Running integration tests...', 'info');
     
     // Note: Coverage disabled for integration tests due to hanging issues with mocking
+    // Run serially (--runInBand) to prevent port conflicts when multiple tests start servers
     const result = await this.runCommand(
-      'npx jest tests/integration --testTimeout=60000 --verbose --detectOpenHandles --forceExit',
+      'npx jest tests/integration --testTimeout=60000 --verbose --detectOpenHandles --forceExit --runInBand',
       'Integration Tests'
     );
 
