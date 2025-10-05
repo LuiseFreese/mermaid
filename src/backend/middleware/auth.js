@@ -58,28 +58,21 @@ const AUTH_ENABLED = process.env.AUTH_ENABLED !== 'false';
 
 
 
-// JWKS client to fetch Azure AD signing keys
+// JWKS client to fetch Azure AD signing keys (lazy-loaded to avoid initialization in tests)
+let client = null;
 
-
-const client = jwksClient({
-
-
-  jwksUri: `https://login.microsoftonline.com/${AZURE_AD_TENANT_ID}/discovery/v2.0/keys`,
-
-
-  cache: true,
-
-
-  cacheMaxAge: 86400000, // 24 hours
-
-
-  rateLimit: true,
-
-
-  jwksRequestsPerMinute: 10,
-
-
-});
+function getJwksClient() {
+  if (!client && AUTH_ENABLED) {
+    client = jwksClient({
+      jwksUri: `https://login.microsoftonline.com/${AZURE_AD_TENANT_ID}/discovery/v2.0/keys`,
+      cache: true,
+      cacheMaxAge: 86400000, // 24 hours
+      rateLimit: true,
+      jwksRequestsPerMinute: 10,
+    });
+  }
+  return client;
+}
 
 
 
@@ -95,9 +88,12 @@ const client = jwksClient({
 
 
 function getKey(header, callback) {
+  const jwksClient = getJwksClient();
+  if (!jwksClient) {
+    return callback(new Error('JWKS client not initialized'));
+  }
 
-
-  client.getSigningKey(header.kid, (err, key) => {
+  jwksClient.getSigningKey(header.kid, (err, key) => {
 
 
     if (err) {
