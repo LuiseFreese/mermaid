@@ -114,6 +114,42 @@ npm test -- --coverage
 
 **Note**: Frontend tests use Vitest and TypeScript (`.test.ts` files), while backend tests use Jest and JavaScript (`.test.js` files). This separation ensures optimal tooling and prevents configuration conflicts.
 
+### 4. Authentication Testing
+
+**Azure AD Authentication Testing:**
+
+The application includes comprehensive authentication testing for JWT token validation and Azure AD integration:
+
+```bash
+# Run auth middleware tests specifically
+npm test -- tests/unit/middleware/auth-middleware.test.js
+
+# Test authentication with bypass mode (local development)
+AUTH_ENABLED=false npm start
+
+# Test with real Azure AD tokens (requires configuration)
+# Set environment variables:
+# AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, AUTH_ENABLED=true
+npm start
+```
+
+**Authentication Test Coverage:**
+- **Token Validation**: JWT signature verification, expiration checking, malformed token handling
+- **Bypass Mode**: Local development without authentication (`AUTH_ENABLED=false`)
+- **Configuration**: Azure AD tenant/client ID validation and error handling
+- **Authorization Headers**: Bearer token format validation and extraction
+- **User Identity**: Email, preferred_username, upn field resolution
+- **Optional Auth**: Graceful degradation when authentication fails
+- **Error Scenarios**: Token expiration, invalid signatures, missing config
+- **Role-Based Authorization (Future)**: Middleware tested and ready for when roles are needed
+
+**Manual Authentication Testing:**
+1. **Local Development**: Start server with `AUTH_ENABLED=false` to bypass auth
+2. **Azure AD Integration**: Configure Azure AD app registration and test with real tokens
+3. **Protected Endpoints**: Verify middleware blocks unauthenticated requests
+4. **Token Expiration**: Wait for token expiry and verify proper error handling
+5. **Frontend Integration**: Test MSAL browser authentication flow
+
 ### Deployment Testing
 
 #### 1. Local Production Build Test
@@ -164,7 +200,8 @@ tests/
 ├── unit/              # Backend component isolation tests (Jest)
 │   ├── services/      # Business logic testing
 │   ├── controllers/   # Request/response handling
-│   ├── middleware/    # CORS, security, validation
+│   ├── middleware/    # CORS, security, validation, authentication
+│   │   └── auth-middleware.test.js  # Azure AD JWT authentication (43 tests)
 │   ├── clients/       # External API integration
 │   └── parsers/       # ERD parsing logic
 ├── integration/       # API endpoint testing (Jest)
@@ -185,7 +222,7 @@ src/frontend/tests/
 - **Configuration**: `jest.config.json`
 - **Test Pattern**: `**/tests/**/*.test.js` (JavaScript only)
 - **Environment**: Node.js
-- **Test Suites**: 31 suites with 536 tests
+- **Test Files**: 64 unit test files with 536 tests
 - **Coverage**: Backend services, controllers, middleware, and utilities
 
 **Frontend Tests (Vitest)**:
@@ -229,9 +266,9 @@ The test suite includes comprehensive coverage across all application layers:
 - **Location**: `tests/unit/`
 - **Framework**: Jest with Node.js environment
 - **File Pattern**: `*.test.js` (JavaScript only)
-- **Coverage**: Services, controllers, middleware, utilities
+- **Coverage**: Services, controllers, middleware, utilities, authentication
 - **Mock Strategy**: Automated mocking of external dependencies
-- **Test Count**: 536 tests across 31 suites
+- **Test Count**: 536 tests across 64 test files
 
 #### Integration Tests  
 - **Location**: `tests/integration/`
