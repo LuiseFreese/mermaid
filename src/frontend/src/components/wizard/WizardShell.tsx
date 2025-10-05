@@ -16,6 +16,7 @@ import { GlobalChoicesStep } from './steps/global-choices';
 import { DeploymentStep } from './steps/deployment';
 import { WizardProvider } from '../../context/WizardContext';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { UserMenu } from '../../auth/UserMenu';
 
 export const WizardShell: React.FC = () => {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ export const WizardShell: React.FC = () => {
           textAlign: 'center',
           position: 'relative',
         }}>
-          {/* Theme Toggle in top-right corner */}
+          {/* Theme Toggle and User Menu in top-right corner */}
           <div style={{
             position: 'absolute',
             top: '16px',
@@ -90,6 +91,7 @@ export const WizardShell: React.FC = () => {
               </Button>
             </Link>
             <ThemeToggle />
+            <UserMenu />
           </div>
           
           <div style={{

@@ -205,7 +205,7 @@ if ($DataverseUrl -and -not $SkipDataverseUser) {
     Write-Host "Checking Dataverse Application User..." -ForegroundColor Cyan
     
     # Get the App Registration client ID and service principal object ID
-    $appRegName = "Mermaid-Dataverse-Converter-$EnvironmentSuffix"
+    $appRegName = "mermaid-dataverse-$EnvironmentSuffix"
     Write-Host "Looking up App Registration: $appRegName" -ForegroundColor Yellow
     
     $appRegInfo = az ad app list --display-name $appRegName --query "[0].{appId:appId}" -o json | ConvertFrom-Json
@@ -324,6 +324,26 @@ if ($DataverseUrl -and -not $SkipDataverseUser) {
     Write-Host "Skipping Dataverse Application User setup (no DataverseUrl provided)" -ForegroundColor Yellow
 }
 
+# ========================================================================
+# Get Azure AD Configuration (from App Service settings)
+# ========================================================================
+Write-Host "Retrieving Azure AD authentication configuration..." -ForegroundColor Cyan
+
+# Get authentication settings from App Service
+$appSettings = az webapp config appsettings list --name $AppName --resource-group $ResourceGroup -o json | ConvertFrom-Json
+$azureAdClientId = ($appSettings | Where-Object { $_.name -eq "AZURE_AD_CLIENT_ID" }).value
+$azureAdTenantId = ($appSettings | Where-Object { $_.name -eq "AZURE_AD_TENANT_ID" }).value
+
+if ($azureAdClientId -and $azureAdTenantId) {
+    Write-Host "✅ Authentication configuration found" -ForegroundColor Green
+    Write-Host "   └─ Client ID: $azureAdClientId" -ForegroundColor Gray
+    Write-Host "   └─ Tenant ID: $azureAdTenantId" -ForegroundColor Gray
+} else {
+    Write-Host "⚠️  Authentication not configured in App Service settings" -ForegroundColor Yellow
+    Write-Host "   Run setup-secretless.ps1 to configure Azure AD authentication" -ForegroundColor Yellow
+    Write-Host "   Continuing deployment without authentication..." -ForegroundColor Yellow
+}
+
 # Build frontend
 if (-not $SkipBuild) {
     Write-Host "Building frontend..." -ForegroundColor Cyan
@@ -337,11 +357,30 @@ if (-not $SkipBuild) {
         Pop-Location
     }
 
-    Write-Host "Building frontend with Vite..." -ForegroundColor Yellow
+    Write-Host "Building frontend with Vite (injecting auth config)..." -ForegroundColor Yellow
     Push-Location src/frontend
     try {
+        # Set environment variables for Vite build (only if auth is configured)
+        if ($azureAdClientId -and $azureAdTenantId) {
+            $appServiceUrl = az webapp show --name $AppName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
+            $env:VITE_AZURE_AD_CLIENT_ID = $azureAdClientId
+            $env:VITE_AZURE_AD_TENANT_ID = $azureAdTenantId
+            $env:VITE_AZURE_AD_REDIRECT_URI = "https://$appServiceUrl"
+            
+            Write-Host "   └─ Injecting VITE_AZURE_AD_CLIENT_ID=$azureAdClientId" -ForegroundColor Gray
+            Write-Host "   └─ Injecting VITE_AZURE_AD_TENANT_ID=$azureAdTenantId" -ForegroundColor Gray
+            Write-Host "   └─ Injecting VITE_AZURE_AD_REDIRECT_URI=https://$appServiceUrl" -ForegroundColor Gray
+        } else {
+            Write-Host "   └─ Building without authentication configuration" -ForegroundColor Yellow
+        }
+        
         npm run build
         if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
+        
+        # Clean up environment variables
+        Remove-Item Env:\VITE_AZURE_AD_CLIENT_ID -ErrorAction SilentlyContinue
+        Remove-Item Env:\VITE_AZURE_AD_TENANT_ID -ErrorAction SilentlyContinue
+        Remove-Item Env:\VITE_AZURE_AD_REDIRECT_URI -ErrorAction SilentlyContinue
     } finally {
         Pop-Location
     }
@@ -532,47 +571,6 @@ az webapp restart --name $AppName --resource-group $ResourceGroup | Out-Null
 
 Write-Host "Node.js runtime configuration completed" -ForegroundColor Green
 
-# Warm up the App Service before deployment to prevent connection timeouts
-function Start-AppServiceWarmup {
-    param(
-        [string]$AppUrl,
-        [int]$WarmupAttempts = 3,
-        [int]$DelaySeconds = 5
-    )
-    
-    Write-Host "Warming up App Service to prevent deployment timeouts..." -ForegroundColor Cyan
-    Write-Host "URL: $AppUrl" -ForegroundColor Gray
-    
-    for ($i = 1; $i -le $WarmupAttempts; $i++) {
-        try {
-            Write-Host "  Warmup attempt $i of $WarmupAttempts..." -ForegroundColor Yellow
-            
-            # Call health endpoint to warm up the server
-            $response = Invoke-WebRequest -Uri "$AppUrl/health" -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
-            
-            if ($response.StatusCode -eq 200) {
-                Write-Host "  ✓ Warmup attempt $i successful (HTTP $($response.StatusCode))" -ForegroundColor Green
-            } else {
-                Write-Host "  ⚠ Warmup attempt $i returned HTTP $($response.StatusCode)" -ForegroundColor Yellow
-            }
-        }
-        catch {
-            Write-Host "  ⚠ Warmup attempt $i failed: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
-        
-        if ($i -lt $WarmupAttempts) {
-            Write-Host "  Waiting $DelaySeconds seconds before next attempt..." -ForegroundColor Gray
-            Start-Sleep -Seconds $DelaySeconds
-        }
-    }
-    
-    Write-Host "App Service warmup completed" -ForegroundColor Green
-}
-
-# Get the app URL for warmup
-$AppUrl = "https://$AppName.azurewebsites.net"
-Start-AppServiceWarmup -AppUrl $AppUrl -WarmupAttempts 3 -DelaySeconds 5
-
 # Deploy to App Service
 Write-Host "Deploying application with retry logic..." -ForegroundColor Cyan
 
@@ -580,16 +578,22 @@ $maxRetries = 3
 $retryCount = 0
 $deploymentSuccess = $false
 
+# Fast timeout strategy: 2 minutes each (app should be warm from previous deployments)
+$timeouts = @(120, 120, 120)  # 2 min, 2 min, 2 min
+
 while (-not $deploymentSuccess -and $retryCount -lt $maxRetries) {
     $retryCount++
-    Write-Host "Attempting deployment (attempt $retryCount of $maxRetries)..." -ForegroundColor Yellow
+    $currentTimeout = $timeouts[$retryCount - 1]
+    $timeoutMinutes = [math]::Round($currentTimeout / 60, 1)
+    
+    Write-Host "Attempting deployment (attempt $retryCount of $maxRetries, timeout: $timeoutMinutes min)..." -ForegroundColor Yellow
     
     try {
-        az webapp deploy --resource-group $ResourceGroup --name $AppName --src-path "deploy.zip" --type zip --async false --timeout 1800
+        az webapp deploy --resource-group $ResourceGroup --name $AppName --src-path "deploy.zip" --type zip --async false --timeout $currentTimeout
         
         if ($LASTEXITCODE -eq 0) {
             $deploymentSuccess = $true
-            Write-Host "Deployment successful!" -ForegroundColor Green
+            Write-Host "Deployment successful on attempt $retryCount!" -ForegroundColor Green
         } else {
             throw "az webapp deploy failed with exit code $LASTEXITCODE"
         }
@@ -608,6 +612,15 @@ while (-not $deploymentSuccess -and $retryCount -lt $maxRetries) {
 
 # Clean up deployment package
 Remove-Item "deploy.zip" -Force -ErrorAction SilentlyContinue
+
+# Configure application logging
+Write-Host "Configuring application logging..." -ForegroundColor Cyan
+try {
+    az webapp log config --name $AppName --resource-group $ResourceGroup --application-logging filesystem --level information --query "applicationLogs.fileSystem.level" --output tsv | Out-Null
+    Write-Host "✅ Application logging enabled at Information level" -ForegroundColor Green
+} catch {
+    Write-Warning "Failed to configure logging (non-critical): $_"
+}
 
 # Get App Service URL
 $appUrl = "https://$AppName.azurewebsites.net"
