@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMsal } from '@azure/msal-react';
 import { Publisher, publisherService } from '../services/publisherService';
 
 interface UsePublishersResult {
@@ -12,6 +13,7 @@ export const usePublishers = (): UsePublishersResult => {
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { accounts, inProgress } = useMsal();
 
   const fetchPublishers = async () => {
     setLoading(true);
@@ -33,8 +35,11 @@ export const usePublishers = (): UsePublishersResult => {
   };
 
   useEffect(() => {
-    fetchPublishers();
-  }, []);
+    // Only fetch publishers after authentication completes
+    if (accounts.length > 0 && inProgress === 'none') {
+      fetchPublishers();
+    }
+  }, [accounts.length, inProgress]);
 
   return {
     publishers,

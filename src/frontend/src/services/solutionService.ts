@@ -1,3 +1,5 @@
+import { apiClient } from '../api/apiClient';
+
 export interface Solution {
   solutionid: string;
   uniquename: string;
@@ -11,26 +13,15 @@ export interface Solution {
 }
 
 class SolutionService {
-  private baseUrl: string;
-  
-  constructor(baseUrl: string = '/api') {
-    this.baseUrl = baseUrl;
-  }
-
   async getSolutions(): Promise<Solution[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/solutions`);
+      // Use authenticated apiClient instead of raw fetch
+      const response = await apiClient.get('/solutions');
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch solutions: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        return data.solutions || [];
+      if (response.data.success) {
+        return response.data.solutions || [];
       } else {
-        throw new Error(data.error || 'Failed to fetch solutions');
+        throw new Error(response.data.error || 'Failed to fetch solutions');
       }
     } catch (error) {
       console.error('Error fetching solutions:', error);

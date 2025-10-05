@@ -14,7 +14,9 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
 - **Deployment History** - Comprehensive tracking with solution links and Power Platform integration
-- **Enterprise Security** - Managed Identity authentication
+- **Azure AD Authentication** - Enterprise-grade user authentication with MSAL
+- **Backend API Protection** - JWT token validation on all API endpoints
+- **Enterprise Security** - Managed Identity authentication for Dataverse access
 - **Two-Step Deployment** - Separate infrastructure setup and application deployment
 
 ### Architecture Overview
@@ -1323,7 +1325,111 @@ GET /api/solution-status?solution=SolutionName
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
            
 
-### 7. Managed Identity Authentication (`src/backend/dataverse-client.js`)
+### 7. User Authentication & API Protection (`src/backend/middleware/auth.js`, `src/frontend/src/auth/`)
+
+**Purpose**: Protect all backend API endpoints with Azure AD authentication using MSAL (Microsoft Authentication Library) for enterprise-grade user authentication.
+
+**Key Features**:
+- **Azure AD Integration**: Enterprise Single Sign-On with Microsoft Entra ID
+- **JWT Token Validation**: Backend validates ID tokens on all `/api/*` routes
+- **Automatic Token Management**: MSAL handles token acquisition, caching, and refresh
+- **Protected API Client**: All frontend services use authenticated HTTP client
+- **Zero Trust Architecture**: No API access without valid authentication token
+
+**Frontend Authentication** (`src/frontend/src/auth/`):
+- **MSAL Browser**: @azure/msal-browser v3.7.1 for SPA authentication
+- **Auth Provider**: React context provider wraps entire application
+- **Auth Config**: Environment-specific Azure AD app registration configuration
+- **API Client**: Authenticated axios instance with request interceptor (`src/frontend/src/api/apiClient.ts`)
+
+**Backend Protection** (`src/backend/middleware/auth.js`):
+- **JWT Validation**: Validates Azure AD ID tokens on every request
+- **Protected Routes**: All `/api/*` endpoints require valid Bearer token
+- **401 Response**: Returns `{ "success": false, "error": "Unauthorized: Authentication token required" }` when token missing/invalid
+- **Token Extraction**: Parses `Authorization: Bearer ${token}` header
+
+**Authentication Flow**:
+```javascript
+// Frontend: API client automatically adds auth token
+import { apiClient } from '../api/apiClient';
+
+// All requests automatically include Authorization header
+const publishers = await apiClient.get('/publishers');
+const solutions = await apiClient.post('/solutions', data);
+
+// For streaming endpoints (manual token required)
+const msalInstance = getMsalInstance();
+const accounts = msalInstance.getAllAccounts();
+const response = await msalInstance.acquireTokenSilent({
+  account: accounts[0],
+  scopes: ['User.Read']
+});
+const authToken = response.idToken;
+
+// Include token in streaming request
+const streamResponse = await fetch('/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${authToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(data)
+});
+```
+
+**Required Environment Variables** (Frontend):
+- `VITE_AZURE_CLIENT_ID` - Azure AD app registration client ID
+- `VITE_AZURE_TENANT_ID` - Azure AD tenant ID
+- `VITE_AZURE_REDIRECT_URI` - OAuth redirect URI (app URL)
+
+**Backend Middleware Implementation**:
+```javascript
+// All /api/* routes protected
+if (pathname.startsWith('/api/')) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: 'Unauthorized: Authentication token required' 
+    }));
+    return;
+  }
+  
+  const token = authHeader.substring(7);
+  const isValid = await validateJwtToken(token);
+  
+  if (!isValid) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      success: false, 
+      error: 'Unauthorized: Invalid token' 
+    }));
+    return;
+  }
+}
+```
+
+**Security Benefits**:
+- **Enterprise SSO**: Users authenticate with existing Microsoft credentials
+- **No Password Storage**: Authentication handled entirely by Azure AD
+- **Token-Based Access**: Short-lived JWT tokens with automatic refresh
+- **API Protection**: Backend validates every request before processing
+- **Audit Trail**: All authentication events logged in Azure AD
+
+**Testing Authentication**:
+```powershell
+# Test unauthenticated access (should return 401)
+Invoke-WebRequest -Uri "https://your-app.azurewebsites.net/api/publishers"
+
+# Test authenticated access (should return 200)
+$token = "your-id-token-from-browser"
+$headers = @{ "Authorization" = "Bearer $token" }
+Invoke-WebRequest -Uri "https://your-app.azurewebsites.net/api/publishers" -Headers $headers
+```
+
+
+### 8. Managed Identity Authentication (`src/backend/dataverse-client.js`)
 
 **Purpose**: Secure, passwordless authentication using Azure Managed Identity for Dataverse access.
 

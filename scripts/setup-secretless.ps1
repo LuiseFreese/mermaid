@@ -6,28 +6,11 @@
 
 .DESCRIPTION
     This script sets up a complete secretless deployment using:
-    - App Registration with FeWrite-Host "Setting App Service configuration..." -ForegroundColor Yellow
-az webapp config appsettings set --name $            $body = @{
-                applicationid               = $AppId
-                azureactivedirectoryobjectid= $ServicePrincipalObjectId
-                "businessunitid@odata.bind" = "/businessunits($rootBuId)"
-                firstname                   = "App"
-                lastname                    = "$EnvironmentSuffix Service"
-                domainname                  = "app-$($AppId.ToLower())@mermaid.local"
-            } | ConvertTo-Json -Depth 5ceName --resource-group $ResourceGroup --settings `
-    "TENANT_ID=$tenantId" `
-    "CLIENT_ID=$clientId" `
-    "MANAGED_IDENTITY_CLIENT_ID=$managedIdentityClientId" `
-    "USE_MANAGED_IDENTITY=true" `
-    "USE_FEDERATED_CREDENTIAL=true" | Out-Null
-
-Write-Host "Setting startup command for Node.js..." -ForegroundColor Yellow
-az webapp config set --name $AppServiceName --resource-group $ResourceGroup --startup-file "node server.js" | Out-Null
-
-Write-Success "App Service configuration completed"redentials (no client secrets)
-    - Managed Identity (user-assigned)
+    - App Registration with Federated Credentials (no client secrets)
+    - User-Assigned Managed Identity
     - Azure Infrastructure via Bicep
     - Dataverse Application User with proper permissions
+    - Azure AD App Registration for user authentication
     
     Configuration values are stored in App Service settings (not Key Vault secrets).
     Everything is idempotent - safe to run multiple times.
@@ -130,7 +113,7 @@ if (-not $ResourceGroup) {
 }
 
 if (-not $AppRegistrationName) { 
-    $AppRegistrationName = "Mermaid-Dataverse-Converter-$EnvironmentSuffix" 
+    $AppRegistrationName = "mermaid-dataverse-$EnvironmentSuffix" 
 }
 
 Write-Info "Resource Configuration:"
@@ -340,7 +323,112 @@ if ($PowerPlatformEnvironmentId) {
     Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
 }
 
-# ---------- 8. Create Dataverse Application User ----------
+# ---------- 8. Setup Azure AD App Registration (for Authentication) ----------
+Write-Info "🔐 Setting up Azure AD authentication..."
+
+# Check if Azure AD App Registration already exists
+$azureAdAppName = "mermaid-user-auth-$EnvironmentSuffix"
+$existingAzureAdApp = az ad app list --display-name $azureAdAppName --query "[0]" -o json 2>$null | ConvertFrom-Json
+
+if ($existingAzureAdApp) {
+    Write-Success "Azure AD App Registration already exists: $azureAdAppName"
+    $azureAdClientId = $existingAzureAdApp.appId
+    $azureAdTenantId = (az account show --query "tenantId" -o tsv)
+} else {
+    Write-Info "Creating Azure AD App Registration for authentication: $azureAdAppName"
+    
+    # Get tenant ID
+    $azureAdTenantId = az account show --query "tenantId" -o tsv
+    
+    # Get the App Service URL for redirect URI
+    $appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
+    $redirectUri = "https://$appServiceUrl"
+    
+    # Create App Registration for Single Page Application
+    Write-Info "   └─ Creating App Registration..."
+    $azureAdAppJson = az ad app create `
+        --display-name $azureAdAppName `
+        --sign-in-audience "AzureADMyOrg" `
+        --enable-id-token-issuance true `
+        --query "{appId: appId, id: id}" `
+        -o json
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to create Azure AD App Registration for authentication"
+        throw "Azure AD App Registration creation failed"
+    }
+    
+    $azureAdAppInfo = $azureAdAppJson | ConvertFrom-Json
+    $azureAdClientId = $azureAdAppInfo.appId
+    $azureAdAppObjectId = $azureAdAppInfo.id
+    
+    Write-Info "   └─ App ID: $azureAdClientId"
+    
+    # Configure SPA platform settings using Microsoft Graph API
+    Write-Info "   └─ Configuring SPA platform..."
+    $spaConfigFile = [System.IO.Path]::GetTempFileName()
+    try {
+        # Create SPA configuration JSON
+        @{ spa = @{ redirectUris = @($redirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
+        
+        # Apply configuration using Graph API
+        az rest --method PATCH `
+            --uri "https://graph.microsoft.com/v1.0/applications/$azureAdAppObjectId" `
+            --headers "Content-Type=application/json" `
+            --body "@$spaConfigFile" `
+            --output none
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to configure SPA platform via Graph API"
+        } else {
+            Write-Success "SPA platform configured successfully"
+        }
+    } finally {
+        Remove-Item $spaConfigFile -Force -ErrorAction SilentlyContinue
+    }
+    
+    # Add Microsoft Graph User.Read permission
+    Write-Info "   └─ Adding API permissions..."
+    $graphAppId = "00000003-0000-0000-c000-000000000000"  # Microsoft Graph
+    $userReadPermissionId = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"  # User.Read
+    
+    az ad app permission add `
+        --id $azureAdAppObjectId `
+        --api $graphAppId `
+        --api-permissions "$userReadPermissionId=Scope" `
+        2>$null
+    
+    # Grant admin consent (optional, but recommended)
+    Write-Info "   └─ Granting admin consent..."
+    az ad app permission admin-consent --id $azureAdAppObjectId 2>$null
+    
+    Write-Success "Azure AD App Registration created successfully"
+}
+
+# Configure App Service settings for authentication
+Write-Info "Configuring App Service authentication settings..."
+
+az webapp config appsettings set `
+    --name $AppServiceName `
+    --resource-group $ResourceGroup `
+    --settings `
+        "AZURE_AD_CLIENT_ID=$azureAdClientId" `
+        "AZURE_AD_TENANT_ID=$azureAdTenantId" `
+        "AUTH_ENABLED=true" `
+    --output none
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to configure App Service authentication settings"
+    throw "App Service configuration failed"
+}
+
+Write-Success "Authentication configured"
+Write-Info "   └─ Azure AD Client ID: $azureAdClientId"
+Write-Info "   └─ Azure AD Tenant ID: $azureAdTenantId"
+Write-Info "   └─ Redirect URI: https://$appServiceUrl"
+Write-Info "   └─ App Service setting AUTH_ENABLED: true"
+
+# ---------- 9. Create Dataverse Application User ----------
 if (-not $SkipDataverseUser -and $DataverseUrl) {
     Write-Info "👤 Creating Dataverse Application User..."
     
@@ -471,7 +559,16 @@ if (-not $SkipDataverseUser -and $DataverseUrl) {
     }
 }
 
-# ---------- 9. Summary ----------
+# ---------- 10. Configure Application Logging ----------
+Write-Step "Configuring application logging"
+try {
+    az webapp log config --name $AppServiceName --resource-group $ResourceGroup --application-logging filesystem --level information --query "applicationLogs.fileSystem.level" --output tsv | Out-Null
+    Write-Success "Application logging enabled at Information level"
+} catch {
+    Write-Warning "Failed to configure logging (non-critical): $_"
+}
+
+# ---------- 11. Summary ----------
 Write-Success "🎉 Secretless setup completed successfully!"
 Write-Host ""
 Write-Host "Setup Summary:" -ForegroundColor Cyan
@@ -482,6 +579,10 @@ Write-Host "  App Service: $AppServiceName (Node.js 20)"
 Write-Host "  Managed Identity: $ManagedIdentityName ($managedIdentityClientId)"
 Write-Host "  Federated Credential: Configured for managed identity"
 Write-Host "  Configuration: Stored in App Service settings (no secrets!)"
+Write-Host "  Application Logging: Enabled at Information level"
+Write-Host "  Authentication: Azure AD App Registration configured ($azureAdAppName)"
+Write-Host "    └─ Client ID: $azureAdClientId"
+Write-Host "    └─ AUTH_ENABLED: true"
 
 if ($DataverseUrl) {
     Write-Host "  Dataverse URL: $DataverseUrl"
@@ -493,4 +594,9 @@ if ($DataverseUrl) {
 Write-Host ""
 Write-Host "Next Step:" -ForegroundColor Green
 Write-Host "Deploy your application: .\scripts\deploy-secretless.ps1 -EnvironmentSuffix `"$EnvironmentSuffix`""
+Write-Host ""
+Write-Host "Authentication Info:" -ForegroundColor Cyan
+Write-Host "  Users will need to sign in with Microsoft credentials"
+Write-Host "  Redirect URI configured: https://$appServiceUrl"
+Write-Host "  Local dev can use AUTH_ENABLED=false for testing"
 

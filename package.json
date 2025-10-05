@@ -36,7 +36,9 @@
   "dependencies": {
     "@azure/identity": "^4.11.0",
     "axios": "^1.11.0",
-    "dotenv": "^16.6.1"
+    "dotenv": "^16.6.1",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0"
   },
   "engines": {
     "node": ">=20 <21"

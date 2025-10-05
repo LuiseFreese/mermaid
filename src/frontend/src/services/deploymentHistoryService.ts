@@ -1,42 +1,12 @@
-import axios from 'axios';
+import { apiClient } from '../api/apiClient';
 import type { 
   DeploymentHistoryResponse, 
   DeploymentDetailsResponse,
   DeploymentComparisonResponse 
 } from '../types/deployment-history.types';
 
-// Create API client with same config as other services
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor for logging
-api.interceptors.request.use(
-  (config) => {
-    console.log(`Deployment History API: ${config.method?.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  (error) => {
-    console.error('Deployment History API Error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => {
-    console.log(`Deployment History API Response: ${response.status} ${response.config.url}`);
-    return response;
-  },
-  (error) => {
-    console.error('Deployment History API Response Error:', error);
-    return Promise.reject(error);
-  }
-);
+// Use the authenticated API client (includes auth tokens automatically)
+const api = apiClient;
 
 export class DeploymentHistoryService {
   /**

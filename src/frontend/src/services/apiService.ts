@@ -1,4 +1,7 @@
-import axios, { AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
+import { apiClient } from '../api/apiClient'; // Use authenticated client
+import { msalInstance } from '../auth/AuthProvider'; // For getting auth token
+import { loginRequest } from '../auth/authConfig'; // For token request
 import type { 
   ApiResponse, 
   ValidationResult, 
@@ -7,35 +10,9 @@ import type {
   SolutionConfig
 } from '@shared/types';
 
-// Configure axios defaults
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor for logging
-api.interceptors.request.use(
-  (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  (error) => {
-    console.error('API Request Error:', error);
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('API Response Error:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
+// Use the authenticated API client from apiClient.ts
+// This client automatically adds Bearer tokens to all requests
+const api = apiClient;
 
 export class ApiService {
   /**
@@ -123,10 +100,27 @@ export class ApiService {
     try {
       console.log('Starting deployment request to /upload');
       
+      // Get authentication token for streaming request
+      let authToken = '';
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          const response = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account: accounts[0],
+          });
+          authToken = response.idToken; // Use ID token for authentication
+        }
+      } catch (error) {
+        console.error('Failed to acquire token for deployment:', error);
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      
       const response = await fetch('/upload', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`, // Include authentication token
         },
         body: JSON.stringify(deploymentData),
       });

@@ -1,3 +1,5 @@
+import { apiClient } from '../api/apiClient';
+
 export interface GlobalChoice {
   id: string;
   name: string;
@@ -15,25 +17,15 @@ export interface GlobalChoicesService {
 }
 
 class DataverseGlobalChoicesService implements GlobalChoicesService {
-  private baseUrl: string;
-  
-  constructor(baseUrl: string = '/api') {
-    this.baseUrl = baseUrl;
-  }
-
   async getGlobalChoices(): Promise<GlobalChoice[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/global-choices-list`);
+      // Use authenticated apiClient instead of raw fetch
+      const response = await apiClient.get('/global-choices-list');
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch global choices: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('📋 Frontend received global choices response:', data);
+      console.log('📋 Frontend received global choices response:', response.data);
       
       // The backend returns: { success: true, all: [...], grouped: {...}, summary: {...} }
-      const choices = data.all || [];
+      const choices = response.data.all || [];
       
       // Map backend response to frontend interface
       return choices.map((choice: any) => ({

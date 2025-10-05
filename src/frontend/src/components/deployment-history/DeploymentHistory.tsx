@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useMsal } from '@azure/msal-react';
+import { apiClient } from '../../api/apiClient';
 import {
   Title1,
   Title2,
@@ -51,6 +53,7 @@ import { DeploymentHistoryService } from '../../services/deploymentHistoryServic
 import { ApiService } from '../../services/apiService';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { UserMenu } from '../../auth/UserMenu';
 
 const useStyles = makeStyles({
   container: {
@@ -149,6 +152,7 @@ interface DeploymentHistoryProps {}
 
 export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const styles = useStyles();
+  const { accounts, inProgress } = useMsal();
   const [deployments, setDeployments] = useState<DeploymentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +188,10 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const [environmentId, setEnvironmentId] = useState<string>('');
 
   useEffect(() => {
-    loadDeploymentHistory();
+    // Only load deployment history after user is authenticated
+    if (accounts.length > 0 && inProgress === 'none') {
+      loadDeploymentHistory();
+    }
     
     // Fetch environment ID once for solution history links
     ApiService.getConfig().then(config => {
@@ -192,7 +199,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }).catch(err => {
       console.error('Failed to get environment ID:', err);
     });
-  }, []);
+  }, [accounts.length, inProgress]);
 
   const loadDeploymentHistory = async () => {
     try {
@@ -512,9 +519,9 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     event.stopPropagation(); // Prevent triggering row click (view details)
     
     try {
-      // Check if rollback is possible
-      const response = await fetch(`/api/rollback/${deployment.deploymentId}/can-rollback`);
-      const result = await response.json();
+      // Check if rollback is possible - use authenticated apiClient
+      const response = await apiClient.get(`/rollback/${deployment.deploymentId}/can-rollback`);
+      const result = response.data;
       
       if (result.success) {
         console.log('� Rollback candidate data:', result.data);
@@ -569,25 +576,14 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         cdmEntities: rollbackOptions.solution
       };
       
-      const response = await fetch(`/api/rollback/${rollbackDeployment.deploymentId}/execute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ 
-          confirm: true,
-          options: backendOptions
-        })
+      // Use authenticated apiClient instead of raw fetch
+      const response = await apiClient.post(`/rollback/${rollbackDeployment.deploymentId}/execute`, { 
+        confirm: true,
+        options: backendOptions
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-
       // Handle JSON response (backend doesn't support SSE yet)
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         // Show success message in modal
@@ -649,6 +645,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                 </Button>
               </Link>
               <ThemeToggle />
+              <UserMenu />
             </div>
           </div>
           <div className={styles.headerContent}>
@@ -695,6 +692,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                 </Button>
               </Link>
               <ThemeToggle />
+              <UserMenu />
             </div>
           </div>
           <div className={styles.headerContent}>
@@ -749,6 +747,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                 </Button>
               </Link>
               <ThemeToggle />
+              <UserMenu />
             </div>
           </div>
           <div className={styles.headerContent}>
@@ -798,6 +797,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
               </Button>
             </Link>
             <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
         <div className={styles.headerContent}>
@@ -1011,7 +1011,14 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                               <Text size={200} style={{ opacity: 0.7 }}>Relationships deleted:</Text>
                                               <div style={{ display: 'flex', alignItems: 'center' }}>
                                                 <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                                <Text weight="semibold">{results.relationshipsDeleted || 0}</Text>
+                                                <Text weight="semibold">
+                                                  {results.relationshipsDeleted || 0}
+                                                  {results.relationshipsSkipped > 0 && (
+                                                    <Text size={200} style={{ opacity: 0.6, marginLeft: '4px' }}>
+                                                      ({results.relationshipsSkipped} already deleted)
+                                                    </Text>
+                                                  )}
+                                                </Text>
                                               </div>
                                             </div>
                                             
@@ -1027,7 +1034,14 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                               <Text size={200} style={{ opacity: 0.7 }}>Global choices deleted:</Text>
                                               <div style={{ display: 'flex', alignItems: 'center' }}>
                                                 <CheckmarkCircleRegular style={{ marginRight: '4px', color: tokens.colorPaletteGreenForeground1, fontSize: '14px' }} />
-                                                <Text weight="semibold">{results.globalChoicesDeleted || 0}</Text>
+                                                <Text weight="semibold">
+                                                  {results.globalChoicesDeleted || 0}
+                                                  {results.globalChoicesSkipped > 0 && (
+                                                    <Text size={200} style={{ opacity: 0.6, marginLeft: '4px' }}>
+                                                      ({results.globalChoicesSkipped} already deleted)
+                                                    </Text>
+                                                  )}
+                                                </Text>
                                               </div>
                                             </div>
                                             
@@ -1544,30 +1558,16 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                 label={
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Text weight="semibold">Custom Tables ({rollbackCandidate.deploymentInfo.entities.custom.length})</Text>
-                                    {getDisabledReason('customEntities') && (
+                                    {getDisabledReason('customEntities') ? (
                                       <Tooltip content={getDisabledReason('customEntities') || ''} relationship="label">
                                         <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
                                       </Tooltip>
-                                    )}
-                                  </div>
-                                }
-                              />
-                            </div>
-                          )}
-
-                          {/* Relationships */}
-                          {rollbackCandidate.deploymentInfo?.relationships?.length > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                              <Checkbox
-                                checked={rollbackOptions.relationships}
-                                onChange={(_, data) => handleRollbackOptionChange('relationships', data.checked as boolean)}
-                                disabled={!!getDisabledReason('relationships')}
-                                label={
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Text weight="semibold">Relationships ({rollbackCandidate.deploymentInfo.relationships.length})</Text>
-                                    {getDisabledReason('relationships') && (
-                                      <Tooltip content={getDisabledReason('relationships') || ''} relationship="label">
-                                        <InfoRegular style={{ color: tokens.colorPaletteRedForeground1, cursor: 'help' }} />
+                                    ) : (
+                                      <Tooltip 
+                                        content="Deleting custom tables will automatically delete all associated relationships and their lookup columns" 
+                                        relationship="label"
+                                      >
+                                        <InfoRegular style={{ color: tokens.colorNeutralForeground3, cursor: 'help' }} />
                                       </Tooltip>
                                     )}
                                   </div>

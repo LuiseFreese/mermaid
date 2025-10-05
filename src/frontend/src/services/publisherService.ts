@@ -1,3 +1,5 @@
+import { apiClient } from '../api/apiClient';
+
 export interface Publisher {
   id: string;
   displayName: string;
@@ -10,24 +12,12 @@ export interface PublisherService {
 }
 
 class DataversePublisherService implements PublisherService {
-  private baseUrl: string;
-  
-  constructor(baseUrl: string = '/api') {
-    this.baseUrl = baseUrl;
-  }
-
   async getPublishers(): Promise<Publisher[]> {
     try {
-      // TODO: Replace with actual Dataverse API endpoint
-      // This should call the same endpoint that was working in the legacy version
-      const response = await fetch(`${this.baseUrl}/publishers`);
+      // Use authenticated apiClient instead of raw fetch
+      const response = await apiClient.get('/publishers');
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch publishers: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const publishers = data.publishers || [];
+      const publishers = response.data.publishers || [];
       
       // Map backend response to frontend interface
       return publishers.map((pub: any) => ({
