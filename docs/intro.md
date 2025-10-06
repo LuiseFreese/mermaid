@@ -96,7 +96,6 @@ Explore the documentation to learn more:
 - [Usage Guide](./USAGE-GUIDE.md) - Learn how to use the wizard
 
 ### Understanding the System
-- [Mermaid Guide](./MERMAID-GUIDE.md) - Learn the ERD syntax
 - [Relationship Types](./RELATIONSHIP_TYPES.md) - Understanding table relationships
 - [Global Choices Guide](./GLOBAL-CHOICES-GUIDE.md) - Managing global choice sets
 - [Validation and Autofix](./VALIDATION-AND-AUTOFIX.md) - Automatic validation and fixes

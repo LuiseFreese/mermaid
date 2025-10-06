@@ -4,6 +4,8 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 
 ![Mermaid ERD to Dataverse Converter](docs/media/mermaid-converter-final.png)
 
+💡 You can read the docs best here: https://mermaid2dataverse.netlify.app - A docusaurus powered website.
+
 
 ## Key Features
 
@@ -191,7 +193,6 @@ See [Usage Guide - Rollback Section](docs/USAGE-GUIDE.md#5-rollback-deployments)
 - [Deployment Guide](docs/DEPLOYMENT.md) - Detailed deployment instructions and troubleshooting
 - [Usage Guide](docs/USAGE-GUIDE.md) - Comprehensive usage examples
 - [Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md) - Working with choice columns
-- [Mermaid Guide](docs/MERMAID-GUIDE.md) - ERD syntax reference
 - [Relationship Types](docs/RELATIONSHIP_TYPES.md) - Supported relationship patterns
 - See the `examples/` directory for sample Mermaid ERD files
 

@@ -17,12 +17,11 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: 'Getting Started',
+      label: 'User Guides',
       items: [
+        'USAGE-GUIDE',
         'LOCAL-DEVELOPMENT',
         'DEPLOYMENT',
-        'USAGE-GUIDE',
-      // Roadmap category removed
         'GLOBAL-CHOICES-GUIDE',
         'RELATIONSHIP_TYPES',
         'VALIDATION-AND-AUTOFIX',

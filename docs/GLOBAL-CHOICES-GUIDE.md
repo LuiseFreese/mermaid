@@ -66,7 +66,7 @@ Global choices are defined in JSON files with the following structure:
 
 When this is deployed with a publisher prefix "pink", it will be created in Dataverse as "pink_deployment_stage".
 
-### 🔧 Field Descriptions
+### Field Descriptions
 
 | Field | Required | Description |
 |-------|----------|-------------|

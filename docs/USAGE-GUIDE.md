@@ -25,7 +25,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 - **Modern UI**: Intuitive React wizard
 - **Secure**: Azure Managed Identity authentication
 
-## 1. Use the Modern React Wizard
+## Use the Wizard
 
 ### Step 1: ERD Upload & Intelligent Validation
 - **Browse**: Upload your Mermaid ERD file (`.mmd` extension) using the modern file upload component
@@ -236,8 +236,6 @@ Company {
 | `file` | File | File storage | N/A |
 | `image` | Image | Image storage | N/A |
 
-For complete data type documentation, see [Mermaid Guide](MERMAID-GUIDE.md#supported-data-types).
-
 ### Supported Constraints & Markers
 
 | Constraint | Meaning | Implementation | Smart Validation |
@@ -311,7 +309,7 @@ erDiagram
 
 ---
 
-## 5. Rollback Deployments
+## Rollback Deployments
 
 The application provides **modular rollback** functionality, giving you granular control over which components to remove from Dataverse while preserving deployment history.
 
@@ -321,6 +319,8 @@ The application provides **modular rollback** functionality, giving you granular
 2. Find the deployment you want to rollback
 3. Select the **"Rollback"** button
 4. Select components to remove
+
+![complete rollback](media/rollback-complete.png)
 
 ### Rollback Options
 
@@ -382,34 +382,4 @@ Rollbacks:
   #2 - Custom Entities (Jan 16, 2025)
 ```
 
----
 
-### Global Choices Integration Example
-
-For entities that need choice columns, upload a global choices JSON file:
-
-```json
-{
-  "globalChoices": [
-    {
-      "name": "opportunity_stage",
-      "displayName": "Opportunity Stage",
-      "description": "Sales opportunity stages",
-      "options": [
-        { "value": 100000000, "label": "Prospect" },
-        { "value": 100000001, "label": "Qualified" },
-        { "value": 100000002, "label": "Proposal" },
-        { "value": 100000003, "label": "Negotiation" },
-        { "value": 100000004, "label": "Closed Won" },
-        { "value": 100000005, "label": "Closed Lost" }
-      ]
-    }
-  ]
-}
-```
-
-For more detailed guidance, see:
-
-- [Mermaid Guide](MERMAID-GUIDE.md) - Complete ERD syntax reference
-- [Global Choices Guide](GLOBAL-CHOICES-GUIDE.md) - Choice management
-- [Developer Architecture Guide](DEVELOPER_ARCHITECTURE.md) - Technical details
