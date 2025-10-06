@@ -61,7 +61,7 @@ This means:
 
 ### Creating Many-to-Many Relationships
 
-The web application fully supports many-to-many relationships when modeled using junction entities. This approach is actually preferred for Dataverse as it provides better control and flexibility. **Recent improvements include enhanced detection and automatic handling of junction table patterns:**
+The web application fully supports many-to-many relationships when modeled using junction entities. This approach is actually preferred for Dataverse as it provides better control and flexibility. 
 
 ```mermaid
 erDiagram

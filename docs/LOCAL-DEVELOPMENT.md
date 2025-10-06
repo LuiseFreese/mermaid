@@ -54,11 +54,17 @@ That's all! No Azure setup needed for local development.
 Want to test against a real Dataverse environment? Create a `.env.local` file:
 
 ```bash
-# Optional: Connect to real Dataverse
-DATAVERSE_URL=https://your-org.crm.dynamics.com
+# Authentication Method
+USE_CLIENT_SECRET=true
+USE_MANAGED_IDENTITY=false
+
+# Microsoft Entra Configuration  
 TENANT_ID=your-tenant-id
 CLIENT_ID=your-app-registration-id
 CLIENT_SECRET=your-client-secret
+
+# Optional: Connect to real Dataverse
+DATAVERSE_URL=https://your-org.crm.dynamics.com
 
 # Authentication still disabled for local dev
 AUTH_ENABLED=false
@@ -145,6 +151,10 @@ curl http://localhost:8080/health
 
 Open browser to `http://localhost:3003`
 
+**Authentication Methods:**
+1. **Local Development**: Uses client secret → Microsoft Entra → Dataverse
+2. **Azure Production**: Uses managed identity → Microsoft Entra → Dataverse
+
 **Without Auth (default)**: Loads immediately ✅  
 **With Auth (optional)**: Redirects to Microsoft login first ✅
 
@@ -174,6 +184,7 @@ Remove-Item node_modules -Recurse -Force
 Remove-Item package-lock.json -Force
 npm install
 
+<<<<<<< HEAD
 # Also check frontend
 cd src/frontend
 Remove-Item node_modules -Recurse -Force

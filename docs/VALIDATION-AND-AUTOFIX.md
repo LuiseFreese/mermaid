@@ -2,11 +2,11 @@
 
 This document lists all validation rules and auto-fix capabilities that help recover from problematic ERD structures.
 
-## 🎯 Overview
+## Overview
 
 The application automatically validates Mermaid ERD files and provides one-click fixes for common issues. Each validation rule detects specific problems and most provide automatic corrections.
 
-## 📋 Validation Categories
+## Validation Categories
 
 ### 1. Entity Structure Issues
 
@@ -62,7 +62,7 @@ The application automatically validates Mermaid ERD files and provides one-click
 | `cdm_detection_failed` | Info | ❌ | CDM entity detection service unavailable |
 | `sql_reserved_word` | Warning | ✅ | Uses SQL reserved words |
 
-## 🔧 Auto-Fix Behaviors
+## Auto-Fix Behaviors
 
 ### Entity Fixes
 - **Missing Primary Key**: Adds `string id PK` as a primary key
@@ -89,7 +89,7 @@ The application automatically validates Mermaid ERD files and provides one-click
 - **Length Issues**: Truncates names to fit limits
 - **Case Issues**: Applies proper PascalCase/camelCase
 
-## 🚀 Usage
+## Usage
 
 ### Automatic Validation
 - Upload ERD file → Automatic validation runs
@@ -107,7 +107,7 @@ The application automatically validates Mermaid ERD files and provides one-click
 - Smart ordering prevents fix conflicts
 - Progress feedback during batch operations
 
-## 🛡️ Safety Features
+## Safety Features
 
 - **Non-destructive**: Original content preserved
 - **Deterministic**: Same input produces same fixes
@@ -115,14 +115,14 @@ The application automatically validates Mermaid ERD files and provides one-click
 - **Reversible**: Clear indication of what was changed
 - **Atomic**: Fixes either succeed completely or fail safely
 
-## 📊 Fix Success Rates
+## Fix Success Rates
 
 - **Entity Structure**: ~95% success rate
 - **Naming Issues**: ~98% success rate  
 - **Relationships**: ~85% success rate
 - **Dataverse Issues**: ~100% success rate
 
-## 🔍 Debug Information
+## Debug Information
 
 Each fix provides detailed information:
 - What was detected
@@ -130,7 +130,7 @@ Each fix provides detailed information:
 - Why the fix was necessary
 - Any manual steps required
 
-## ⚠️ Manual Review Required
+## Manual Review Required
 
 Some fixes require manual review:
 - Junction table naming
@@ -138,7 +138,7 @@ Some fixes require manual review:
 - Complex relationship patterns
 - CDM entity integration
 
-## 📝 Best Practices
+## Best Practices
 
 1. **Run validation early** - Catch issues before deployment
 2. **Review auto-fixes** - Understand what changed
@@ -146,14 +146,5 @@ Some fixes require manual review:
 4. **Use descriptive names** - Reduce naming conflicts
 5. **Follow conventions** - Minimize validation issues
 
-## 🔄 Continuous Improvement
 
-The validation system is continuously updated with:
-- New Dataverse features
-- Common issue patterns
-- User feedback
-- Edge case handling
 
----
-
-*Last updated: September 2025*
