@@ -33,8 +33,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={siteConfig.title}
+      description="Convert Mermaid ERD diagrams to Microsoft Dataverse tables with automated validation, intelligent error correction, and secure passwordless deployment.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
