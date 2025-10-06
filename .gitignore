@@ -70,3 +70,8 @@ RELEASE-NOTES-*.md
 # ESLint cache
 .eslintcache
 
+# Dev Proxy logs and reports
+devproxy/*.log
+devproxy/reports/
+.devproxy/
+

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/dev-proxy/main/schemas/v1.0.0/rc.schema.json",
+  "plugins": [
+    {
+      "name": "GenericRandomErrorPlugin",
+      "enabled": true,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "errorsDataverse",
+      "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+      ]
+    },
+    {
+      "name": "RateLimitingPlugin",
+      "enabled": false,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "rateLimitDataverse",
+      "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+      ]
+    },
+    {
+      "name": "LatencyPlugin",
+      "enabled": false,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "latencyDataverse",
+      "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+      ]
+    },
+    {
+      "name": "MockResponsePlugin",
+      "enabled": false,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "mocksDataverse",
+      "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+      ]
+    }
+  ],
+  "errorsDataverse": {
+    "errorsFile": "dataverse-errors.json"
+  },
+  "rateLimitDataverse": {
+    "headerLimit": "x-ms-ratelimit-burst-remaining-xrm-requests",
+    "headerRemaining": "x-ms-ratelimit-remaining-xrm-requests",
+    "headerReset": "x-ms-ratelimit-reset-xrm-requests",
+    "costPerRequest": 1,
+    "resetTimeWindowSeconds": 300,
+    "warningThresholdPercent": 20,
+    "rateLimit": 6000,
+    "resetFormat": "UtcEpochSeconds"
+  },
+  "latencyDataverse": {
+    "minMs": 200,
+    "maxMs": 2000
+  },
+  "mocksDataverse": {
+    "mocksFile": "dataverse-mocks.json"
+  },
+  "rate": 50,
+  "logLevel": "information"
+}
