@@ -34,7 +34,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'DEVELOPER_ARCHITECTURE',
         'TESTING',
-        'MODULAR-ROLLBACK-DESIGN',
       ],
     },
   ],

@@ -1890,7 +1890,7 @@ Environment Variables  Default Values
 // DataverseRepository wraps the legacy DataverseClient
 DataverseRepository.createEntity() 
    DataverseClient.createEntity()
-     Azure AD Authentication
+     Microsoft Entra Authentication
      Dataverse Web API
 ```
 

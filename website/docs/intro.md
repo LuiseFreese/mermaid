@@ -13,7 +13,7 @@ The **Mermaid to Dataverse Converter** is a powerful tool that converts Mermaid 
 - **Global Choices**: Automatically manage and reuse global choice sets
 - **CDM Integration**: Seamlessly integrate with Common Data Model entities
 - **Solution Packaging**: Create complete Dataverse solutions ready for deployment
-- **Azure AD Authentication**: Secure access with Microsoft identity
+- **Microsoft Entra Authentication**: Secure access with Microsoft identity
 - **Deployment History**: Track all your deployments with detailed logging
 - **Modular Rollback**: Selectively rollback components of your deployment
 
@@ -78,7 +78,7 @@ The application consists of three main components:
 
 3. **Azure Integration**
    - Managed Identity for secure, passwordless authentication
-   - Azure AD for user authentication
+   - Microsoft Entra for user authentication
    - App Service hosting
 
 ## What's Next?

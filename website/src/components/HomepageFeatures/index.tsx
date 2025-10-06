@@ -15,18 +15,18 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/undraw_authentication_1evl.svg').default,
     description: (
       <>
-        Built with enterprise-grade security in mind. Integrates seamlessly 
-        with Microsoft Dataverse authentication and follows security best practices.
+        Enterprise-grade security with passwordless authentication using Microsoft Entra ID 
+        and Azure Managed Identity. No secrets, no passwords—built on Azure's secure infrastructure.
       </>
     ),
   },
   {
-    title: 'Fast',
+    title: 'Easy',
     Svg: require('@site/static/img/undraw_visionary-technology_f6b3.svg').default,
     description: (
       <>
-        Convert your Mermaid ERD diagrams to Dataverse solutions in seconds.
-        Automated validation and intelligent table/column generation streamline your workflow.
+        Convert your Mermaid ERD diagrams to Dataverse solutions in minutes with our intuitive 
+        step-by-step wizard. Automated validation and intelligent error correction make deployment effortless.
       </>
     ),
   },
@@ -36,7 +36,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Fully open source and community-driven. Contribute, customize, and extend
-        the converter to meet your specific needs.
+        the converter to meet your specific needs. #SharingIsCaring
       </>
     ),
   },

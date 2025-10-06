@@ -7,7 +7,13 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Mermaid to Dataverse Converter',
   tagline: 'Convert Mermaid ERD diagrams to Dataverse solutions with ease',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
+
+  // Enable Mermaid diagrams
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -15,13 +21,13 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://luisefreese.github.io',
+  // For Netlify: this will be your custom domain or netlify subdomain
+  url: 'https://mermaid-to-dataverse.netlify.app', // Update this to your Netlify URL
   // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/mermaid/',
+  // For Netlify deployment at root, use '/'
+  baseUrl: '/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
+  // GitHub pages deployment config (keep for reference)
   organizationName: 'LuiseFreese', // Usually your GitHub org/user name.
   projectName: 'mermaid', // Usually your repo name.
 
@@ -40,11 +46,16 @@ const config: Config = {
       'classic',
       {
         docs: {
+          path: '../docs',
           sidebarPath: './sidebars.ts',
+          exclude: [
+            '**/temp/**',
+            '**/NEXT-FEATURES-ROADMAP.md',
+          ],
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/LuiseFreese/mermaid/tree/main/website/',
+            'https://github.com/LuiseFreese/mermaid/tree/main/docs/',
         },
         blog: false, // Disable blog for now
         theme: {
@@ -63,16 +74,10 @@ const config: Config = {
     navbar: {
       title: 'Mermaid to Dataverse',
       logo: {
-        alt: 'Dataverse Logo',
-        src: 'img/undraw_data-analysis_b7cp.svg',
+        alt: 'Mermaid with Database Logo',
+        src: 'img/logo.svg',
       },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Documentation',
-        },
         {
           href: 'https://github.com/LuiseFreese/mermaid',
           label: 'GitHub',
@@ -114,6 +119,10 @@ const config: Config = {
             {
               label: 'Luise on LinkedIn',
               href: 'https://linkedin.com/in/luisefreese',
+            },
+                        {
+              label: 'MermaidJS',
+              href: 'https://mermaid.js.org/syntax/entityRelationshipDiagram.html',
             },
           ],
         },
