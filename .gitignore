@@ -48,6 +48,14 @@ STEP1-MODULARIZATION-PLAN.md
 STEP2-MODULARIZATION-PLAN.md
 FUTURE-IMPROVEMENTS.md
 history.md
+
+# Docusaurus website
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/.cache-loader/
+website/yarn.lock
+website/.env.local
 MODULAR-ROLLBACK-DESIGN.md
 
 # Release notes (generated for GitHub releases)

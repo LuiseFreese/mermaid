@@ -1,16 +1,20 @@
-# Deployment Guide - Mermaid to Dataverse Converter
+# Deployment Guide - Azure Production Deployment
 
-This guide explains how to deploy and use the Mermaid-to-Dataverse application. Choose between **Azure deployment** with managed identity or **local development** with client secret authentication.
+This guide explains how to deploy the Mermaid to Dataverse Converter to Azure for production use with enterprise-grade security.
+
+> **Note**: For local development setup, see [Local Development Guide](./LOCAL-DEVELOPMENT.md)
 
 ## Table of Contents
 
-1. [Quick Start - Azure Deployment (Recommended)](#quick-start---azure-deployment-recommended)
-2. [Local Development Setup](#local-development-setup)
-3. [Prerequisites](#prerequisites)
-4. [Azure Deployment Process](#azure-deployment-process)
-5. [Local Development Process](#local-development-process)
+1. [Quick Start - Azure Deployment](#quick-start---azure-deployment)
+2. [Prerequisites](#prerequisites)
+3. [Security Architecture](#security-architecture)
+4. [Deployment Process](#deployment-process)
+5. [Authentication & Authorization](#authentication--authorization)
+6. [Post-Deployment Configuration](#post-deployment-configuration)
+7. [Troubleshooting](#troubleshooting)
 
-## Quick Start - Azure Deployment (Recommended)
+## Quick Start - Azure Deployment
 
 **Two steps to deploy everything:**
 
@@ -27,11 +31,14 @@ cd mermaid
 ```
 
 **The setup script will:**
-- Create App Registration with federated credentials
+- Create Backend App Registration with federated credentials (linked to managed identity)
+- Create Frontend App Registration with Microsoft Entra authentication for user sign-in
 - Deploy Azure infrastructure (App Service, Managed Identity, etc.)
-- Configure secure managed identity authentication
-- Set up a Dataverse application user with proper permissions
+- Configure secure managed identity authentication for backend
+- Set up Dataverse Application User (linked to backend App Registration)
+- Assign System Customizer security role to Application User (grants table access)
 - Configure Power Platform Environment ID for deployment history solution links
+- Enable Azure App Service authentication for frontend protection
 
 **The deployment script will:**
 - Build the React frontend locally using Vite
@@ -39,38 +46,9 @@ cd mermaid
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
 - Enable deployment history tracking with Power Platform integration
-
-## Local Development Setup
-
-**For local development with real Dataverse authentication:**
-
-```powershell
-# Clone the repository
-git clone https://github.com/LuiseFreese/mermaid.git
-cd mermaid
-
-# Step 1: Create App Registration and Dataverse Application User
-.\scripts\setup-local-dataverse-user.ps1
-
-# Step 2: Start development servers
-.\scripts\dev-local.ps1
-```
-
-**The local setup process will:**
-- Create App Registration with a client secret (if needed)
-- Set up Dataverse Application User with a System Customizer role
-- Generate `.env.local` file with authentication configuration
-- Configure local environment for development
-
-**The dev script will:**
-- Load environment variables from `.env.local`
-- Start a backend server with real Dataverse authentication
-- Start a frontend development server with hot reload
-- Enable API proxy for seamless development
+- Configure authentication middleware for API protection
 
 ## Prerequisites
-
-### For Azure Deployment:
 
 1. **Azure subscription** with permissions to create resources
 2. **PowerShell 7+** (recommended) or Windows PowerShell 5.1
@@ -80,21 +58,94 @@ cd mermaid
 6. **Appropriate permissions**:
    - **Azure**: Contributor or Owner on subscription
    - **Microsoft Entra ID**: Application Administrator (to create app registrations)
-   - **Dataverse**: System Administrator (to create application users and assign a System Customizer role)
+   - **Dataverse**: System Administrator (to create application users and assign System Customizer role)
 
-### For Local Development:
+## Security Architecture
 
-1. **PowerShell 7+** (recommended) or Windows PowerShell 5.1
-2. **Azure CLI** installed and logged in (`az login`)
-3. **Node.js 18+** (required for both frontend and backend)
-4. **Access to Dataverse environment** where you want to test
-5. **Appropriate permissions**:
-   - **Microsoft Entra ID**: Application Administrator (to create app registrations)
-   - **Dataverse**: System Administrator (to create application users and assign roles)
+The deployment implements **defense-in-depth** with multiple layers of security:
 
-## Azure Deployment Process
+### 1. Frontend Protection - Azure App Service Authentication
+
+**User Sign-In with Microsoft Entra:**
+- Users must sign in with their Microsoft Entra (Azure AD) account to access the application
+- Azure App Service Easy Auth provides automatic authentication
+- JWT tokens are issued to authenticated users
+- No anonymous access to the application
+
+> Learn more: [Azure App Service Authentication and Authorization](https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization)
+
+**Configuration:**
+```json
+{
+  "platform": {
+    "enabled": true
+  },
+  "globalValidation": {
+    "requireAuthentication": true,
+    "unauthenticatedClientAction": "RedirectToLoginPage"
+  },
+  "identityProviders": {
+    "azureActiveDirectory": {
+      "enabled": true,
+      "registration": {
+        "clientId": "your-frontend-app-id"
+      }
+    }
+  }
+}
+```
+
+**Key point**: No client secret needed! Azure App Service Easy Auth handles authentication without storing secrets.
+
+### 2. Backend Protection - JWT Token Validation
+
+**API Endpoint Security:**
+- All API endpoints require valid JWT tokens from authenticated users
+- JWT middleware validates tokens on every request
+- Token validation includes:
+  - Signature verification
+  - Expiration check
+  - Issuer validation
+  - Audience validation
+
+**Protected Endpoints:**
+```javascript
+// Authentication middleware on all API routes
+app.use('/api/*', authenticateToken);
+app.use('/upload', authenticateToken);
+app.use('/wizard', authenticateToken);
+```
+
+**JWT Token Flow:**
+1. User signs in via Azure App Service authentication
+2. Azure issues JWT token to the user
+3. Frontend sends JWT token with every API request (via `X-MS-TOKEN-AAD-ACCESS-TOKEN` header)
+4. Backend validates JWT token before processing request
+5. Invalid or missing tokens receive 401 Unauthorized response
+
+### 3. Backend-to-Dataverse - Managed Identity
+
+**Passwordless Authentication:**
+- Backend uses User-Assigned Managed Identity for Dataverse access
+- Federated credentials enable secure token exchange with backend App Registration
+- Backend App Registration linked to Dataverse Application User
+- Access to tables controlled by System Customizer security role (not API permissions)
+- Automatic token refresh and management
+
+**Token Flow:**
+1. Backend requests token from Azure Managed Identity endpoint
+2. Managed Identity exchanges federated credential for Dataverse token
+3. Backend calls Dataverse API with access token
+4. Dataverse validates token and maps to Application User
+5. Security role (System Customizer) determines what tables/operations are allowed
+
+
+## Deployment Process
 
 ### Step 1: Infrastructure Setup
+
+The setup script creates all necessary Azure resources and configures authentication:
+
 ```powershell
 # Interactive mode (prompts for configuration)
 .\scripts\setup-secretless.ps1
@@ -105,421 +156,319 @@ cd mermaid
   -DataverseUrl "https://orgXXXXX.crm4.dynamics.com"
 ```
 
+**What gets created:**
+1. **Frontend App Registration** - For user sign-in with Microsoft Entra
+   - Configured for web application authentication
+   - Redirect URIs set for your App Service
+   - Integrated with Azure App Service Easy Auth (no client secret needed)
+
+2. **Backend App Registration** - For Dataverse authentication
+   - Configured with federated credentials (passwordless)
+   - Linked to managed identity for token exchange
+   - No API permissions needed (access controlled by Dataverse Application User security role)
+
+3. **Azure Resources**:
+   - Resource Group
+   - App Service + App Service Plan (Linux, Node.js 20)
+   - User-Assigned Managed Identity
+
+4. **Dataverse Configuration**:
+   - Application User created (linked to backend App Registration)
+   - System Customizer security role assigned (grants access to tables)
+   - Security role determines what tables and operations are allowed
+
+5. **App Service Authentication**:
+   - Azure App Service Easy Auth configured
+   - Microsoft Entra identity provider enabled
+   - Requires authentication for all requests
+
 ### Step 2: Application Deployment
+
+Deploy your application code to the configured infrastructure:
+
 ```powershell
-# Deploy the application code to existing infrastructure
+# Deploy code to existing infrastructure
 .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
-## Local Development Process
+**Deployment steps:**
+1. **Build Frontend**: Vite builds React app for production
+2. **Package Backend**: Excludes node_modules and source files
+3. **Deploy to App Service**: Uses Azure CLI with ZIP deploy
+4. **Configure Settings**: Updates App Service configuration
+5. **Validate**: Tests endpoints and authentication
 
-### Step 1: Create App Registration and Configure Dataverse
 
-If you don't already have an App Registration configured:
 
-```powershell
-# Create new App Registration with client secret
-$clientId = "your-existing-client-id"  # Or create new one
-az ad app credential reset --id $clientId --years 1
+## Authentication & Authorization
+
+### Frontend Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Browser
+    participant AppService as App Service
+    participant Entra as Microsoft Entra
+    participant Backend
+    
+    User->>Browser: Access application
+    Browser->>AppService: HTTP Request
+    AppService->>AppService: Check authentication
+    AppService->>Entra: Redirect to sign-in
+    User->>Entra: Enter credentials
+    Entra->>AppService: Return JWT token
+    AppService->>Browser: Set authentication cookie
+    Browser->>Backend: API Request + JWT token
+    Backend->>Backend: Validate JWT
+    Backend->>Browser: API Response
 ```
 
-Then configure the Dataverse Application User:
+### Backend Authentication Flow
 
-```powershell
-# Set up Dataverse Application User with System Customizer role
-.\scripts\setup-local-dataverse-user.ps1
+```mermaid
+sequenceDiagram
+    participant Frontend
+    participant Backend
+    participant ManagedId as Managed Identity
+    participant Entra as Microsoft Entra
+    participant Dataverse
+    
+    Frontend->>Backend: API Request + User JWT
+    Backend->>Backend: Validate User JWT
+    Backend->>ManagedId: Request Dataverse token
+    ManagedId->>Entra: Exchange federated credential
+    Entra->>ManagedId: Return Dataverse token
+    Backend->>Dataverse: API Call + Dataverse token
+    Dataverse->>Backend: API Response
+    Backend->>Frontend: Return data
 ```
 
-**This script will:**
-- Find your existing App Registration and Service Principal
-- Create a Dataverse Application User linked to your App Registration
-- Assign a System Customizer role for table creation permissions
-- Verify the configuration is working correctly
+### Authentication Middleware
 
-### Step 2: Create Local Environment Configuration
+The backend implements three levels of authentication:
 
-Create a `.env.local` file in the project root:
-
-```bash
-# Local Development Configuration
-USE_CLIENT_SECRET=true
-USE_MANAGED_IDENTITY=false
-
-# Azure AD Configuration
-TENANT_ID=your-tenant-id
-CLIENT_ID=your-app-registration-client-id
-CLIENT_SECRET=your-client-secret
-
-# Dataverse Configuration
-DATAVERSE_URL=https://your-org.crm4.dynamics.com/
-
-# Power Platform Environment ID (IMPORTANT for correct solution URLs)
-# Find this in Power Platform Admin Center > Environments > Your Environment > Details
-# This is different from the Dataverse Organization ID and is required for proper Power Apps solution links
-POWER_PLATFORM_ENVIRONMENT_ID=your-power-platform-environment-id
-
-# Development Settings
-NODE_ENV=development
-PORT=8080
-LOG_REQUEST_BODY=true
-LOG_LEVEL=debug
+**1. Token Validation (authenticateToken)**
+```javascript
+// Validates JWT token on every request
+// Extracts user information from token
+// Attaches user to request object
 ```
 
-**Finding Your Power Platform Environment ID:**
-
-The Power Platform Environment ID is required for deployment history solution links. You can find it using either of these methods:
-
-**Method 1: Power Apps Maker Portal (Recommended)**
-1. **Navigate to Power Apps**: Go to [make.powerapps.com](https://make.powerapps.com)
-2. **Access Session Details**: Click the settings gear icon (⚙️) in the top-right corner
-3. **Select "Session details"**: From the dropdown menu
-4. **Copy Environment ID**: The Environment ID is displayed in the session details dialog
-
-**Method 2: Environment URL**
-Look at your environment URL - the GUID after `/environments/` is your Environment ID.
-
-
-### Step 3: Start Development Servers
-
-```powershell
-# Start both backend and frontend servers
-.\scripts\dev-local.ps1
+**2. Optional Authentication (optionalAuth)**
+```javascript
+// Allows both authenticated and anonymous requests
+// Used for health checks and public endpoints
+// Still validates token if present
 ```
 
-**This script will:**
-- Load environment variables from `.env.local`
-- Start the backend server on port 8080 with real Dataverse authentication
-- Start the frontend development server on port 3003 (or next available port)
-- Configure API proxy for seamless development experience
-- Enable hot reload for both frontend and backend changes
-
-### Local Development Features
-
-**Backend Server (Port 8080):**
-- Real Dataverse authentication using client secret
-- All API endpoints available (`/api/*`)
-- File upload handling (`/upload`)
-- Deployment history tracking
-- Full entity management capabilities
-
-**Frontend Server (Port 3003+):**
-- React development server with hot reload
-- Vite-powered fast refresh
-- API proxy to backend server
-- All frontend routes working (wizard, deployment history)
-- Theme switching and responsive design
-
-### Manual Setup (Alternative)
-
-If you prefer manual setup or need to troubleshoot:
-
-```powershell
-# 1. Create or reset App Registration client secret
-$clientId = "your-app-id"
-$secretResult = az ad app credential reset --id $clientId --years 1 | ConvertFrom-Json
-$newSecret = $secretResult.password
-
-# 2. Set up Dataverse Application User
-.\scripts\setup-local-dataverse-user.ps1
-
-# 3. Create .env.local file with the new credentials:
-@"
-USE_CLIENT_SECRET=true
-USE_MANAGED_IDENTITY=false
-TENANT_ID=your-tenant-id
-CLIENT_ID=$clientId
-CLIENT_SECRET=$newSecret
-DATAVERSE_URL=https://your-org.crm4.dynamics.com/
-POWER_PLATFORM_ENVIRONMENT_ID=your-power-platform-environment-id
-NODE_ENV=development
-PORT=8080
-LOG_REQUEST_BODY=true
-LOG_LEVEL=debug
-"@ | Out-File ".env.local" -Encoding UTF8
-
-# 4. Start development servers
-.\scripts\dev-local.ps1
+**3. Role-Based Authorization (requireRole)**
+```javascript
+// Requires specific roles for access
+// Returns 403 Forbidden if role not present
+// Supports multiple role requirements
 ```
 
-### Local Development Authentication Flow
+### Token Headers
 
-The local development setup uses **client secret authentication** with these key components:
+The application uses standard Azure App Service authentication headers:
 
-1. **App Registration**: Azure AD application with client secret for authentication
-2. **Service Principal**: Automatically created when the App Registration is created
-3. **Dataverse Application User**: User in Dataverse linked to the Service Principal Object ID
-4. **System Customizer Role**: Assigned to the Application User for table creation permissions
-
-**Authentication Process:**
-1. Backend loads credentials from `.env.local`
-2. Uses client secret to get an access token from Azure AD
-3. Calls Dataverse API with the access token
-4. Dataverse validates the token and maps it to the Application User
-5. Operations are authorized based on the Application User's security roles
-
-**Important Notes:**
-- Client secrets expire (usually 1-2 years) and need to be renewed
-- The Application User must have a System Customizer role for table operations
-- The Service Principal Object ID links the App Registration to the Dataverse Application User
-
-## What Gets Deployed
-
-The setup script automatically creates:
-
-- **Azure Resource Group** - Container for all resources
-- **App Service & App Service Plan** - Web application hosting (Linux, Node.js 20)
-- **User-Assigned Managed Identity** - Secure authentication with federated credentials
-- **Entra ID App Registration** - Service principal for Dataverse access
-- **Dataverse Application User** - Configured with appropriate security roles
-
-## Local Development vs Azure Deployment
-
-| Feature | Local Development | Azure Deployment |
-|---------|------------------|-----------------|
-| **Authentication** | Client Secret | Managed Identity (Federated Credentials) |
-| **App Registration** | Separate for local dev | Shared with Azure resources |
-| **Frontend Server** | Vite dev server (port 3003+) | Served by backend (port 443/80) |
-| **Backend Server** | Node.js dev server (port 8080) | Azure App Service |
-| **Hot Reload** | ✅ Full hot reload | ❌ Requires redeployment |
-| **Environment** | `.env.local` file | App Service settings |
-| **Security** | Client secret (development only) | Passwordless (production-ready) |
-| **Setup Time** | ~2 minutes | ~5-10 minutes |
-| **Cost** | Free (local) | Azure resources cost |
-| **Use Case** | Development & testing | Production deployment |
-
-### When to Use Local Development:
-- 🔧 **Development**: Building and testing new features
-- 🐛 **Debugging**: Troubleshooting issues with full logging
-- 🚀 **Rapid iteration**: Quick changes with hot reload
-- 📝 **Learning**: Understanding the application architecture
-
-### When to Use Azure Deployment:
-- 🌐 **Production**: Live application for end users  
-- 🏢 **Team sharing**: Multiple users accessing the same instance
-- 🔐 **Security**: Enterprise-grade managed identity authentication
-- 📊 **Performance**: Optimized for production workloads
-
-## Automated Setup Process
-
-The **setup script** (`scripts/setup-secretless.ps1`) creates the infrastructure:
-
-1. **Creates App Registration** with proper configuration and federated credentials
-2. **Deploys Infrastructure** using Bicep (Managed Identity, App Service)
-3. **Configures federated credentials** for secure token exchange
-4. **Stores configuration** in App Service application settings
-5. **Creates Application User** in Dataverse via REST API
-6. **Assigns Security Roles** (System Customizer by default)
-
-The **deployment script** (`scripts/deploy-secretless.ps1`) handles the application:
-
-1. **Builds React frontend** locally using Vite for optimal performance
-2. **Packages backend code** (excludes node_modules and source files)
-3. **Deploys to Azure App Service** using Azure CLI with proper static file configuration
-4. **Configures runtime settings** for managed identity integration and static asset serving
-5. **Validates deployment** by testing the application endpoints
-
-### Security-First Deployment Approach
-
-The deployment process uses a **security-first approach** with managed identity authentication:
-
-- **No secrets required** - Managed identity provides passwordless authentication
-- **Secure environment variables** - Configuration stored in App Service settings
-- **Federated credentials** - Token exchange without storing secrets
-- **Zero hardcoded secrets** - All authentication handled by Azure managed identity
-
-### Interactive Setup Example
-
-**Step 1: Infrastructure Setup**
-```powershell
-PS> .\scripts\setup-entra-app.ps1
-
-Mermaid to Dataverse - Infrastructure Setup
-===========================================
-
-Find your Dataverse Environment URL at make.powerapps.com > Settings > Session details, copy the **Instance URL**
-
-Dataverse Environment URL: https://orgxxxxxxx.crm4.dynamics.com
-Resource Group Name: rg-mermaid-dv-we-test
-Azure Region: westeurope
-App Registration Name: Mermaid-Dataverse-Converter
-App Service Name: app-mermaid-dv-we-5678
-
-✅ App Registration created successfully
-✅ Infrastructure deployed successfully  
-✅ Managed identity configured
-✅ Dataverse Application User created
-✅ Security roles assigned
-
-🎉 Infrastructure Setup Complete!
-Next: Run the deploy script to deploy your application code.
+```http
+X-MS-TOKEN-AAD-ACCESS-TOKEN: <user-jwt-token>
+X-MS-CLIENT-PRINCIPAL-ID: <user-object-id>
+X-MS-CLIENT-PRINCIPAL-NAME: <user-email>
 ```
 
-**Step 2: Application Deployment**
-```powershell
-PS> .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "5678"
+## Post-Deployment Configuration
 
-Mermaid to Dataverse - Application Deployment
-============================================
+### Configure Allowed Users
 
-✅ Building React frontend with Vite...
-✅ Packaging backend code...
-✅ Deploying to Azure App Service...
-✅ Configuring static file serving...
-✅ Application deployed successfully!
+By default, any user in your Azure tenant can sign in. To restrict access:
 
-🎉 Deployment Complete! Application ready at: 
-   https://app-mermaid-dv-we-5678.azurewebsites.net/
+**Option 1: App Registration (Recommended)**
+1. Go to Azure Portal → App Registrations
+2. Select your frontend App Registration
+3. Go to "Enterprise applications" → "Properties"
+4. Set "User assignment required?" to **Yes**
+5. Go to "Users and groups"
+6. Add specific users or groups
 
-🔒 Security Features:
-   - Managed Identity for passwordless authentication
-   - Federated credentials for secure token exchange
-   - Zero secrets stored anywhere in the system
-```
+**Option 2: App Service Access Restrictions**
+1. Go to Azure Portal → App Service
+2. Navigate to "Authentication" → "Microsoft"
+3. Configure "Allowed token audiences"
+4. Add specific user groups
 
-## Infrastructure as Code
+### Enable Deployment History
 
-All Azure resources are defined in `deploy/infrastructure.bicep`
+💡 Only in case you did not provide the Power Platform Enbvironment ID during deployment: 
 
-## Security Architecture
 
-The deployment uses **enterprise-grade security** with multiple layers of protection:
+1. **Find your Environment ID**:
+   - Go to [make.powerapps.com](https://make.powerapps.com)
+   - Click settings gear → "Session details"
+   - Copy the "Environment ID"
 
-### Authentication & Authorization
-- **User-Assigned Managed Identity**: Passwordless authentication for secure token access
-- **Federated Credentials**: Secure token exchange without storing secrets
-- **Entra ID App Registration**: Service principal configured for managed identity
-- **Application User**: Dedicated Dataverse user with specific security roles
+2. **Add to App Service Configuration**:
+   ```powershell
+   az webapp config appsettings set `
+     --name "app-mermaid-dv-we-{suffix}" `
+     --resource-group "rg-mermaid-dv-we-{suffix}" `
+     --settings POWER_PLATFORM_ENVIRONMENT_ID="your-environment-id"
+   ```
 
-### Configuration Management
-- **App Service Settings**: Configuration stored as environment variables
-- **No secrets required**: All authentication handled through Azure managed identity
-- **Zero hardcoded values**: Configuration managed through Azure portal or deployment scripts
 
-### Deployment Security
-- **Parameter-free deployment**: No secrets passed as command-line parameters
-- **Azure CLI authentication**: Uses your existing Azure session for secure operations
-- **Managed identity authentication**: All security handled through Azure identity services
-- **Audit trail**: All operations logged through Azure Activity Log
+## Updating the Application
 
-### Runtime Security
-- **Managed Identity authentication**: App uses managed identity for all external service access
-- **Environment variables**: Configuration stored securely in App Service settings
-- **HTTPS only**: All communication encrypted in transit
-- **Network isolation**: App Service can be configured with VNet integration
+### Deploy Code Changes
 
-## Deploying Code Updates
-
-After the initial infrastructure setup, you can deploy code changes using the deployment script:
+After making code changes, deploy updates:
 
 ```powershell
-# Deploy code updates to existing infrastructure
+# Rebuild and redeploy
 .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
 ```
 
-This script will:
-1. **Build React frontend** locally using Vite for optimal performance
-2. **Package backend code** (excludes node_modules and source files for faster deployment)
-3. **Deploy to Azure App Service** using Azure CLI with proper static file configuration
-4. **Configure runtime settings** for managed identity integration and static asset serving
-5. **Test deployment** by verifying the application endpoints
-6. **Clean up temporary files** for security
+**The deployment is idempotent:**
+- Safe to run multiple times
+- Only updates application code
+- Preserves configuration and secrets
+- No downtime during deployment
 
-### Security Benefits
+### Update Configuration
 
-The deployment process ensures **zero secrets required**:
-- No secrets stored anywhere in the system
-- Managed Identity provides secure, passwordless authentication
-- All configurations are stored as environment variables in App Service
-- Federated credentials enable secure token exchange
-
-### Idempotent Deployments
-
-Both scripts are **idempotent** and can be run multiple times safely:
+Update App Service settings without redeployment:
 
 ```powershell
-# Re-run infrastructure setup (detects existing resources)
-.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp"
-
-# Re-run application deployment (updates code only)
-.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+# Update environment variables
+az webapp config appsettings set `
+  --name "app-mermaid-dv-we-{suffix}" `
+  --resource-group "rg-mermaid-dv-we-{suffix}" `
+  --settings LOG_LEVEL="debug"
 ```
 
-**Infrastructure script will:**
-- Detect existing resources and reuse them
-- Only create missing components
-- Preserve existing configuration
-- Update secrets if needed
+### Rotate Credentials
 
-**Deployment script will:**
-- Always deploy fresh application code
-- Rebuild frontend for the latest changes
-- Update runtime configuration
-- Ensure optimal performance
+**No secrets to rotate!** This deployment is completely passwordless:
+- **Frontend authentication**: Handled by Azure App Service Easy Auth (no client secrets)
+- **Backend-to-Dataverse authentication**: Uses managed identity with federated credentials (no secrets)
+
+The only credentials that exist are Azure-managed and rotate automatically.
 
 ## Troubleshooting
 
-### Local Development Issues
+### Authentication Issues
 
-**Problem: Frontend shows 404 for `/deployment-history`**
-- **Cause**: Frontend dev server not running or wrong port
-- **Solution**: Access frontend at `http://localhost:3003` (not backend port 8080)
-
-**Problem: API calls fail with authentication errors**
-- **Cause**: Missing, invalid, or expired client secret in `.env.local` configuration
-- **Solution**: Create new client secret and update configuration:
+**Problem: "401 Unauthorized" when accessing the application**
+- **Cause**: Azure App Service authentication not configured correctly
+- **Solution**:
   ```powershell
-  # Generate new client secret
-  $clientId = "your-client-id"
-  $newSecret = az ad app credential reset --id $clientId --years 1 --query password -o tsv
+  # Check authentication configuration
+  az webapp auth show `
+    --name "app-mermaid-dv-we-{suffix}" `
+    --resource-group "rg-mermaid-dv-we-{suffix}"
   
-  # Update .env.local file with new secret
-  (Get-Content ".env.local") -replace "CLIENT_SECRET=.*", "CLIENT_SECRET=$newSecret" | Set-Content ".env.local"
-  
-  # Restart the backend server to load new credentials
+  # Verify App Registration exists and has correct redirect URIs
+  az ad app show --id "your-frontend-app-id"
   ```
 
-**Problem: "Port 3003 is in use, trying another one..."**
-- **Cause**: Another process using port 3003
-- **Solution**: Frontend will automatically use next available port (3004, 3005, etc.)
+**Problem: "Invalid JWT token" in backend logs**
+- **Cause**: Token validation failing
+- **Solution**: Check that the JWT token headers are being sent correctly and the token hasn't expired
 
-**Problem: Backend fails to start with Dataverse authentication errors**
-- **Cause**: Dataverse Application User not properly configured or missing System Customizer role
-- **Solution**: 
+**Problem: Users can't sign in**
+- **Cause**: App Registration not configured for user assignment
+- **Solution**: Go to Enterprise Application → Properties → Set "User assignment required" and add users
+
+### Deployment Issues
+
+**Problem: Build fails during deployment**
+- **Cause**: Node.js version mismatch or missing dependencies
+- **Solution**:
   ```powershell
-  # Recreate the Dataverse Application User with proper permissions
+  # Ensure Node.js 18+ is installed locally
+  node --version
+  
+  # Clean and reinstall dependencies
+  Remove-Item -Path "node_modules" -Recurse -Force
+  npm install
+  
+  # Try deployment again
+  .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+  ```
+
+**Problem: "Managed Identity not found"**
+- **Cause**: Infrastructure setup didn't complete successfully
+- **Solution**:
+  ```powershell
+  # Re-run infrastructure setup
+  .\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp"
+  ```
+
+### Dataverse Issues
+
+**Problem: "Application User not found" in Dataverse calls**
+- **Cause**: Application User not created or not linked correctly
+- **Solution**:
+  ```powershell
+  # Verify Application User exists in Power Platform Admin Center
+  # Go to Environments → Your Environment → Settings → Users + permissions → Application users
+  
+  # Re-run setup to recreate Application User
   .\scripts\setup-local-dataverse-user.ps1
   ```
 
-**Problem: "Application User not found" or "401 Unauthorized" in backend logs**
-- **Cause**: App Registration and Dataverse Application User are not properly linked
-- **Solution**: 
-  ```powershell
-  # Verify and recreate the Application User
-  .\scripts\setup-local-dataverse-user.ps1
-  
-  # Check that the Service Principal Object ID matches in Dataverse
-  az ad sp show --id "your-client-id" --query id -o tsv
-  ```
+**Problem: "Insufficient permissions" when creating tables**
+- **Cause**: Application User doesn't have System Customizer role
+- **Solution**: In Power Platform Admin Center, assign System Customizer role to the Application User
 
-### General Issues
+### Monitoring and Diagnostics
 
-**Problem: Azure CLI is not authenticated**
-- **Solution**: `az login` and select the correct subscription with `az account set --subscription "your-subscription"`
+**Enable detailed logging:**
+```powershell
+az webapp config appsettings set `
+  --name "app-mermaid-dv-we-{suffix}" `
+  --resource-group "rg-mermaid-dv-we-{suffix}" `
+  --settings LOG_LEVEL="debug" LOG_REQUEST_BODY="true"
+```
 
-**Problem: Insufficient permissions in Dataverse**
-- **Cause**: A user account doesn't have a System Administrator role
-- **Solution**: Ask your Dataverse administrator to grant System Administrator permissions temporarily for setup
+**View application logs:**
+```powershell
+# Stream logs in real-time
+az webapp log tail `
+  --name "app-mermaid-dv-we-{suffix}" `
+  --resource-group "rg-mermaid-dv-we-{suffix}"
 
-**Problem: Node.js version too old**
-- **Cause**: Node.js version below 18
-- **Solution**: Install Node.js 18+ from [Node.js.org](https://nodejs.org)
+# Download logs
+az webapp log download `
+  --name "app-mermaid-dv-we-{suffix}" `
+  --resource-group "rg-mermaid-dv-we-{suffix}" `
+  --log-file "app-logs.zip"
+```
 
-### Getting Help
+## Security Best Practices
+
+1. **No Secrets to Manage**: This deployment is completely passwordless - both frontend and backend use managed authentication
+2. **Monitor Authentication**: Use Application Insights to track authentication failures
+3. **Restrict User Access**: Only assign access to users who need it
+4. **Enable Audit Logging**: Track who deploys what and when
+5. **Keep Dependencies Updated**: Regularly update npm packages for security patches
+6. **Review Access Control**: Periodically review user assignments and roles
+
+## Related Documentation
+
+- [Local Development Guide](./LOCAL-DEVELOPMENT.md) - Set up local development environment
+- [Architecture Guide](./DEVELOPER_ARCHITECTURE.md) - Understanding the system design
+- [Testing Guide](./TESTING.md) - Running and writing tests
+
+## Getting Help
 
 If you encounter issues not covered here:
 
-1. **Check the logs**: Both frontend and backend show detailed error messages
-2. **Verify prerequisites**: Ensure all required tools and permissions are available  
-3. **Regenerate credentials**: Most authentication issues can be resolved by creating a new client secret
-4. **Recreate Application User**: Use `.\scripts\setup-local-dataverse-user.ps1` to fix Dataverse configuration
-5. **Clean start**: Delete `.env.local`, create new client secret, and recreate the Application User
+1. **Check the logs**: Azure App Service logs contain detailed error messages
+2. **Verify prerequisites**: Ensure all required tools and permissions are available
+3. **Review security configuration**: Check both frontend and backend authentication settings
+4. **Test authentication flow**: Use browser dev tools to inspect JWT tokens
+5. **Consult documentation**: Review related documentation for specific features
+
+

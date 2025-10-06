@@ -470,9 +470,9 @@ This deployment history system provides enterprise-grade deployment tracking wit
 
 ```
 file-upload/
-├── 📄 FileUploadStep.tsx          # Main orchestrator component
-├── 📄 index.ts                    # Public API exports
-├── 🎨 components/                 # UI Components
+├── FileUploadStep.tsx          # Main orchestrator component
+├── index.ts                    # Public API exports
+├── components/                 # UI Components
 │   ├── FileUploadZone.tsx         # File upload
 │   ├── MermaidDiagramViewer.tsx   # Diagram rendering
 │   ├── CDMDetectionCard.tsx       # CDM entity detection
@@ -481,17 +481,17 @@ file-upload/
 │   ├── ERDSummaryAccordion.tsx    # ERD structure summary
 │   ├── [Component].module.css     # Scoped component styles
 │   └── index.ts                   # Component exports
-├── 🔧 hooks/                      # Custom Business Logic Hooks
+├── hooks/                      # Custom Business Logic Hooks
 │   ├── useFileProcessing.ts       # File upload and processing
 │   ├── useCDMDetection.ts         # CDM entity detection
 │   ├── useERDValidation.ts        # ERD validation logic
 │   ├── useAutoFix.ts              # Auto-fix generation
 │   ├── useMermaidRenderer.ts      # Diagram rendering
 │   └── index.ts                   # Hook exports
-├── 📝 types/                      # TypeScript Definitions
+├── types/                      # TypeScript Definitions
 │   ├── file-upload.types.ts       # Component and data types
 │   └── validation.types.ts        # Validation-specific types
-└── 🛠️ utils/                      # Pure Utility Functions
+└── utils/                      # Pure Utility Functions
     ├── cdmEntityList.ts           # CDM entity definitions
     ├── erdParser.ts               # ERD parsing logic
     └── validationRules.ts         # Validation rules
@@ -761,25 +761,25 @@ import { FileUploadStep } from './components/wizard/steps/file-upload';
 
 ```
 solution-setup/
-├── 📄 SolutionSetupStep.tsx       # Main orchestrator component
-├── 📄 index.ts                    # Public API exports
-├── 🎨 components/                 # UI Components
+├── SolutionSetupStep.tsx       # Main orchestrator component
+├── index.ts                    # Public API exports
+├── components/                 # UI Components
 │   ├── SearchableDropdown.tsx     # Reusable searchable dropdown
 │   ├── SolutionConfigSection.tsx  # Solution configuration form
 │   ├── PublisherConfigSection.tsx # Publisher configuration form
 │   ├── [Component].module.css     # Scoped component styles
 │   └── index.ts                   # Component exports
-├── 🔧 hooks/                      # Custom Business Logic Hooks
+├── hooks/                      # Custom Business Logic Hooks
 │   ├── useSolutionConfiguration.ts    # Solution state management
 │   ├── usePublisherConfiguration.ts   # Publisher state management
 │   ├── useSearchableDropdown.ts       # Dropdown search logic
 │   ├── useNameGeneration.ts           # Name generation utilities
 │   ├── useFormValidation.ts           # Form validation logic
 │   └── index.ts                       # Hook exports
-├── 📝 types/                      # TypeScript Definitions
+├── types/                      # TypeScript Definitions
 │   ├── solution-setup.types.ts    # Component and data types
 │   └── validation.types.ts        # Validation-specific types
-└── 🛠️ utils/                      # Pure Utility Functions
+└── utils/                      # Pure Utility Functions
     ├── validation.ts              # Validation rules and logic
     ├── filtering.ts               # Data filtering utilities
     └── nameGeneration.ts          # Name generation functions
@@ -815,158 +815,6 @@ solution-setup/
 
 This modular architecture ensures the SolutionSetupStep is **maintainable**, **testable**, **reusable**, and **scalable** while providing robust form validation and user experience.
 
-## DeploymentStep Modular Architecture
-
-**Purpose**: The DeploymentStep has been completely modularized using clean architecture principles with separated components for configuration summary, deployment progress, and result handling.
-
-### Architecture Overview
-
-```
-deployment/
-├── 📄 DeploymentStep.tsx          # Main orchestrator component
-├── 📄 index.ts                    # Public API exports
-├── 🎨 components/                 # UI Components
-│   ├── ConfigurationSummary.tsx   # Solution and entity summary
-│   ├── DeploymentProgress.tsx     # Real-time progress display
-│   ├── DeploymentResults.tsx      # Success/error results
-│   ├── DeploymentControls.tsx     # Navigation and deploy buttons
-│   ├── [Component].module.css     # Scoped component styles
-│   └── index.ts                   # Component exports
-├── 🔧 hooks/                      # Custom Business Logic Hooks
-│   ├── useConfigurationSummary.ts # Data aggregation and filtering
-│   ├── useDeploymentStatus.ts     # Deployment state management
-│   ├── useDeploymentProgress.ts   # Progress tracking and updates
-│   └── index.ts                   # Hook exports
-├── 📝 types/                      # TypeScript Definitions
-│   ├── deployment.types.ts        # Component and data types
-│   └── index.ts                   # Type exports
-└── 🛠️ utils/                      # Pure Utility Functions
-    ├── dataTransformation.ts      # Wizard data to deployment mapping
-    ├── validation.ts              # Deployment data validation
-    └── index.ts                   # Utility exports
-```
-
-### Design Principles
-
-**1. Component Separation**
-- **ConfigurationSummary**: Pure presentation of a solution, publisher, entities, and relationships
-- **DeploymentProgress**: Real-time streaming deployment progress with logs
-- **DeploymentResults**: Success/error result display with detailed feedback
-- **DeploymentControls**: Navigation buttons and deployment trigger
-
-**2. Business Logic Abstraction**
-- **useConfigurationSummary**: Aggregates wizard data into a deployment-ready format
-- **useDeploymentStatus**: Manages deployment state and API integration
-- **useDeploymentProgress**: Handles streaming progress updates and error states
-
-**3. Data Flow Management**
-- **Utils**: Pure functions for data transformation and validation
-- **Types**: Comprehensive TypeScript definitions for all interfaces
-- **Clean Dependencies**: Each component depends only on its required props
-
-### Testing Strategy
-
-**Comprehensive Test Coverage**: 19/19 tests passing across all components and utilities
-- **Utils Tests (11 tests)**: Data transformation, validation, and filtering functions
-- **Hooks Tests (4 tests)**: Configuration summary and business logic validation  
-- **Integration Tests (4 tests)**: Full component integration and rendering behavior
-
-**Test Categories**:
-- **Unit Tests**: Pure utility functions with 100% coverage
-- **Hook Tests**: State management and wizard context integration
-- **Component Tests**: UI rendering and props interface validation
-- **Integration Tests**: End-to-end deployment step workflow
-
-This modular architecture ensures the DeploymentStep is **production-ready**, **maintainable**, **testable**, and **scalable** while providing comprehensive deployment functionality with real-time progress tracking.
-
-## GlobalChoicesStep Modular Architecture
-
-The GlobalChoicesStep has been fully modularized following the same architecture patterns as FileUploadStep and DeploymentStep, transforming a 372-line monolithic component into a clean, maintainable modular structure.
-
-### Modular Structure
-
-```
-src/frontend/src/components/wizard/steps/global-choices/
-├── GlobalChoicesStep.tsx           # Main orchestrator component
-├── components/
-│   ├── index.ts                    # Component exports
-│   ├── ChoiceSearch.tsx           # Search functionality
-│   ├── GlobalChoicesList.tsx      # Choice display & selection
-│   ├── CustomChoicesUpload.tsx    # File upload interface
-│   ├── UploadedChoicesPreview.tsx # Display uploaded choices
-│   └── GlobalChoicesNavigation.tsx # Step navigation controls
-├── hooks/
-│   ├── index.ts                    # Hook exports
-│   ├── useGlobalChoicesData.ts    # Data fetching & state
-│   ├── useChoiceSelection.ts      # Selection logic
-│   ├── useFileUpload.ts           # Upload & parsing logic
-│   └── useChoicesValidation.ts    # Validation logic
-├── types/
-│   └── index.ts                    # TypeScript definitions
-└── utils/                          # Utility functions (pre-existing)
-```
-
-### Key Components
-
-**ChoiceSearch Component**: Clean search interface with debounced filtering
-```typescript
-<ChoiceSearch
-  value={searchTerm}
-  onChange={handleSearchChange}
-  placeholder="Search choices..."
-/>
-```
-
-**GlobalChoicesList Component**: Organized choice display with grouping by prefix
-```typescript
-<GlobalChoicesList
-  choices={builtInChoices}
-  selectedChoices={selectedChoices}
-  onChoiceSelect={handleChoiceSelect}
-  searchTerm={searchTerm}
-/>
-```
-
-**CustomChoicesUpload Component**: File upload with progress and error handling
-```typescript
-<CustomChoicesUpload
-  onFileUpload={handleFileUpload}
-  uploadedFile={uploadedFile}
-  isUploading={isUploading}
-  error={uploadError}
-/>
-```
-
-### Custom Hooks
-
-**useGlobalChoicesData**: Manages data fetching and integrates with existing useGlobalChoices hook
-**useChoiceSelection**: Handles selection state and choice management logic
-**useFileUpload**: Manages file upload, parsing, and error handling
-**useChoicesValidation**: Validates step completion (always valid since optional)
-
-### Key Improvements
-
-- **Modular Architecture**: Clean separation of concerns across 5 components and 4 hooks
-- **Enhanced UX**: Better file upload feedback and choice organization by prefix
-- **Robust Testing**: 19/19 tests passing across components, hooks, and integration
-- **Type Safety**: Comprehensive TypeScript definitions for all interfaces
-- **Reusability**: Components can be used independently or in other contexts
-
-### Testing Strategy
-
-**Comprehensive Test Coverage**: 19/19 tests passing across all components and utilities
-- **Component Tests (8 tests)**: UI rendering, prop handling, and user interactions
-- **Hook Tests (5 tests)**: Selection logic, validation, and file upload functionality
-- **Integration Tests (6 tests)**: Full step integration and modular component interaction
-
-**Test Categories**:
-- **Unit Tests**: Individual component and hook behavior
-- **Integration Tests**: Component interaction and wizard context integration
-- **Error Handling**: File upload errors and validation edge cases
-- **User Interaction**: Selection, search, and navigation workflows
-
-This modular architecture ensures the DeploymentStep is **production-ready**, **maintainable**, **testable**, and **scalable** while providing comprehensive deployment functionality with real-time progress tracking.
-
 ## GlobalChoicesStep Modular Architecture
 
 **Purpose**: The GlobalChoicesStep has been completely modularized using clean architecture principles, transforming a 372-line monolithic component into a maintainable modular structure with separated components for choice search, selection, file upload, and navigation.
@@ -975,25 +823,25 @@ This modular architecture ensures the DeploymentStep is **production-ready**, **
 
 ```
 global-choices/
-├── 📄 GlobalChoicesStep.tsx       # Main orchestrator component
-├── 📄 index.ts                    # Public API exports
-├── 🎨 components/                 # UI Components
+├── GlobalChoicesStep.tsx       # Main orchestrator component
+├── index.ts                    # Public API exports
+├── components/                 # UI Components
 │   ├── ChoiceSearch.tsx           # Search and filtering interface
 │   ├── GlobalChoicesList.tsx      # Choice display and selection
 │   ├── CustomChoicesUpload.tsx    # File upload functionality
 │   ├── UploadedChoicesPreview.tsx # Preview uploaded choices
 │   ├── GlobalChoicesNavigation.tsx # Step navigation controls
 │   └── index.ts                   # Component exports
-├── 🔧 hooks/                      # Custom Business Logic Hooks
+├── hooks/                      # Custom Business Logic Hooks
 │   ├── useGlobalChoicesData.ts    # Data fetching and state
 │   ├── useChoiceSelection.ts      # Selection state management
 │   ├── useFileUpload.ts           # File upload and parsing
 │   ├── useChoicesValidation.ts    # Validation logic
 │   └── index.ts                   # Hook exports
-├── 📝 types/                      # TypeScript Definitions
+├── types/                      # TypeScript Definitions
 │   ├── global-choices.types.ts    # Component and data types
 │   └── index.ts                   # Type exports
-└── 🛠️ utils/                      # Pure Utility Functions (pre-existing)
+└── utils/                      # Pure Utility Functions (pre-existing)
     ├── global-choices.utils.ts    # Choice filtering and parsing
     └── index.ts                   # Utility exports
 ```
@@ -1136,11 +984,75 @@ interface CustomChoicesUploadProps {
 
 This modular architecture ensures the GlobalChoicesStep is **production-ready**, **maintainable**, **testable**, and **scalable** while preserving all existing functionality and enhancing the user experience.
 
-### 8. API Endpoints Reference
+## DeploymentStep Modular Architecture
+
+**Purpose**: The DeploymentStep has been completely modularized using clean architecture principles with separated components for configuration summary, deployment progress, and result handling.
+
+### Architecture Overview
+
+```
+deployment/
+├── DeploymentStep.tsx          # Main orchestrator component
+├── index.ts                    # Public API exports
+├── components/                 # UI Components
+│   ├── ConfigurationSummary.tsx   # Solution and entity summary
+│   ├── DeploymentProgress.tsx     # Real-time progress display
+│   ├── DeploymentResults.tsx      # Success/error results
+│   ├── DeploymentControls.tsx     # Navigation and deploy buttons
+│   ├── [Component].module.css     # Scoped component styles
+│   └── index.ts                   # Component exports
+├── hooks/                      # Custom Business Logic Hooks
+│   ├── useConfigurationSummary.ts # Data aggregation and filtering
+│   ├── useDeploymentStatus.ts     # Deployment state management
+│   ├── useDeploymentProgress.ts   # Progress tracking and updates
+│   └── index.ts                   # Hook exports
+├── types/                      # TypeScript Definitions
+│   ├── deployment.types.ts        # Component and data types
+│   └── index.ts                   # Type exports
+└── utils/                      # Pure Utility Functions
+    ├── dataTransformation.ts      # Wizard data to deployment mapping
+    ├── validation.ts              # Deployment data validation
+    └── index.ts                   # Utility exports
+```
+
+### Design Principles
+
+**1. Component Separation**
+- **ConfigurationSummary**: Pure presentation of a solution, publisher, entities, and relationships
+- **DeploymentProgress**: Real-time streaming deployment progress with logs
+- **DeploymentResults**: Success/error result display with detailed feedback
+- **DeploymentControls**: Navigation buttons and deployment trigger
+
+**2. Business Logic Abstraction**
+- **useConfigurationSummary**: Aggregates wizard data into a deployment-ready format
+- **useDeploymentStatus**: Manages deployment state and API integration
+- **useDeploymentProgress**: Handles streaming progress updates and error states
+
+**3. Data Flow Management**
+- **Utils**: Pure functions for data transformation and validation
+- **Types**: Comprehensive TypeScript definitions for all interfaces
+- **Clean Dependencies**: Each component depends only on its required props
+
+### Testing Strategy
+
+**Comprehensive Test Coverage**: 19/19 tests passing across all components and utilities
+- **Utils Tests (11 tests)**: Data transformation, validation, and filtering functions
+- **Hooks Tests (4 tests)**: Configuration summary and business logic validation  
+- **Integration Tests (4 tests)**: Full component integration and rendering behavior
+
+**Test Categories**:
+- **Unit Tests**: Pure utility functions with 100% coverage
+- **Hook Tests**: State management and wizard context integration
+- **Component Tests**: UI rendering and props interface validation
+- **Integration Tests**: End-to-end deployment step workflow
+
+This modular architecture ensures the DeploymentStep is **production-ready**, **maintainable**, **testable**, and **scalable** while providing comprehensive deployment functionality with real-time progress tracking.
+
+## API Endpoints Reference
 
 This section provides detailed documentation for all available API endpoints implemented through the controller-based architecture.
 
-#### Core Endpoints
+### Core Endpoints
 
 | Endpoint | Method | Controller | Description |
 |----------|--------|------------|-------------|
@@ -1155,7 +1067,7 @@ This section provides detailed documentation for all available API endpoints imp
 | `GET /api/health-detailed` | GET | AdminController | Detailed health check with components |
 | `GET /api/logs` | GET | AdminController | Recent application logs |
 
-#### Architecture Implementation
+### Architecture Implementation
 
 **Request Flow**:
 1. **Middleware Pipeline**: Request logging, CORS handling
@@ -1166,7 +1078,7 @@ This section provides detailed documentation for all available API endpoints imp
 
 **Error Handling**: Centralized through ErrorHandlerMiddleware with proper HTTP status codes and structured error responses.
 
-#### Frontend Routes
+### Frontend Routes
 
 ```
 GET /
@@ -1182,7 +1094,7 @@ GET /wizard
 - `/static/js/*` - Compiled JavaScript bundles
 - `/static/assets/*` - Images, fonts, and other assets
 
-#### Health Endpoint
+### Health Endpoint
 
 ```
 GET /health
@@ -1207,7 +1119,7 @@ GET /health
 }
 ```
 
-#### Upload Endpoint (Primary Deployment)
+### Upload Endpoint (Primary Deployment)
 
 ```
 POST /api/upload
@@ -1237,7 +1149,7 @@ GET /api/publishers
 
 **Purpose**: Retrieves available publishers from Dataverse for frontend selection.
 
-#### Global Choices Endpoint
+### Global Choices Endpoint
 
 ```
 GET /api/global-choices
@@ -1249,7 +1161,7 @@ GET /api/global-choices
 }
 
 
-#### Solution Status Endpoint (Timeout Handling)
+### Solution Status Endpoint (Timeout Handling)
 
 ```
 GET /api/solution-status?solution=SolutionName
@@ -1293,9 +1205,11 @@ GET /api/solution-status?solution=SolutionName
 ```
 
 
-### 6. Dataverse Client (`src/backend/dataverse-client.js`)
+## Dataverse Client
 
 **Purpose**: Handle all Microsoft Dataverse Web API interactions with comprehensive entity, relationship, and solution management.
+
+**Location**: `src/backend/dataverse-client.js`
 
 **Key Features**:
 - **Managed Identity Authentication**: Passwordless authentication via Azure
@@ -1323,9 +1237,11 @@ GET /api/solution-status?solution=SolutionName
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
            
 
-### 7. Managed Identity Authentication (`src/backend/dataverse-client.js`)
+## Managed Identity Authentication
 
 **Purpose**: Secure, passwordless authentication using Azure Managed Identity for Dataverse access.
+
+**Location**: `src/backend/dataverse-client.js`
 
 **Key Features**:
 - **Zero Secrets**: No client secrets, passwords, or certificates required
@@ -1638,43 +1554,38 @@ sequenceDiagram
     Client->>Server: Connection successful
     Server->>User: Stream connection status to React wizard
     
-    alt Dry Run Mode (React option selected)
-        Server->>User: Stream validation results only
-        User->>User: Display results in React UI without deployment
-    else Live Deployment
-        Client->>Dataverse: Create/validate publisher with custom prefix
-        Client->>Dataverse: Create/validate solution container
-        Client->>Server: Report publisher and solution status
-        Server->>User: Stream publisher/solution creation logs
-        
-        loop For each entity (with CDM integration option)
-            alt CDM Entity Detected and User Chose CDM
-                Client->>Dataverse: Map to existing CDM entity
-                Client->>Dataverse: Add CDM entity to solution
-            else Custom Entity Creation
-                Client->>Dataverse: Create custom entity with full metadata
-                Client->>Dataverse: Create custom columns with attributes
-            end
-            
-            Dataverse->>Client: Confirm entity creation/mapping
-            Client->>Server: Report entity created/mapped
-            Server->>User: Stream entity creation log to React UI
+    Client->>Dataverse: Create/validate publisher with custom prefix
+    Client->>Dataverse: Create/validate solution container
+    Client->>Server: Report publisher and solution status
+    Server->>User: Stream publisher/solution creation logs
+    
+    loop For each entity (with CDM integration option)
+        alt CDM Entity Detected and User Chose CDM
+            Client->>Dataverse: Map to existing CDM entity
+            Client->>Dataverse: Add CDM entity to solution
+        else Custom Entity Creation
+            Client->>Dataverse: Create custom entity with full metadata
+            Client->>Dataverse: Create custom columns with attributes
         end
         
-        loop For each relationship
-            Client->>Dataverse: Create lookup/junction table relationships
-            Dataverse->>Client: Confirm relationship creation
-            Client->>Server: Report relationship created
-            Server->>User: Stream relationship creation log
-        end
-        
-        opt Global Choices Integration
-            Client->>Dataverse: Create/integrate global choice sets
-            Client->>Dataverse: Add choices to solution
-            Dataverse->>Client: Confirm choice integration
-            Client->>Server: Report global choices status
-            Server->>User: Stream global choices results
-        end
+        Dataverse->>Client: Confirm entity creation/mapping
+        Client->>Server: Report entity created/mapped
+        Server->>User: Stream entity creation log to React UI
+    end
+    
+    loop For each relationship
+        Client->>Dataverse: Create lookup/junction table relationships
+        Dataverse->>Client: Confirm relationship creation
+        Client->>Server: Report relationship created
+        Server->>User: Stream relationship creation log
+    end
+    
+    opt Global Choices Integration
+        Client->>Dataverse: Create/integrate global choice sets
+        Client->>Dataverse: Add choices to solution
+        Dataverse->>Client: Confirm choice integration
+        Client->>Server: Report global choices status
+        Server->>User: Stream global choices results
     end
     
     alt Normal Completion (< 230 seconds)
@@ -1782,168 +1693,3 @@ function generateColumnMetadata(attribute, publisherPrefix) {
 }
 ```
 
-## Deployment Architecture
-
-### Two-Step Deployment Process
-
-The application uses a **robust two-step deployment process** that separates infrastructure creation from application deployment:
-
-**Step 1: Infrastructure Setup** (`scripts/setup-entra-app.ps1`)
-- Creates Entra ID App Registration with proper API permissions
-- Deploys Azure infrastructure using Bicep templates
-- Configures Managed Identity with federated credentials
-- Sets up Dataverse application user and security roles
-- Configures environment variables in App Service
-
-**Step 2: Application Deployment** (`scripts/deploy.ps1`)
-- Builds React frontend locally using Vite for optimal performance
-- Packages only necessary backend files (excludes node_modules)
-- Deploys to Azure App Service with proper static file configuration
-- Configures runtime settings for managed identity integration
-- Validates deployment success
-
-### Azure Resources Architecture
-
-**Core Infrastructure**: Resource Group, App Service Plan, App Service, User-Assigned Managed Identity
-
-**External Dependencies**: Entra ID App Registration with Federated Credentials, Dataverse Environment, Dataverse Application User
-
-![Architecture in Azure Diagram](media/mermaid-to-dataverse.drawio.png)
-
-### Automated Infrastructure Deployment
-
-The entire deployment is fully automated through PowerShell scripts and Bicep templates:
-
-**Infrastructure Setup**: `.\scripts\setup-secretless.ps1` - Creates Entra app with federated credentials, Azure infrastructure, and Dataverse application user
-
-**Application Deployment**: `.\scripts\deploy-secretless.ps1` - Builds React frontend, packages backend, deploys to App Service with proper configuration
-
-### Infrastructure as Code (Bicep)
-
-All Azure resources are defined in `deploy/infrastructure.bicep` with App Service Plan, App Service with Node.js 20, and Managed Identity integration
-
-## System Architecture Deep Dive
-
-This section provides a comprehensive analysis of how the frontend, backend, and middleware layers work together, based on examination of the actual codebase implementation.
-
-### Request Flow Analysis
-
-#### Frontend Flow
-- **Development**: User Action → React Component → API Service → Vite Proxy → Backend
-- **Production**: User Action → React Component → API Service → Backend
-
-#### Backend Processing
-- **Middleware Pipeline**: Request Logger → CORS → Error Handler → Streaming Handler → Controllers
-- **Controller Routing**: 
-  - Root/wizard → WizardController (serves React app)
-  - /api/validate → ValidationController (ERD processing)
-  - /api/deployment → DeploymentController (solution creation)
-  - /api/admin → AdminController (management APIs)
-
-#### Service Architecture
-- **Validation Flow**: ValidationController → ValidationService → Mermaid Parser + Dataverse Repository
-- **Deployment Flow**: DeploymentController → DeploymentService → Dataverse Repository + Configuration Repository  
-- **Admin Flow**: AdminController → Publisher/Choices/Solution Services → Dataverse Repository
-
-#### External Integration
-- **Authentication**: All Dataverse operations are authenticated via Microsoft Entra ID
-- **Configuration**: Settings stored as environment variables in App Service
-- **Data Storage**: All entities and metadata stored in Microsoft Dataverse
-  - Static files → Static file serving
-
-#### Service Layer
-Services use a dependency injection pattern with repositories for data access.
-
-```typescript
-const deploymentService = new DeploymentService({
-  dataverseRepository: dataverseRepo,
-  configRepository: configRepo,
-  validationService,
-  globalChoicesService,
-  solutionService,
-  publisherService,
-  mermaidParser: new MermaidERDParser(),
-  logger: console
-});
-```
-
-**Service Orchestration Example - ERD Validation:**
-```
-ValidationController.validateERD() 
-  → ValidationService.validateERD()
-    → MermaidERDParser.parse()
-    → DataverseRepository.getCDMEntities()
-    → DataverseClient.authenticate()
-    → Microsoft Dataverse API
-```
-
-#### 4. Repository Layer Abstraction
-
-**Configuration Management:**
-```javascript
-// ConfigurationRepository handles environment variables
-Environment Variables → Default Values
-```
-
-**Dataverse Integration:**
-```javascript
-// DataverseRepository wraps the legacy DataverseClient
-DataverseRepository.createEntity() 
-  → DataverseClient.createEntity()
-    → Azure AD Authentication
-    → Dataverse Web API
-```
-
-### Authentication & Security Flow
-
-**Current Implementation (No Authentication):**
-```
-React Frontend → Backend API → Azure Managed Identity → Dataverse
-```
-
-**Key Security Features:**
-- **Azure Managed Identity**: Passwordless authentication to Azure services
-- **Federated Credentials**: Secure token exchange without secrets
-- **CORS Configuration**: Restricts cross-origin requests
-- **Request Logging**: Comprehensive audit trail
-
-**Authentication Implementation Ready For PR 4:**
-The architecture is prepared for authentication with:
-- Controller base classes that can check authentication
-- Middleware pipeline ready for auth middleware
-- Repository pattern can handle user context
-- Service layer can implement authorization logic
-
-### Development vs. Production Architecture
-
-**Development**: Vite proxy routes `/api/*` to backend on port 8080  
-**Production**: Custom HTTP server serves both static React files and API endpoints  
-**Configuration**: Development uses .env files, Production uses environment variables in App Service
-
-## Development Setup
-
-### Prerequisites
-
-**For Automated Deployment:**
-- Azure subscription with Contributor permissions
-- Azure CLI installed and logged in
-- PowerShell 7+ recommended
-- Dataverse admin rights
-
-**For Local Development:**
-- Node.js 18+
-- npm or yarn
-
-### Local Development
-
-1. **Install**: `npm install` (root), then `cd src/frontend && npm install`
-2. **Start**: `npm run dev` (starts both frontend and backend)
-3. **Frontend**: http://localhost:3003 (Vite with hot reload)
-4. **Backend**: http://localhost:8080 (Custom Node.js HTTP server)
-
-### Common Tasks
-
-**Add API Endpoint**: Route → Service → Frontend Type → Frontend Service → Test  
-**Add React Component**: Component → Props Interface → Fluent UI → Test
-
-For comprehensive testing information, see [`TESTING.md`](TESTING.md).

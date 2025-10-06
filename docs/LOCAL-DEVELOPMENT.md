@@ -57,7 +57,7 @@ If you prefer manual configuration, create a `.env.local` file:
 USE_CLIENT_SECRET=true
 USE_MANAGED_IDENTITY=false
 
-# Azure AD Configuration  
+# Microsoft Entra Configuration  
 TENANT_ID=your-tenant-id
 CLIENT_ID=your-client-id
 CLIENT_SECRET=your-client-secret
@@ -106,8 +106,8 @@ cd src/frontend && npm run dev
 
 ## Authentication Flow
 
-1. **Local Development**: Uses client secret → Azure AD → Dataverse
-2. **Azure Production**: Uses managed identity → Azure AD → Dataverse
+1. **Local Development**: Uses client secret → Microsoft Entra → Dataverse
+2. **Azure Production**: Uses managed identity → Microsoft Entra → Dataverse
 
 The DataverseClient automatically detects the environment and uses the appropriate authentication method.
 
@@ -139,14 +139,3 @@ The DataverseClient automatically detects the environment and uses the appropria
 - Use different App Registrations for development vs production
 - Rotate client secrets regularly
 
-## Benefits vs Azure Deployment
-
-| Feature | Local Dev | Azure Deploy |
-|---------|-----------|--------------|
-| Speed | ⚡ Seconds | 🐌 Minutes |
-| Auth Method | Client Secret | Managed Identity |
-| Debugging | 🔍 Full logs | 📝 Limited logs |
-| Cost | Free | Usage-based |
-| Real Data | ✅ Yes | ✅ Yes |
-
-Now you can iterate quickly on deployment history and other features without waiting for Azure deployments!

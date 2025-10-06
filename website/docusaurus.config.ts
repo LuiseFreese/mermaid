@@ -22,7 +22,7 @@ const config: Config = {
 
   // Set the production url of your site here
   // For Netlify: this will be your custom domain or netlify subdomain
-  url: 'https://mermaid-to-dataverse.netlify.app', // Update this to your Netlify URL
+  url: 'https://mermaid2dataverse.netlify.app',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For Netlify deployment at root, use '/'
   baseUrl: '/',

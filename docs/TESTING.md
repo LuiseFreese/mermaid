@@ -249,7 +249,7 @@ The test suite includes comprehensive coverage across all application layers:
 
 ### End-to-End (E2E) Testing
 
-**New E2E test suite** provides browser automation testing using Jest + Puppeteer:
+**E2E test suite** provides browser automation testing using Jest + Puppeteer:
 
 ```bash
 npm run test:e2e                              # Run all E2E tests
@@ -283,7 +283,7 @@ npm run test:e2e tests/e2e/basic-wizard.test.js  # Run specific test file
 
 ### Accessibility Testing
 
-**Comprehensive a11y coverage** using axe-core automated testing with **8 test cases** across **5 test suites**:
+Comprehensive a11y coverage using axe-core automated testing
 
 ```bash
 # Run all accessibility tests

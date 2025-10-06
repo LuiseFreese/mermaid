@@ -1,0 +1,47 @@
+# Netlify configuration for Docusaurus deployment
+
+[build]
+  # Build command to generate the static site
+  command = "cd website && npm install && npm run build"
+  
+  # Directory with the static files to deploy
+  publish = "website/build"
+  
+  # Base directory for the build
+  base = "."
+
+# Node.js version for the build
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redirects for clean URLs and SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Headers for security and caching
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

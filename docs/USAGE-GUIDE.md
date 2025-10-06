@@ -64,7 +64,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 ### Step 3: Global Choices Integration
 
 - **Upload JSON**: Upload JSON file with global choice definitions
-- 
+
 ![upload global choices](media/step-3-upload-global-choices-via-json.png)
 
 - **Browse Existing**: View and select from existing Dataverse global choices
@@ -83,7 +83,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 
 - **CDM Integration Summary**: Clear display of CDM vs. custom entity choices
 - **Real-time Validation**: Final validation before deployment
-- **Deploy**: Click **Deploy to Dataverse** to create your solution with live progress tracking
+- **Deploy**: Select **Deploy to Dataverse** to create your solution with live progress tracking
 
 ![Deployment progress](media/step-4-deploying.png)
 
@@ -117,8 +117,8 @@ erDiagram
 ```
 
 **CDM Detection Results:**
-- ✅ **Contact detected**: Matches CDM Contact entity (confidence: 95%)
-- ✅ **Account detected**: Matches CDM Account entity (confidence: 90%)
+- **Contact detected**: Matches CDM Contact entity
+- **Account detected**: Matches CDM Account entity
 - 💡 **Recommendation**: Use existing CDM entities for better Power Platform integration
 
 **User Choice:**
@@ -211,33 +211,7 @@ Company {
 }
 ```
 
-### 3. Live Deployment Progress
 
-The React interface provides real-time deployment tracking:
-
-```bash
-Starting deployment...
-✓ Validating ERD structure
-✓ Applying auto-corrections
-✓ Processing CDM integration choices
-✓ Connecting to Dataverse (Azure Managed Identity)
-✓ Creating solution 'Customer Management'
-✓ Creating publisher 'cmgt'
-✓ Processing global choices (2 new, 3 existing)
-✓ Creating entities:
-  - Contact (using CDM entity)
-  - Account (using CDM entity)  
-  - CustomProject (new custom entity)
-  - ProjectTask (new custom entity)
-✓ Creating relationships (4 relationships established)
-✓ Deployment completed successfully!
-
-📊 Summary:
-- Solution: Customer Management (created)
-- Entities: 2 CDM + 2 custom
-- Relationships: 4 established
-- Global Choices: 5 processed
-```
 
 ### Complete Data Type Support
 
@@ -345,7 +319,7 @@ The application provides **modular rollback** functionality, giving you granular
 
 1. Navigate to **Deployment History** (view past deployments)
 2. Find the deployment you want to rollback
-3. Click the **"Rollback"** button
+3. Select the **"Rollback"** button
 4. Select components to remove
 
 ### Rollback Options
@@ -354,7 +328,7 @@ You can choose exactly what to rollback:
 
 #### Available Components
 
-- **Relationships** - Remove relationship metadata
+
 - **Custom Entities** - Delete custom tables created by deployment
 - **Global Choices** - Delete custom global choice sets
 - **Solution** - Remove the solution container
@@ -364,27 +338,13 @@ You can choose exactly what to rollback:
 
 The system automatically enforces safe rollback order:
 
-1. **Custom Entities** require **Relationships** to be deleted first (auto-selected)
+1. **Custom Entities** require **Relationships** to be deleted first - this happens automagically
 2. **Solution** requires all **Custom Entities** + **CDM Entities** to be removed (auto-selected)
 3. **Publisher** requires **Solution** to be deleted first (auto-selected)
 
 ### Multiple Rollbacks
 
-You can perform **multiple sequential rollbacks** on the same deployment:
-
-**Example Workflow:**
-
-1. **First Rollback**: Remove only relationships
-   - Status: `modified` (other components remain)
-   - Badge: Shows "Relationships" rolled back
-
-2. **Second Rollback**: Remove custom entities
-   - Status: `modified` (solution/publisher remain)
-   - Badge: Shows "Custom Entities" rolled back
-
-3. **Third Rollback**: Remove solution and publisher
-   - Status: `rolled-back` (all components deleted)
-   - Badge: Shows "Solution, Publisher" rolled back
+You can perform **multiple sequential rollbacks** on the same deployment.
 
 **Smart Tracking:**
 - System tracks what was deleted in each rollback
@@ -400,10 +360,9 @@ You can perform **multiple sequential rollbacks** on the same deployment:
 #### ⚠️ Important Considerations
 
 
-1. **Relationships First**: Always delete relationships before entities
-2. **CDM vs Custom**: CDM entities are only removed from solution, not from Dataverse
-3. **Publisher Dependencies**: Cannot delete publisher if solution exists
-4. **Irreversible**: Rollback cannot be undone (re-deploy if needed)
+1. **CDM vs Custom**: CDM entities are only removed from solution, not from Dataverse
+2. **Publisher Dependencies**: Cannot delete publisher if solution exists
+3. **Irreversible**: Rollback cannot be undone (re-deploy if needed)
 
 
 ### Viewing Rollback History
