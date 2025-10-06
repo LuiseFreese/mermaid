@@ -12,7 +12,7 @@
 
 # Node.js version for the build
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
 
 # Redirects for clean URLs and SPA routing
 [[redirects]]
