@@ -16,7 +16,24 @@ Dev Proxy is a command-line tool from Microsoft that intercepts HTTP requests an
 - Develop offline with mock Dataverse responses
 - Build more robust, production-ready applications
 
-## 🎯 Understanding "Errors Loaded"
+## First-Time Setup: Certificate Installation
+
+**Important**: The first time you run Dev Proxy, it will prompt for administrator password to install a trusted root certificate. This is required to intercept HTTPS traffic.
+
+**Why is this needed?**
+- Dev Proxy intercepts HTTPS requests to Dataverse API (`*.dynamics.com`)
+- To do this securely, it needs to install a trusted certificate
+- This is a one-time setup per machine
+- The certificate is only used for local development
+
+**What to do:**
+1. When prompted "Dev Proxy wants to make changes", click **Yes** (or enter your admin password)
+2. Dev Proxy will install the certificate to your system's trusted root store
+3. You won't be prompted again on subsequent runs
+
+**Security note**: The certificate is only trusted on your local machine and only intercepts traffic that Dev Proxy is configured to watch (Dataverse URLs).
+
+## Understanding "Errors Loaded"
 
 When you start Dev Proxy, you'll see a message like:
 
@@ -24,8 +41,9 @@ When you start Dev Proxy, you'll see a message like:
 ✅ 5 errors loaded from dataverse-errors.json
 ```
 
-**This is GOOD news!** ✅ It means:
+It means:
 - Dev Proxy successfully loaded your **test error scenarios**
+- 
 - These are **simulated failures** it will randomly inject into API calls
 - This helps you test how your app handles real-world API problems
 
@@ -40,7 +58,7 @@ When your app makes Dataverse API calls, Dev Proxy will randomly inject these er
 
 ## Quick Start (3 Easy Ways!)
 
-### ✨ Option 1: npm Scripts (Recommended)
+### Option 1: npm Scripts (Recommended)
 
 ```powershell
 # Start dev environment with Dev Proxy (default mode)
@@ -56,7 +74,7 @@ npm run dev:proxy:mocks
 npm run dev:proxy:rate-limit
 ```
 
-### 🎯 Option 2: PowerShell Script
+### Option 2: PowerShell Script
 
 ```powershell
 # Default mode
@@ -75,7 +93,7 @@ npm run dev:proxy:rate-limit
 .\scripts\dev-with-proxy.ps1 -NoProxy
 ```
 
-### 🖱️ Option 3: VS Code Tasks (One-Click!)
+### Option 3: VS Code Tasks (One-Click!)
 
 1. Press `Ctrl+Shift+P` → "Run Task"
 2. Select:

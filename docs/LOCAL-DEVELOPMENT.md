@@ -179,6 +179,12 @@ Dev Proxy intercepts your API calls to Dataverse and simulates:
 winget install Microsoft.DevProxy
 ```
 
+**🔐 First-Time Certificate Setup:**
+
+The first time you run Dev Proxy, you'll be prompted for administrator password to install a trusted root certificate. This is required to intercept HTTPS traffic securely.
+
+**Click "Yes"** when prompted - this is a one-time setup and the certificate is only used for local development.
+
 **2. Choose Your Method:**
 
 #### Option A: npm Scripts (Easiest! ⚡)
