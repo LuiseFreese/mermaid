@@ -9,6 +9,38 @@ const config: Config = {
   tagline: 'Convert Mermaid ERD diagrams to Dataverse solutions with ease',
   favicon: 'img/logo.svg',
 
+  // Add OpenGraph and Twitter Card metadata
+  headTags: [
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:image',
+        content: 'https://mermaid2dataverse.netlify.app/img/logo.svg',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        property: 'og:image:alt',
+        content: 'Mermaid to Dataverse Converter - Convert ERD diagrams to Dataverse',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'twitter:image',
+        content: 'https://mermaid2dataverse.netlify.app/img/logo.svg',
+      },
+    },
+  ],
+
   // Enable Mermaid diagrams
   markdown: {
     mermaid: true,
@@ -66,8 +98,8 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    // OpenGraph social card
+    image: 'img/logo.svg',
     colorMode: {
       respectPrefersColorScheme: true,
     },
