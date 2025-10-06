@@ -146,6 +146,32 @@ All Dev Proxy configs are in the `devproxy/` folder:
 - **`dataverse-mocks.json`** - Mock Dataverse API responses
 - **`README.md`** - Detailed usage guide
 
+#### Understanding "Errors Loaded" Message
+
+When Dev Proxy starts, you'll see:
+
+```
+✅ 5 errors loaded from dataverse-errors.json
+```
+
+**This is good!** ✅ It means:
+- Dev Proxy successfully loaded your **test error scenarios**
+- These are **simulated failures** for testing, not actual problems
+- Dev Proxy will randomly inject these errors into your API calls
+
+**Example error scenarios loaded:**
+1. 500 Internal Server Error - "Something went wrong"
+2. 503 Service Unavailable - "Server is busy"  
+3. 429 Rate Limit Exceeded - "Too many requests"
+4. 401 Unauthorized - "Token expired"
+5. 400 Bad Request - "Invalid data"
+
+When your app makes Dataverse API calls, Dev Proxy intercepts them and randomly returns one of these errors (based on configured failure rate). This helps you verify your app:
+- ✅ Shows helpful error messages to users
+- ✅ Implements retry logic for transient failures
+- ✅ Preserves user data when APIs fail
+- ✅ Handles rate limiting gracefully
+
 #### Common Testing Scenarios
 
 **1. Test Deployment Failure Recovery**:

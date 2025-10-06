@@ -16,6 +16,28 @@ Dev Proxy is a command-line tool from Microsoft that intercepts HTTP requests an
 - Develop offline with mock Dataverse responses
 - Build more robust, production-ready applications
 
+## 🎯 Understanding "Errors Loaded"
+
+When you start Dev Proxy, you'll see a message like:
+
+```
+✅ 5 errors loaded from dataverse-errors.json
+```
+
+**This is GOOD news!** ✅ It means:
+- Dev Proxy successfully loaded your **test error scenarios**
+- These are **simulated failures** it will randomly inject into API calls
+- This helps you test how your app handles real-world API problems
+
+**The "errors" are not actual problems** - they're your test cases! Dev Proxy will use them to simulate failures like:
+- 500 Internal Server Error - "Something went wrong"
+- 503 Service Unavailable - "Server is busy"
+- 429 Rate Limit Exceeded - "Too many requests"
+- 401 Unauthorized - "Token expired"
+- 400 Bad Request - "Invalid data"
+
+When your app makes Dataverse API calls, Dev Proxy will randomly inject these errors so you can verify your app handles them gracefully.
+
 ## Quick Start (3 Easy Ways!)
 
 ### ✨ Option 1: npm Scripts (Recommended)
