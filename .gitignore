@@ -52,6 +52,14 @@ AZURE-AD-AUTH-IMPLEMENTATION-SUMMARY.md
 AZURE-AD-AUTH-PRE-COMMIT-CHECKLIST.md
 history.md
 PLANNING-*.md
+
+# Docusaurus website
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/.cache-loader/
+website/yarn.lock
+website/.env.local
 MODULAR-ROLLBACK-DESIGN.md
 
 # Release notes (generated for GitHub releases)
