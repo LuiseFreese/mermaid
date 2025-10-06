@@ -104,7 +104,6 @@ Explore the documentation to learn more:
 ### Development & Testing
 - [Developer Architecture](./DEVELOPER_ARCHITECTURE.md) - Understand the system design
 - [Testing Guide](./TESTING.md) - Run and write tests
-- [Modular Rollback Design](./MODULAR-ROLLBACK-DESIGN.md) - Rollback architecture
 
 ## Need Help?
 
