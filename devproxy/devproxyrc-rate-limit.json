@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v0.14.1/rc.schema.json",
+  "plugins": [
+    {
+      "name": "RateLimitingPlugin",
+      "enabled": true,
+      "pluginPath": "~appFolder/plugins/dev-proxy-plugins.dll",
+      "configSection": "rateLimitDataverse",
+      "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+      ]
+    }
+  ],
+  "urlsToWatch": [
+    "https://*.crm*.dynamics.com/*",
+    "https://*.api.crm*.dynamics.com/*"
+  ],
+  "rateLimitDataverse": {
+    "headerLimit": "X-RateLimit-Limit",
+    "headerRemaining": "X-RateLimit-Remaining",
+    "headerReset": "X-RateLimit-Reset",
+    "costPerRequest": 1,
+    "resetTimeWindowSeconds": 300,
+    "rateLimit": 100,
+    "resetFormat": "UtcEpochSeconds",
+    "whenLimitExceeded": "RetryAfter",
+    "retryAfterInSeconds": 60
+  },
+  "logLevel": "information"
+}

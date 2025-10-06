@@ -54,6 +54,198 @@ GET /api/global-choices-list
 7. **Responsive Design**: Test on desktop, tablet, and mobile viewports
 8. **CDM Integration**: Test CDM entity detection and user choice functionality
 
+### 4. API Resilience Testing with Dev Proxy
+
+**Microsoft Dev Proxy** is a command-line tool that simulates API failures, rate limiting, and slow responses to help you build more robust applications.
+
+**Why Use Dev Proxy?**
+- Test how your app handles Dataverse API failures without breaking production
+- Simulate rate limiting scenarios (Dataverse has strict API limits)
+- Test slow network conditions and timeout handling
+- Mock Dataverse responses for offline development
+- No code changes needed - intercepts network requests
+
+**Installation**:
+```powershell
+# Install Dev Proxy using winget
+winget install Microsoft.DevProxy
+
+# Or download from GitHub
+# https://github.com/microsoft/dev-proxy/releases
+```
+
+#### Quick Start Options
+
+**Option 1: Automated npm Scripts (Recommended)**
+
+The easiest way to use Dev Proxy - just run npm commands:
+
+```powershell
+# Option A: Run app with error simulation (50% failure rate)
+npm run dev:proxy
+
+# Option B: Run app with mock Dataverse (offline development)
+npm run dev:mock
+
+# Option C: Run app with rate limiting simulation
+npm run dev:proxy:ratelimit
+
+# Option D: Run app with slow API simulation
+npm run dev:proxy:latency
+```
+
+These commands automatically:
+- Start Dev Proxy with the right configuration
+- Start yor dev server
+- Clean up on exit (Ctrl+C stops both)
+
+**Option 2: PowerShell Wrapper Script**
+
+For more control and testing scenarios:
+
+```powershell
+# Interactive menu with 6 testing scenarios
+.\devproxy\start-with-devproxy.ps1
+
+# Or use directly with parameters:
+.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 50
+.\devproxy\start-with-devproxy.ps1 -Mode mocks
+.\devproxy\start-with-devproxy.ps1 -Mode ratelimit
+.\devproxy\start-with-devproxy.ps1 -Mode latency -Latency 5000
+```
+
+**Option 3: VS Code Tasks (One-Click Testing)**
+
+Press `Ctrl+Shift+P` → "Tasks: Run Task" → Select:
+- **Dev Proxy: Error Simulation** - Test API failures
+- **Dev Proxy: Rate Limiting** - Test 429 responses
+- **Dev Proxy: Mock Mode** - Offline development
+- **Dev Proxy: Slow API** - Test latency handling
+
+**Option 4: Manual (Advanced)**
+
+Start Dev Proxy and your app separately:
+
+```powershell
+# Terminal 1: Start Dev Proxy
+devproxy --config-file devproxy/devproxyrc.json
+
+# Terminal 2: Start your app
+npm run dev
+```
+
+#### Configuration Files
+
+All Dev Proxy configs are in the `devproxy/` folder:
+
+- **`devproxyrc.json`** - Main config with error simulation (default)
+- **`devproxyrc-mocks.json`** - Mock mode for offline development
+- **`devproxyrc-ratelimit.json`** - Rate limiting simulation
+- **`devproxyrc-latency.json`** - Slow API responses
+- **`dataverse-errors.json`** - Define error responses (503, 429, 500)
+- **`dataverse-mocks.json`** - Mock Dataverse API responses
+- **`README.md`** - Detailed usage guide
+
+#### Common Testing Scenarios
+
+**1. Test Deployment Failure Recovery**:
+```powershell
+# Using npm script (50% failure rate)
+npm run dev:proxy
+
+# Using PowerShell wrapper
+.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 75
+
+# Deploy a large ERD and verify:
+# - Error messages are clear
+# - Retry logic works
+# - User data isn't lost
+# - Progress is resumable
+```
+
+**2. Test Rate Limiting**:
+```powershell
+# Using npm script
+npm run dev:proxy:ratelimit
+
+# Deploy ERD with 50+ entities
+# Verify app handles 429 responses gracefully
+```
+
+**3. Test Slow API Responses**:
+```powershell
+# Using npm script (5 second delay)
+npm run dev:proxy:latency
+
+# Verify:
+# - Loading indicators stay visible
+# - Timeout handling works
+# - Users see progress indicators
+```
+
+**4. Test Authentication Token Expiration**:
+```powershell
+# Edit devproxy/dataverse-errors.json to add 401 responses
+# Then run with errors mode
+npm run dev:proxy
+```
+
+**5. Offline Development with Mocks**:
+```powershell
+# Using npm script
+npm run dev:mock
+
+# Using VS Code task
+# Press Ctrl+Shift+P → "Dev Proxy: Mock Mode"
+
+
+#### Integration with CI/CD
+
+```yaml
+# Add to GitHub Actions workflow
+- name: Install Dev Proxy
+  run: winget install Microsoft.DevProxy
+
+- name: Test with API Error Simulation
+  run: npm run dev:proxy &
+  
+- name: Run Tests
+  run: npm test
+
+- name: Cleanup
+  run: taskkill /F /IM devproxy.exe /T
+```
+
+#### VS Code Integration
+
+The project includes pre-configured VS Code tasks in `.vscode/tasks.json`:
+
+**Available Tasks:**
+1. **Dev Proxy: Error Simulation** - Random API failures
+2. **Dev Proxy: Rate Limiting** - 429 Too Many Requests
+3. **Dev Proxy: Mock Mode** - Offline development
+4. **Dev Proxy: Slow API** - Network latency simulation
+
+**Usage:**
+- Press `Ctrl+Shift+B` to see all tasks
+- Select a task to start Dev Proxy automatically
+- Press `Ctrl+C` in terminal to stop
+
+#### Expected Improvements
+
+- **Robustness**: App handles API failures gracefully  
+- **User Experience**: Better error messages and retry logic  
+- **Development Speed**: Mock Dataverse for faster iteration  
+- **Testing Coverage**: Test scenarios hard to reproduce manually  
+- **Production Confidence**: Know your app works in edge cases  
+
+#### Learn More
+
+- [Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
+- [Testing with Random Errors](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/test-my-app-with-random-errors)
+- [Simulating Rate Limits](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/simulate-rate-limit-api-responses)
+- See `devproxy/README.md` for detailed configuration and advanced usage
+
 ## Testing and Debugging
 
 ### 1. Local Testing Workflow
@@ -245,9 +437,9 @@ process.env.VITE_AZURE_AD_REDIRECT_URI = 'http://localhost:3000';
 ```
 
 **Current Test Status:**
-- ✅ UserMenu: 23/23 tests passing (100%)
-- ✅ AuthProvider: 23/23 tests passing (100%)
-- ✅ authConfig: 17/17 tests passing (100%)
+- UserMenu: 23/23 tests passing (100%)
+- AuthProvider: 23/23 tests passing (100%)
+- authConfig: 17/17 tests passing (100%)
 - **Overall: 63/63 tests passing (100% pass rate)** ✅
 
 **Note:** AuthGuard functionality is tested through AuthProvider tests since AuthGuard is an internal component. Direct AuthGuard tests are not needed as all its behavior is covered by the AuthProvider test suite.
