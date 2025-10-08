@@ -2,14 +2,12 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
 const config: Config = {
   title: 'Mermaid to Dataverse Converter',
   tagline: 'Convert Mermaid ERD diagrams to Dataverse solutions with ease',
   favicon: 'img/logo.svg',
 
-  // Add OpenGraph and Twitter Card metadata
+  // Add OpenGraph and X Card metadata
   headTags: [
     {
       tagName: 'meta',

@@ -17,6 +17,7 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 - **Global Choice Integration**: Map to existing choice sets or create new ones
 - **Deployment History & Rollback**: Track all deployments with modular rollback - choose exactly what to remove (relationships, entities, solution, publisher)
 - **Zero-Trust Security**: Managed identity authentication with no stored secrets
+- **Dev Proxy Integration**: Test API failures, rate limiting, and offline development ([see Dev Proxy Testing Guide](docs/DEV-PROXY-TESTING.md))
 - **Multiple Themes**: Light mode, dark mode, pink mode 💖, and retro neon mode 🌈✨
 
 ## Architecture

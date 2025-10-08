@@ -411,18 +411,20 @@ describe('DataverseClient', () => {
     });
 
     test('should handle service unavailable', async () => {
-      axios.get.mockRejectedValue({
-        response: {
-          status: 503,
-          data: { error: { message: 'Service temporarily unavailable' } }
-        }
-      });
+      // Mock axios.get to reject with 503 error
+      const error503 = new Error('Service unavailable');
+      error503.response = {
+        status: 503,
+        data: { error: { message: 'Service temporarily unavailable' } },
+        headers: {}
+      };
+      axios.get.mockRejectedValue(error503);
 
       const result = await client.getPublishers();
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('temporarily unavailable');
-    });
+      expect(result.message).toBe('Service temporarily unavailable');
+    }, 35000); // 35 second timeout to allow for retries
   });
 
   describe('Request Configuration', () => {

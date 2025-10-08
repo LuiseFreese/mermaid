@@ -1,0 +1,273 @@
+{
+    "$schema": "https://raw.githubusercontent.com/dotnet/dev-proxy/main/schemas/v1.0.0/mockresponseplugin.schema.json",
+    "mocks": [
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/publishers?$select=publisherid,uniquename,friendlyname,customizationprefix&$filter=isreadonly eq false",
+                "method": "GET"
+            },
+            "response": {
+                "statusCode": 200,
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json; odata.metadata=minimal"
+                    }
+                ],
+                "body": {
+                    "@odata.context": "https://org.crm.dynamics.com/api/data/v9.2/$metadata#publishers(publisherid,uniquename,friendlyname,customizationprefix)",
+                    "value": [
+                        {
+                            "@odata.etag": "W/\"1234567\"",
+                            "publisherid": "12345678-1234-1234-1234-123456789012",
+                            "uniquename": "contoso",
+                            "friendlyname": "Contoso Ltd",
+                            "customizationprefix": "new"
+                        },
+                        {
+                            "@odata.etag": "W/\"1234568\"",
+                            "publisherid": "12345678-1234-1234-1234-123456789013",
+                            "uniquename": "fabrikam",
+                            "friendlyname": "Fabrikam Inc",
+                            "customizationprefix": "fab"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/solutions?$select=solutionid,uniquename,friendlyname,version&$filter=isvisible eq true and ismanaged eq false",
+                "method": "GET"
+            },
+            "response": {
+                "statusCode": 200,
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json; odata.metadata=minimal"
+                    }
+                ],
+                "body": {
+                    "@odata.context": "https://org.crm.dynamics.com/api/data/v9.2/$metadata#solutions(solutionid,uniquename,friendlyname,version)",
+                    "value": [
+                        {
+                            "@odata.etag": "W/\"2234567\"",
+                            "solutionid": "22345678-1234-1234-1234-123456789012",
+                            "uniquename": "ContosoSolution",
+                            "friendlyname": "Contoso Solution",
+                            "version": "1.0.0.0"
+                        },
+                        {
+                            "@odata.etag": "W/\"2234568\"",
+                            "solutionid": "22345678-1234-1234-1234-123456789013",
+                            "uniquename": "FabrikamSolution",
+                            "friendlyname": "Fabrikam Solution",
+                            "version": "1.0.0.0"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/GlobalOptionSetDefinitions*",
+                "method": "GET"
+            },
+            "response": {
+                "statusCode": 200,
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json; odata.metadata=minimal"
+                    }
+                ],
+                "body": {
+                    "@odata.context": "https://org.crm.dynamics.com/api/data/v9.2/$metadata#GlobalOptionSetDefinitions",
+                    "value": [
+                        {
+                            "@odata.type": "#Microsoft.Dynamics.CRM.OptionSetMetadata",
+                            "MetadataId": "32345678-1234-1234-1234-123456789012",
+                            "Name": "new_status",
+                            "DisplayName": {
+                                "LocalizedLabels": [
+                                    {
+                                        "Label": "Status",
+                                        "LanguageCode": 1033
+                                    }
+                                ]
+                            },
+                            "Options": [
+                                {
+                                    "Value": 1,
+                                    "Label": {
+                                        "LocalizedLabels": [
+                                            {
+                                                "Label": "Active",
+                                                "LanguageCode": 1033
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "Value": 2,
+                                    "Label": {
+                                        "LocalizedLabels": [
+                                            {
+                                                "Label": "Inactive",
+                                                "LanguageCode": 1033
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/EntityDefinitions",
+                "method": "POST"
+            },
+            "response": {
+                "statusCode": 204,
+                "headers": [
+                    {
+                        "name": "OData-EntityId",
+                        "value": "https://org.crm.dynamics.com/api/data/v9.2/EntityDefinitions(42345678-1234-1234-1234-123456789012)"
+                    },
+                    {
+                        "name": "OData-Version",
+                        "value": "4.0"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/publishers",
+                "method": "POST"
+            },
+            "response": {
+                "statusCode": 204,
+                "headers": [
+                    {
+                        "name": "OData-EntityId",
+                        "value": "https://org.crm.dynamics.com/api/data/v9.2/publishers(52345678-1234-1234-1234-123456789012)"
+                    },
+                    {
+                        "name": "OData-Version",
+                        "value": "4.0"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/solutions",
+                "method": "POST"
+            },
+            "response": {
+                "statusCode": 204,
+                "headers": [
+                    {
+                        "name": "OData-EntityId",
+                        "value": "https://org.crm.dynamics.com/api/data/v9.2/solutions(62345678-1234-1234-1234-123456789012)"
+                    },
+                    {
+                        "name": "OData-Version",
+                        "value": "4.0"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/RelationshipDefinitions",
+                "method": "POST"
+            },
+            "response": {
+                "statusCode": 204,
+                "headers": [
+                    {
+                        "name": "OData-EntityId",
+                        "value": "https://org.crm.dynamics.com/api/data/v9.2/RelationshipDefinitions(72345678-1234-1234-1234-123456789012)"
+                    },
+                    {
+                        "name": "OData-Version",
+                        "value": "4.0"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/GlobalOptionSetDefinitions",
+                "method": "POST"
+            },
+            "response": {
+                "statusCode": 204,
+                "headers": [
+                    {
+                        "name": "OData-EntityId",
+                        "value": "https://org.crm.dynamics.com/api/data/v9.2/GlobalOptionSetDefinitions(82345678-1234-1234-1234-123456789012)"
+                    },
+                    {
+                        "name": "OData-Version",
+                        "value": "4.0"
+                    }
+                ]
+            }
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/EntityDefinitions*",
+                "method": "GET"
+            },
+            "response": {
+                "statusCode": 200,
+                "headers": [
+                    {
+                        "name": "Content-Type",
+                        "value": "application/json; odata.metadata=minimal"
+                    }
+                ],
+                "body": {
+                    "@odata.context": "https://org.crm.dynamics.com/api/data/v9.2/$metadata#EntityDefinitions",
+                    "value": [
+                        {
+                            "@odata.type": "#Microsoft.Dynamics.CRM.EntityMetadata",
+                            "MetadataId": "92345678-1234-1234-1234-123456789012",
+                            "LogicalName": "new_department",
+                            "DisplayName": {
+                                "LocalizedLabels": [
+                                    {
+                                        "Label": "Department",
+                                        "LanguageCode": 1033
+                                    }
+                                ]
+                            },
+                            "PrimaryNameAttribute": "new_name"
+                        },
+                        {
+                            "@odata.type": "#Microsoft.Dynamics.CRM.EntityMetadata",
+                            "MetadataId": "92345678-1234-1234-1234-123456789013",
+                            "LogicalName": "new_employee",
+                            "DisplayName": {
+                                "LocalizedLabels": [
+                                    {
+                                        "Label": "Employee",
+                                        "LanguageCode": 1033
+                                    }
+                                ]
+                            },
+                            "PrimaryNameAttribute": "new_fullname"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

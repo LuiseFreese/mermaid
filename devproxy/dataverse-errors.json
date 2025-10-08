@@ -1,0 +1,347 @@
+{
+    "errors": [
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/EntityDefinitions*",
+                "methods": [
+                    "POST"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 503,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "x-ms-service-request-id",
+                            "value": "00000000-0000-0000-0000-000000000000"
+                        },
+                        {
+                            "name": "Retry-After",
+                            "value": "5"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80072efd",
+                            "message": "The server is busy and cannot process the request at this time. Please try again in 5 seconds."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 429,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "Retry-After",
+                            "value": "60"
+                        },
+                        {
+                            "name": "x-ms-ratelimit-burst-remaining-xrm-requests",
+                            "value": "0"
+                        },
+                        {
+                            "name": "x-ms-ratelimit-time-remaining-xrm-requests",
+                            "value": "60"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80072322",
+                            "message": "Number of requests exceeded the limit of 6000 over time window of 300 seconds. Retry after 60 seconds."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 500,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040217",
+                            "message": "An unexpected error occurred while creating the entity. The operation has been rolled back."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 400,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040204",
+                            "message": "Invalid entity definition. The entity logical name contains invalid characters or is too long (max 64 characters)."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 403,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040220",
+                            "message": "Principal user does not have the required prvCreateEntity privilege to create entities. Contact your system administrator."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/publishers*",
+                "methods": [
+                    "GET",
+                    "POST"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 503,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "Retry-After",
+                            "value": "3"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80072efd",
+                            "message": "Service temporarily unavailable. Retry after 3 seconds."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 401,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "WWW-Authenticate",
+                            "value": "Bearer error=\"invalid_token\", error_description=\"The access token expired\""
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040265",
+                            "message": "Authentication token has expired. Please refresh your token and retry."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 429,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "Retry-After",
+                            "value": "10"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80072322",
+                            "message": "Rate limit exceeded. Retry after 10 seconds."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/solutions*",
+                "methods": [
+                    "GET",
+                    "POST"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 409,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040237",
+                            "message": "A solution with the same unique name already exists. Please choose a different name."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 400,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040204",
+                            "message": "Invalid solution name. The name can only contain alphanumeric characters and underscores."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/RelationshipDefinitions*",
+                "methods": [
+                    "POST"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 400,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80048205",
+                            "message": "The relationship already exists. You cannot create a duplicate relationship."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 500,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040217",
+                            "message": "Failed to create relationship. The referenced entity does not exist or you don't have permission."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*/GlobalOptionSetDefinitions*",
+                "methods": [
+                    "GET",
+                    "POST"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 409,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80048407",
+                            "message": "A global option set with this name already exists."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 429,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        },
+                        {
+                            "name": "Retry-After",
+                            "value": "30"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80072322",
+                            "message": "API rate limit exceeded. Too many option set requests. Retry after 30 seconds."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "request": {
+                "url": "https://*.dynamics.com/api/data/v9.*",
+                "methods": [
+                    "GET",
+                    "POST",
+                    "PATCH",
+                    "PUT",
+                    "DELETE"
+                ]
+            },
+            "responses": [
+                {
+                    "statusCode": 504,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040216",
+                            "message": "Gateway timeout. The server did not receive a timely response from Dataverse. Please try again."
+                        }
+                    }
+                },
+                {
+                    "statusCode": 404,
+                    "headers": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json; charset=utf-8"
+                        }
+                    ],
+                    "body": {
+                        "error": {
+                            "code": "0x80040217",
+                            "message": "Resource not found. The requested entity or record does not exist in this environment."
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
