@@ -158,6 +158,171 @@ Open browser to `http://localhost:3003`
 **Without Auth (default)**: Loads immediately ✅  
 **With Auth (optional)**: Redirects to Microsoft login first ✅
 
+## Advanced: Testing with Dev Proxy (Optional)
+
+Want to test how your app handles API failures, rate limiting, and network issues? Use **Microsoft Dev Proxy**!
+
+### What is Dev Proxy?
+
+Dev Proxy intercepts your API calls to Dataverse and simulates:
+- ❌ **API Failures** (503, 500 errors)
+- ⏱️ **Rate Limiting** (429 Too Many Requests)
+- 🔄 **Mock Responses** (offline development)
+
+**No code changes needed** - it works as a network proxy!
+
+### Quick Setup
+
+**1. Install Dev Proxy:**
+```powershell
+winget install Microsoft.DevProxy
+```
+
+**🔐 First-Time Certificate Setup:**
+
+The first time you run Dev Proxy, you'll be prompted for administrator password to install a trusted root certificate. This is required to intercept HTTPS traffic securely.
+
+**Click "Yes"** when prompted - this is a one-time setup and the certificate is only used for local development.
+
+**2. Choose Your Method:**
+
+#### Option A: npm Scripts (Easiest! ⚡)
+
+Just run one command - everything is automated:
+
+```powershell
+# Test API error handling (50% failure rate)
+npm run dev:proxy
+
+# Offline development with mocks (no Dataverse needed)
+npm run dev:mock
+
+# Test rate limiting
+npm run dev:proxy:ratelimit
+
+
+```
+
+These scripts automatically:
+- ✅ Start Dev Proxy with the right config
+- ✅ Start your dev server
+- ✅ Clean up on exit (Ctrl+C stops both)
+
+#### Option B: PowerShell Wrapper (More Control)
+
+Interactive menu with these testing scenarios:
+
+```powershell
+# Run interactive menu
+.\devproxy\start-with-devproxy.ps1
+
+# Or specify mode directly:
+.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 75
+.\devproxy\start-with-devproxy.ps1 -Mode mocks
+.\devproxy\start-with-devproxy.ps1 -Mode ratelimit
+
+```
+
+#### Option C: VS Code Tasks (One-Click)
+
+Press `Ctrl+Shift+P` → "Tasks: Run Task" → Select:
+- **Dev Proxy: Error Simulation** - Test API failures
+- **Dev Proxy: Rate Limiting** - Test 429 responses
+- **Dev Proxy: Mock Mode** - Offline development
+
+
+#### Option D: Manual (Two Terminals)
+
+```powershell
+# Terminal 1: Start Dev Proxy
+devproxy --config-file devproxy/devproxyrc.json
+
+# Terminal 2: Start your app
+npm run dev
+```
+
+### Common Testing Scenarios
+
+**1. Test API Error Handling:**
+```powershell
+# Using npm (recommended)
+npm run dev:proxy
+
+# Upload an ERD and deploy
+# Verify your app shows helpful error messages
+```
+
+**2. Test Rate Limiting:**
+```powershell
+# Using npm
+npm run dev:proxy:ratelimit
+
+# Deploy a large ERD (50+ entities)
+# Watch how your app handles 429 responses
+```
+
+
+**3. Offline Development (No Dataverse Needed):**
+```powershell
+# Using npm
+npm run dev:mock
+
+# Now you can develop without:
+# - VPN connection
+# - Dataverse environment
+# - Internet access
+# Perfect for airplane coding! ✈️
+```
+
+**5. Custom Failure Rate:**
+```powershell
+# Using PowerShell wrapper
+.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 75
+
+# 75% of API calls will fail
+# Test how your app handles extreme conditions
+```
+
+### Configuration Files
+
+All Dev Proxy configs are in `devproxy/` folder:
+- **`devproxyrc.json`** - Error simulation (default)
+- **`devproxyrc-mocks.json`** - Mock mode for offline dev
+- **`devproxyrc-ratelimit.json`** - Rate limiting simulation
+- **`dataverse-errors.json`** - Define error responses
+- **`dataverse-mocks.json`** - Mock Dataverse responses
+- **`README.md`** - Detailed usage guide
+
+### VS Code Integration
+
+Pre-configured tasks in `.vscode/tasks.json` for easy testing:
+
+**Available Tasks:**
+1. Dev Proxy: Error Simulation
+2. Dev Proxy: Rate Limiting
+3. Dev Proxy: Mock Mode
+4. Dev Proxy: Slow API
+
+**Usage:**
+- Press `Ctrl+Shift+B` to see all tasks
+- Select a task to start
+- Press `Ctrl+C` to stop
+
+### Benefits
+
+✅ **Find bugs before production** - Test failure scenarios you can't easily reproduce  
+✅ **Faster development** - Use mocks instead of waiting for real API calls  
+✅ **Work offline** - No Dataverse needed during initial development  
+✅ **Better error handling** - Verify your error messages help users  
+✅ **Production confidence** - Know your app handles edge cases  
+✅ **Easy to use** - Just run `npm run dev:proxy` and you're testing!  
+
+### Learn More
+
+- [Dev Proxy Testing Guide](./DEV-PROXY-TESTING.md) - Complete testing documentation
+- [Testing Scenarios Guide](./TESTING-SCENARIOS.md) - Detailed workflows
+- [Microsoft Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
+
 ## Troubleshooting
 
 ### Port Already in Use

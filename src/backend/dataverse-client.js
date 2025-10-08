@@ -34,7 +34,7 @@ class DataverseClient {
 
     this._http = axios.create({
       baseURL: `${this.baseUrl}/api/data/v9.2`,
-      timeout: 120000,
+      timeout: 300000, // 300 seconds (5 minutes) - increased for long-running operations like rollback
       validateStatus: s => s >= 200 && s < 300
     });
 
@@ -316,6 +316,67 @@ class DataverseClient {
       err.status = e.response?.status;
       throw err;
     }
+  }
+
+  /**
+   * Make a request with automatic retry logic for transient failures
+   * Handles rate limiting (429), authentication errors (401), and server errors (500, 502, 503, 504)
+   * @param {string} method - HTTP method (get, post, patch, delete)
+   * @param {string} url - API endpoint URL
+   * @param {object} data - Request body data
+   * @param {object} options - Additional request options
+   * @returns {Promise<object>} Response data
+   */
+  async makeRequestWithRetry(method, url, data, options = {}) {
+    const maxRetries = 5;
+    const retryDelays = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff in ms
+    const retryableStatusCodes = [401, 429, 500, 502, 503, 504];
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this._req(method, url, data, options);
+      } catch (error) {
+        const isRetryable = retryableStatusCodes.includes(error.status);
+        const isLastAttempt = attempt === maxRetries;
+
+        if (!isRetryable || isLastAttempt) {
+          // Not retryable or out of retries, throw the error
+          throw error;
+        }
+
+        // Handle authentication token expiration
+        if (error.status === 401) {
+          this._log(`🔄 Authentication token expired. Refreshing token and retrying...`);
+          // Force token refresh by clearing the cached token
+          this._token = null;
+          this._tokenExpiry = 0;
+          // The next _req call will automatically get a new token via _ensureToken()
+          await this.sleep(100); // Small delay before retry
+          continue; // Retry immediately without exponential backoff
+        }
+
+        // Handle rate limiting with Retry-After header
+        let delayMs = retryDelays[attempt];
+        if (error.status === 429) {
+          // Check for Retry-After header (in seconds)
+          const retryAfter = error.response?.headers?.['retry-after'];
+          if (retryAfter) {
+            delayMs = parseInt(retryAfter) * 1000; // Convert to milliseconds
+            this._log(`⏳ Rate limited. Retrying after ${retryAfter} seconds...`);
+          } else {
+            this._log(`⏳ Rate limited. Retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${maxRetries})...`);
+          }
+        } else {
+          this._log(`⚠️  Request failed with ${error.status}. Retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${maxRetries})...`);
+        }
+
+        // Wait before retrying
+        await this.sleep(delayMs);
+      }
+    }
+
+    // This should never be reached due to the throw in the catch block
+    throw new Error('Max retries exceeded');
   }
 
   // Convenience alias
@@ -1532,7 +1593,7 @@ class DataverseClient {
   // ------------------------
   async getPublishers() {
     const q = `/publishers?$select=publisherid,uniquename,friendlyname,customizationprefix&$orderby=friendlyname asc`;
-    const d = await this._req('get', q);
+    const d = await this.makeRequestWithRetry('get', q);
     return (d.value || []).map(p => ({
       id: p.publisherid,
       uniqueName: p.uniquename,
@@ -1548,7 +1609,7 @@ class DataverseClient {
     console.log(`GET ${this.baseUrl}${q}`);
     
     try {
-      const d = await this._req('get', q);
+      const d = await this.makeRequestWithRetry('get', q);
       console.log(`✅ Solutions query successful, found ${d.value?.length || 0} solutions`);
       
       const allSolutions = (d.value || []).map(s => ({
@@ -1979,15 +2040,15 @@ class DataverseClient {
   
   // --- HTTP helper methods -----------------------------------------------
   async _get(url) {
-    return await this._req('GET', url);
+    return await this.makeRequestWithRetry('GET', url);
   }
   
   async _delete(url, options = {}) {
-    return await this._req('DELETE', url, undefined, options);
+    return await this.makeRequestWithRetry('DELETE', url, undefined, options);
   }
   
   async _post(url, body) {
-    return await this._req('POST', url, body);
+    return await this.makeRequestWithRetry('POST', url, body);
   }
   
   // --- cleanup methods ---------------------------------------------------

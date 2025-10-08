@@ -432,6 +432,11 @@ async function createLayeredServer() {
     }
   });
 
+  // Increase server timeout to 10 minutes for very long operations (e.g., rolling back many entities)
+  // Default is 120 seconds (2 minutes) which is too short for complex Dataverse operations
+  // Each entity deletion can take 2-3 minutes, so multiple entities need longer timeout
+  server.setTimeout(600000); // 600 seconds (10 minutes)
+
   return { server, components };
 }
 
@@ -663,10 +668,13 @@ async function handleApiRoutes(pathname, req, res, components) {
     
     // Handle /api/rollback/{deploymentId}/execute
     if (rollbackRoute.endsWith('/execute')) {
+      console.log('🔍 SERVER ROUTING: Matched /execute route, method:', req.method);
       if (req.method === 'POST') {
+        console.log('🔍 SERVER ROUTING: POST method confirmed, body already in req.rawBody');
         const deploymentId = rollbackRoute.replace('/execute', '');
-        // Read request body before passing to controller
-        req.rawBody = await readRequestBody(req);
+        // Body already read by request logger middleware and stored in req.rawBody
+        // No need to call readRequestBody again (would hang on already-consumed stream)
+        console.log('🔍 SERVER ROUTING: Calling controller.executeRollback()...');
         return components.rollbackController.executeRollback(req, res, deploymentId);
       }
     }

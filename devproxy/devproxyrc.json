@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v1.2.0/rc.schema.json",
+  "plugins": [
+    {
+      "name": "GenericRandomErrorPlugin",
+      "enabled": true,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "errorsDataverse"
+    },
+    {
+      "name": "RateLimitingPlugin",
+      "enabled": false,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "rateLimitDataverse"
+    },
+    {
+      "name": "MockResponsePlugin",
+      "enabled": false,
+      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+      "configSection": "mocksDataverse"
+    }
+  ],
+  "errorsDataverse": {
+    "errorsFile": "dataverse-errors.json"
+  },
+  "rateLimitDataverse": {
+    "headerLimit": "x-ms-ratelimit-burst-remaining-xrm-requests",
+    "headerRemaining": "x-ms-ratelimit-remaining-xrm-requests",
+    "headerReset": "x-ms-ratelimit-reset-xrm-requests",
+    "costPerRequest": 1,
+    "resetTimeWindowSeconds": 300,
+    "warningThresholdPercent": 20,
+    "rateLimit": 6000,
+    "resetFormat": "UtcEpochSeconds"
+  },
+  "mocksDataverse": {
+    "mocksFile": "dataverse-mocks.json"
+  },
+  "urlsToWatch": [
+    "https://*.dynamics.com/*"
+  ],
+  "rate": 50,
+  "logLevel": "information",
+  "newVersionNotification": "stable",
+  "asSystemProxy": false
+}

@@ -67,12 +67,19 @@ class RequestLoggerMiddleware {
             originalEnd.call(res, chunk, encoding);
         };
 
-        // Log request body if enabled
+        // Log request body if enabled - MUST await before calling next()
         if (this.includeBody && req.method !== 'GET' && req.method !== 'HEAD') {
-            await this.logRequestBody(req, requestId);
+            try {
+                await this.logRequestBody(req, requestId);
+                next();
+            } catch (error) {
+                middlewareLogger.error(`[${requestId}] Failed to read request body:`, error);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Failed to read request body' }));
+            }
+        } else {
+            next();
         }
-
-        next();
     }
 
     /**
@@ -81,34 +88,40 @@ class RequestLoggerMiddleware {
      * @param {string} requestId - Request ID
      */
     async logRequestBody(req, requestId) {
-        try {
+        return new Promise((resolve, reject) => {
             let body = '';
             
-            return new Promise((resolve) => {
-                req.on('data', (chunk) => {
+            req.on('data', (chunk) => {
+                try {
                     body += chunk.toString();
                     if (body.length > this.maxBodySize) {
                         body = body.substring(0, this.maxBodySize) + '... [TRUNCATED]';
                     }
-                });
-
-                req.on('end', () => {
-                    // Store the body on the request object for later use
-                    req.rawBody = body;
-                    
-                    if (body) {
-                        this.logger.log(`[${requestId}] REQUEST BODY:`, {
-                            requestId,
-                            body: body,
-                            truncated: body.includes('[TRUNCATED]')
-                        });
-                    }
-                    resolve();
-                });
+                } catch (error) {
+                    this.logger.error(`[${requestId}] Error reading chunk:`, error);
+                    reject(error);
+                }
             });
-        } catch (error) {
-            this.logger.error(`[${requestId}] Failed to log request body:`, error);
-        }
+
+            req.on('end', () => {
+                // Store the body on the request object for later use
+                req.rawBody = body;
+                
+                if (body) {
+                    this.logger.log(`[${requestId}] REQUEST BODY:`, {
+                        requestId,
+                        body: body,
+                        truncated: body.includes('[TRUNCATED]')
+                    });
+                }
+                resolve();
+            });
+
+            req.on('error', (error) => {
+                this.logger.error(`[${requestId}] Failed to read request body:`, error);
+                reject(error);
+            });
+        });
     }
 
     /**

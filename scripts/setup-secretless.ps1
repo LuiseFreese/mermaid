@@ -333,7 +333,35 @@ $existingAzureAdApp = az ad app list --display-name $azureAdAppName --query "[0]
 if ($existingAzureAdApp) {
     Write-Success "Azure AD App Registration already exists: $azureAdAppName"
     $azureAdClientId = $existingAzureAdApp.appId
+    $azureAdAppObjectId = $existingAzureAdApp.id
     $azureAdTenantId = (az account show --query "tenantId" -o tsv)
+    
+    # Update existing app to include both production and localhost redirect URIs
+    Write-Info "   └─ Updating redirect URIs to include localhost..."
+    $appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
+    $productionRedirectUri = "https://$appServiceUrl"
+    $localhostRedirectUri = "http://localhost:3003"
+    
+    $spaConfigFile = [System.IO.Path]::GetTempFileName()
+    try {
+        # Create SPA configuration JSON with both redirect URIs
+        @{ spa = @{ redirectUris = @($productionRedirectUri, $localhostRedirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
+        
+        # Apply configuration using Graph API
+        az rest --method PATCH `
+            --uri "https://graph.microsoft.com/v1.0/applications/$azureAdAppObjectId" `
+            --headers "Content-Type=application/json" `
+            --body "@$spaConfigFile" `
+            --output none
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to update redirect URIs"
+        } else {
+            Write-Success "Redirect URIs updated (production + localhost)"
+        }
+    } finally {
+        Remove-Item $spaConfigFile -Force -ErrorAction SilentlyContinue
+    }
 } else {
     Write-Info "Creating Azure AD App Registration for authentication: $azureAdAppName"
     
@@ -342,7 +370,8 @@ if ($existingAzureAdApp) {
     
     # Get the App Service URL for redirect URI
     $appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
-    $redirectUri = "https://$appServiceUrl"
+    $productionRedirectUri = "https://$appServiceUrl"
+    $localhostRedirectUri = "http://localhost:3003"
     
     # Create App Registration for Single Page Application
     Write-Info "   └─ Creating App Registration..."
@@ -365,11 +394,11 @@ if ($existingAzureAdApp) {
     Write-Info "   └─ App ID: $azureAdClientId"
     
     # Configure SPA platform settings using Microsoft Graph API
-    Write-Info "   └─ Configuring SPA platform..."
+    Write-Info "   └─ Configuring SPA platform (production + localhost)..."
     $spaConfigFile = [System.IO.Path]::GetTempFileName()
     try {
-        # Create SPA configuration JSON
-        @{ spa = @{ redirectUris = @($redirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
+        # Create SPA configuration JSON with both redirect URIs
+        @{ spa = @{ redirectUris = @($productionRedirectUri, $localhostRedirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
         
         # Apply configuration using Graph API
         az rest --method PATCH `
@@ -381,7 +410,7 @@ if ($existingAzureAdApp) {
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Failed to configure SPA platform via Graph API"
         } else {
-            Write-Success "SPA platform configured successfully"
+            Write-Success "SPA platform configured successfully with both redirect URIs"
         }
     } finally {
         Remove-Item $spaConfigFile -Force -ErrorAction SilentlyContinue

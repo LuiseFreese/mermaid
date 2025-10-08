@@ -24,7 +24,7 @@ const createApiClient = (): AxiosInstance => {
     headers: {
       'Content-Type': 'application/json',
     },
-    timeout: 180000, // 180 seconds (3 minutes) - increased for long-running operations like rollback (deleting 3 entities takes ~128s)
+    timeout: 600000, // 600 seconds (10 minutes) - increased for very long operations like rolling back many entities
   });
 
   /**

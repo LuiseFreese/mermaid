@@ -1,0 +1,24 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v1.2.0/rc.schema.json",
+    "plugins": [
+        {
+            "name": "MockResponsePlugin",
+            "enabled": true,
+            "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+            "configSection": "mocksDataverse",
+            "urlsToWatch": [
+                "https://*.crm*.dynamics.com/*",
+                "https://*.api.crm*.dynamics.com/*"
+            ]
+        }
+    ],
+    "urlsToWatch": [
+        "https://*.crm*.dynamics.com/*",
+        "https://*.api.crm*.dynamics.com/*"
+    ],
+    "mocksDataverse": {
+        "mocksFile": "dataverse-mocks.json"
+    },
+    "logLevel": "information",
+    "asSystemProxy": false
+}
