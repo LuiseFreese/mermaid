@@ -33,6 +33,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'DEVELOPER_ARCHITECTURE',
         'TESTING',
+        'DEV-PROXY-TESTING',
+        'TESTING-SCENARIOS',
       ],
     },
   ],

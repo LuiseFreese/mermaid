@@ -133,6 +133,10 @@ const config: Config = {
               label: 'Deployment',
               to: '/docs/DEPLOYMENT',
             },
+            {
+              label: 'Dev Proxy Testing',
+              to: '/docs/DEV-PROXY-TESTING',
+            },
           ],
         },
         {
