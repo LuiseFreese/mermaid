@@ -106,6 +106,86 @@ class DataverseClient {
     }
 
     /**
+     * Make API request with exponential backoff retry logic
+     * @param {Function} requestFn - Async function that makes the API request
+     * @param {Object} options - Retry options
+     * @returns {Promise<any>} API response
+     */
+    async makeRequestWithRetry(requestFn, options = {}) {
+        const {
+            maxRetries = 5,
+            initialDelayMs = 1000,
+            maxDelayMs = 16000,
+            retryableStatuses = [429, 500, 502, 503, 504]
+        } = options;
+
+        let lastError = null;
+        let delay = initialDelayMs;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await requestFn();
+                
+                // Log successful retry
+                if (attempt > 0) {
+                    logger.info(`Request succeeded after ${attempt} retry attempt(s)`);
+                }
+                
+                return response;
+            } catch (error) {
+                lastError = error;
+                
+                // Don't retry if not an HTTP error
+                if (!error.response) {
+                    throw error;
+                }
+
+                const status = error.response.status;
+                
+                // Don't retry if status is not retryable
+                if (!retryableStatuses.includes(status)) {
+                    throw error;
+                }
+
+                // Don't retry if we've exhausted attempts
+                if (attempt >= maxRetries) {
+                    logger.warn(`Max retries (${maxRetries}) exceeded for ${status} error`);
+                    throw error;
+                }
+
+                // Check for Retry-After header (rate limiting)
+                let retryAfterMs = delay;
+                const retryAfter = error.response.headers['retry-after'];
+                
+                if (retryAfter) {
+                    // Retry-After can be in seconds (integer) or HTTP date
+                    if (/^\d+$/.test(retryAfter)) {
+                        retryAfterMs = parseInt(retryAfter) * 1000;
+                        logger.info(`Rate limited (${status}). Retry-After: ${retryAfter}s. Waiting ${retryAfterMs}ms...`);
+                    } else {
+                        // Parse HTTP date and calculate delay
+                        const retryDate = new Date(retryAfter);
+                        retryAfterMs = Math.max(retryDate.getTime() - Date.now(), delay);
+                        logger.info(`Rate limited (${status}). Retry-After date: ${retryAfter}. Waiting ${retryAfterMs}ms...`);
+                    }
+                } else {
+                    logger.info(`Request failed with ${status} (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
+                }
+
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, Math.min(retryAfterMs, maxDelayMs)));
+                
+                // Exponential backoff (only if no Retry-After header)
+                if (!retryAfter) {
+                    delay = Math.min(delay * 2, maxDelayMs);
+                }
+            }
+        }
+
+        throw lastError;
+    }
+
+    /**
      * Test connection to Dataverse
      */
     async testConnection() {
@@ -174,18 +254,20 @@ class DataverseClient {
         try {
             const token = await this.getAccessToken();
             
-            const response = await axios.get(
-                `${this.dataverseUrl}/api/data/v9.2/publishers`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'OData-MaxVersion': '4.0',
-                        'OData-Version': '4.0'
+            const response = await this.makeRequestWithRetry(async () => {
+                return await axios.get(
+                    `${this.dataverseUrl}/api/data/v9.2/publishers`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'OData-MaxVersion': '4.0',
+                            'OData-Version': '4.0'
+                        }
                     }
-                }
-            );
+                );
+            });
 
             return {
                 success: true,

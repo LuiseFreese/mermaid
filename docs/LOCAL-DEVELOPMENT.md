@@ -167,7 +167,6 @@ Want to test how your app handles API failures, rate limiting, and network issue
 Dev Proxy intercepts your API calls to Dataverse and simulates:
 - ❌ **API Failures** (503, 500 errors)
 - ⏱️ **Rate Limiting** (429 Too Many Requests)
-- 🐌 **Slow Responses** (network latency)
 - 🔄 **Mock Responses** (offline development)
 
 **No code changes needed** - it works as a network proxy!
@@ -201,8 +200,7 @@ npm run dev:mock
 # Test rate limiting
 npm run dev:proxy:ratelimit
 
-# Test slow APIs (5 second delay)
-npm run dev:proxy:latency
+
 ```
 
 These scripts automatically:
@@ -212,7 +210,7 @@ These scripts automatically:
 
 #### Option B: PowerShell Wrapper (More Control)
 
-Interactive menu with 6 testing scenarios:
+Interactive menu with these testing scenarios:
 
 ```powershell
 # Run interactive menu
@@ -222,7 +220,7 @@ Interactive menu with 6 testing scenarios:
 .\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 75
 .\devproxy\start-with-devproxy.ps1 -Mode mocks
 .\devproxy\start-with-devproxy.ps1 -Mode ratelimit
-.\devproxy\start-with-devproxy.ps1 -Mode latency -Latency 3000
+
 ```
 
 #### Option C: VS Code Tasks (One-Click)
@@ -231,7 +229,7 @@ Press `Ctrl+Shift+P` → "Tasks: Run Task" → Select:
 - **Dev Proxy: Error Simulation** - Test API failures
 - **Dev Proxy: Rate Limiting** - Test 429 responses
 - **Dev Proxy: Mock Mode** - Offline development
-- **Dev Proxy: Slow API** - Test latency handling
+
 
 #### Option D: Manual (Two Terminals)
 
@@ -263,15 +261,8 @@ npm run dev:proxy:ratelimit
 # Watch how your app handles 429 responses
 ```
 
-**3. Test Slow APIs:**
-```powershell
-# Using npm (5 second delay)
-npm run dev:proxy:latency
 
-# Verify loading indicators and timeouts work
-```
-
-**4. Offline Development (No Dataverse Needed):**
+**3. Offline Development (No Dataverse Needed):**
 ```powershell
 # Using npm
 npm run dev:mock
@@ -298,7 +289,6 @@ All Dev Proxy configs are in `devproxy/` folder:
 - **`devproxyrc.json`** - Error simulation (default)
 - **`devproxyrc-mocks.json`** - Mock mode for offline dev
 - **`devproxyrc-ratelimit.json`** - Rate limiting simulation
-- **`devproxyrc-latency.json`** - Slow API simulation
 - **`dataverse-errors.json`** - Define error responses
 - **`dataverse-mocks.json`** - Mock Dataverse responses
 - **`README.md`** - Detailed usage guide
@@ -329,9 +319,9 @@ Pre-configured tasks in `.vscode/tasks.json` for easy testing:
 
 ### Learn More
 
-- See `devproxy/README.md` for detailed configuration
-- [Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
-- [Testing Guide](./TESTING.md#4-api-resilience-testing-with-dev-proxy) - Advanced testing scenarios
+- [Dev Proxy Testing Guide](./DEV-PROXY-TESTING.md) - Complete testing documentation
+- [Testing Scenarios Guide](./TESTING-SCENARIOS.md) - Detailed workflows
+- [Microsoft Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
 
 ## Troubleshooting
 

@@ -1,45 +1,23 @@
 {
-  "$schema": "https://raw.githubusercontent.com/dotnet/dev-proxy/main/schemas/v1.0.0/rc.schema.json",
+  "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v1.2.0/rc.schema.json",
   "plugins": [
     {
       "name": "GenericRandomErrorPlugin",
       "enabled": true,
       "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
-      "configSection": "errorsDataverse",
-      "urlsToWatch": [
-        "https://*.crm*.dynamics.com/*",
-        "https://*.api.crm*.dynamics.com/*"
-      ]
+      "configSection": "errorsDataverse"
     },
     {
       "name": "RateLimitingPlugin",
       "enabled": false,
       "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
-      "configSection": "rateLimitDataverse",
-      "urlsToWatch": [
-        "https://*.crm*.dynamics.com/*",
-        "https://*.api.crm*.dynamics.com/*"
-      ]
-    },
-    {
-      "name": "LatencyPlugin",
-      "enabled": false,
-      "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
-      "configSection": "latencyDataverse",
-      "urlsToWatch": [
-        "https://*.crm*.dynamics.com/*",
-        "https://*.api.crm*.dynamics.com/*"
-      ]
+      "configSection": "rateLimitDataverse"
     },
     {
       "name": "MockResponsePlugin",
       "enabled": false,
       "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
-      "configSection": "mocksDataverse",
-      "urlsToWatch": [
-        "https://*.crm*.dynamics.com/*",
-        "https://*.api.crm*.dynamics.com/*"
-      ]
+      "configSection": "mocksDataverse"
     }
   ],
   "errorsDataverse": {
@@ -55,13 +33,14 @@
     "rateLimit": 6000,
     "resetFormat": "UtcEpochSeconds"
   },
-  "latencyDataverse": {
-    "minMs": 200,
-    "maxMs": 2000
-  },
   "mocksDataverse": {
     "mocksFile": "dataverse-mocks.json"
   },
+  "urlsToWatch": [
+    "https://*.dynamics.com/*"
+  ],
   "rate": 50,
-  "logLevel": "information"
+  "logLevel": "information",
+  "newVersionNotification": "stable",
+  "asSystemProxy": false
 }

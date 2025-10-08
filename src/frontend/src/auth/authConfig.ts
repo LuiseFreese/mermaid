@@ -15,22 +15,18 @@ const tenantId = import.meta.env.VITE_AZURE_AD_TENANT_ID;
 const redirectUri = import.meta.env.VITE_AZURE_AD_REDIRECT_URI || window.location.origin;
 
 // Validate required configuration
+// Validate required configuration (log errors but do not throw)
 if (!clientId) {
-  throw new Error(
-    'VITE_AZURE_AD_CLIENT_ID is not configured. ' +
-    'Please set this environment variable or create a .env.local file. ' +
-    'See docs/AZURE-AD-SETUP.md for setup instructions.'
+  console.error(
+    'VITE_AZURE_AD_CLIENT_ID is not configured. Please set this environment variable or create a .env.local file. See docs/AZURE-AD-SETUP.md for setup instructions.'
   );
 }
 
 if (!tenantId) {
-  throw new Error(
-    'VITE_AZURE_AD_TENANT_ID is not configured. ' +
-    'Please set this environment variable or create a .env.local file. ' +
-    'See docs/AZURE-AD-SETUP.md for setup instructions.'
+  console.error(
+    'VITE_AZURE_AD_TENANT_ID is not configured. Please set this environment variable or create a .env.local file. See docs/AZURE-AD-SETUP.md for setup instructions.'
   );
 }
-
 /**
  * MSAL Configuration
  * https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-js-initializing-client-applications

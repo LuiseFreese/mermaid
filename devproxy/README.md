@@ -1,13 +1,46 @@
-# Dev Proxy Configuration for Mermaid to Dataverse Converter
+# Dev Proxy Configuration
+
+> **📖 Full Documentation**: This folder contains Dev Proxy configuration files. For complete documentation, see **[Dev Proxy Testing Guide](../docs/DEV-PROXY-TESTING.md)**.
+
+## Quick Reference
 
 This folder contains [Microsoft Dev Proxy](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview) configuration files for testing the Mermaid to Dataverse Converter application against realistic API failure scenarios.
+
+### Quick Start
+
+```powershell
+# Normal development (no Dev Proxy)
+npm run dev
+
+# Test with error simulation
+npm run dev:proxy:errors
+
+# Offline development with mocks
+npm run dev:proxy:mocks
+
+# Test rate limiting
+npm run dev:proxy:rate-limit
+```
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `devproxyrc.json` | Default configuration |
+| `devproxyrc-errors.json` | Error simulation (50% failure rate) |
+| `devproxyrc-mocks.json` | Mock responses for offline development |
+| `devproxyrc-rate-limit.json` | Rate limiting simulation (100 req/5min) |
+| `dataverse-errors.json` | Error scenarios (15+ realistic failures) |
+| `dataverse-mocks.json` | Mock Dataverse API responses |
+
+For detailed documentation on installation, setup, testing scenarios, and troubleshooting, see **[Dev Proxy Testing Guide](../docs/DEV-PROXY-TESTING.md)**.
+
 
 ## What is Dev Proxy?
 
 Dev Proxy is a command-line tool from Microsoft that intercepts HTTP requests and simulates various API behaviors like:
 - Random errors (503, 500, 429, etc.)
 - Rate limiting and throttling
-- Slow API responses
 - Mock responses for offline development
 
 **Key benefits for this project:**
@@ -58,9 +91,28 @@ When your app makes Dataverse API calls, Dev Proxy will randomly inject these er
 
 ## Quick Start (3 Easy Ways!)
 
+### 🚀 Choose Your Development Mode
+
+Different modes for different needs:
+
+| Command | Use Case | What It Does |
+|---------|----------|--------------|
+| `npm run dev` | **Normal local development** | No Dev Proxy - connects directly to real Dataverse |
+| `npm run dev:proxy:mocks` | **Fast offline development** | Returns instant mock responses, no Dataverse needed |
+| `npm run dev:proxy:errors` | **Test error handling** | Randomly injects API failures (429, 500, 401, etc.) |
+| `npm run dev:proxy:rate-limit` | **Test rate limiting** | Simulates Dataverse rate limits (100 req/5min) |
+
+**💡 Recommendation:**
+- **Daily development?** Use `npm run dev` (no proxy)
+- **Building new features?** Use `npm run dev:proxy:mocks` (fast mocks)
+- **Before deploying?** Test with `npm run dev:proxy:errors` to verify error handling
+
 ### Option 1: npm Scripts (Recommended)
 
 ```powershell
+# Normal development (no Dev Proxy)
+npm run dev
+
 # Start dev environment with Dev Proxy (default mode)
 npm run dev:proxy
 
@@ -126,7 +178,7 @@ devproxy --version
 
 ## Configuration Files
 
-### 📁 `devproxyrc.json` (Default)
+### `devproxyrc.json` (Default)
 Basic Dev Proxy configuration with minimal logging. Use this for normal development when you want Dev Proxy running but not interfering with your workflow.
 
 **Start with:**
@@ -136,7 +188,7 @@ npm run dev:proxy
 devproxy --config-file devproxy/devproxyrc.json
 ```
 
-### 🎲 `devproxyrc-errors.json` (Error Simulation)
+### `devproxyrc-errors.json` (Error Simulation)
 Simulates random Dataverse API errors (50% failure rate):
 - **503 Service Unavailable** - "The server is busy"
 - **500 Internal Server Error** - "An unexpected error occurred"
@@ -158,7 +210,7 @@ devproxy --config-file devproxy/devproxyrc-errors.json
 - Check retry mechanisms work
 - Ensure no data loss on failures
 
-### 🎭 `devproxyrc-mocks.json` (Mocked Responses)
+### `devproxyrc-mocks.json` (Mocked Responses)
 Returns fake Dataverse API responses without hitting real APIs:
 - Mock publishers list
 - Mock solutions list
@@ -180,7 +232,7 @@ devproxy --config-file devproxy/devproxyrc-mocks.json
 - Work on airplane/train
 - Don't hit API rate limits
 
-### 🚦 `devproxyrc-rate-limit.json` (Rate Limiting)
+### `devproxyrc-rate-limit.json` (Rate Limiting)
 Simulates Dataverse API rate limits:
 - **100 requests per 5 minutes**
 - Returns **429 Too Many Requests** when exceeded
@@ -197,6 +249,37 @@ devproxy --config-file devproxy/devproxyrc-rate-limit.json
 
 **What to test:**
 - Deploy large ERD (20+ entities)
+- Verify rate limit detection
+- Check retry logic with backoff
+- Ensure progress indicators work
+
+## Backend Retry Logic
+
+The backend automatically retries failed API requests with **exponential backoff**:
+
+- **Max Retries**: 5 attempts
+- **Delays**: 1s → 2s → 4s → 8s → 16s
+- **Respects Retry-After**: Honors rate limit headers
+- **Retryable Errors**: 429, 500, 502, 503, 504
+- **Non-retryable**: 400, 401, 403, 404 (fail immediately)
+
+**Logging**: Check console for retry messages:
+```
+ℹ Request failed with 503 (attempt 1/6). Retrying in 1000ms...
+ℹ Request failed with 503 (attempt 2/6). Retrying in 2000ms...
+✅ Request succeeded after 2 retry attempt(s)
+```
+
+**Rate Limiting**: When Dataverse returns 429 with `Retry-After: 60`:
+```
+ℹ Rate limited (429). Retry-After: 60s. Waiting 60000ms...
+```
+
+**Benefits:**
+- Handles transient failures automatically
+- Respects server rate limits
+- No data loss on temporary errors
+- Better user experience
 - Verify rate limit detection
 - Check retry logic with backoff
 - Ensure progress indicators work
@@ -349,15 +432,6 @@ Add Dev Proxy tests to your CI pipeline:
 - [Simulate Rate Limits](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/simulate-rate-limit-api-responses)
 - [Mock API Responses](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/simulate-crud-api)
 
-## Contributing
-
-Found a useful Dev Proxy configuration? Add it to this folder and document it here!
-
-**Ideas for new configurations:**
-- Slow response simulation
-- Network latency testing
-- Partial failure scenarios
-- Authentication timeout testing
 
 ## Support
 

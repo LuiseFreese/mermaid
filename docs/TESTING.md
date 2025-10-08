@@ -58,165 +58,36 @@ GET /api/global-choices-list
 
 **Microsoft Dev Proxy** is a command-line tool that simulates API failures, rate limiting, and slow responses to help you build more robust applications.
 
-**Why Use Dev Proxy?**
-- Test how your app handles Dataverse API failures without breaking production
-- Simulate rate limiting scenarios (Dataverse has strict API limits)
-- Test slow network conditions and timeout handling
-- Mock Dataverse responses for offline development
-- No code changes needed - intercepts network requests
+For comprehensive Dev Proxy testing documentation, see **[Dev Proxy Testing Guide](./DEV-PROXY-TESTING.md)**.
 
-**Installation**:
-```powershell
-# Install Dev Proxy using winget
-winget install Microsoft.DevProxy
-
-# Or download from GitHub
-# https://github.com/microsoft/dev-proxy/releases
-```
-
-#### Quick Start Options
-
-**Option 1: Automated npm Scripts (Recommended)**
-
-The easiest way to use Dev Proxy - just run npm commands:
+#### Quick Start
 
 ```powershell
-# Option A: Run app with error simulation (50% failure rate)
-npm run dev:proxy
-
-# Option B: Run app with mock Dataverse (offline development)
-npm run dev:mock
-
-# Option C: Run app with rate limiting simulation
-npm run dev:proxy:ratelimit
-
-# Option D: Run app with slow API simulation
-npm run dev:proxy:latency
-```
-
-These commands automatically:
-- Start Dev Proxy with the right configuration
-- Start yor dev server
-- Clean up on exit (Ctrl+C stops both)
-
-**Option 2: PowerShell Wrapper Script**
-
-For more control and testing scenarios:
-
-```powershell
-# Interactive menu with 6 testing scenarios
-.\devproxy\start-with-devproxy.ps1
-
-# Or use directly with parameters:
-.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 50
-.\devproxy\start-with-devproxy.ps1 -Mode mocks
-.\devproxy\start-with-devproxy.ps1 -Mode ratelimit
-.\devproxy\start-with-devproxy.ps1 -Mode latency -Latency 5000
-```
-
-**Option 3: VS Code Tasks (One-Click Testing)**
-
-Press `Ctrl+Shift+P` → "Tasks: Run Task" → Select:
-- **Dev Proxy: Error Simulation** - Test API failures
-- **Dev Proxy: Rate Limiting** - Test 429 responses
-- **Dev Proxy: Mock Mode** - Offline development
-- **Dev Proxy: Slow API** - Test latency handling
-
-**Option 4: Manual (Advanced)**
-
-Start Dev Proxy and your app separately:
-
-```powershell
-# Terminal 1: Start Dev Proxy
-devproxy --config-file devproxy/devproxyrc.json
-
-# Terminal 2: Start your app
+# Normal development (no Dev Proxy)
 npm run dev
-```
 
-#### Configuration Files
+# Test with error simulation
+npm run dev:proxy:errors
 
-All Dev Proxy configs are in the `devproxy/` folder:
+# Offline development with mocks
+npm run dev:proxy:mocks
 
-- **`devproxyrc.json`** - Main config with error simulation (default)
-- **`devproxyrc-mocks.json`** - Mock mode for offline development
-- **`devproxyrc-ratelimit.json`** - Rate limiting simulation
-- **`devproxyrc-latency.json`** - Slow API responses
-- **`dataverse-errors.json`** - Define error responses (503, 429, 500)
-- **`dataverse-mocks.json`** - Mock Dataverse API responses
-- **`README.md`** - Detailed usage guide
-
-#### Understanding "Errors Loaded" Message
-
-When Dev Proxy starts, you'll see:
+# Test rate limiting
+npm run dev:proxy:rate-limit
 
 ```
-✅ 5 errors loaded from dataverse-errors.json
-```
 
-**This is good!** ✅ It means:
-- Dev Proxy successfully loaded your **test error scenarios**
-- These are **simulated failures** for testing, not actual problems
-- Dev Proxy will randomly inject these errors into your API calls
+For detailed installation instructions, configuration options, and testing scenarios, see the **[Dev Proxy Testing Guide](./DEV-PROXY-TESTING.md)**
 
-**Example error scenarios loaded:**
-1. 500 Internal Server Error - "Something went wrong"
-2. 503 Service Unavailable - "Server is busy"  
-3. 429 Rate Limit Exceeded - "Too many requests"
-4. 401 Unauthorized - "Token expired"
-5. 400 Bad Request - "Invalid data"
 
-When your app makes Dataverse API calls, Dev Proxy intercepts them and randomly returns one of these errors (based on configured failure rate). This helps you verify your app:
-- ✅ Shows helpful error messages to users
-- ✅ Implements retry logic for transient failures
-- ✅ Preserves user data when APIs fail
-- ✅ Handles rate limiting gracefully
-
-#### Common Testing Scenarios
-
-**1. Test Deployment Failure Recovery**:
-```powershell
-# Using npm script (50% failure rate)
-npm run dev:proxy
-
-# Using PowerShell wrapper
-.\devproxy\start-with-devproxy.ps1 -Mode errors -FailureRate 75
-
-# Deploy a large ERD and verify:
-# - Error messages are clear
-# - Retry logic works
-# - User data isn't lost
-# - Progress is resumable
-```
-
-**2. Test Rate Limiting**:
-```powershell
-# Using npm script
-npm run dev:proxy:ratelimit
-
-# Deploy ERD with 50+ entities
-# Verify app handles 429 responses gracefully
-```
-
-**3. Test Slow API Responses**:
-```powershell
-# Using npm script (5 second delay)
-npm run dev:proxy:latency
-
-# Verify:
-# - Loading indicators stay visible
-# - Timeout handling works
-# - Users see progress indicators
-```
-
-**4. Test Authentication Token Expiration**:
+**3. Test Authentication Token Expiration**:
 ```powershell
 # Edit devproxy/dataverse-errors.json to add 401 responses
 # Then run with errors mode
 npm run dev:proxy
 ```
 
-**5. Offline Development with Mocks**:
+**4. Offline Development with Mocks**:
 ```powershell
 # Using npm script
 npm run dev:mock
@@ -250,7 +121,6 @@ The project includes pre-configured VS Code tasks in `.vscode/tasks.json`:
 1. **Dev Proxy: Error Simulation** - Random API failures
 2. **Dev Proxy: Rate Limiting** - 429 Too Many Requests
 3. **Dev Proxy: Mock Mode** - Offline development
-4. **Dev Proxy: Slow API** - Network latency simulation
 
 **Usage:**
 - Press `Ctrl+Shift+B` to see all tasks
@@ -267,10 +137,9 @@ The project includes pre-configured VS Code tasks in `.vscode/tasks.json`:
 
 #### Learn More
 
-- [Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
-- [Testing with Random Errors](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/test-my-app-with-random-errors)
-- [Simulating Rate Limits](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/how-to/simulate-rate-limit-api-responses)
-- See `devproxy/README.md` for detailed configuration and advanced usage
+- [Dev Proxy Testing Guide](./DEV-PROXY-TESTING.md) - Complete guide with installation, setup, and troubleshooting
+- [Testing Scenarios Guide](./TESTING-SCENARIOS.md) - Detailed testing workflows
+- [Microsoft Dev Proxy Documentation](https://learn.microsoft.com/en-us/microsoft-cloud/dev/dev-proxy/overview)
 
 ## Testing and Debugging
 

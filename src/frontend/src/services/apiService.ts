@@ -20,7 +20,7 @@ export class ApiService {
    */
   static async validateFile(fileData: FileData, entityChoice?: 'cdm' | 'custom' | null): Promise<ValidationResult> {
     try {
-      const response: AxiosResponse<any> = await api.post('/validate', {
+      const response: AxiosResponse<any> = await api.post('/validate-erd', {
         filename: fileData.name,
         mermaidContent: fileData.content,
         entityChoice: entityChoice || null,

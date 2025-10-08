@@ -1,31 +1,37 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v0.14.1/rc.schema.json",
-  "plugins": [
-    {
-      "name": "RateLimitingPlugin",
-      "enabled": true,
-      "pluginPath": "~appFolder/plugins/dev-proxy-plugins.dll",
-      "configSection": "rateLimitDataverse",
-      "urlsToWatch": [
-        "https://*.crm*.dynamics.com/*",
-        "https://*.api.crm*.dynamics.com/*"
-      ]
-    }
-  ],
-  "urlsToWatch": [
-    "https://*.crm*.dynamics.com/*",
-    "https://*.api.crm*.dynamics.com/*"
-  ],
-  "rateLimitDataverse": {
-    "headerLimit": "X-RateLimit-Limit",
-    "headerRemaining": "X-RateLimit-Remaining",
-    "headerReset": "X-RateLimit-Reset",
-    "costPerRequest": 1,
-    "resetTimeWindowSeconds": 300,
-    "rateLimit": 100,
-    "resetFormat": "UtcEpochSeconds",
-    "whenLimitExceeded": "RetryAfter",
-    "retryAfterInSeconds": 60
-  },
-  "logLevel": "information"
+    "$schema": "https://raw.githubusercontent.com/microsoft/dev-proxy/main/schemas/v1.2.0/rc.schema.json",
+    "plugins": [
+        {
+            "name": "RateLimitingPlugin",
+            "enabled": true,
+            "pluginPath": "~appFolder/plugins/DevProxy.Plugins.dll",
+            "configSection": "rateLimitDataverse",
+            "urlsToWatch": [
+                "https://*.dynamics.com/*",
+                "https://*.crm*.dynamics.com/*"
+            ]
+        }
+    ],
+    "urlsToWatch": [
+        "https://*.dynamics.com/*",
+        "https://*.crm*.dynamics.com/*"
+    ],
+    "rateLimitDataverse": {
+        "$schema": "https://raw.githubusercontent.com/dotnet/dev-proxy/main/schemas/v1.2.0/ratelimitingplugin.schema.json",
+        "costPerRequest": 1,
+        "rateLimit": 10,
+        "resetTimeWindowSeconds": 60,
+        "warningThresholdPercent": 80,
+        "whenLimitExceeded": "Throttle",
+        "resetFormat": "UtcEpochSeconds",
+        "headerLimit": "RateLimit-Limit",
+        "headerRemaining": "RateLimit-Remaining",
+        "headerReset": "RateLimit-Reset",
+        "headerRetryAfter": "Retry-After"
+    },
+    "rate": 100,
+    "logLevel": "information",
+    "newVersionNotification": "stable",
+    "installCert": false,
+    "asSystemProxy": false
 }

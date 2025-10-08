@@ -566,60 +566,122 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }
     
     setRollbackLoading(true);
-    setRollbackProgress('Initializing rollback...');
+    setRollbackProgress('Starting rollback...');
     
     try {
-      // Build options to send to backend - automatically include cdmEntities when solution is selected
+      // Build options to send to backend
       const backendOptions = {
         ...rollbackOptions,
-        // CDM entities are automatically removed when solution is deleted
         cdmEntities: rollbackOptions.solution
       };
       
-      // Use authenticated apiClient instead of raw fetch
+      // Start rollback - will return 202 Accepted with rollback ID
       const response = await apiClient.post(`/rollback/${rollbackDeployment.deploymentId}/execute`, { 
         confirm: true,
         options: backendOptions
       });
 
-      // Handle JSON response (backend doesn't support SSE yet)
-      const data = response.data;
-      
-      if (data.success) {
-        // Show success message in modal
-        const summary = data.summary || `${data.rollbackId}`;
-        setRollbackProgress(`✅ Rollback completed successfully!\n\n${summary}`);
+      // Check for 202 Accepted (async operation started)
+      if (response.status === 202 && response.data.rollbackId) {
+        const rollbackId = response.data.rollbackId;
+        setRollbackProgress('Rollback started. Waiting for progress...');
         
-        // Wait a moment to let user see the success message
+        // Poll for status
+        await pollRollbackStatus(rollbackId);
+      } else if (response.data.success) {
+        // Legacy synchronous response (shouldn't happen but handle it)
+        const summary = response.data.summary || `${response.data.rollbackId}`;
+        setRollbackProgress(`Rollback completed successfully!\n\n${summary}`);
+        
         setTimeout(() => {
-          // Reload deployment history
           loadDeploymentHistory();
-          
-          // Close the modal
-          setShowRollbackModal(false);
-          setRollbackDeployment(null);
-          setRollbackOptions({
-            relationships: true,
-            customEntities: true,
-            customGlobalChoices: true,
-            solution: true,
-            publisher: false
-          });
-          setRollbackLoading(false);
-        }, 2000); // Show success for 2 seconds before closing
+          closeRollbackModal();
+        }, 2000);
       } else {
-        throw new Error(data.error || 'Rollback failed');
+        throw new Error(response.data.error || 'Rollback failed');
       }
       
     } catch (error) {
       console.error('Rollback failed:', error);
-      setRollbackProgress(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setRollbackProgress(`❌ Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setTimeout(() => {
         setRollbackLoading(false);
       }, 3000);
-    } finally {
-      setRollbackLoading(false);
     }
+  };
+
+  // Poll rollback status until complete or failed
+  const pollRollbackStatus = async (rollbackId: string) => {
+    const maxAttempts = 180; // 6 minutes max (180 * 2 seconds)
+    let attempts = 0;
+    
+    const poll = async (): Promise<void> => {
+      try {
+        attempts++;
+        
+        const response = await apiClient.get(`/rollback/${rollbackId}/status`);
+        const status = response.data.data;
+        
+        if (!status) {
+          throw new Error('Invalid status response');
+        }
+        
+        // Update progress display
+        const progressMsg = status.progress.message || 'Processing...';
+        setRollbackProgress(progressMsg);
+        
+        // Check if completed
+        if (status.status === 'completed') {
+          const summary = status.result?.summary || 'Rollback completed successfully';
+          setRollbackProgress(`Rollback completed successfully!\n\n${summary}`);
+          
+          setTimeout(() => {
+            loadDeploymentHistory();
+            closeRollbackModal();
+          }, 2000);
+          return;
+        }
+        
+        // Check if failed
+        if (status.status === 'failed') {
+          throw new Error(status.error || 'Rollback failed');
+        }
+        
+        // Check if max attempts reached
+        if (attempts >= maxAttempts) {
+          throw new Error('Rollback status polling timeout - operation may still be running');
+        }
+        
+        // Continue polling after 2 seconds
+        setTimeout(() => poll(), 2000);
+        
+      } catch (error) {
+        console.error('Error polling rollback status:', error);
+        setRollbackProgress(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setTimeout(() => {
+          setRollbackLoading(false);
+          // Refresh deployment history in case rollback completed despite error
+          loadDeploymentHistory();
+        }, 3000);
+      }
+    };
+    
+    // Start polling
+    await poll();
+  };
+
+  const closeRollbackModal = () => {
+    setShowRollbackModal(false);
+    setRollbackDeployment(null);
+    setRollbackOptions({
+      relationships: true,
+      customEntities: true,
+      customGlobalChoices: true,
+      solution: true,
+      publisher: false
+    });
+    setRollbackLoading(false);
+    setRollbackProgress('');
   };
 
   const canShowRollbackButton = (deployment: DeploymentSummary) => {
