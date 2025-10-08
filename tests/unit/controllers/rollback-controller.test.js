@@ -81,8 +81,19 @@ describe('RollbackController', () => {
   });
 
   afterEach(() => {
+    // Stop the cleanup timer to prevent open handles
+    if (controller && controller.statusTracker) {
+      controller.statusTracker.stopCleanupTimer();
+    }
     jest.clearAllMocks();
     jest.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    // Final cleanup to ensure no handles remain open
+    if (controller && controller.statusTracker) {
+      controller.statusTracker.stopCleanupTimer();
+    }
   });
 
   describe('constructor', () => {
@@ -189,10 +200,15 @@ describe('RollbackController', () => {
 
       await controller.executeRollback(req, res, 'deploy_12345_test');
 
-      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test', null, expect.any(Object));
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      // Should return 202 Accepted immediately (async pattern)
+      expect(res.writeHead).toHaveBeenCalledWith(202, expect.objectContaining({
         'Content-Type': 'application/json'
       }));
+      
+      const responseBody = JSON.parse(res.end.mock.calls[0][0]);
+      expect(responseBody.success).toBe(true);
+      expect(responseBody.rollbackId).toBeDefined();
+      expect(responseBody.statusUrl).toBeDefined();
     });
 
     test('should parse request body correctly', async () => {
@@ -215,7 +231,7 @@ describe('RollbackController', () => {
 
       await controller.executeRollback(req, res, 'deploy_12345_test');
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      expect(res.writeHead).toHaveBeenCalledWith(202, expect.objectContaining({
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       }));
@@ -231,8 +247,9 @@ describe('RollbackController', () => {
 
       const response = JSON.parse(res.end.mock.calls[0][0]);
       expect(response.success).toBe(true);
-      expect(response.rollbackId).toBe(FIXTURES.rollbackResult.rollbackId);
-      expect(response.summary).toBe(FIXTURES.rollbackResult.summary);
+      expect(response.rollbackId).toBeDefined(); // ID is generated dynamically
+      expect(response.deploymentId).toBe('deploy_12345_test');
+      expect(response.statusUrl).toContain('/api/rollback/');
     });
 
     test('should include timestamp in response', async () => {
@@ -257,9 +274,9 @@ describe('RollbackController', () => {
       expect(res.end).toHaveBeenCalled();
     });
 
-    test('should handle service errors', async () => {
-      mockService.canRollback.mockResolvedValue({ canRollback: true });
-      mockService.rollbackDeployment.mockRejectedValue(new Error('Rollback failed'));
+    test('should handle service errors during capability check', async () => {
+      // Test error during canRollback check (this should return 500)
+      mockService.canRollback.mockRejectedValue(new Error('Service error'));
       const req = createMockRequest({ confirm: true });
       const res = createMockResponse();
 
@@ -393,13 +410,12 @@ describe('RollbackController', () => {
 
       // Verify complete flow executed
       expect(mockService.canRollback).toHaveBeenCalledWith('deploy_12345_test');
-      expect(mockService.rollbackDeployment).toHaveBeenCalledWith('deploy_12345_test', null, expect.any(Object));
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
+      expect(res.writeHead).toHaveBeenCalledWith(202, expect.any(Object));
       expect(res.end).toHaveBeenCalled();
       
       const response = JSON.parse(res.end.mock.calls[0][0]);
       expect(response.success).toBe(true);
-      expect(response.rollbackId).toBe(FIXTURES.rollbackResult.rollbackId);
+      expect(response.rollbackId).toBeDefined();
     });
 
     test('should handle check capability followed by execute', async () => {
@@ -439,7 +455,7 @@ describe('RollbackController', () => {
         controller.executeRollback(req, res, 'deploy_12345_test')
       ).resolves.not.toThrow();
       
-      expect(res.writeHead).toHaveBeenCalledWith(200, expect.any(Object));
+      expect(res.writeHead).toHaveBeenCalledWith(202, expect.any(Object));
     });
 
     test('should handle service returning partial data', async () => {
@@ -458,7 +474,7 @@ describe('RollbackController', () => {
 
       const response = JSON.parse(res.end.mock.calls[0][0]);
       expect(response.success).toBe(true);
-      expect(response.rollbackId).toBe('rollback_123');
+      expect(response.rollbackId).toBeDefined(); // ID is generated dynamically
     });
   });
 });

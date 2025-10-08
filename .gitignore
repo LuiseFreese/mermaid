@@ -61,6 +61,9 @@ website/.cache-loader/
 website/yarn.lock
 website/.env.local
 MODULAR-ROLLBACK-DESIGN.md
+.frontmatter/
+frontmatter.json
+
 
 # Release notes (generated for GitHub releases)
 RELEASE-NOTES-*.md

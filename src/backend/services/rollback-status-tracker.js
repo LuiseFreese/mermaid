@@ -10,6 +10,7 @@ class RollbackStatusTracker {
         
         // Auto-cleanup completed rollbacks after 1 hour
         this.cleanupIntervalMs = 60 * 60 * 1000; // 1 hour
+        this.cleanupTimer = null;
         this.startCleanupTimer();
     }
 
@@ -156,9 +157,19 @@ class RollbackStatusTracker {
      * Start automatic cleanup of old completed rollbacks
      */
     startCleanupTimer() {
-        setInterval(() => {
+        this.cleanupTimer = setInterval(() => {
             this.cleanupOldRollbacks();
         }, this.cleanupIntervalMs);
+    }
+
+    /**
+     * Stop the cleanup timer (useful for testing)
+     */
+    stopCleanupTimer() {
+        if (this.cleanupTimer) {
+            clearInterval(this.cleanupTimer);
+            this.cleanupTimer = null;
+        }
     }
 
     /**
