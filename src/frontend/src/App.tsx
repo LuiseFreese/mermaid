@@ -47,8 +47,11 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  // Bypass authentication for e2e tests
+  const isTestMode = import.meta.env.VITE_TEST_MODE === 'true';
+  
   return (
-    <AuthProvider requireAuth={true}>
+    <AuthProvider requireAuth={!isTestMode}>
       <ThemeProvider>
         <AppContent />
       </ThemeProvider>

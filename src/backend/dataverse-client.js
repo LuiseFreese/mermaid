@@ -2607,7 +2607,7 @@ class DataverseClient {
       
       // STEP 1: Delete relationships first (CRITICAL - must succeed before entities can be deleted)
       if (rollbackConfig.relationships && relationshipsToDelete.length > 0) {
-        progress('relationships', 'Deleting relationships...');
+        progress('relationships', `Deleting ${relationshipsToDelete.length} relationships...`);
         this._log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
         
         // Add publisher prefix to relationships for schema name construction
@@ -2670,7 +2670,7 @@ class DataverseClient {
       }
       
       if (rollbackConfig.customEntities && customEntitiesToDelete.length > 0) {
-        progress('custom-entities', 'Deleting custom entities...');
+        progress('custom-entities', `Deleting ${customEntitiesToDelete.length} custom entities...`);
         this._log(`🏢 STEP 2: Deleting ${customEntitiesToDelete.length} custom entities...`);
         
         const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
@@ -2749,14 +2749,15 @@ class DataverseClient {
       // Step 4: Handle global choices - delete CUSTOM ones only
       let customGlobalChoicesToDelete = [];
       
-      // Detect custom global choices that were created (need to be deleted)
-      if (deploymentData.summary?.globalChoicesCreated) {
-        customGlobalChoicesToDelete = [...deploymentData.summary.globalChoicesCreated];
+      // Use rollbackData (which has been filtered by rollback service) instead of summary
+      // This ensures we don't try to delete choices that were already rolled back
+      if (deploymentData.rollbackData?.globalChoicesCreated) {
+        customGlobalChoicesToDelete = [...deploymentData.rollbackData.globalChoicesCreated];
       }
       
       // Delete custom global choices completely
       if (rollbackConfig.customGlobalChoices && customGlobalChoicesToDelete.length > 0) {
-        progress('custom-choices', 'Deleting custom global choices...');
+        progress('custom-choices', `Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
         this._log(`🎯 STEP 4a: Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
         
         const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
@@ -2840,7 +2841,7 @@ class DataverseClient {
       
       // Step 5: Delete solution (must be before publisher deletion)
       if (rollbackConfig.solution && deploymentData.solutionInfo?.solutionId) {
-        progress('solution', 'Deleting solution...');
+        progress('solution', `Deleting solution (${deploymentData.solutionInfo.solutionName || 'Unknown'})...`);
         this._log('📦 STEP 5: Deleting solution...');
         
         try {
@@ -2875,7 +2876,7 @@ class DataverseClient {
 
       // Step 6: Delete publisher (FINAL STEP - must be after solution is deleted)
       if (rollbackConfig.publisher && (deploymentData.solutionInfo?.publisherPrefix || deploymentData.solutionInfo?.publisherId)) {
-        progress('publisher', 'Deleting publisher...');
+        progress('publisher', `Deleting publisher (${deploymentData.solutionInfo.publisherName || 'Unknown'})...`);
         this._log('🏢 STEP 6: Deleting publisher (FINAL STEP)...');
         
         try {

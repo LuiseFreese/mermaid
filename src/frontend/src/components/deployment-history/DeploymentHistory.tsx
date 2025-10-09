@@ -1169,15 +1169,18 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                       {/* Show what was selected in this rollback */}
                                       {options && (
                                         <div style={{ marginTop: '16px', padding: '12px', backgroundColor: tokens.colorNeutralBackground3, borderRadius: '4px' }}>
-                                          <Text size={200} weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>Components Selected:</Text>
+                                          <Text size={200} weight="semibold" style={{ display: 'block', marginBottom: '8px' }}>Components Processed:</Text>
                                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {options.relationships && <Badge appearance="filled" color="brand" size="small">Relationships</Badge>}
-                                            {options.customEntities && <Badge appearance="filled" color="brand" size="small">Custom Tables</Badge>}
-                                            {options.customGlobalChoices && <Badge appearance="filled" color="brand" size="small">Custom Global Choices</Badge>}
-                                            {/* Legacy support for old rollbacks that used 'globalChoices' */}
-                                            {options.globalChoices && !options.customGlobalChoices && <Badge appearance="filled" color="brand" size="small">Global Choices</Badge>}
-                                            {options.solution && <Badge appearance="filled" color="brand" size="small">Solution</Badge>}
-                                            {options.publisher && <Badge appearance="filled" color="brand" size="small">Publisher</Badge>}
+                                            {/* Show only components that were actually processed (had items to delete) */}
+                                            {results.relationshipsDeleted > 0 && <Badge appearance="filled" color="brand" size="small">Relationships ({results.relationshipsDeleted})</Badge>}
+                                            {results.entitiesDeleted > 0 && <Badge appearance="filled" color="brand" size="small">Custom Tables ({results.entitiesDeleted})</Badge>}
+                                            {results.globalChoicesDeleted > 0 && <Badge appearance="filled" color="brand" size="small">Custom Global Choices ({results.globalChoicesDeleted})</Badge>}
+                                            {results.solutionDeleted && <Badge appearance="filled" color="brand" size="small">Solution</Badge>}
+                                            {results.publisherDeleted && <Badge appearance="filled" color="brand" size="small">Publisher</Badge>}
+                                            {/* Show if nothing was actually processed */}
+                                            {!results.relationshipsDeleted && !results.entitiesDeleted && !results.globalChoicesDeleted && !results.solutionDeleted && !results.publisherDeleted && (
+                                              <Badge appearance="outline" color="subtle" size="small">No components remaining to rollback</Badge>
+                                            )}
                                           </div>
                                         </div>
                                       )}
