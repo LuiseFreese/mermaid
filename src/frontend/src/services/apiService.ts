@@ -155,7 +155,22 @@ export class ApiService {
               const data = JSON.parse(line);
               
               if (data.type === 'progress' && onProgress) {
-                onProgress(`${data.step}: ${data.message}`, data);
+                // Extract enhanced progress data
+                const progressData = {
+                  stepId: data.stepId,
+                  stepLabel: data.stepLabel,
+                  percentage: data.percentage,
+                  timeEstimate: data.timeEstimate,
+                  steps: data.steps,
+                  operationType: data.operationType,
+                  status: data.status,
+                  message: data.message
+                };
+                
+                // Create user-friendly message, prioritizing stepLabel over generic message
+                const displayMessage = data.stepLabel || data.message || `${data.step}: ${data.message}`;
+                
+                onProgress(displayMessage, progressData);
               } else if (data.type === 'log' && onProgress) {
                 onProgress(data.message, data);
               } else if (data.type === 'final') {

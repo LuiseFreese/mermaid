@@ -4,6 +4,7 @@
  */
 const { BaseService } = require('./base-service');
 const { performanceMonitor } = require('../performance-monitor');
+const { ProgressTracker } = require('../utils/progress-tracker');
 
 class DeploymentService extends BaseService {
     constructor(dependencies = {}) {
@@ -38,6 +39,9 @@ class DeploymentService extends BaseService {
     async deploySolution(config, progressCallback) {
         const deploymentId = this.generateDeploymentId();
         
+        // Initialize enhanced progress tracker
+        const progressTracker = new ProgressTracker('deployment', progressCallback);
+        
         // Start performance monitoring
         this.performanceMonitor.startOperation(deploymentId, 'deployment', {
             entityCount: 0, // Will be updated when we parse the ERD
@@ -59,6 +63,7 @@ class DeploymentService extends BaseService {
                 config: { ...config, mermaidContent: '[REDACTED]' } // Don't store full content
             });
 
+            // Legacy progress function for backward compatibility
             const progress = (step, message, details = {}) => {
                 this.updateDeploymentStatus(deploymentId, step, message);
                 if (progressCallback) {
@@ -67,26 +72,28 @@ class DeploymentService extends BaseService {
             };
 
             try {
-                progress('initialization', 'Initializing deployment...');
-
-                // Step 1: Parse ERD content
-                progress('parsing', 'Parsing ERD content...');
+                // Step 1: Parse and validate ERD content
+                progressTracker.startStep('validation', 'Parsing and validating ERD content...');
+                
                 const parseResult = await this.parseERDContent(config.mermaidContent);
                 
-                // Step 2: Validate ERD content
+                // Validate ERD content
                 if (this.validationService) {
-                    progress('validation', 'Validating ERD');
+                    progressTracker.updateStep('validation', 'Running ERD validation checks...');
                     const validationResult = await this.validationService.validateERD({
                         mermaidContent: config.mermaidContent,
                         options: {}
                     });
                     if (!validationResult.success) {
+                        progressTracker.failStep('validation', 'ERD validation failed', validationResult.message);
                         throw new Error(validationResult.message || 'Invalid ERD syntax');
                     }
                 }
                 
-                // Step 3: Setup Dataverse client
-                progress('configuration', 'Connecting to Dataverse...');
+                progressTracker.completeStep('validation', 'ERD content validated successfully');
+
+                // Step 2: Setup Dataverse connection
+                progressTracker.startStep('publisher', 'Connecting to Dataverse...');
                 const dataverseConfigResult = await this.configRepository.getDataverseConfig();
                 const dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
                 
@@ -98,8 +105,8 @@ class DeploymentService extends BaseService {
                     keys: Object.keys(dataverseConfig || {})
                 });
                 
-                // Step 4: Ensure solution and publisher
-                progress('publisher', config.useExistingSolution ? 'Using existing solution publisher' : 'Creating publisher');
+                // Step 3: Ensure publisher
+                progressTracker.updateStep('publisher', config.useExistingSolution ? 'Using existing solution publisher' : 'Creating publisher...');
                 const publisherResult = await this.ensurePublisher(config, dataverseConfig);
                 
                 console.log('🔧 DEBUG: publisherResult:', {
@@ -110,13 +117,18 @@ class DeploymentService extends BaseService {
                     success: publisherResult?.success
                 });
                 
-                progress('solution', config.useExistingSolution ? 'Using existing solution' : 'Creating solution');
+                progressTracker.completeStep('publisher', 'Publisher setup completed');
+                
+                // Step 4: Ensure solution
+                progressTracker.startStep('solution', config.useExistingSolution ? 'Using existing solution' : 'Creating solution...');
                 // Extract the actual publisher data from the wrapped response
                 const publisher = publisherResult?.data || publisherResult;
                 const solutionResult = await this.ensureSolution(config, publisher, dataverseConfig);
                 
                 // Extract the actual solution data from the wrapped response
                 const solution = solutionResult?.data || solutionResult;
+                
+                progressTracker.completeStep('solution', 'Solution setup completed');
 
                 console.log('🔧 DEBUG: Final solution being used:', {
                     uniquename: solution?.uniquename,
@@ -174,11 +186,9 @@ class DeploymentService extends BaseService {
                     message: 'Deployment completed successfully'
                 };
 
-                // Step 6: Process CDM entities if any
+                // Step 5: Process CDM entities if any
                 if (cdmEntities.length > 0) {
-                    // If CDM entities are detected, process them as CDM entities
-                    // regardless of user choice (they can't be created as custom entities anyway)
-                    progress('cdm', `Adding ${cdmEntities.length} CDM Tables...`);
+                    progressTracker.startStep('entities', `Processing ${cdmEntities.length} CDM Tables...`);
                     console.log('🔧 DEBUG: Processing CDM entities:', {
                         count: cdmEntities.length,
                         entities: cdmEntities.map(e => e?.originalEntity?.name || e?.name),
@@ -201,12 +211,21 @@ class DeploymentService extends BaseService {
                         if (cdmData.summary?.relationshipsCreated) {
                             results.relationshipsCreated += cdmData.summary.relationshipsCreated;
                         }
+                        
+                        progressTracker.updateStep('entities', `Successfully processed ${cdmEntities.length} CDM entities`);
+                    } else {
+                        progressTracker.updateStep('entities', `CDM entities processing completed with warnings`);
                     }
                 }
 
-                // Step 7: Process custom entities if any
+                // Step 6: Process custom entities if any
                 if (customEntities.length > 0) {
-                    progress('custom-entities', `Creating ${customEntities.length} Custom Tables...`);
+                    if (cdmEntities.length === 0) {
+                        progressTracker.startStep('entities', `Creating ${customEntities.length} Custom Tables...`);
+                    } else {
+                        progressTracker.updateStep('entities', `Creating ${customEntities.length} Custom Tables...`);
+                    }
+                    
                     results.customResults = await this.processCustomEntities(
                         customEntities,
                         parseResult.relationships,
@@ -227,6 +246,8 @@ class DeploymentService extends BaseService {
                             results.warnings.push(...results.customResults.warnings);
                         }
                         
+                        progressTracker.updateStep('entities', `Successfully created ${results.customResults.entitiesCreated} custom entities`);
+                        
                         console.log('🔍 DEBUG: Updated results after custom entities:', {
                             entitiesCreated: results.entitiesCreated,
                             relationshipsCreated: results.relationshipsCreated,
@@ -237,12 +258,18 @@ class DeploymentService extends BaseService {
                                 warnings: results.customResults.warnings?.length || 0
                             }
                         });
+                    } else {
+                        progressTracker.updateStep('entities', `Custom entities creation completed with warnings`);
                     }
                 }
+                
+                if (cdmEntities.length > 0 || customEntities.length > 0) {
+                    progressTracker.completeStep('entities', `Entity creation completed - ${results.entitiesCreated} entities created`);
+                }
 
-                // Step 8: Process global choices
+                // Step 7: Process global choices
                 if (config.selectedChoices?.length > 0 || config.customChoices?.length > 0) {
-                    progress('global-choices', 'Processing Global Choices...');
+                    progressTracker.startStep('globalChoices', 'Processing Global Choices...');
                     
                     // Determine the correct publisher prefix to use
                     let publisherPrefix;
@@ -269,11 +296,22 @@ class DeploymentService extends BaseService {
                         results.globalChoicesAdded = results.globalChoicesResults.totalAdded || 0;
                         results.globalChoicesCreated = results.globalChoicesResults.totalCreated || 0;
                         results.globalChoicesExistingAdded = results.globalChoicesResults.totalExistingAdded || 0;
+                        
+                        progressTracker.completeStep('globalChoices', `Global choices processed - ${results.globalChoicesCreated} created, ${results.globalChoicesAdded} added`);
+                    } else {
+                        progressTracker.completeStep('globalChoices', 'Global choices processing completed with warnings');
                     }
+                } else {
+                    progressTracker.startStep('globalChoices', 'No global choices to process');
+                    progressTracker.completeStep('globalChoices', 'Skipped global choices - none specified');
                 }
 
+                // Step 8: Process relationships (this happens during entity creation but we track it separately)
+                progressTracker.startStep('relationships', `Setting up ${parseResult.relationships?.length || 0} relationships...`);
+                progressTracker.completeStep('relationships', `${results.relationshipsCreated} relationships created successfully`);
+
                 // Step 9: Finalize deployment
-                progress('finalizing', 'Finalizing deployment...');
+                progressTracker.startStep('finalization', 'Finalizing deployment...');
                 results.summary = this.generateDeploymentSummary(results);
                 
                 // Step 10: Record deployment in history
@@ -344,7 +382,9 @@ class DeploymentService extends BaseService {
                 // End performance monitoring
                 this.performanceMonitor.endOperation(deploymentId, results);
                 
-                progress('complete', results.summary, { completed: true });
+                // Complete the final step and the overall operation
+                progressTracker.completeStep('finalization', 'Deployment recorded and finalized');
+                progressTracker.complete(results.summary);
                 
                 // Use the generated summary as the success message
                 return this.createSuccess(results, results.summary);
@@ -352,6 +392,9 @@ class DeploymentService extends BaseService {
             } catch (error) {
                 this.error('Deployment failed', error);
                 this.updateDeploymentStatus(deploymentId, 'failed', error.message);
+                
+                // Fail the progress tracker
+                progressTracker.fail('Deployment failed', error);
                 
                 // End performance monitoring for failed deployment
                 this.performanceMonitor.endOperation(deploymentId, {

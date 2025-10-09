@@ -14,6 +14,7 @@ export const useDeploymentState = (): UseDeploymentStateResult => {
   const [deploymentState, setDeploymentState] = useState<DeploymentState>({
     isDeploying: false,
     deploymentProgress: '',
+    progressData: undefined,
     deploymentResult: null,
     deploymentError: '',
     deploymentSuccess: false,
@@ -23,6 +24,7 @@ export const useDeploymentState = (): UseDeploymentStateResult => {
     setDeploymentState({
       isDeploying: false,
       deploymentProgress: '',
+      progressData: undefined,
       deploymentResult: null,
       deploymentError: '',
       deploymentSuccess: false,
@@ -57,9 +59,20 @@ export const useDeploymentState = (): UseDeploymentStateResult => {
         deploymentData,
         (message, details) => {
           console.log('Deployment progress:', message, details);
+          
+          // Handle enhanced progress data if details contains structured information
+          let progressData = undefined;
+          if (details && typeof details === 'object') {
+            // Check if details contains ProgressTracker data
+            if (details.stepId || details.stepLabel || details.percentage !== undefined || details.timeEstimate) {
+              progressData = details;
+            }
+          }
+          
           setDeploymentState(prev => ({
             ...prev,
             deploymentProgress: message,
+            progressData: progressData,
           }));
         }
       );
