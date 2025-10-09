@@ -29,7 +29,7 @@ afterEach(async () => {
 global.testHelpers = {
   // Navigate to app
   async navigateToWizard() {
-    const port = global.__FRONTEND_PORT__ || '3002';
+    const port = global.__FRONTEND_PORT__ || '3004';
     await global.page.goto(`http://localhost:${port}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await global.page.waitForSelector('[data-testid="wizard-container"]', { timeout: 15000 });
   },

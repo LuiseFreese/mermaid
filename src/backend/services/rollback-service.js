@@ -277,6 +277,21 @@ class RollbackService extends BaseService {
                     console.log(`  ⏭️  Skipping custom global choices (already rolled back)`);
                     filteredRollbackData.globalChoicesCreated = [];
                 }
+                if (alreadyRolledBack.solution) {
+                    console.log(`  ⏭️  Skipping solution (already rolled back)`);
+                    // Clear solution info so dataverse client won't try to delete it
+                    if (filteredRollbackData.solutionInfo) {
+                        filteredRollbackData.solutionInfo.solutionId = null;
+                    }
+                }
+                if (alreadyRolledBack.publisher) {
+                    console.log(`  ⏭️  Skipping publisher (already rolled back)`);
+                    // Clear publisher info so dataverse client won't try to delete it
+                    if (filteredRollbackData.solutionInfo) {
+                        filteredRollbackData.solutionInfo.publisherId = null;
+                        filteredRollbackData.solutionInfo.publisherPrefix = null;
+                    }
+                }
                 
                 console.log(`✅ ROLLBACK SERVICE: Filtered deployment data prepared`);
             }

@@ -11,7 +11,8 @@ module.exports = async function globalSetup() {
     env: { 
       ...process.env, 
       NODE_ENV: 'test',
-      PORT: '3001' // Use different port for testing
+      PORT: '3003', // Use different port for testing
+      AUTH_ENABLED: 'false' // Bypass authentication for tests
     },
     stdio: 'pipe'
   });
@@ -22,7 +23,7 @@ module.exports = async function globalSetup() {
       const output = data.toString();
       console.log('Backend output:', output);
       if (output.includes('Server running')) {
-        console.log('✅ Backend server started on port 3001');
+        console.log('✅ Backend server started on port 3003');
         resolve();
       }
     });
@@ -42,11 +43,13 @@ module.exports = async function globalSetup() {
   const isWindows = process.platform === 'win32';
   const npmCommand = isWindows ? 'npm.cmd' : 'npm';
   
-  const frontendProcess = spawn(npmCommand, ['run', 'dev:fast', '--', '--port', '3002', '--strictPort'], {
+  const frontendProcess = spawn(npmCommand, ['run', 'dev:fast', '--', '--port', '3004', '--strictPort'], {
     cwd: path.resolve(__dirname, '../../../src/frontend'),
     env: { 
       ...process.env,
-      PORT: '3002' // Use different port for testing
+      PORT: '3004', // Use different port for testing
+      VITE_TEST_MODE: 'true', // Bypass authentication for tests
+      NODE_ENV: 'test' // Set test environment
     },
     stdio: 'pipe',
     shell: isWindows
@@ -75,7 +78,7 @@ module.exports = async function globalSetup() {
     // Fallback timeout
     setTimeout(() => {
       console.log('⚠️ Frontend server timeout - continuing anyway');
-      frontendPort = '3002'; // fallback
+      frontendPort = '3004'; // fallback
       resolve();
     }, 15000);
   });
