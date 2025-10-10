@@ -1,0 +1,195 @@
+/* Enhanced Progress Component Styles */
+
+.enhancedProgress {
+  padding: 20px;
+  margin: 0 24px; /* Reduced margins to match other cards while leaving space for toasts */
+  background-color: var(--colorNeutralBackground1);
+  border-radius: var(--borderRadiusMedium);
+  border: 1px solid var(--colorNeutralStroke2);
+  max-width: calc(100% - 48px); /* Ensure we don't exceed container width */
+  box-sizing: border-box;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Increased gap between spinner and steps container */
+  margin-bottom: 16px;
+}
+
+.progressBarContainer {
+  flex-grow: 1;
+}
+
+.progressBarHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progressBar {
+  width: 100%;
+}
+
+.timeInfo {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.timeItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepsContainer {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--colorNeutralBackground2);
+  border-radius: var(--borderRadiusMedium);
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.stepsHeader {
+  margin-bottom: 8px;
+  display: block;
+  color: var(--colorNeutralForeground2);
+}
+
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Increased gap between steps */
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Increased gap between icon and text */
+  padding: 8px 0; /* Increased padding for more height */
+}
+
+.stepIcon {
+  width: 24px; /* Increased from 20px to better match spinner size */
+  height: 24px; /* Increased from 20px to better match spinner size */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepIconError {
+  background-color: var(--colorPaletteRedBackground1);
+  border-radius: 50%;
+  color: var(--colorPaletteRedForeground1);
+}
+
+.stepLabel {
+  flex-grow: 1;
+  font-size: 14px; /* Increased font size for better visibility */
+  line-height: 1.4;
+}
+
+.stepLabelActive {
+  color: var(--colorNeutralForeground1);
+  font-weight: 600;
+}
+
+.stepLabelCompleted {
+  color: var(--colorNeutralForeground2);
+}
+
+.stepLabelPending {
+  color: var(--colorNeutralForeground3);
+}
+
+.stepLabelError {
+  color: var(--colorPaletteRedForeground1);
+}
+
+/* Animation for active steps */
+.stepItem[data-status="active"] {
+  animation: pinkPulse 2s ease-in-out infinite;
+  border-radius: 8px;
+  padding: 8px;
+  margin: -4px;
+}
+
+@keyframes pinkPulse {
+  0%, 100% { 
+    background-color: rgba(255, 182, 193, 0.2);
+    box-shadow: 0 0 15px rgba(255, 20, 147, 0.3);
+  }
+  50% { 
+    background-color: rgba(255, 20, 147, 0.4);
+    box-shadow: 0 0 25px rgba(255, 20, 147, 0.6);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: var(--colorBrandBackground2);
+    border-radius: var(--borderRadiusSmall);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .enhancedProgress {
+    margin: 0 16px; /* Reduced mobile margins to match other cards */
+    max-width: calc(100% - 32px);
+  }
+  
+  .timeInfo {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .progressBarHeader {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .enhancedProgress {
+    background-color: var(--colorNeutralBackground2);
+  }
+  
+  .stepsContainer {
+    background-color: var(--colorNeutralBackground3);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .enhancedProgress {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .stepsContainer {
+    border: 2px solid var(--colorNeutralStroke1);
+  }
+  
+  .stepItem[data-status="active"] {
+    outline: 2px solid var(--colorBrandStroke1);
+    outline-offset: 2px;
+  }
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .stepItem[data-status="active"] {
+    animation: none;
+    background-color: var(--colorBrandBackground2);
+    border-radius: var(--borderRadiusSmall);
+  }
+}

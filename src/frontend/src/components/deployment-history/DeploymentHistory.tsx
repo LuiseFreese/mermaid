@@ -54,6 +54,7 @@ import { ApiService } from '../../services/apiService';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserMenu } from '../../auth/UserMenu';
+import { EnhancedProgress } from '../common';
 
 const useStyles = makeStyles({
   container: {
@@ -153,6 +154,33 @@ interface DeploymentHistoryProps {}
 export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const styles = useStyles();
   const { accounts, inProgress } = useMsal();
+  
+  // Add CSS animation for gradient background
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      @keyframes pinkPulse {
+        0%, 100% { 
+          background-color: rgba(255, 182, 193, 0.2);
+          box-shadow: 0 0 15px rgba(255, 20, 147, 0.3);
+        }
+        50% { 
+          background-color: rgba(255, 20, 147, 0.4);
+          box-shadow: 0 0 25px rgba(255, 20, 147, 0.6);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   const [deployments, setDeployments] = useState<DeploymentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +193,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const [rollbackDeployment, setRollbackDeployment] = useState<DeploymentSummary | null>(null);
   const [rollbackLoading, setRollbackLoading] = useState(false);
   const [rollbackProgress, setRollbackProgress] = useState<string>('');
+  const [rollbackProgressData, setRollbackProgressData] = useState<any>(null);
   const [rollbackCandidate, setRollbackCandidate] = useState<{
     canRollback: boolean;
     reason?: string;
@@ -630,6 +659,11 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         const progressMsg = status.progress.message || 'Processing...';
         setRollbackProgress(progressMsg);
         
+        // Update enhanced progress data if available
+        if (status.progress.progressData) {
+          setRollbackProgressData(status.progress.progressData);
+        }
+        
         // Check if completed
         if (status.status === 'completed') {
           const summary = status.result?.summary || 'Rollback completed successfully';
@@ -682,6 +716,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     });
     setRollbackLoading(false);
     setRollbackProgress('');
+    setRollbackProgressData(null);
   };
 
   const canShowRollbackButton = (deployment: DeploymentSummary) => {
@@ -1669,13 +1704,33 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                     </div>
 
                     {rollbackLoading ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '24px', boxSizing: 'border-box', width: '100%' }}>
-                        <Spinner size="large" />
-                        <MessageBar intent="info" style={{ boxSizing: 'border-box', width: '100%' }}>
-                          <MessageBarBody>
-                            <Text weight="semibold">{rollbackProgress}</Text>
-                          </MessageBarBody>
-                        </MessageBar>
+                      <div style={{ width: '100%' }}>
+                        {rollbackProgressData ? (
+                          <div style={{ width: '100%' }}>
+                            <EnhancedProgress
+                              isActive={true}
+                              currentStep={rollbackProgressData.stepLabel || 'Processing...'}
+                              message={rollbackProgress}
+                              percentage={rollbackProgressData.percentage}
+                              steps={rollbackProgressData.steps || []}
+                              estimatedTimeRemaining={rollbackProgressData.timeEstimate?.estimatedTimeRemaining}
+                              timeElapsed={rollbackProgressData.timeEstimate?.timeElapsed}
+                              showSteps={true}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%', padding: '24px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <Spinner size="large" />
+                              <Text weight="semibold" size={400}>Starting rollback operation...</Text>
+                            </div>
+                            <MessageBar intent="info" style={{ boxSizing: 'border-box', width: '100%' }}>
+                              <MessageBarBody>
+                                <Text weight="semibold">{rollbackProgress}</Text>
+                              </MessageBarBody>
+                            </MessageBar>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>

@@ -12,6 +12,7 @@ export interface DeploymentStepProps {
 export interface DeploymentState {
   isDeploying: boolean;
   deploymentProgress: string;
+  progressData?: ProgressData; // Enhanced progress data structure
   deploymentResult: DeploymentResult | null;
   deploymentError: string;
   deploymentSuccess: boolean;
@@ -36,10 +37,30 @@ export interface ConfigurationSummaryProps {
   className?: string;
 }
 
+// Enhanced progress data structure from backend
+export interface ProgressData {
+  stepId?: string;
+  stepLabel?: string;
+  percentage?: number;
+  timeEstimate?: {
+    estimatedRemainingTime?: number;
+    elapsedTime?: number;
+  };
+  steps?: Array<{
+    id: string;
+    label: string;
+    status: 'pending' | 'active' | 'completed' | 'error';
+    description?: string;
+  }>;
+  operationType?: 'deployment' | 'validation' | 'rollback';
+  message?: string;
+}
+
 // Deployment progress props
 export interface DeploymentProgressProps {
   isDeploying: boolean;
   progress: string;
+  progressData?: ProgressData | string; // Support both structured data and legacy string
   className?: string;
 }
 

@@ -85,7 +85,7 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 - **Real-time Validation**: Final validation before deployment
 - **Deploy**: Select **Deploy to Dataverse** to create your solution with live progress tracking
 
-![Deployment progress](media/step-4-deploying.png)
+![Deployment progress](media/step-4-progress-indicator.png)
 
 And finally 
 
@@ -321,6 +321,30 @@ The application provides **modular rollback** functionality, giving you granular
 4. Select components to remove
 
 ![complete rollback](media/rollback-complete.png)
+
+### Enhanced Progress Tracking
+
+The rollback process includes **real-time progress indicators** with step-by-step visibility:
+
+**Visual Progress Features:**
+- **Step-by-Step Display**: Each rollback component shown as individual progress steps
+- **Active Step Highlighting**: Currently processing step highlighted with pink pulsing animation
+- **Status Badges**: Clear "Preparing", "In Progress", "Completed" indicators for each step
+- **Time Estimation**: Real-time elapsed time and estimated remaining time
+- **Spinner Animations**: Visual feedback for active operations
+
+**Progress Steps Include:**
+1. **Preparation** - Validating rollback requirements
+2. **Relationships** - Removing entity relationships 
+3. **Custom Entities** - Deleting custom tables
+4. **Global Choices** - Removing custom choice sets
+5. **Solution** - Deleting solution container
+6. **Publisher** - Removing publisher
+7. **Cleanup** - Final cleanup operations
+
+This enhanced progress tracking matches the same visual style and functionality as deployment progress, providing consistent user experience throughout the application.
+
+![rollback progress indicator](/rollback-progress-indicator.png)
 
 ### Rollback Options
 

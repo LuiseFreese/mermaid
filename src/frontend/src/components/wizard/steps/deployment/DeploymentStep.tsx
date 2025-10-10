@@ -57,6 +57,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
         <DeploymentProgress
           isDeploying={deploymentState.isDeploying}
           progress={deploymentState.deploymentProgress}
+          progressData={deploymentState.progressData}
           className={styles.deploymentProgress}
         />
 
