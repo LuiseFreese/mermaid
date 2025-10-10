@@ -1,4 +1,4 @@
-﻿# Developer & Architecture Guide
+# Developer & Architecture Guide
 
 This document provides a comprehensive overview of the Mermaid to Dataverse Converter application architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project. Because after all - this is open-source - which is not only free, but I'd love to invite you to join me in this and make a good thing even better!
 
@@ -470,33 +470,65 @@ This deployment history system provides enterprise-grade deployment tracking wit
 
 ### Architecture Overview
 
-```
-file-upload/
-â”œâ”€â”€ FileUploadStep.tsx          # Main orchestrator component
-â”œâ”€â”€ index.ts                    # Public API exports
-â”œâ”€â”€ components/                 # UI Components
-â”‚   â”œâ”€â”€ FileUploadZone.tsx         # File upload
-â”‚   â”œâ”€â”€ MermaidDiagramViewer.tsx   # Diagram rendering
-â”‚   â”œâ”€â”€ CDMDetectionCard.tsx       # CDM entity detection
-â”‚   â”œâ”€â”€ ERDValidationPanel.tsx     # Validation results display
-â”‚   â”œâ”€â”€ AutoFixSuggestions.tsx     # Auto-fix options
-â”‚   â”œâ”€â”€ ERDSummaryAccordion.tsx    # ERD structure summary
-â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
-â”‚   â””â”€â”€ index.ts                   # Component exports
-â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
-â”‚   â”œâ”€â”€ useFileProcessing.ts       # File upload and processing
-â”‚   â”œâ”€â”€ useCDMDetection.ts         # CDM entity detection
-â”‚   â”œâ”€â”€ useERDValidation.ts        # ERD validation logic
-â”‚   â”œâ”€â”€ useAutoFix.ts              # Auto-fix generation
-â”‚   â”œâ”€â”€ useMermaidRenderer.ts      # Diagram rendering
-â”‚   â””â”€â”€ index.ts                   # Hook exports
-â”œâ”€â”€ types/                      # TypeScript Definitions
-â”‚   â”œâ”€â”€ file-upload.types.ts       # Component and data types
-â”‚   â””â”€â”€ validation.types.ts        # Validation-specific types
-â””â”€â”€ utils/                      # Pure Utility Functions
-    â”œâ”€â”€ cdmEntityList.ts           # CDM entity definitions
-    â”œâ”€â”€ erdParser.ts               # ERD parsing logic
-    â””â”€â”€ validationRules.ts         # Validation rules
+```mermaid
+graph TD
+  %% root
+  A[file-upload]
+
+  %% top-level files
+  A --> A1[FileUploadStep.tsx<br/>Main orchestrator]
+  A --> A2[index.ts<br/>Public API]
+
+  %% components
+  subgraph S1[components/ — UI Components]
+    S1a[FileUploadZone.tsx<br/>File upload]
+    S1b[MermaidDiagramViewer.tsx<br/>Diagram rendering]
+    S1c[CDMDetectionCard.tsx<br/>CDM entity detection]
+    S1d[ERDValidationPanel.tsx<br/>Validation results]
+    S1e[AutoFixSuggestions.tsx<br/>Auto-fix options]
+    S1f[ERDSummaryAccordion.tsx<br/>ERD summary]
+    S1g["[Component].module.css"<br/>Scoped styles]
+    S1h[index.ts<br/>Component exports]
+  end
+
+  %% hooks
+  subgraph S2[hooks/ — Custom Business Logic Hooks]
+    H1[useFileProcessing.ts<br/>Upload & processing]
+    H2[useCDMDetection.ts<br/>Detect CDM entities]
+    H3[useERDValidation.ts<br/>ERD validation logic]
+    H4[useAutoFix.ts<br/>Generate fixes]
+    H5[useMermaidRenderer.ts<br/>Render diagrams]
+    H6[index.ts<br/>Hook exports]
+  end
+
+  %% types
+  subgraph S3[types/ — TypeScript Definitions]
+    T1[file-upload.types.ts<br/>Components & data]
+    T2[validation.types.ts<br/>Validation types]
+  end
+
+  %% utils
+  subgraph S4[utils/ — Pure Utility Functions]
+    U1[cdmEntityList.ts<br/>CDM entity defs]
+    U2[erdParser.ts<br/>Parse ERDs]
+    U3[validationRules.ts<br/>Rules]
+  end
+
+  %% wiring
+  A1 --> S1
+  A1 --> S2
+  A1 --> S3
+  A1 --> S4
+
+  S1b --> H5
+  S1d --> H3
+  S1e --> H4
+  S1c --> H2
+  S1a --> H1
+
+  H1 --> U2
+  H3 --> U3
+  H2 --> U1
 ```
 
 ### Design Principles
@@ -1877,5 +1909,6 @@ function generateColumnMetadata(attribute, publisherPrefix) {
   }
 }
 ```
+
 
 
