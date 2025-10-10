@@ -793,30 +793,71 @@ import { FileUploadStep } from './components/wizard/steps/file-upload';
 
 ### Architecture Overview
 
-```
-solution-setup/
-â”œâ”€â”€ SolutionSetupStep.tsx       # Main orchestrator component
-â”œâ”€â”€ index.ts                    # Public API exports
-â”œâ”€â”€ components/                 # UI Components
-â”‚   â”œâ”€â”€ SearchableDropdown.tsx     # Reusable searchable dropdown
-â”‚   â”œâ”€â”€ SolutionConfigSection.tsx  # Solution configuration form
-â”‚   â”œâ”€â”€ PublisherConfigSection.tsx # Publisher configuration form
-â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
-â”‚   â””â”€â”€ index.ts                   # Component exports
-â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
-â”‚   â”œâ”€â”€ useSolutionConfiguration.ts    # Solution state management
-â”‚   â”œâ”€â”€ usePublisherConfiguration.ts   # Publisher state management
-â”‚   â”œâ”€â”€ useSearchableDropdown.ts       # Dropdown search logic
-â”‚   â”œâ”€â”€ useNameGeneration.ts           # Name generation utilities
-â”‚   â”œâ”€â”€ useFormValidation.ts           # Form validation logic
-â”‚   â””â”€â”€ index.ts                       # Hook exports
-â”œâ”€â”€ types/                      # TypeScript Definitions
-â”‚   â”œâ”€â”€ solution-setup.types.ts    # Component and data types
-â”‚   â””â”€â”€ validation.types.ts        # Validation-specific types
-â””â”€â”€ utils/                      # Pure Utility Functions
-    â”œâ”€â”€ validation.ts              # Validation rules and logic
-    â”œâ”€â”€ filtering.ts               # Data filtering utilities
-    â””â”€â”€ nameGeneration.ts          # Name generation functions
+```mermaid
+graph TD
+  %% root
+  A[solution-setup]
+
+  %% top-level
+  A --> A1[SolutionSetupStep.tsx<br/>Main orchestrator]
+  A --> A2[index.ts<br/>Public API]
+
+  %% components
+  subgraph C[components/; UI components]
+    C1[SearchableDropdown.tsx<br/>Searchable dropdown]
+    C2[SolutionConfigSection.tsx<br/>Solution form]
+    C3[PublisherConfigSection.tsx<br/>Publisher form]
+    C4["[Component].module.css"<br/>Scoped styles]
+    C5[index.ts<br/>Component exports]
+  end
+
+  %% hooks
+  subgraph H[hooks/; business logic hooks]
+    H1[useSolutionConfiguration.ts<br/>Solution state]
+    H2[usePublisherConfiguration.ts<br/>Publisher state]
+    H3[useSearchableDropdown.ts<br/>Dropdown search]
+    H4[useNameGeneration.ts<br/>Name generation]
+    H5[useFormValidation.ts<br/>Form validation]
+    H6[index.ts<br/>Hook exports]
+  end
+
+  %% types
+  subgraph T[types/; TypeScript definitions]
+    T1[solution-setup.types.ts<br/>Components & data]
+    T2[validation.types.ts<br/>Validation types]
+  end
+
+  %% utils
+  subgraph U[utils/; pure utilities]
+    U1[validation.ts<br/>Rules & logic]
+    U2[filtering.ts<br/>Filtering helpers]
+    U3[nameGeneration.ts<br/>Name helpers]
+  end
+
+  %% wiring from orchestrator
+  A1 --> C
+  A1 --> H
+  A1 --> T
+  A1 --> U
+
+  %% component to hooks
+  C1 --> H3
+  C2 --> H1
+  C3 --> H2
+
+  %% hooks to utils
+  H3 --> U2
+  H4 --> U3
+  H5 --> U1
+
+  %% hooks to types
+  H1 --> T1
+  H2 --> T1
+  H5 --> T2
+
+  %% components to types
+  C2 --> T1
+  C3 --> T1
 ```
 
 ### Design Principles
@@ -855,29 +896,70 @@ This modular architecture ensures the SolutionSetupStep is **maintainable**, **t
 
 ### Architecture Overview
 
-```
-global-choices/
-â”œâ”€â”€ GlobalChoicesStep.tsx       # Main orchestrator component
-â”œâ”€â”€ index.ts                    # Public API exports
-â”œâ”€â”€ components/                 # UI Components
-â”‚   â”œâ”€â”€ ChoiceSearch.tsx           # Search and filtering interface
-â”‚   â”œâ”€â”€ GlobalChoicesList.tsx      # Choice display and selection
-â”‚   â”œâ”€â”€ CustomChoicesUpload.tsx    # File upload functionality
-â”‚   â”œâ”€â”€ UploadedChoicesPreview.tsx # Preview uploaded choices
-â”‚   â”œâ”€â”€ GlobalChoicesNavigation.tsx # Step navigation controls
-â”‚   â””â”€â”€ index.ts                   # Component exports
-â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
-â”‚   â”œâ”€â”€ useGlobalChoicesData.ts    # Data fetching and state
-â”‚   â”œâ”€â”€ useChoiceSelection.ts      # Selection state management
-â”‚   â”œâ”€â”€ useFileUpload.ts           # File upload and parsing
-â”‚   â”œâ”€â”€ useChoicesValidation.ts    # Validation logic
-â”‚   â””â”€â”€ index.ts                   # Hook exports
-â”œâ”€â”€ types/                      # TypeScript Definitions
-â”‚   â”œâ”€â”€ global-choices.types.ts    # Component and data types
-â”‚   â””â”€â”€ index.ts                   # Type exports
-â””â”€â”€ utils/                      # Pure Utility Functions (pre-existing)
-    â”œâ”€â”€ global-choices.utils.ts    # Choice filtering and parsing
-    â””â”€â”€ index.ts                   # Utility exports
+```mermaid
+graph TD
+  %% root
+  A[global-choices]
+
+  %% top-level
+  A --> A1[GlobalChoicesStep.tsx<br/>Main orchestrator]
+  A --> A2[index.ts<br/>Public API]
+
+  %% components
+  subgraph C[components/; UI components]
+    C1[ChoiceSearch.tsx<br/>Search & filter UI]
+    C2[GlobalChoicesList.tsx<br/>Choice list & selection]
+    C3[CustomChoicesUpload.tsx<br/>File upload]
+    C4[UploadedChoicesPreview.tsx<br/>Uploaded preview]
+    C5[GlobalChoicesNavigation.tsx<br/>Step navigation]
+    C6[index.ts<br/>Component exports]
+  end
+
+  %% hooks
+  subgraph H[hooks/; business logic hooks]
+    H1[useGlobalChoicesData.ts<br/>Data fetching & state]
+    H2[useChoiceSelection.ts<br/>Selection management]
+    H3[useFileUpload.ts<br/>File parsing]
+    H4[useChoicesValidation.ts<br/>Validation logic]
+    H5[index.ts<br/>Hook exports]
+  end
+
+  %% types
+  subgraph T[types/; TypeScript definitions]
+    T1[global-choices.types.ts<br/>Component & data types]
+    T2[index.ts<br/>Type exports]
+  end
+
+  %% utils
+  subgraph U[utils/; pure utilities]
+    U1[global-choices.utils.ts<br/>Filtering & parsing]
+    U2[index.ts<br/>Utility exports]
+  end
+
+  %% connections
+  A1 --> C
+  A1 --> H
+  A1 --> T
+  A1 --> U
+
+  %% component ↔ hook relations
+  C1 --> H2
+  C2 --> H2
+  C3 --> H3
+  C4 --> H3
+  C5 --> H1
+
+  %% hooks ↔ utils relations
+  H1 --> U1
+  H3 --> U1
+  H4 --> U1
+
+  %% hooks ↔ types
+  H1 --> T1
+  H2 --> T1
+  H3 --> T1
+  H4 --> T1
+
 ```
 
 ### Design Principles
@@ -1024,30 +1106,75 @@ This modular architecture ensures the GlobalChoicesStep is **production-ready**,
 
 ### Architecture Overview
 
-```
-deployment/
-â”œâ”€â”€ DeploymentStep.tsx          # Main orchestrator component
-â”œâ”€â”€ index.ts                    # Public API exports
-â”œâ”€â”€ components/                 # UI Components
-â”‚   â”œâ”€â”€ ConfigurationSummary.tsx   # Solution and entity summary
-â”‚   â”œâ”€â”€ DeploymentProgress.tsx     # Real-time progress display with enhanced tracking
-â”‚   â”œâ”€â”€ DeploymentResults.tsx      # Success/error results
-â”‚   â”œâ”€â”€ DeploymentControls.tsx     # Navigation and deploy buttons
-â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
-â”‚   â””â”€â”€ index.ts                   # Component exports
-â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
-â”‚   â”œâ”€â”€ useConfigurationSummary.ts # Data aggregation and filtering
-â”‚   â”œâ”€â”€ useDeploymentStatus.ts     # Deployment state management
-â”‚   â”œâ”€â”€ useDeploymentProgress.ts   # Enhanced progress tracking and updates
-â”‚   â””â”€â”€ index.ts                   # Hook exports
-â”œâ”€â”€ types/                      # TypeScript Definitions
-â”‚   â”œâ”€â”€ deployment.types.ts        # Component and data types
-â”‚   â””â”€â”€ index.ts                   # Type exports
-â””â”€â”€ utils/                      # Pure Utility Functions
-    â”œâ”€â”€ dataTransformation.ts      # Wizard data to deployment mapping
-    â”œâ”€â”€ validation.ts              # Deployment data validation
-    â”œâ”€â”€ progressSteps.ts           # Progress step definitions and tracking
-    â””â”€â”€ index.ts                   # Utility exports
+```mermaid
+graph TD
+  %% root
+  A[deployment]
+
+  %% top-level
+  A --> A1[DeploymentStep.tsx<br/>Main orchestrator]
+  A --> A2[index.ts<br/>Public API]
+
+  %% components
+  subgraph C[components/; UI components]
+    C1[ConfigurationSummary.tsx<br/>Solution & entity summary]
+    C2[DeploymentProgress.tsx<br/>Real-time progress tracking]
+    C3[DeploymentResults.tsx<br/>Success & error results]
+    C4[DeploymentControls.tsx<br/>Deploy controls & navigation]
+    C5["[Component].module.css"<br/>Scoped styles]
+    C6[index.ts<br/>Component exports]
+  end
+
+  %% hooks
+  subgraph H[hooks/; business logic hooks]
+    H1[useConfigurationSummary.ts<br/>Data aggregation & filtering]
+    H2[useDeploymentStatus.ts<br/>Deployment state management]
+    H3[useDeploymentProgress.ts<br/>Progress tracking & updates]
+    H4[index.ts<br/>Hook exports]
+  end
+
+  %% types
+  subgraph T[types/; TypeScript definitions]
+    T1[deployment.types.ts<br/>Component & data types]
+    T2[index.ts<br/>Type exports]
+  end
+
+  %% utils
+  subgraph U[utils/; pure utilities]
+    U1[dataTransformation.ts<br/>Wizard→deployment mapping]
+    U2[validation.ts<br/>Data validation]
+    U3[progressSteps.ts<br/>Progress step tracking]
+    U4[index.ts<br/>Utility exports]
+  end
+
+  %% wiring
+  A1 --> C
+  A1 --> H
+  A1 --> T
+  A1 --> U
+
+  %% component-to-hook relations
+  C1 --> H1
+  C2 --> H3
+  C3 --> H2
+  C4 --> H2
+
+  %% hook-to-utils relations
+  H1 --> U1
+  H2 --> U2
+  H3 --> U3
+
+  %% hooks-to-types relations
+  H1 --> T1
+  H2 --> T1
+  H3 --> T1
+
+  %% components-to-types
+  C1 --> T1
+  C2 --> T1
+  C3 --> T1
+  C4 --> T1
+
 ```
 
 ### Design Principles
@@ -1178,18 +1305,37 @@ POST /api/upload
 
 **Rollback Architecture**:
 
-```
-src/backend/services/
-├── rollback-service.js         # Main rollback orchestration with ProgressTracker integration
- rollback-status-tracker.js  # Real-time status tracking for rollback operations
- controllers/
-     rollback-controller.js  # HTTP endpoints for rollback operations and status
+```mermaid
+graph TD
+  %% root-level
+  A[src]
 
-src/frontend/src/components/
- deployment-history/
-    DeploymentHistory.tsx   # Rollback initiation and progress display
- common/
-     EnhancedProgress.tsx    # Shared progress component for rollback and deployment
+  %% backend
+  subgraph B[backend/services/]
+    B1[rollback-service.js<br/>Rollback orchestration<br/>+ ProgressTracker integration]
+    B2[rollback-status-tracker.js<br/>Real-time rollback status tracking]
+    subgraph BC[controllers/]
+      BC1[rollback-controller.js<br/>HTTP endpoints for rollback & status]
+    end
+  end
+
+  %% frontend
+  subgraph F[frontend/src/components/]
+    subgraph F1[deployment-history/]
+      F1a[DeploymentHistory.tsx<br/>Rollback initiation & progress display]
+    end
+    subgraph F2[common/]
+      F2a[EnhancedProgress.tsx<br/>Shared progress component]
+    end
+  end
+
+  %% relationships
+  F1a -->|"calls API"| BC1
+  BC1 -->|"uses"| B1
+  B1 -->|"updates"| B2
+  F1a -->|"renders"| F2a
+  F2a -->|"visualizes status from"| B2
+
 ```
 
 **Rollback Process Flow**:
