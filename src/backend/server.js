@@ -31,6 +31,7 @@ const ValidationController = require('./controllers/validation-controller');
 const DeploymentController = require('./controllers/deployment-controller');
 const { AdminController } = require('./controllers/admin-controller');
 const RollbackController = require('./controllers/rollback-controller');
+const { ImportController } = require('./controllers/import-controller');
 
 // Services
 const { ValidationService } = require('./services/validation-service');
@@ -40,6 +41,7 @@ const { PublisherService } = require('./services/publisher-service');
 const { GlobalChoicesService } = require('./services/global-choices-service');
 const { SolutionService } = require('./services/solution-service');
 const { RollbackService } = require('./services/rollback-service');
+const { DataverseExtractorService } = require('./services/dataverse-extractor-service');
 
 // Repositories
 const { DataverseRepository } = require('./repositories/dataverse-repository');
@@ -147,6 +149,12 @@ async function initializeComponents() {
       logger: console
     });
 
+    const dataverseExtractorService = new DataverseExtractorService({
+      dataverseRepository: dataverseRepo,
+      configurationRepository: configRepo,
+      logger: console
+    });
+
     // Initialize middleware
     const requestLogger = new RequestLoggerMiddleware({
       logger: console,
@@ -192,6 +200,11 @@ async function initializeComponents() {
 
     const rollbackController = new RollbackController(rollbackService);
 
+    const importController = new ImportController({
+      dataverseExtractorService,
+      validationService
+    });
+
     appComponents = {
       // Repositories
       configRepo,
@@ -201,6 +214,7 @@ async function initializeComponents() {
       validationService,
       deploymentService,
       rollbackService,
+      dataverseExtractorService,
       globalChoicesService,
       publisherService,
       solutionService,
@@ -217,6 +231,7 @@ async function initializeComponents() {
       validationController,
       deploymentController,
       rollbackController,
+      importController,
       adminController
     };
 
@@ -528,6 +543,39 @@ async function routeRequest(pathname, req, res, components) {
 
 async function handleApiRoutes(pathname, req, res, components) {
   const route = pathname.replace('/api/', '');
+
+  // Import routes
+  if (route.startsWith('import/')) {
+    const importRoute = route.replace('import/', '');
+    
+    if (importRoute === 'sources') {
+      if (req.method === 'GET') {
+        return components.importController.getImportSources(req, res);
+      }
+    }
+    
+    if (importRoute.startsWith('dataverse-solution')) {
+      const subRoute = importRoute.replace('dataverse-solution', '').replace(/^\//, '');
+      
+      switch (subRoute) {
+        case '':
+          if (req.method === 'POST') {
+            return components.importController.importDataverseSolution(req, res);
+          }
+          break;
+        case 'preview':
+          if (req.method === 'GET') {
+            return components.importController.previewDataverseSolution(req, res);
+          }
+          break;
+        case 'test-connection':
+          if (req.method === 'POST') {
+            return components.importController.testDataverseConnection(req, res);
+          }
+          break;
+      }
+    }
+  }
 
   // Validation routes
   if (route.startsWith('validation/')) {
