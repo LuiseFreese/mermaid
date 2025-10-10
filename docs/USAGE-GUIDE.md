@@ -344,7 +344,7 @@ The rollback process includes **real-time progress indicators** with step-by-ste
 
 This enhanced progress tracking matches the same visual style and functionality as deployment progress, providing consistent user experience throughout the application.
 
-![rollback progress indicator](/rollback-progress-indicator.png)
+![rollback progress indicator](media/rollback-progress-indicator.png)
 
 ### Rollback Options
 
