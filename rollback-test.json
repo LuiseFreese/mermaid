@@ -1,0 +1,10 @@
+{
+    "confirm": true,
+    "options": {
+        "relationships": true,
+        "customEntities": false,
+        "customGlobalChoices": false,
+        "solution": false,
+        "publisher": false
+    }
+}

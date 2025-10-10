@@ -338,8 +338,14 @@ class DataverseClient {
       } catch (error) {
         const isRetryable = retryableStatusCodes.includes(error.status);
         const isLastAttempt = attempt === maxRetries;
+        
+        // Check for EntityCustomization conflict error
+        const isEntityCustomizationConflict = error.message && 
+          (error.message.includes('0x80071151') || 
+           error.message.includes('EntityCustomization') ||
+           error.message.includes('solution installation or removal failed'));
 
-        if (!isRetryable || isLastAttempt) {
+        if ((!isRetryable && !isEntityCustomizationConflict) || isLastAttempt) {
           // Not retryable or out of retries, throw the error
           throw error;
         }
@@ -357,7 +363,12 @@ class DataverseClient {
 
         // Handle rate limiting with Retry-After header
         let delayMs = retryDelays[attempt];
-        if (error.status === 429) {
+        
+        // Special handling for EntityCustomization conflicts - use longer delays
+        if (isEntityCustomizationConflict) {
+          delayMs = Math.max(delayMs, 10000 + (attempt * 5000)); // Minimum 10s, increasing by 5s each attempt
+          this._log(`⚠️  EntityCustomization conflict detected. Retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${maxRetries + 1})...`);
+        } else if (error.status === 429) {
           // Check for Retry-After header (in seconds)
           const retryAfter = error.response?.headers?.['retry-after'];
           if (retryAfter) {

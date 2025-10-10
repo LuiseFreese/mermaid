@@ -119,27 +119,23 @@ class RollbackController {
             // Update status to in-progress
             this.statusTracker.updateStatus(rollbackId, 'in-progress');
             
-            // Track progress phases
-            const phases = ['relationships', 'entities', 'globalChoices', 'solution', 'publisher'];
-            let currentPhaseIndex = 0;
-            
             // Progress callback to update tracker
-            // Receives (status, message) where status is the phase name
-            const progressCallback = (status, message) => {
-                console.log(`Rollback ${rollbackId}: ${status} - ${message}`);
+            // Updated to handle new format: (type, message, progressData)
+            const progressCallback = (type, message, progressData) => {
+                console.log(`Rollback ${rollbackId}: ${type} - ${message}`);
                 
-                // Update current phase
-                const phaseIndex = phases.indexOf(status);
-                if (phaseIndex >= 0) {
-                    currentPhaseIndex = phaseIndex + 1;
+                if (type === 'progress' && progressData) {
+                    // Extract progress information from progressData
+                    const percentage = progressData.percentage || 0;
+                    const total = progressData.steps ? progressData.steps.length : 100;
+                    const current = Math.round((percentage / 100) * total);
+                    
+                    // Update progress with enhanced data for the frontend
+                    this.statusTracker.updateProgressWithData(rollbackId, current, total, message, progressData);
+                } else {
+                    // Fallback for any unexpected format
+                    console.log(`Unexpected progress format: ${type}, ${message}`);
                 }
-                
-                // Calculate progress (each phase is a step)
-                const total = phases.length;
-                const current = currentPhaseIndex;
-                
-                // Just pass the message without phase numbers
-                this.statusTracker.updateProgress(rollbackId, current, total, message);
             };
             
             // Execute the rollback with progress tracking

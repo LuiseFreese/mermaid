@@ -27,10 +27,10 @@ export const DeploymentProgress: React.FC<DeploymentProgressProps> = ({
   }
 
   // Parse progress data if available
-  let enhancedProgressProps = {
+  let enhancedProgressProps: any = {
     isActive: true,
     currentStep: 'Processing...',
-    message: progress,
+    message: progress || 'Processing...',
     percentage: undefined,
     steps: [],
     estimatedTimeRemaining: undefined,
@@ -45,14 +45,13 @@ export const DeploymentProgress: React.FC<DeploymentProgressProps> = ({
       stepLabel, 
       percentage, 
       timeEstimate, 
-      steps: backendSteps,
-      operationType 
+      steps: backendSteps
     } = progressData;
 
     enhancedProgressProps = {
       isActive: true,
       currentStep: stepLabel || stepId || 'Processing...',
-      message: progress || progressData.message,
+      message: progress || progressData.message || 'Processing...',
       percentage: percentage,
       steps: backendSteps || [],
       estimatedTimeRemaining: timeEstimate?.estimatedRemainingTime,
@@ -116,7 +115,7 @@ export const DeploymentProgress: React.FC<DeploymentProgressProps> = ({
           TimeEstimator.formatTime(timeEstimate.estimatedRemainingTime) : undefined,
         timeElapsed: TimeEstimator.formatTime(timeEstimate.elapsedTime),
         showSteps: true
-      };
+      } as any;
     }
   }
 

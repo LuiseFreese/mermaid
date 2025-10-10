@@ -247,6 +247,43 @@ class ProgressTracker {
             failed: true
         });
     }
+
+    /**
+     * Check if a step exists
+     */
+    hasStep(stepId) {
+        return this.steps.some(step => step.id === stepId);
+    }
+
+    /**
+     * Check if a step is currently active
+     */
+    isStepActive(stepId) {
+        return this.currentStep === stepId;
+    }
+
+    /**
+     * Check if a step is completed
+     */
+    isStepCompleted(stepId) {
+        return this.completedSteps.includes(stepId);
+    }
+
+    /**
+     * Add a new step dynamically
+     */
+    addStep(stepId, label, estimate = 10) {
+        if (!this.hasStep(stepId)) {
+            this.steps.push({
+                id: stepId,
+                label: label,
+                estimate: estimate,
+                status: 'pending',
+                startTime: null,
+                endTime: null
+            });
+        }
+    }
 }
 
 module.exports = { ProgressTracker };

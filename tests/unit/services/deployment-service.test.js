@@ -319,18 +319,18 @@ describe('DeploymentService', () => {
                 );
 
                 expect(progressCallback).toHaveBeenCalledWith(
-                    'validation',
-                    expect.stringContaining('Validating ERD'),
+                    'progress',
+                    expect.stringContaining('validating ERD'),
                     expect.any(Object)
                 );
                 expect(progressCallback).toHaveBeenCalledWith(
-                    'publisher',
-                    expect.stringContaining('Creating publisher'),
+                    'progress',
+                    expect.stringContaining('publisher'),
                     expect.any(Object)
                 );
                 expect(progressCallback).toHaveBeenCalledWith(
-                    'solution',
-                    expect.stringContaining('Creating solution'),
+                    'progress',
+                    expect.stringContaining('solution'),
                     expect.any(Object)
                 );
             });

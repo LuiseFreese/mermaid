@@ -136,7 +136,7 @@ export const EnhancedProgress: React.FC<EnhancedProgressProps> = ({
             Progress Steps
           </Text>
           <div className={styles.stepsList}>
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div 
                 key={step.id} 
                 className={styles.stepItem}

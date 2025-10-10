@@ -97,6 +97,32 @@ class RollbackStatusTracker {
     }
 
     /**
+     * Update rollback progress with enhanced data
+     * @param {string} rollbackId - Rollback identifier
+     * @param {number} current - Current progress value
+     * @param {number} total - Total progress value
+     * @param {string} message - Progress message
+     * @param {Object} progressData - Enhanced progress data with steps, time estimates, etc.
+     */
+    updateProgressWithData(rollbackId, current, total, message, progressData) {
+        const rollback = this.rollbacks.get(rollbackId);
+        if (!rollback) {
+            console.warn(`⚠️ Rollback tracker: Cannot update progress for unknown rollback ${rollbackId}`);
+            return;
+        }
+
+        rollback.progress = {
+            current,
+            total,
+            percentage: total > 0 ? Math.round((current / total) * 100) : 0,
+            message,
+            progressData // Store the enhanced progress data for the frontend
+        };
+
+        console.log(`📊 Rollback tracker: ${rollbackId} enhanced progress: ${current}/${total} - ${message}`);
+    }
+
+    /**
      * Set rollback result (success)
      * @param {string} rollbackId - Rollback identifier
      * @param {Object} result - Rollback result data

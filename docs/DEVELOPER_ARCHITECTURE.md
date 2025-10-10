@@ -1,4 +1,4 @@
-# Developer & Architecture Guide
+﻿# Developer & Architecture Guide
 
 This document provides a comprehensive overview of the Mermaid to Dataverse Converter application architecture, design decisions, and implementation details for developers who want to understand, maintain, or contribute to the project. Because after all - this is open-source - which is not only free, but I'd love to invite you to join me in this and make a good thing even better!
 
@@ -217,29 +217,29 @@ npm run build  # Creates optimized dist/ folder
 **Layer Structure**:
 ```
 src/backend/
-├── controllers/          # HTTP request/response handling
-│   ├── base-controller.js
-│   ├── wizard-controller.js
-│   ├── validation-controller.js
-│   ├── deployment-controller.js
-│   └── admin-controller.js
-├── services/            # Business logic layer
-│   ├── base-service.js
-│   ├── validation-service.js
-│   ├── deployment-service.js
-│   ├── publisher-service.js
-│   ├── global-choices-service.js
-│   └── solution-service.js
-├── repositories/        # Data access layer
-│   ├── base-repository.js
-│   ├── dataverse-repository.js
-│   └── configuration-repository.js
-├── middleware/          # Cross-cutting concerns
-│   ├── request-logger-middleware.js
-│   ├── error-handler-middleware.js
-│   ├── cors-middleware.js
-│   └── streaming-middleware.js
-└── server.js           # Application bootstrapping and DI container
+â”œâ”€â”€ controllers/          # HTTP request/response handling
+â”‚   â”œâ”€â”€ base-controller.js
+â”‚   â”œâ”€â”€ wizard-controller.js
+â”‚   â”œâ”€â”€ validation-controller.js
+â”‚   â”œâ”€â”€ deployment-controller.js
+â”‚   â””â”€â”€ admin-controller.js
+â”œâ”€â”€ services/            # Business logic layer
+â”‚   â”œâ”€â”€ base-service.js
+â”‚   â”œâ”€â”€ validation-service.js
+â”‚   â”œâ”€â”€ deployment-service.js
+â”‚   â”œâ”€â”€ publisher-service.js
+â”‚   â”œâ”€â”€ global-choices-service.js
+â”‚   â””â”€â”€ solution-service.js
+â”œâ”€â”€ repositories/        # Data access layer
+â”‚   â”œâ”€â”€ base-repository.js
+â”‚   â”œâ”€â”€ dataverse-repository.js
+â”‚   â””â”€â”€ configuration-repository.js
+â”œâ”€â”€ middleware/          # Cross-cutting concerns
+â”‚   â”œâ”€â”€ request-logger-middleware.js
+â”‚   â”œâ”€â”€ error-handler-middleware.js
+â”‚   â”œâ”€â”€ cors-middleware.js
+â”‚   â””â”€â”€ streaming-middleware.js
+â””â”€â”€ server.js           # Application bootstrapping and DI container
 ```
 
 **Key Features**:
@@ -266,7 +266,7 @@ src/backend/
 - **Middleware Pipeline**: Applies logging, CORS, error handling, and streaming
 - **Static File Serving**: Serves React frontend files
 
-**Architecture Pattern**: Uses dependency injection with repositories → services → controllers pattern
+**Architecture Pattern**: Uses dependency injection with repositories â†’ services â†’ controllers pattern
 
 **Main Routes**:
 - `GET /` - Redirects to React wizard
@@ -472,31 +472,31 @@ This deployment history system provides enterprise-grade deployment tracking wit
 
 ```
 file-upload/
-├── FileUploadStep.tsx          # Main orchestrator component
-├── index.ts                    # Public API exports
-├── components/                 # UI Components
-│   ├── FileUploadZone.tsx         # File upload
-│   ├── MermaidDiagramViewer.tsx   # Diagram rendering
-│   ├── CDMDetectionCard.tsx       # CDM entity detection
-│   ├── ERDValidationPanel.tsx     # Validation results display
-│   ├── AutoFixSuggestions.tsx     # Auto-fix options
-│   ├── ERDSummaryAccordion.tsx    # ERD structure summary
-│   ├── [Component].module.css     # Scoped component styles
-│   └── index.ts                   # Component exports
-├── hooks/                      # Custom Business Logic Hooks
-│   ├── useFileProcessing.ts       # File upload and processing
-│   ├── useCDMDetection.ts         # CDM entity detection
-│   ├── useERDValidation.ts        # ERD validation logic
-│   ├── useAutoFix.ts              # Auto-fix generation
-│   ├── useMermaidRenderer.ts      # Diagram rendering
-│   └── index.ts                   # Hook exports
-├── types/                      # TypeScript Definitions
-│   ├── file-upload.types.ts       # Component and data types
-│   └── validation.types.ts        # Validation-specific types
-└── utils/                      # Pure Utility Functions
-    ├── cdmEntityList.ts           # CDM entity definitions
-    ├── erdParser.ts               # ERD parsing logic
-    └── validationRules.ts         # Validation rules
+â”œâ”€â”€ FileUploadStep.tsx          # Main orchestrator component
+â”œâ”€â”€ index.ts                    # Public API exports
+â”œâ”€â”€ components/                 # UI Components
+â”‚   â”œâ”€â”€ FileUploadZone.tsx         # File upload
+â”‚   â”œâ”€â”€ MermaidDiagramViewer.tsx   # Diagram rendering
+â”‚   â”œâ”€â”€ CDMDetectionCard.tsx       # CDM entity detection
+â”‚   â”œâ”€â”€ ERDValidationPanel.tsx     # Validation results display
+â”‚   â”œâ”€â”€ AutoFixSuggestions.tsx     # Auto-fix options
+â”‚   â”œâ”€â”€ ERDSummaryAccordion.tsx    # ERD structure summary
+â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
+â”‚   â””â”€â”€ index.ts                   # Component exports
+â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
+â”‚   â”œâ”€â”€ useFileProcessing.ts       # File upload and processing
+â”‚   â”œâ”€â”€ useCDMDetection.ts         # CDM entity detection
+â”‚   â”œâ”€â”€ useERDValidation.ts        # ERD validation logic
+â”‚   â”œâ”€â”€ useAutoFix.ts              # Auto-fix generation
+â”‚   â”œâ”€â”€ useMermaidRenderer.ts      # Diagram rendering
+â”‚   â””â”€â”€ index.ts                   # Hook exports
+â”œâ”€â”€ types/                      # TypeScript Definitions
+â”‚   â”œâ”€â”€ file-upload.types.ts       # Component and data types
+â”‚   â””â”€â”€ validation.types.ts        # Validation-specific types
+â””â”€â”€ utils/                      # Pure Utility Functions
+    â”œâ”€â”€ cdmEntityList.ts           # CDM entity definitions
+    â”œâ”€â”€ erdParser.ts               # ERD parsing logic
+    â””â”€â”€ validationRules.ts         # Validation rules
 ```
 
 ### Design Principles
@@ -763,28 +763,28 @@ import { FileUploadStep } from './components/wizard/steps/file-upload';
 
 ```
 solution-setup/
-├── SolutionSetupStep.tsx       # Main orchestrator component
-├── index.ts                    # Public API exports
-├── components/                 # UI Components
-│   ├── SearchableDropdown.tsx     # Reusable searchable dropdown
-│   ├── SolutionConfigSection.tsx  # Solution configuration form
-│   ├── PublisherConfigSection.tsx # Publisher configuration form
-│   ├── [Component].module.css     # Scoped component styles
-│   └── index.ts                   # Component exports
-├── hooks/                      # Custom Business Logic Hooks
-│   ├── useSolutionConfiguration.ts    # Solution state management
-│   ├── usePublisherConfiguration.ts   # Publisher state management
-│   ├── useSearchableDropdown.ts       # Dropdown search logic
-│   ├── useNameGeneration.ts           # Name generation utilities
-│   ├── useFormValidation.ts           # Form validation logic
-│   └── index.ts                       # Hook exports
-├── types/                      # TypeScript Definitions
-│   ├── solution-setup.types.ts    # Component and data types
-│   └── validation.types.ts        # Validation-specific types
-└── utils/                      # Pure Utility Functions
-    ├── validation.ts              # Validation rules and logic
-    ├── filtering.ts               # Data filtering utilities
-    └── nameGeneration.ts          # Name generation functions
+â”œâ”€â”€ SolutionSetupStep.tsx       # Main orchestrator component
+â”œâ”€â”€ index.ts                    # Public API exports
+â”œâ”€â”€ components/                 # UI Components
+â”‚   â”œâ”€â”€ SearchableDropdown.tsx     # Reusable searchable dropdown
+â”‚   â”œâ”€â”€ SolutionConfigSection.tsx  # Solution configuration form
+â”‚   â”œâ”€â”€ PublisherConfigSection.tsx # Publisher configuration form
+â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
+â”‚   â””â”€â”€ index.ts                   # Component exports
+â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
+â”‚   â”œâ”€â”€ useSolutionConfiguration.ts    # Solution state management
+â”‚   â”œâ”€â”€ usePublisherConfiguration.ts   # Publisher state management
+â”‚   â”œâ”€â”€ useSearchableDropdown.ts       # Dropdown search logic
+â”‚   â”œâ”€â”€ useNameGeneration.ts           # Name generation utilities
+â”‚   â”œâ”€â”€ useFormValidation.ts           # Form validation logic
+â”‚   â””â”€â”€ index.ts                       # Hook exports
+â”œâ”€â”€ types/                      # TypeScript Definitions
+â”‚   â”œâ”€â”€ solution-setup.types.ts    # Component and data types
+â”‚   â””â”€â”€ validation.types.ts        # Validation-specific types
+â””â”€â”€ utils/                      # Pure Utility Functions
+    â”œâ”€â”€ validation.ts              # Validation rules and logic
+    â”œâ”€â”€ filtering.ts               # Data filtering utilities
+    â””â”€â”€ nameGeneration.ts          # Name generation functions
 ```
 
 ### Design Principles
@@ -825,27 +825,27 @@ This modular architecture ensures the SolutionSetupStep is **maintainable**, **t
 
 ```
 global-choices/
-├── GlobalChoicesStep.tsx       # Main orchestrator component
-├── index.ts                    # Public API exports
-├── components/                 # UI Components
-│   ├── ChoiceSearch.tsx           # Search and filtering interface
-│   ├── GlobalChoicesList.tsx      # Choice display and selection
-│   ├── CustomChoicesUpload.tsx    # File upload functionality
-│   ├── UploadedChoicesPreview.tsx # Preview uploaded choices
-│   ├── GlobalChoicesNavigation.tsx # Step navigation controls
-│   └── index.ts                   # Component exports
-├── hooks/                      # Custom Business Logic Hooks
-│   ├── useGlobalChoicesData.ts    # Data fetching and state
-│   ├── useChoiceSelection.ts      # Selection state management
-│   ├── useFileUpload.ts           # File upload and parsing
-│   ├── useChoicesValidation.ts    # Validation logic
-│   └── index.ts                   # Hook exports
-├── types/                      # TypeScript Definitions
-│   ├── global-choices.types.ts    # Component and data types
-│   └── index.ts                   # Type exports
-└── utils/                      # Pure Utility Functions (pre-existing)
-    ├── global-choices.utils.ts    # Choice filtering and parsing
-    └── index.ts                   # Utility exports
+â”œâ”€â”€ GlobalChoicesStep.tsx       # Main orchestrator component
+â”œâ”€â”€ index.ts                    # Public API exports
+â”œâ”€â”€ components/                 # UI Components
+â”‚   â”œâ”€â”€ ChoiceSearch.tsx           # Search and filtering interface
+â”‚   â”œâ”€â”€ GlobalChoicesList.tsx      # Choice display and selection
+â”‚   â”œâ”€â”€ CustomChoicesUpload.tsx    # File upload functionality
+â”‚   â”œâ”€â”€ UploadedChoicesPreview.tsx # Preview uploaded choices
+â”‚   â”œâ”€â”€ GlobalChoicesNavigation.tsx # Step navigation controls
+â”‚   â””â”€â”€ index.ts                   # Component exports
+â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
+â”‚   â”œâ”€â”€ useGlobalChoicesData.ts    # Data fetching and state
+â”‚   â”œâ”€â”€ useChoiceSelection.ts      # Selection state management
+â”‚   â”œâ”€â”€ useFileUpload.ts           # File upload and parsing
+â”‚   â”œâ”€â”€ useChoicesValidation.ts    # Validation logic
+â”‚   â””â”€â”€ index.ts                   # Hook exports
+â”œâ”€â”€ types/                      # TypeScript Definitions
+â”‚   â”œâ”€â”€ global-choices.types.ts    # Component and data types
+â”‚   â””â”€â”€ index.ts                   # Type exports
+â””â”€â”€ utils/                      # Pure Utility Functions (pre-existing)
+    â”œâ”€â”€ global-choices.utils.ts    # Choice filtering and parsing
+    â””â”€â”€ index.ts                   # Utility exports
 ```
 
 ### Design Principles
@@ -994,27 +994,28 @@ This modular architecture ensures the GlobalChoicesStep is **production-ready**,
 
 ```
 deployment/
-├── DeploymentStep.tsx          # Main orchestrator component
-├── index.ts                    # Public API exports
-├── components/                 # UI Components
-│   ├── ConfigurationSummary.tsx   # Solution and entity summary
-│   ├── DeploymentProgress.tsx     # Real-time progress display
-│   ├── DeploymentResults.tsx      # Success/error results
-│   ├── DeploymentControls.tsx     # Navigation and deploy buttons
-│   ├── [Component].module.css     # Scoped component styles
-│   └── index.ts                   # Component exports
-├── hooks/                      # Custom Business Logic Hooks
-│   ├── useConfigurationSummary.ts # Data aggregation and filtering
-│   ├── useDeploymentStatus.ts     # Deployment state management
-│   ├── useDeploymentProgress.ts   # Progress tracking and updates
-│   └── index.ts                   # Hook exports
-├── types/                      # TypeScript Definitions
-│   ├── deployment.types.ts        # Component and data types
-│   └── index.ts                   # Type exports
-└── utils/                      # Pure Utility Functions
-    ├── dataTransformation.ts      # Wizard data to deployment mapping
-    ├── validation.ts              # Deployment data validation
-    └── index.ts                   # Utility exports
+â”œâ”€â”€ DeploymentStep.tsx          # Main orchestrator component
+â”œâ”€â”€ index.ts                    # Public API exports
+â”œâ”€â”€ components/                 # UI Components
+â”‚   â”œâ”€â”€ ConfigurationSummary.tsx   # Solution and entity summary
+â”‚   â”œâ”€â”€ DeploymentProgress.tsx     # Real-time progress display with enhanced tracking
+â”‚   â”œâ”€â”€ DeploymentResults.tsx      # Success/error results
+â”‚   â”œâ”€â”€ DeploymentControls.tsx     # Navigation and deploy buttons
+â”‚   â”œâ”€â”€ [Component].module.css     # Scoped component styles
+â”‚   â””â”€â”€ index.ts                   # Component exports
+â”œâ”€â”€ hooks/                      # Custom Business Logic Hooks
+â”‚   â”œâ”€â”€ useConfigurationSummary.ts # Data aggregation and filtering
+â”‚   â”œâ”€â”€ useDeploymentStatus.ts     # Deployment state management
+â”‚   â”œâ”€â”€ useDeploymentProgress.ts   # Enhanced progress tracking and updates
+â”‚   â””â”€â”€ index.ts                   # Hook exports
+â”œâ”€â”€ types/                      # TypeScript Definitions
+â”‚   â”œâ”€â”€ deployment.types.ts        # Component and data types
+â”‚   â””â”€â”€ index.ts                   # Type exports
+â””â”€â”€ utils/                      # Pure Utility Functions
+    â”œâ”€â”€ dataTransformation.ts      # Wizard data to deployment mapping
+    â”œâ”€â”€ validation.ts              # Deployment data validation
+    â”œâ”€â”€ progressSteps.ts           # Progress step definitions and tracking
+    â””â”€â”€ index.ts                   # Utility exports
 ```
 
 ### Design Principles
@@ -1132,7 +1133,88 @@ POST /api/upload
 **Request**: JSON with mermaidContent, entities, relationships, solutionName, publisherInfo, and deploymentOptions
 **Response**: Streaming JSON with real-time progress updates and final deployment results
 
-#### ERD Validation Endpoint
+### Rollback System
+
+**Purpose**: Comprehensive rollback functionality that allows users to safely reverse Dataverse deployments with step-by-step progress tracking matching the deployment experience.
+
+**Key Features**:
+- **Enhanced Progress Tracking**: Real-time step-by-step progress indicators with pink pulsing animations
+- **Safe Rollback Operations**: Validates rollback eligibility and preserves data integrity
+- **Comprehensive Component Removal**: Handles entities, relationships, global choices, solutions, and publishers
+- **Retry Logic**: Robust handling of Dataverse API concurrency conflicts
+- **Deployment History Integration**: Seamless rollback initiation from deployment history modal
+
+**Rollback Architecture**:
+
+```
+src/backend/services/
+├── rollback-service.js         # Main rollback orchestration with ProgressTracker integration
+ rollback-status-tracker.js  # Real-time status tracking for rollback operations
+ controllers/
+     rollback-controller.js  # HTTP endpoints for rollback operations and status
+
+src/frontend/src/components/
+ deployment-history/
+    DeploymentHistory.tsx   # Rollback initiation and progress display
+ common/
+     EnhancedProgress.tsx    # Shared progress component for rollback and deployment
+```
+
+**Rollback Process Flow**:
+
+1. **Eligibility Check**: Validates that deployment can be safely rolled back
+2. **Preparation**: Initializes rollback tracker and validates stored rollback data
+3. **Component Removal**: Step-by-step removal in reverse dependency order:
+   - Relationships (dependencies first)
+   - Custom Entities (data preservation)
+   - Global Choices (solution integration)
+   - Solution (if empty)
+   - Publisher (if empty)
+   - Cleanup Operations
+4. **Finalization**: Updates deployment status and completes rollback tracking
+
+**Enhanced Progress Features**:
+- **Step Activation**: Each step shows as "active" with pink pulsing background during execution
+- **Real-time Updates**: Progress percentage, elapsed time, and estimated remaining time
+- **Status Badges**: "In Progress", "Done", and "Failed" badges for each step
+- **Spinner Animations**: Active steps display animated spinners
+- **Time Estimation**: Intelligent time predictions based on operation complexity
+
+**API Endpoints**:
+
+```
+GET /api/rollback/capability/{deploymentId}    # Check rollback eligibility
+POST /api/rollback/{deploymentId}/execute      # Start rollback operation  
+GET /api/rollback/{rollbackId}/status          # Get real-time rollback progress
+```
+
+**Rollback Eligibility Requirements**:
+- Deployment status must be "success" or "partial"
+- Rollback data must be stored and accessible
+- No dependent deployments exist
+- Solution components must be removable
+
+**Error Handling & Retry Logic**:
+- **Dataverse Concurrency**: Specialized retry logic for EntityCustomization conflicts (error 0x80071151)
+- **Progressive Delays**: Increased delays (10s, 15s, 20s, 25s, 30s) for concurrency conflicts
+- **Component Dependencies**: Handles relationship dependencies and component ordering
+- **Graceful Degradation**: Continues rollback even if some components fail to delete
+
+**Frontend Integration**:
+- **Deployment History Modal**: Rollback buttons for eligible deployments
+- **Progress Tracking**: Same EnhancedProgress component used for deployments
+- **Real-time Updates**: Status polling with 3-second intervals
+- **Error Display**: Comprehensive error handling and user feedback
+
+**Security & Safety**:
+- **Confirmation Required**: Explicit user confirmation before rollback execution
+- **Data Validation**: Validates rollback data integrity before proceeding
+- **Audit Trail**: Complete logging of all rollback operations
+- **Status Tracking**: Persistent status tracking for long-running operations
+
+This rollback system provides enterprise-grade deployment reversal capabilities with the same professional user experience as deployment operations, ensuring users can confidently manage their Dataverse solution lifecycle.
+
+### ERD Validation Endpoint
 
 ```
 POST /api/validate-erd
@@ -1158,9 +1240,6 @@ GET /api/global-choices
 ```
 
 **Purpose**: Retrieves available global choice sets with grouping and filtering support.
-    "builtin": 145
-  }
-}
 
 
 ### Solution Status Endpoint (Timeout Handling)
@@ -1234,7 +1313,7 @@ GET /api/solution-status?solution=SolutionName
 
 **Authentication**: Uses Azure Managed Identity for passwordless authentication with proper headers and token management
 
-**Entity Creation Flow**: Validates connection → Creates/validates publisher → Creates/validates a solution → Creates entities with metadata → Adds to a solution → Creates columns and relationships
+**Entity Creation Flow**: Validates connection â†’ Creates/validates publisher â†’ Creates/validates a solution â†’ Creates entities with metadata â†’ Adds to a solution â†’ Creates columns and relationships
 
 **Solution Status Verification**: Retrieves solution metadata and enumerates all components (entities, option sets, etc.) for deployment verification 
            
@@ -1420,7 +1499,7 @@ validateConfiguration() {
 
 **Key Capabilities**:
 - **Automatic Detection**: Analyzes entity names and attributes to identify potential CDM matches
-- **Smart Mapping**: Matches entities like "Contact" → "contact"
+- **Smart Mapping**: Matches entities like "Contact" â†’ "contact"
 - **Attribute Analysis**: Compares entity attributes against CDM entity schemas
 - **User Choice**: Provides an option to use CDM entities or create custom entities
 - **Relationship Preservation**: Maintains relationships between CDM and custom entities
@@ -1432,10 +1511,10 @@ validateConfiguration() {
 4. **User Presentation**: Shows detected matches with confidence levels for user decision
 
 **CDM Entity Examples**:
-- `Customer` → `account` (Customer entity with business attributes)
-- `Contact` → `contact` (Individual person contacts)
-- `Opportunity` → `opportunity` (Sales opportunities)
-- `Lead` → `lead` (Potential customers)
+- `Customer` â†’ `account` (Customer entity with business attributes)
+- `Contact` â†’ `contact` (Individual person contacts)
+- `Opportunity` â†’ `opportunity` (Sales opportunities)
+- `Lead` â†’ `lead` (Potential customers)
 
 **Integration Benefits**:
 - **Standard Fields**: Leverage pre-built CDM attributes and relationships
@@ -1527,9 +1606,9 @@ The Dataverse API has several limitations that require specific workarounds:
 - **Warning categorization** (errors vs. warnings vs. info)
 
 **Auto-Corrections**:
-- Missing primary keys → Automatic ID field generation
-- Invalid naming → Proper naming convention suggestions
-- Relationship inconsistencies → Corrected relationship definitions
+- Missing primary keys â†’ Automatic ID field generation
+- Invalid naming â†’ Proper naming convention suggestions
+- Relationship inconsistencies â†’ Corrected relationship definitions
 
 ### ERD Visual Rendering
 
@@ -1625,7 +1704,7 @@ The parser supports the following relationship scenarios:
 > **Important**: Direct many-to-many syntax like `}o--o{` is not supported. Always use explicit junction tables for many-to-many relationships.
 
 
-## Data Flow (please use CTRL + or CMD +) 🙈
+## Data Flow (please use CTRL + or CMD +) ðŸ™ˆ
 
 ```mermaid
 sequenceDiagram
@@ -1759,7 +1838,7 @@ SOLUTION_NAME=MermaidSolution
 
 ## Field Type Mapping
 
-### Supported Mermaid Types → Dataverse Types
+### Supported Mermaid Types â†’ Dataverse Types
 
 | Mermaid Type | Dataverse Type | Notes |
 |-------------|----------------|-------|
@@ -1798,4 +1877,5 @@ function generateColumnMetadata(attribute, publisherPrefix) {
   }
 }
 ```
+
 

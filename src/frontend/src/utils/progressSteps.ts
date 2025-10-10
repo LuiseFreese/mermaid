@@ -43,13 +43,21 @@ export const ROLLBACK_STEPS: Record<string, Omit<ProgressStep, 'status'>> = {
     id: 'preparation',
     label: 'Preparing Rollback'
   },
+  validation: {
+    id: 'validation',
+    label: 'Validating Rollback Requirements'
+  },
   relationships: {
     id: 'relationships',
     label: 'Removing Relationships'
   },
-  entities: {
-    id: 'entities',
+  customEntities: {
+    id: 'customEntities',
     label: 'Removing Custom Entities'
+  },
+  cdmEntities: {
+    id: 'cdmEntities',
+    label: 'Removing CDM Entities from Solution'
   },
   globalChoices: {
     id: 'globalChoices',
@@ -63,9 +71,9 @@ export const ROLLBACK_STEPS: Record<string, Omit<ProgressStep, 'status'>> = {
     id: 'publisher',
     label: 'Removing Publisher'
   },
-  cleanup: {
-    id: 'cleanup',
-    label: 'Cleanup Operations'
+  finalization: {
+    id: 'finalization',
+    label: 'Finalizing Rollback'
   }
 };
 
@@ -216,7 +224,7 @@ export class TimeEstimator {
   /**
    * Get time estimate based on current progress
    */
-  getTimeEstimate(currentStepId: string, completedSteps: string[]): TimeEstimate {
+  getTimeEstimate(_currentStepId: string, completedSteps: string[]): TimeEstimate {
     const now = Date.now();
     const elapsedTime = Math.round((now - this.startTime) / 1000);
     
