@@ -243,6 +243,12 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
 
     // Complete the import process after CDM choice
     if (importedContent && importedMetadata) {
+      // Add entityChoice to metadata before passing to parent
+      const metadataWithChoice = {
+        ...importedMetadata,
+        entityChoice: choice
+      };
+
       updateWizardData({
         originalErdContent: importedContent,
         correctedErdContent: importedContent,
@@ -252,10 +258,11 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
           solutionName: selectedSolution?.friendlyname,
           metadata: importedMetadata
         },
-        cdmChoice: choice
+        cdmChoice: choice,
+        entityChoice: choice
       });
 
-      onImportCompleted?.(importedContent, importedMetadata);
+      onImportCompleted?.(importedContent, metadataWithChoice);
     }
   }, [cdmDetection.entities, setCDMChoice, onCDMChoiceSelected, importedContent, importedMetadata, updateWizardData, environmentUrl, selectedSolution, onImportCompleted]);
 

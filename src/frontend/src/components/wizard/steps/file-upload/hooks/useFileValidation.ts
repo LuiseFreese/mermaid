@@ -283,16 +283,71 @@ export const useFileValidation = ({
    * Apply all auto-fixable warnings
    */
   const applyAllFixes = useCallback(async () => {
-    const autoFixableWarnings = validationResults?.warnings?.filter((w: ValidationWarning) => w.autoFixable) || [];
+    console.log('🔧 DEBUG: applyAllFixes called', {
+      totalWarnings: validationResults?.warnings?.length,
+      autoFixableCount: validationResults?.warnings?.filter((w: ValidationWarning) => w.autoFixable).length
+    });
+
+    // Get all autoFixable warnings (don't filter by fixedIssues - let backend handle duplicates)
+    const autoFixableWarnings = validationResults?.warnings?.filter((w: ValidationWarning) => 
+      w.autoFixable
+    ) || [];
     
+    console.log('🔧 DEBUG: Processing fixes for warnings:', autoFixableWarnings.map(w => w.id));
+
+    // Clear fixedIssues before applying fixes to allow all fixes to be attempted
+    onFixedIssuesUpdate(new Set());
+
+    // Apply all fixes sequentially WITHOUT re-validating between each fix
+    let currentContent = correctedErdContent;
+    const appliedWarningIds: string[] = [];
+
     for (const warning of autoFixableWarnings) {
       try {
-        await handleBackendWarningFix(warning.id);
+        console.log(`🔧 DEBUG: Applying fix for warning: ${warning.id}`);
+        
+        const fixResult = await ApiService.fixIndividualWarning({
+          mermaidContent: currentContent || '',
+          warningId: warning.id,
+          entityChoice: entityChoice || undefined,
+          options: {}
+        });
+
+        const result = fixResult as any;
+
+        if (result.success && (result.fixedContent || result.data?.fixedContent)) {
+          currentContent = result.fixedContent || result.data?.fixedContent;
+          appliedWarningIds.push(warning.id);
+          console.log(`✅ Fix applied for ${warning.id}`);
+        } else {
+          console.error(`❌ Fix failed for ${warning.id}:`, result.error || result.message);
+        }
       } catch (error) {
         console.error('Failed to fix warning:', warning.id, error);
       }
     }
-  }, [handleBackendWarningFix, validationResults]);
+
+    console.log('🔧 DEBUG: All fixes applied!', { appliedCount: appliedWarningIds.length });
+
+    // Update content with all fixes applied
+    if (currentContent && currentContent !== correctedErdContent) {
+      onContentUpdate(currentContent);
+      onFixedIssuesUpdate(new Set(appliedWarningIds));
+
+      // NOW re-validate once with the final content
+      if (uploadedFile) {
+        console.log('🔍 DEBUG: Re-validating after all fixes applied');
+        const revalidationResult = await validateFile({
+          name: uploadedFile.name,
+          content: currentContent,
+          size: currentContent.length,
+          lastModified: Date.now()
+        }, entityChoice || undefined);
+
+        onValidationComplete(revalidationResult);
+      }
+    }
+  }, [validationResults, correctedErdContent, entityChoice, uploadedFile, validateFile, onContentUpdate, onFixedIssuesUpdate, onValidationComplete]);
 
   // Re-validate when entity choice changes
   useEffect(() => {
