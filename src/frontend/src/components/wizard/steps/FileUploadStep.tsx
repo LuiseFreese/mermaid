@@ -304,7 +304,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
           <Accordion multiple collapsible defaultOpenItems={["input-section"]} className={styles.schemaAccordion}>
             <AccordionItem value="input-section">
               <AccordionHeader>
-                <Text className={styles.accordionHeaderText}>Input</Text>
+                <Text weight="regular" className={styles.accordionHeaderText}>Input</Text>
               </AccordionHeader>
               <AccordionPanel>
                 {/* Import Source Selector */}
@@ -333,12 +333,20 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
             <Accordion multiple collapsible defaultOpenItems={["cdm-detection"]} className={styles.schemaAccordion}>
               <AccordionItem value="cdm-detection">
                 <AccordionHeader>
-                  <Text className={styles.accordionHeaderText}>CDM Entity Detection</Text>
+                  <Text weight="regular" className={styles.accordionHeaderText}>CDM Entity Detection</Text>
                 </AccordionHeader>
                 <AccordionPanel>
                   <CDMDetectionCard
-                    detectedEntities={detectedEntities || []}
-                    onChoice={handleCDMChoice}
+                    detectionResult={{
+                      detected: cdmDetected,
+                      entities: detectedEntities || [],
+                      choice: entityChoice
+                    }}
+                    onChoiceSelected={handleCDMChoice}
+                    onChoiceChanged={() => {
+                      // Reset entity choice when user wants to change
+                      updateWizardData({ entityChoice: null });
+                    }}
                   />
                 </AccordionPanel>
               </AccordionItem>

@@ -37,12 +37,13 @@ const AppContent: React.FC = () => {
       <div className={styles.app}>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<MainMenu />} />
+            <Route path="/" element={<Navigate to="/wizard" replace />} />
             <Route path="/wizard/*" element={<WizardShell />} />
             <Route path="/rollback" element={<RollbackPage />} />
             <Route path="/deployment-history" element={<DeploymentHistory />} />
-            {/* Redirect old root to new menu */}
-            <Route path="/home" element={<Navigate to="/" replace />} />
+            {/* Redirect old routes */}
+            <Route path="/home" element={<Navigate to="/wizard" replace />} />
+            <Route path="/menu" element={<MainMenu />} />
           </Routes>
         </ErrorBoundary>
       </div>

@@ -86,7 +86,7 @@ export const ERDDiagramDisplay: React.FC<ERDDiagramDisplayProps> = ({
       <Accordion multiple collapsible defaultOpenItems={["erd-diagram"]} className={styles.schemaAccordion}>
         <AccordionItem value="erd-diagram">
           <AccordionHeader>
-            <Text className={styles.accordionHeaderText}>ERD Diagram</Text>
+            <Text weight="regular" className={styles.accordionHeaderText}>ERD Diagram</Text>
           </AccordionHeader>
           <AccordionPanel>
             <div 
@@ -108,7 +108,7 @@ export const ERDDiagramDisplay: React.FC<ERDDiagramDisplayProps> = ({
       <Accordion multiple collapsible defaultOpenItems={["complete-erd"]} className={styles.schemaAccordion}>
         <AccordionItem value="complete-erd">
           <AccordionHeader>
-            <Text className={styles.accordionHeaderText}>Complete ERD</Text>
+            <Text weight="regular" className={styles.accordionHeaderText}>Complete ERD</Text>
           </AccordionHeader>
           <AccordionPanel>
             <div style={{ position: 'relative' }}>

@@ -43,7 +43,7 @@ export const ValidationResultsDisplay: React.FC<ValidationResultsDisplayProps> =
     <Accordion multiple collapsible defaultOpenItems={["validation-results"]} className={styles.schemaAccordion}>
       <AccordionItem value="validation-results">
         <AccordionHeader>
-          <Text className={styles.accordionHeaderText}>Validation Results</Text>
+          <Text weight="regular" className={styles.accordionHeaderText}>Validation Results</Text>
         </AccordionHeader>
         <AccordionPanel>
           {/* Loading State */}
@@ -130,18 +130,38 @@ export const ValidationResultsDisplay: React.FC<ValidationResultsDisplayProps> =
                       <div style={{ 
                         display: 'flex', 
                         justifyContent: 'space-between', 
-                        alignItems: 'start',
+                        alignItems: 'center',
                         gap: '12px',
-                        flexWrap: 'wrap'
+                        flexWrap: 'wrap',
+                        width: '100%',
+                        overflow: 'hidden'
                       }}>
                         <div style={{ 
                           flex: 1, 
                           minWidth: '0',
+                          maxWidth: '100%',
                           wordWrap: 'break-word', 
-                          overflowWrap: 'break-word'
+                          overflowWrap: 'break-word',
+                          whiteSpace: 'normal'
                         }}>
-                          <strong>Warning: {warning.message}</strong><br />
-                          <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
+                          <strong style={{ 
+                            display: 'block',
+                            wordWrap: 'break-word', 
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                          }}>
+                            Warning: {warning.message}
+                          </strong>
+                          <Text 
+                            size={200} 
+                            style={{ 
+                              color: tokens.colorNeutralForeground2,
+                              display: 'block',
+                              wordWrap: 'break-word', 
+                              overflowWrap: 'break-word',
+                              whiteSpace: 'normal'
+                            }}
+                          >
                             {warning.suggestion || 'This issue can be automatically fixed.'}
                           </Text>
                         </div>
@@ -183,11 +203,34 @@ export const ValidationResultsDisplay: React.FC<ValidationResultsDisplayProps> =
                         display: 'flex', 
                         justifyContent: 'space-between', 
                         alignItems: 'center',
-                        gap: '12px'
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                        width: '100%',
+                        overflow: 'hidden'
                       }}>
-                        <div>
-                          <strong>Multiple fixes available</strong><br />
-                          <Text size={200}>
+                        <div style={{ 
+                          flex: 1, 
+                          minWidth: '0',
+                          maxWidth: '100%',
+                          wordWrap: 'break-word', 
+                          overflowWrap: 'break-word',
+                          whiteSpace: 'normal'
+                        }}>
+                          <strong style={{ 
+                            display: 'block',
+                            wordWrap: 'break-word', 
+                            overflowWrap: 'break-word'
+                          }}>
+                            Multiple fixes available
+                          </strong>
+                          <Text 
+                            size={200}
+                            style={{ 
+                              display: 'block',
+                              wordWrap: 'break-word', 
+                              overflowWrap: 'break-word'
+                            }}
+                          >
                             {fixableWarnings.length} warnings can be automatically fixed
                           </Text>
                         </div>
