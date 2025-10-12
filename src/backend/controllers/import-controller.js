@@ -49,13 +49,13 @@ class ImportController extends BaseController {
             let validationResult = null;
             if (this.validationService && extractionResult.erdContent) {
                 try {
-                    validationResult = await this.validationService.validateERD(extractionResult.erdContent);
+                    validationResult = await this.validationService.validateERD({ mermaidContent: extractionResult.erdContent });
                     this.log('ERD validation completed', { 
                         warningCount: validationResult.warnings?.length || 0,
                         isValid: validationResult.isValid 
                     });
                 } catch (validationError) {
-                    this.error('ERD validation failed', validationError);
+                    this.log('ERD validation failed', { error: validationError.message });
                     // Continue without validation rather than failing the import
                 }
             }
@@ -86,7 +86,7 @@ class ImportController extends BaseController {
             this.sendSuccess(res, response);
 
         } catch (error) {
-            this.error('importDataverseSolution failed', error);
+            this.log('importDataverseSolution failed', { error: error.message });
             
             // Provide specific error messages for common issues
             let errorMessage = 'Failed to import from Dataverse';
@@ -106,7 +106,7 @@ class ImportController extends BaseController {
                 statusCode = 408;
             }
 
-            this.sendError(res, errorMessage, error, statusCode);
+            this.sendError(res, statusCode, errorMessage, { error: error.message });
         }
     }
 
@@ -157,7 +157,7 @@ class ImportController extends BaseController {
             this.sendSuccess(res, previewData);
 
         } catch (error) {
-            this.error('previewDataverseSolution failed', error);
+            this.log('previewDataverseSolution failed', { error: error.message });
             this.sendError(res, 'Failed to preview Dataverse solution', error);
         }
     }
@@ -225,7 +225,7 @@ class ImportController extends BaseController {
             this.sendSuccess(res, response);
 
         } catch (error) {
-            this.error('testDataverseConnection failed', error);
+            this.log('testDataverseConnection failed', { error: error.message });
             this.sendError(res, 'Connection test failed', error);
         }
     }
@@ -278,7 +278,7 @@ class ImportController extends BaseController {
             this.sendSuccess(res, sources);
 
         } catch (error) {
-            this.error('getImportSources failed', error);
+            this.log('getImportSources failed', { error: error.message });
             this.sendError(res, 'Failed to get import sources', error);
         }
     }

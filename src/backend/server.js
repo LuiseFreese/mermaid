@@ -544,6 +544,19 @@ async function routeRequest(pathname, req, res, components) {
 async function handleApiRoutes(pathname, req, res, components) {
   const route = pathname.replace('/api/', '');
 
+  // Configuration routes
+  if (route === 'config/environment') {
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        dataverseUrl: process.env.DATAVERSE_URL || '',
+        tenantId: process.env.TENANT_ID || '',
+        clientId: process.env.CLIENT_ID || ''
+      }));
+      return;
+    }
+  }
+
   // Import routes
   if (route.startsWith('import/')) {
     const importRoute = route.replace('import/', '');

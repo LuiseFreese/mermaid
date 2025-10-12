@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, makeStyles } from '@fluentui/react-components';
 import { WizardShell } from './components/wizard/WizardShell';
 import { DeploymentHistory } from './components/deployment-history';
+import { MainMenu } from './components/MainMenu';
+import { RollbackPage } from './components/RollbackPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider } from './auth/AuthProvider';
@@ -35,10 +37,12 @@ const AppContent: React.FC = () => {
       <div className={styles.app}>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<Navigate to="/wizard" replace />} />
+            <Route path="/" element={<MainMenu />} />
             <Route path="/wizard/*" element={<WizardShell />} />
+            <Route path="/rollback" element={<RollbackPage />} />
             <Route path="/deployment-history" element={<DeploymentHistory />} />
-            {/* Future routes can be added here */}
+            {/* Redirect old root to new menu */}
+            <Route path="/home" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
       </div>

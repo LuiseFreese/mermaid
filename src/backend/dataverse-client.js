@@ -393,6 +393,23 @@ class DataverseClient {
   // Convenience alias
   makeRequest(method, url, body) { return this._req(method, url, body); }
 
+  // HTTP convenience methods
+  async get(url, options = {}) { 
+    return this._req('get', url, null, options); 
+  }
+
+  async post(url, data, options = {}) { 
+    return this._req('post', url, data, options); 
+  }
+
+  async put(url, data, options = {}) { 
+    return this._req('put', url, data, options); 
+  }
+
+  async delete(url, options = {}) { 
+    return this._req('delete', url, null, options); 
+  }
+
   // ------------------------
   // Diagnosis helpers
   // ------------------------

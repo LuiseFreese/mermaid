@@ -17,6 +17,17 @@ class DataverseRepository extends BaseRepository {
         
         // Cache for client instances
         this.clientCache = new Map();
+        
+        // Clear cache on startup to ensure fresh clients with latest methods
+        this.clearClientCache();
+    }
+
+    /**
+     * Clear the client cache
+     */
+    clearClientCache() {
+        console.log('🗑️ DataverseRepository: Clearing client cache');
+        this.clientCache.clear();
     }
 
     /**
@@ -110,6 +121,8 @@ class DataverseRepository extends BaseRepository {
                 type: typeof client,
                 constructor: client?.constructor?.name,
                 hasEnsurePublisher: typeof client?.ensurePublisher,
+                hasGet: typeof client?.get,
+                hasPost: typeof client?.post,
                 methods: Object.getOwnPropertyNames(client).filter(name => typeof client[name] === 'function'),
                 prototypeMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(client)).filter(name => typeof client[name] === 'function')
             });

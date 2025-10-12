@@ -5,6 +5,7 @@ import {
   CardPreview,
   Text,
   Button,
+  Badge,
   tokens,
   MessageBar,
   MessageBarBody,
@@ -14,13 +15,17 @@ import {
   AccordionHeader,
   AccordionPanel,
 } from '@fluentui/react-components';
-import { DocumentRegular, DocumentArrowUpRegular } from '@fluentui/react-icons';
+import { DocumentRegular, DocumentArrowUpRegular, CheckmarkCircleRegular } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext } from '../../../context/WizardContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { ApiService } from '../../../services/apiService';
 import { ValidationWarning } from '../../../../../shared/types';
 import styles from './FileUploadStep.module.css';
+import { ImportSourceSelector, ImportSource } from './file-upload/ImportSourceSelector';
+import { FileUpload } from './file-upload/FileUpload';
+import { DataverseImport } from './file-upload/DataverseImport';
+import { useCDMDetection } from './file-upload/hooks/useCDMDetection';
 
 interface FileUploadStepProps {
   onFileUploaded?: (file: File, content: string) => void;
@@ -33,8 +38,10 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 }) => {
   const { wizardData, updateWizardData } = useWizardContext();
   const { effectiveTheme } = useTheme();
+  const { setCDMChoice } = useCDMDetection();
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [selectedImportSource, setSelectedImportSource] = useState<ImportSource | null>(null);
   const {
     uploadedFile,
     cdmDetected, 
@@ -46,6 +53,58 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     parsedEntities,
     parsedRelationships
   } = wizardData;
+
+  // Define handleImportCompleted early to avoid reference errors
+  const handleImportCompleted = useCallback((content: string, metadata?: any) => {
+    console.log('🔍 DEBUG: Import completed', {
+      contentLength: content.length,
+      contentPreview: content.substring(0, 200),
+      hasMetadata: !!metadata
+    });
+    
+    // Reset state for new import
+    setValidationError(null);
+    setIsValidating(true);
+    
+    try {
+      // Parse and update wizard data
+      updateWizardData({
+        correctedErdContent: content,
+        parsedEntities: metadata?.entities || [],
+        parsedRelationships: metadata?.relationships || [],
+        cdmDetected: metadata?.cdmDetected || false,
+        detectedEntities: metadata?.detectedEntities || []
+      });
+      
+      // Call the original onFileUploaded callback if needed
+      // Note: For Dataverse imports, we don't have a File object
+      if (selectedImportSource === 'dataverse') {
+        // Create a virtual file for compatibility
+        const virtualFile = new File([content], 'dataverse-import.mmd', { type: 'text/plain' });
+        onFileUploaded?.(virtualFile, content);
+      }
+    } catch (error) {
+      console.error('Import processing error:', error);
+      setValidationError(error instanceof Error ? error.message : 'Import processing failed');
+    } finally {
+      setIsValidating(false);
+    }
+  }, [updateWizardData, onFileUploaded, selectedImportSource]);
+
+  // Auto-select 'preloaded' option if we have pre-loaded content
+  useEffect(() => {
+    if (originalErdContent && !selectedImportSource) {
+      setSelectedImportSource('preloaded');
+    }
+  }, [originalErdContent, selectedImportSource]);
+
+  // Process pre-loaded content when 'preloaded' is selected
+  useEffect(() => {
+    if (selectedImportSource === 'preloaded' && originalErdContent && !correctedErdContent) {
+      // Trigger processing of the pre-loaded content
+      handleImportCompleted(originalErdContent);
+    }
+  }, [selectedImportSource, originalErdContent, correctedErdContent, handleImportCompleted]);
 
   const mermaidRef = useRef<HTMLDivElement>(null);
   const revalidationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -792,6 +851,36 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                 </Text>
               </AccordionHeader>
               <AccordionPanel>
+                {/* Import Source Selector */}
+                <ImportSourceSelector
+                  selectedSource={selectedImportSource}
+                  onSourceSelect={setSelectedImportSource}
+                />
+
+                {/* Conditional Import Interface */}
+                {selectedImportSource === 'file' && (
+                  <FileUpload onFileUploaded={handleImportCompleted} />
+                )}
+
+                {selectedImportSource === 'dataverse' && (
+                  <DataverseImport 
+                    onImportCompleted={handleImportCompleted} 
+                    onCDMChoiceSelected={setCDMChoice}
+                  />
+                )}
+
+                {!selectedImportSource && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '48px 24px',
+                    color: tokens.colorNeutralForeground3 
+                  }}>
+                    <Text>Select an import source above to get started</Text>
+                  </div>
+                )}
+
+                {/* Legacy File Upload Section - Hidden when using new interface */}
+                <div style={{ display: 'none' }}>
                 {/* File Upload Section */}
                 <div className={styles.fileUploadSection}>
                   <Text className={styles.fileUploadLabel}>Choose ERD File</Text>
@@ -948,6 +1037,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                   onChange={handleFileInputChange}
                   style={{ display: 'none' }}
                 />
+                </div> {/* End of hidden legacy file upload section */}
               </AccordionPanel>
             </AccordionItem>
           </Accordion>
