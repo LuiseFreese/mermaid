@@ -56,6 +56,7 @@ export const CDMDetectionCard: React.FC<CDMDetectionCardProps> = ({
               <div className={styles.choiceButtons}>
                 <Button 
                   appearance="primary"
+                  size="medium"
                   onClick={() => {
                     console.log('🔧 FRONTEND DEBUG: CDM button clicked - USE CDM', {
                       choice: 'cdm',
@@ -70,6 +71,7 @@ export const CDMDetectionCard: React.FC<CDMDetectionCardProps> = ({
                 </Button>
                 <Button 
                   appearance="secondary"
+                  size="small"
                   onClick={() => {
                     console.log('🔧 FRONTEND DEBUG: CDM button clicked - CREATE CUSTOM', {
                       choice: 'custom',
@@ -87,38 +89,6 @@ export const CDMDetectionCard: React.FC<CDMDetectionCardProps> = ({
               <Text className={styles.choiceHelp}>
                 CDM tables leverage existing Dataverse structure, while custom tables give you full control.
               </Text>
-            </div>
-          )}
-
-          {choice && (
-            <div className={styles.selectedChoice}>
-              {choice === 'cdm' ? (
-                <MessageBar intent="success" className={styles.messageBar}>
-                  <MessageBarBody>
-                    <strong>CDM tables selected successfully!</strong> Using existing Dataverse tables.
-                    <Button 
-                      appearance="transparent" 
-                      onClick={onChoiceChanged}
-                      className={styles.changeButton}
-                    >
-                      Change
-                    </Button>
-                  </MessageBarBody>
-                </MessageBar>
-              ) : (
-                <MessageBar intent="info" className={styles.messageBar}>
-                  <MessageBarBody>
-                    <strong>Creating custom tables for:</strong> {entities.map(e => e.charAt(0).toUpperCase() + e.slice(1).toLowerCase()).join(', ')}
-                    <Button 
-                      appearance="transparent" 
-                      onClick={onChoiceChanged}
-                      className={styles.changeButton}
-                    >
-                      Change
-                    </Button>
-                  </MessageBarBody>
-                </MessageBar>
-              )}
             </div>
           )}
         </div>

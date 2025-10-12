@@ -15,7 +15,7 @@ import {
   AccordionHeader,
   AccordionPanel,
 } from '@fluentui/react-components';
-import { DocumentRegular, DocumentArrowUpRegular, CheckmarkCircleRegular } from '@fluentui/react-icons';
+import { DocumentRegular, DocumentArrowUpRegular, CheckmarkCircleRegular, CopyRegular, EditRegular, CheckmarkRegular as CheckmarkIconRegular, DismissRegular, CloudDatabaseRegular } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext } from '../../../context/WizardContext';
 import { useTheme } from '../../../context/ThemeContext';
@@ -25,6 +25,7 @@ import styles from './FileUploadStep.module.css';
 import { ImportSourceSelector, ImportSource } from './file-upload/ImportSourceSelector';
 import { FileUpload } from './file-upload/FileUpload';
 import { DataverseImport } from './file-upload/DataverseImport';
+import { CDMDetectionCard } from './file-upload/components/CDMDetectionCard';
 import { useCDMDetection } from './file-upload/hooks/useCDMDetection';
 
 interface FileUploadStepProps {
@@ -42,6 +43,9 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [selectedImportSource, setSelectedImportSource] = useState<ImportSource | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [isEditingERD, setIsEditingERD] = useState(false);
+  const [editedERDContent, setEditedERDContent] = useState<string>('');
   const {
     uploadedFile,
     cdmDetected, 
@@ -50,9 +54,41 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     correctedErdContent, 
     originalErdContent,
     fixedIssues,
-    parsedEntities,
-    parsedRelationships
+    parsedEntities = [],
+    parsedRelationships = [],
+    importSource
   } = wizardData;
+
+  // Ensure parsedEntities and parsedRelationships are always arrays
+  const safeEntities = Array.isArray(parsedEntities) ? parsedEntities : [];
+  const safeRelationships = Array.isArray(parsedRelationships) ? parsedRelationships : [];
+
+  // Get theme-aware success colors
+  const getSuccessColor = useCallback(() => {
+    switch (effectiveTheme) {
+      case 'dark':
+        return '#107c10'; // Dark green for dark theme
+      case 'pink':
+        return '#c71585'; // Magenta for pink theme
+      case 'neon':
+        return '#00ff00'; // Neon green for neon theme
+      default:
+        return '#0f7b0f'; // Standard green for light theme
+    }
+  }, [effectiveTheme]);
+
+  const getSuccessBackgroundColor = useCallback(() => {
+    switch (effectiveTheme) {
+      case 'dark':
+        return 'rgba(16, 124, 16, 0.2)'; // Dark green with transparency
+      case 'pink':
+        return 'rgba(199, 21, 133, 0.2)'; // Magenta with transparency
+      case 'neon':
+        return 'rgba(0, 255, 0, 0.15)'; // Neon green with transparency
+      default:
+        return 'rgba(15, 123, 15, 0.15)'; // Green with transparency for light theme
+    }
+  }, [effectiveTheme]);
 
   // Define handleImportCompleted early to avoid reference errors
   const handleImportCompleted = useCallback((content: string, metadata?: any) => {
@@ -67,20 +103,23 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
     setIsValidating(true);
     
     try {
+      // Create a virtual file for Dataverse imports
+      const virtualFile = new File([content], 'dataverse-import.mmd', { type: 'text/plain' });
+      
       // Parse and update wizard data
       updateWizardData({
         correctedErdContent: content,
         parsedEntities: metadata?.entities || [],
         parsedRelationships: metadata?.relationships || [],
         cdmDetected: metadata?.cdmDetected || false,
-        detectedEntities: metadata?.detectedEntities || []
+        detectedEntities: metadata?.detectedEntities || [],
+        uploadedFile: virtualFile, // Set the virtual file so Next button is enabled
+        importSource: selectedImportSource || 'dataverse' // Track the import source
       });
       
       // Call the original onFileUploaded callback if needed
       // Note: For Dataverse imports, we don't have a File object
       if (selectedImportSource === 'dataverse') {
-        // Create a virtual file for compatibility
-        const virtualFile = new File([content], 'dataverse-import.mmd', { type: 'text/plain' });
         onFileUploaded?.(virtualFile, content);
       }
     } catch (error) {
@@ -374,96 +413,73 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       
       // Reset state for new file
       setValidationError(null);
-      setIsValidating(true);
       
       // Reset entity choice and fixes when new file is uploaded
       updateWizardData({ 
         entityChoice: null, 
         fixedIssues: new Set(),
-        uploadedFile: file
+        uploadedFile: file,
+        importSource: 'file' // Track that this is a file upload
       });
       
-      try {
-        // Call backend validation to get corrected ERD and parsed data
-        const validationResult = await ApiService.validateFile({
-          name: file.name,
-          content: content,
-          size: file.size,
-          lastModified: file.lastModified
-        }, wizardData.entityChoice);
-        
-        console.log('🔧 DEBUG: Validation result structure:', {
-          hasEntities: !!validationResult.entities,
-          entitiesCount: validationResult.entities?.length || 0,
-          entitiesPreview: validationResult.entities?.slice(0, 2)?.map((e: any) => e.name) || [],
-          validationResultKeys: Object.keys(validationResult),
-          hasCustomEntities: !!validationResult.customEntities,
-          customEntitiesCount: validationResult.customEntities?.length || 0,
-          hasCdmEntities: !!validationResult.cdmEntities,
-          cdmEntitiesCount: validationResult.cdmEntities?.length || 0
+      // CDM Detection Logic - detect but don't validate yet
+      const cdmEntities = [
+        'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
+        'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
+        'User', 'Team', 'BusinessUnit', 'SystemUser',
+        'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
+        'Campaign', 'MarketingList', 'Competitor'
+      ];
+      
+      const foundCdm = cdmEntities.some(entity => {
+        const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
+        return regex.test(content);
+      });
+      
+      if (foundCdm) {
+        const detected = cdmEntities.filter(entity => {
+          const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
+          return regex.test(content);
         });
-        
-        // Update wizard data with corrected information from backend
-        const entities = validationResult.entities || [];
-        const relationships = validationResult.relationships || [];
-        const correctedERD = validationResult.correctedERD || content;
-        const validationResults = validationResult;
-        
-        console.log('🔧 DEBUG: Extracted data:', {
-          entitiesCount: entities.length,
-          relationshipsCount: relationships.length,
-          entitiesNames: entities.map((e: any) => e.name)
+        updateWizardData({ 
+          cdmDetected: true,
+          detectedEntities: detected 
         });
+        console.log('🔍 DEBUG: CDM entities detected, waiting for user choice:', detected);
+      } else {
+        updateWizardData({ cdmDetected: false });
+        console.log('🔍 DEBUG: No CDM entities detected, will validate immediately');
         
-        updateWizardData({
-          correctedErdContent: correctedERD,
-          parsedEntities: entities,
-          parsedRelationships: relationships,
-          validationResults: validationResults
-        });
-        
-        // CDM Detection Logic - use backend results if available
-        const cdmDetection = validationResult.cdmDetection;
-        if (cdmDetection && cdmDetection.detectedCDM) {
-          const detectedEntities = cdmDetection.detectedCDM.map((match: any) => match.originalEntity?.name).filter(Boolean);
-          updateWizardData({ 
-            cdmDetected: detectedEntities.length > 0,
-            detectedEntities: detectedEntities
-          });
-        } else {
-          // Fallback to client-side CDM detection
-          const cdmEntities = [
-            'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
-            'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
-            'User', 'Team', 'BusinessUnit', 'SystemUser',
-            'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
-            'Campaign', 'MarketingList', 'Competitor'
-          ];
+        // If no CDM detected, validate immediately
+        setIsValidating(true);
+        try {
+          const validationResult = await ApiService.validateFile({
+            name: file.name,
+            content: content,
+            size: file.size,
+            lastModified: file.lastModified
+          }, null);
           
-          const foundCdm = cdmEntities.some(entity => {
-            const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
-            return regex.test(content);
+          const entities = validationResult.entities || [];
+          const relationships = validationResult.relationships || [];
+          const correctedERD = validationResult.correctedERD || content;
+          
+          updateWizardData({
+            correctedErdContent: correctedERD,
+            parsedEntities: entities,
+            parsedRelationships: relationships,
+            validationResults: validationResult
           });
           
-          updateWizardData({ cdmDetected: foundCdm });
-          if (foundCdm) {
-            const detected = cdmEntities.filter(entity => {
-              const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
-              return regex.test(content);
-            });
-            updateWizardData({ detectedEntities: detected });
-          }
+          onFileUploaded?.(file, content);
+        } catch (error) {
+          console.error('Validation error:', error);
+          setValidationError(error instanceof Error ? error.message : 'Validation failed');
+          updateWizardData({ correctedErdContent: content });
+          onFileUploaded?.(file, content);
+        } finally {
+          setIsValidating(false);
         }
-        
-        onFileUploaded?.(file, content);
-      } catch (error) {
-        console.error('Validation error:', error);
-        setValidationError(error instanceof Error ? error.message : 'Validation failed');
-        // Fall back to original content if validation fails
-        updateWizardData({ correctedErdContent: content });
-        onFileUploaded?.(file, content);
-      } finally {
-        setIsValidating(false);
       }
     } else {
       alert('Please select a .mmd file');
@@ -483,45 +499,149 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   }, []);
 
   // Handle CDM choice selection and update entities with isCdm flag
-  const handleCDMChoice = useCallback((choice: 'cdm' | 'custom') => {
+  const handleCDMChoice = useCallback(async (choice: 'cdm' | 'custom') => {
     console.log('🔘 DEBUG: CDM choice selected:', choice);
     
     // Update the entity choice
     updateWizardData({ entityChoice: choice });
     
-    // If CDM is selected, update parsedEntities to mark CDM entities with isCdm: true
-    if (choice === 'cdm' && parsedEntities.length > 0) {
-      console.log('🔘 DEBUG: Updating parsedEntities with CDM flags');
-      console.log('🔘 DEBUG: Current parsedEntities:', parsedEntities);
+    // For file uploads, trigger validation now that we have the entity choice
+    if (importSource === 'file' && uploadedFile && originalErdContent) {
+      console.log('🔘 DEBUG: File upload - triggering validation with entity choice:', choice);
+      setIsValidating(true);
+      setValidationError(null);
       
-      // Get detected CDM entities from wizardData
-      const detectedCDMNames = detectedEntities || [];
-      console.log('🔘 DEBUG: Detected CDM entity names:', detectedCDMNames);
-      
-      // Update parsedEntities to mark CDM entities
-      const updatedEntities = parsedEntities.map(entity => {
-        const isCdmEntity = detectedCDMNames.includes(entity.name);
-        console.log(`🔘 DEBUG: Entity ${entity.name}: isCdm = ${isCdmEntity}`);
-        return {
+      try {
+        // Call backend validation to get corrected ERD and parsed data
+        const validationResult = await ApiService.validateFile({
+          name: uploadedFile.name,
+          content: originalErdContent,
+          size: uploadedFile.size,
+          lastModified: uploadedFile.lastModified
+        }, choice);
+        
+        console.log('� DEBUG: Validation result structure:', {
+          hasEntities: !!validationResult.entities,
+          entitiesCount: validationResult.entities?.length || 0,
+          entitiesPreview: validationResult.entities?.slice(0, 2)?.map((e: any) => e.name) || []
+        });
+        
+        // Update wizard data with corrected information from backend
+        const entities = validationResult.entities || [];
+        const relationships = validationResult.relationships || [];
+        const correctedERD = validationResult.correctedERD || originalErdContent;
+        
+        // Mark entities with CDM flag based on choice
+        const updatedEntities = entities.map((entity: any) => ({
           ...entity,
-          isCdm: isCdmEntity
-        };
-      });
+          isCdm: choice === 'cdm' && detectedEntities?.includes(entity.name)
+        }));
+        
+        updateWizardData({
+          correctedErdContent: correctedERD,
+          parsedEntities: updatedEntities,
+          parsedRelationships: relationships,
+          validationResults: validationResult
+        });
+        
+        console.log('✅ DEBUG: Validation completed after CDM choice');
+      } catch (error) {
+        console.error('Validation error:', error);
+        setValidationError(error instanceof Error ? error.message : 'Validation failed');
+        // Fall back to original content if validation fails
+        updateWizardData({ correctedErdContent: originalErdContent });
+      } finally {
+        setIsValidating(false);
+      }
+    } else if (safeEntities.length > 0) {
+      // For Dataverse imports or already validated files, just update entity flags
+      console.log('🔘 DEBUG: Updating existing parsedEntities with CDM flags');
+      
+      const detectedCDMNames = detectedEntities || [];
+      const updatedEntities = safeEntities.map(entity => ({
+        ...entity,
+        isCdm: choice === 'cdm' && detectedCDMNames.includes(entity.name)
+      }));
       
       console.log('🔘 DEBUG: Updated parsedEntities:', updatedEntities);
       updateWizardData({ parsedEntities: updatedEntities });
-    } else if (choice === 'custom' && parsedEntities.length > 0) {
-      // If custom is selected, ensure all entities are marked as non-CDM
-      console.log('🔘 DEBUG: Marking all entities as custom (non-CDM)');
-      const updatedEntities = parsedEntities.map(entity => ({
-        ...entity,
-        isCdm: false
-      }));
-      
-      console.log('🔘 DEBUG: Updated parsedEntities (all custom):', updatedEntities);
-      updateWizardData({ parsedEntities: updatedEntities });
     }
-  }, [parsedEntities, detectedEntities, updateWizardData]);
+  }, [safeEntities, detectedEntities, updateWizardData, importSource, uploadedFile, originalErdContent]);
+
+  // Copy/Edit handlers for Complete ERD
+  const handleCopyERD = useCallback(async () => {
+    const contentToCopy = isEditingERD ? editedERDContent : correctedErdContent;
+    if (!contentToCopy) return;
+    
+    try {
+      await navigator.clipboard.writeText(contentToCopy);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy ERD:', error);
+    }
+  }, [correctedErdContent, isEditingERD, editedERDContent]);
+
+  const handleEditERD = useCallback(() => {
+    setIsEditingERD(true);
+    setEditedERDContent(correctedErdContent || '');
+  }, [correctedErdContent]);
+
+  const handleSaveERD = useCallback(async () => {
+    setIsEditingERD(false);
+    setIsValidating(true);
+    setValidationError(null);
+    
+    try {
+      // For Dataverse imports, skip validation and just update the content
+      if (importSource === 'dataverse') {
+        updateWizardData({ correctedErdContent: editedERDContent });
+        console.log('🔍 DEBUG: Dataverse import - skipping validation, just updating content');
+        return;
+      }
+      
+      // For file uploads, re-validate the edited content
+      console.log('🔍 DEBUG: Re-validating edited ERD content');
+      const validationResult = await ApiService.validateFile({
+        name: uploadedFile?.name || 'edited-diagram.mmd',
+        content: editedERDContent,
+        size: editedERDContent.length,
+        lastModified: Date.now()
+      }, wizardData.entityChoice);
+      
+      console.log('🔧 DEBUG: Validation result after edit:', {
+        hasEntities: !!validationResult.entities,
+        entitiesCount: validationResult.entities?.length || 0,
+        hasCorrectedERD: !!validationResult.correctedERD
+      });
+      
+      // Update wizard data with validation results
+      const entities = validationResult.entities || [];
+      const relationships = validationResult.relationships || [];
+      const correctedERD = validationResult.correctedERD || editedERDContent;
+      
+      updateWizardData({
+        correctedErdContent: correctedERD,
+        parsedEntities: entities,
+        parsedRelationships: relationships,
+        validationResults: validationResult
+      });
+      
+      console.log('✅ DEBUG: Content saved and re-validated successfully');
+    } catch (error) {
+      console.error('🚨 ERROR: Validation failed after edit:', error);
+      setValidationError(error instanceof Error ? error.message : 'Validation failed');
+      // Still update with the edited content even if validation fails
+      updateWizardData({ correctedErdContent: editedERDContent });
+    } finally {
+      setIsValidating(false);
+    }
+  }, [editedERDContent, updateWizardData, importSource, uploadedFile, wizardData.entityChoice]);
+
+  const handleCancelERD = useCallback(() => {
+    setIsEditingERD(false);
+    setEditedERDContent('');
+  }, []);
 
   // Legacy frontend validation (now handled by backend warnings)
   const hasChoiceIssues = false; // Deprecated - handled by backend warnings
@@ -573,17 +693,18 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
   // Re-render diagram when content, theme, or validation state changes
   useEffect(() => {
-    // Only render diagram if:
-    // 1. We have content AND
-    // 2. User has made a choice (entityChoice is set) OR no CDM was detected (no choice needed) AND
-    // 3. There are no validation issues (container is actually rendered)
-    const shouldRender = correctedErdContent && 
-                         (entityChoice || !cdmDetected) && 
-                         !hasChoiceIssues && 
-                         !hasNamingIssues;
+    // For Dataverse imports, always render if we have content (skip validation checks)
+    // For file uploads, only render if validation passes
+    const isDataverseImport = importSource === 'dataverse';
+    const shouldRender = correctedErdContent && (
+      isDataverseImport || // Dataverse imports are pre-validated
+      ((entityChoice || !cdmDetected) && !hasChoiceIssues && !hasNamingIssues) // File uploads need validation
+    );
     
     console.log('🔍 DEBUG: useEffect for diagram rendering', {
       hasCorrectedErdContent: !!correctedErdContent,
+      importSource,
+      isDataverseImport,
       entityChoice,
       cdmDetected,
       hasChoiceIssues,
@@ -600,7 +721,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       
       return () => clearTimeout(timeoutId);
     }
-  }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasAnyIssues, effectiveTheme]);
+  }, [correctedErdContent, renderMermaidDiagram, entityChoice, cdmDetected, hasAnyIssues, effectiveTheme, importSource]);
 
   // Track last revalidated entity choice to prevent infinite loops
   const lastRevalidatedChoiceRef = useRef<string | null>(null);
@@ -855,18 +976,88 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                 <ImportSourceSelector
                   selectedSource={selectedImportSource}
                   onSourceSelect={setSelectedImportSource}
+                  isDataverseImported={selectedImportSource === 'dataverse' && !!uploadedFile}
+                  isFileUploaded={selectedImportSource === 'file' && !!uploadedFile}
                 />
 
                 {/* Conditional Import Interface */}
                 {selectedImportSource === 'file' && (
-                  <FileUpload onFileUploaded={handleImportCompleted} />
-                )}
-
-                {selectedImportSource === 'dataverse' && (
-                  <DataverseImport 
-                    onImportCompleted={handleImportCompleted} 
-                    onCDMChoiceSelected={setCDMChoice}
-                  />
+                  <FileUpload onFileUploaded={(content, metadata) => {
+                    // Just store the content and detect CDM, don't validate yet - wait for CDM choice
+                    const fileName = metadata?.fileName || 'uploaded.mmd';
+                    const virtualFile = new File([content], fileName, { type: 'text/plain' });
+                    
+                    console.log('🔍 DEBUG: File uploaded via FileUpload component', {
+                      fileName,
+                      contentLength: content.length
+                    });
+                    
+                    // Reset state for new file
+                    setValidationError(null);
+                    
+                    updateWizardData({
+                      uploadedFile: virtualFile,
+                      originalErdContent: content,
+                      importSource: 'file',
+                      entityChoice: null,
+                      fixedIssues: new Set()
+                    });
+                    
+                    // CDM Detection Logic - detect but don't validate yet
+                    const cdmEntities = [
+                      'Account', 'Contact', 'Lead', 'Opportunity', 'Case', 'Incident',
+                      'Activity', 'Email', 'PhoneCall', 'Task', 'Appointment',
+                      'User', 'Team', 'BusinessUnit', 'SystemUser',
+                      'Product', 'PriceLevel', 'Quote', 'Order', 'Invoice',
+                      'Campaign', 'MarketingList', 'Competitor'
+                    ];
+                    
+                    const foundCdm = cdmEntities.some(entity => {
+                      const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
+                      return regex.test(content);
+                    });
+                    
+                    if (foundCdm) {
+                      const detected = cdmEntities.filter(entity => {
+                        const regex = new RegExp(`\\b${entity}\\s*\\{`, 'i');
+                        return regex.test(content);
+                      });
+                      updateWizardData({ 
+                        cdmDetected: true,
+                        detectedEntities: detected 
+                      });
+                      console.log('🔍 DEBUG: CDM entities detected, showing CDM choice card:', detected);
+                    } else {
+                      updateWizardData({ cdmDetected: false });
+                      console.log('🔍 DEBUG: No CDM entities detected, will validate immediately');
+                      
+                      // If no CDM detected, validate immediately
+                      setIsValidating(true);
+                      ApiService.validateFile({
+                        name: fileName,
+                        content: content,
+                        size: virtualFile.size,
+                        lastModified: virtualFile.lastModified
+                      }, null).then(validationResult => {
+                        const entities = validationResult.entities || [];
+                        const relationships = validationResult.relationships || [];
+                        const correctedERD = validationResult.correctedERD || content;
+                        
+                        updateWizardData({
+                          correctedErdContent: correctedERD,
+                          parsedEntities: entities,
+                          parsedRelationships: relationships,
+                          validationResults: validationResult
+                        });
+                      }).catch(error => {
+                        console.error('Validation error:', error);
+                        setValidationError(error instanceof Error ? error.message : 'Validation failed');
+                        updateWizardData({ correctedErdContent: content });
+                      }).finally(() => {
+                        setIsValidating(false);
+                      });
+                    }
+                  }} />
                 )}
 
                 {!selectedImportSource && (
@@ -1041,6 +1232,52 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
               </AccordionPanel>
             </AccordionItem>
           </Accordion>
+
+          {/* Import from Dataverse Solution - shown when dataverse is selected */}
+          {selectedImportSource === 'dataverse' && (
+            <Accordion multiple collapsible defaultOpenItems={["dataverse-import"]} className={styles.schemaAccordion}>
+              <AccordionItem value="dataverse-import">
+                <AccordionHeader>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Text className={styles.accordionHeaderText}>
+                      Import from Dataverse Solution
+                    </Text>
+                    <Badge appearance="filled" color="brand" size="small">BETA</Badge>
+                  </div>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <DataverseImport 
+                    onImportCompleted={handleImportCompleted} 
+                    onCDMChoiceSelected={handleCDMChoice}
+                  />
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          )}
+
+          {/* CDM Detection - shown when file is uploaded and CDM entities detected */}
+          {selectedImportSource === 'file' && uploadedFile && cdmDetected && (
+            <Accordion multiple collapsible defaultOpenItems={["cdm-detection"]} className={styles.schemaAccordion}>
+              <AccordionItem value="cdm-detection">
+                <AccordionHeader>
+                  <Text className={styles.accordionHeaderText}>
+                    CDM Tables Detected
+                  </Text>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <CDMDetectionCard
+                    detectionResult={{
+                      detected: cdmDetected,
+                      entities: detectedEntities || [],
+                      choice: entityChoice
+                    }}
+                    onChoiceSelected={handleCDMChoice}
+                    onChoiceChanged={() => updateWizardData({ entityChoice: null })}
+                  />
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          )}
 
           {/* Only show remaining sections after CDM choice is made or no CDM detected */}
           {uploadedFile && (entityChoice || !cdmDetected) && (
@@ -1653,48 +1890,18 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                         </AccordionItem>
                       </Accordion>
 
-                      {/* Show Complete ERD, ERD Diagram and Parsed Schema Overview when file is processed */}
+                      {/* Show ERD Diagram and Complete ERD when file is processed */}
                       {(() => {
                         console.log('🔍 DEBUG: Parsed Schema Display Condition Check:', {
-                          parsedEntitiesLength: parsedEntities.length,
+                          parsedEntitiesLength: safeEntities.length,
                           hasAnyIssues,
-                          shouldShow: parsedEntities.length > 0 || !hasAnyIssues,
-                          parsedEntities: parsedEntities,
+                          shouldShow: safeEntities.length > 0 || !hasAnyIssues,
+                          parsedEntities: safeEntities,
                           validationError
                         });
-                        return (parsedEntities.length > 0 || !hasAnyIssues);
+                        return (safeEntities.length > 0 || !hasAnyIssues);
                       })() && (
                         <>
-                          {/* Complete ERD Display */}
-                          <Accordion multiple collapsible defaultOpenItems={["complete-erd"]} className={styles.schemaAccordion}>
-                            <AccordionItem value="complete-erd">
-                              <AccordionHeader>
-                                <Text className={styles.accordionHeaderText}>
-                                  Complete ERD
-                                </Text>
-                              </AccordionHeader>
-                              <AccordionPanel>
-                                <div className={styles.erdCodeBlock}>
-                                  <pre className={styles.erdCodeText}>
-                                    {(() => {
-                                      if (!correctedErdContent) return 'No ERD content available';
-                                      
-                                      // Convert escaped newlines to actual newlines
-                                      // This handles JSON-escaped content from the backend
-                                      let formattedContent = correctedErdContent;
-                                      
-                                      // Handle escaped newlines from JSON transmission
-                                      if (typeof formattedContent === 'string' && formattedContent.includes('\\n')) {
-                                        formattedContent = formattedContent.replace(/\\n/g, '\n');
-                                      }
-                                      
-                                      return formattedContent.trim();
-                                    })()}
-                                  </pre>
-                                </div>
-                              </AccordionPanel>
-                            </AccordionItem>
-                          </Accordion>
                           {/* Mermaid Diagram */}
                           <Accordion multiple collapsible defaultOpenItems={["erd-diagram"]} className={styles.schemaAccordion}>
                             <AccordionItem value="erd-diagram">
@@ -1707,128 +1914,133 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
                                 <div 
                                   ref={mermaidRef} 
                                   className={styles.mermaidDiagram}
-                                />
+                                  style={{ minHeight: '200px' }}
+                                >
+                                  {!correctedErdContent && (
+                                    <Text style={{ color: tokens.colorNeutralForeground3 }}>
+                                      Loading diagram...
+                                    </Text>
+                                  )}
+                                </div>
                               </AccordionPanel>
                             </AccordionItem>
                           </Accordion>
-
-                          {/* Parsed Schema Overview */}
-                          <Accordion multiple collapsible defaultOpenItems={["parsed-schema-overview"]} className={styles.schemaAccordion}>
-                        <AccordionItem value="parsed-schema-overview">
-                          <AccordionHeader>
-                            <Text className={styles.accordionHeaderText}>
-                              Parsed Schema Overview
-                            </Text>
-                          </AccordionHeader>
-                          <AccordionPanel>
-                            <Text className={styles.schemaOverviewDescription}>
-                              Here's what the parser understood from your ERD. Review this to ensure all entities, attributes, and relationships are correctly interpreted:
-                            </Text>
-
-                            <Accordion multiple collapsible defaultOpenItems={["cdm-integration", "custom-tables", "relationships"]} className={styles.schemaAccordion}>
-                        {/* CDM Integration Section */}
-                        {parsedEntities.filter(e => e.isCdm).length > 0 && (
-                          <AccordionItem value="cdm-integration">
-                            <AccordionHeader>
-                              <Text className={styles.accordionHeaderText}>
-                                CDM Integration ({parsedEntities.filter(e => e.isCdm).length} entities)
-                              </Text>
-                            </AccordionHeader>
-                            <AccordionPanel>
-                              <div className={styles.accordionContent}>
-                                {parsedEntities.filter(e => e.isCdm).map(entity => (
-                                  <div key={entity.name} className={styles.entityCard}>
-                                    <div className={styles.entityHeader}>
-                                      <Text className={styles.entityName}>{entity.name}</Text>
-                                      <div className={styles.entityBadge}>
-                                        <span className={styles.cdmBadge}>CDM</span>
-                                        <span className={styles.attributeCount}>(0+ standard CDM attributes)</span>
-                                      </div>
-                                    </div>
-                                    <div className={styles.entityDescription}>
-                                      <Text className={styles.cdmDescription}>Standard {entity.name} entity with built-in attributes and relationships</Text>
-                                    </div>
-                                   
+                          {/* Complete ERD Display */}
+                          <Accordion multiple collapsible defaultOpenItems={["complete-erd"]} className={styles.schemaAccordion}>
+                            <AccordionItem value="complete-erd">
+                              <AccordionHeader>
+                                <Text className={styles.accordionHeaderText}>
+                                  Complete ERD
+                                </Text>
+                              </AccordionHeader>
+                              <AccordionPanel>
+                                <div style={{ position: 'relative' }}>
+                                  <div style={{ 
+                                    position: 'absolute', 
+                                    top: '12px', 
+                                    right: '12px', 
+                                    display: 'flex', 
+                                    gap: '8px',
+                                    zIndex: 1
+                                  }}>
+                                    {!isEditingERD ? (
+                                      <>
+                                        <Button
+                                          appearance="subtle"
+                                          icon={<CopyRegular />}
+                                          onClick={handleCopyERD}
+                                          title="Copy code"
+                                          size="small"
+                                          style={{ 
+                                            backgroundColor: copySuccess ? getSuccessBackgroundColor() : tokens.colorNeutralBackground1,
+                                            color: copySuccess ? getSuccessColor() : undefined
+                                          }}
+                                        >
+                                          {copySuccess ? 'Copied!' : ''}
+                                        </Button>
+                                        <Button
+                                          appearance="subtle"
+                                          icon={<EditRegular />}
+                                          onClick={handleEditERD}
+                                          title="Edit code"
+                                          size="small"
+                                          style={{ backgroundColor: tokens.colorNeutralBackground1 }}
+                                        />
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          appearance="subtle"
+                                          icon={<CheckmarkIconRegular />}
+                                          onClick={handleSaveERD}
+                                          title="Save changes"
+                                          size="small"
+                                          style={{ 
+                                            backgroundColor: getSuccessBackgroundColor(),
+                                            color: getSuccessColor()
+                                          }}
+                                        >
+                                          Save
+                                        </Button>
+                                        <Button
+                                          appearance="subtle"
+                                          icon={<DismissRegular />}
+                                          onClick={handleCancelERD}
+                                          title="Cancel edit"
+                                          size="small"
+                                          style={{ backgroundColor: tokens.colorNeutralBackground1 }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </>
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            </AccordionPanel>
-                          </AccordionItem>
-                        )}
-
-                        {/* Custom Tables Section */}
-                        {parsedEntities.filter(e => !e.isCdm).length > 0 && (
-                          <AccordionItem value="custom-tables">
-                            <AccordionHeader>
-                              <Text className={styles.accordionHeaderText}>
-                                Custom Tables ({parsedEntities.filter(e => !e.isCdm).length} entities)
-                              </Text>
-                            </AccordionHeader>
-                            <AccordionPanel>
-                              <div className={styles.accordionContent}>
-                                {parsedEntities.filter(e => !e.isCdm).map(entity => (
-                                  <div key={entity.name} className={styles.entityCard}>
-                                    <div className={styles.entityHeader}>
-                                      <Text className={styles.entityName}>{entity.name}</Text>
-                                      <div className={styles.entityBadge}>
-                                        <span className={styles.customBadge}>CUSTOM</span>
-                                        <span className={styles.attributeCount}>({entity.attributes?.length || 0} attributes)</span>
-                                      </div>
+                                  {!isEditingERD ? (
+                                    <div className={styles.erdCodeBlock}>
+                                      <pre className={styles.erdCodeText} style={{ paddingTop: '48px' }}>
+                                        {(() => {
+                                          if (!correctedErdContent) return 'No ERD content available';
+                                          
+                                          // Convert escaped newlines to actual newlines
+                                          // This handles JSON-escaped content from the backend
+                                          let formattedContent = correctedErdContent;
+                                          
+                                          // Handle escaped newlines from JSON transmission
+                                          if (typeof formattedContent === 'string' && formattedContent.includes('\\n')) {
+                                            formattedContent = formattedContent.replace(/\\n/g, '\n');
+                                          }
+                                          
+                                          return formattedContent.trim();
+                                        })()}
+                                      </pre>
                                     </div>
-                                    <div className={styles.attributeList}>
-                                      {entity.attributes?.map((attr, index) => (
-                                        <div key={index} className={styles.attribute}>
-                                          {typeof attr === 'object' && attr.constraint ? (
-                                            <span className={styles.attributeLabel}>{attr.constraint}</span>
-                                          ) : (
-                                            <span></span>
-                                          )}
-                                          <span className={styles.attributeName}>
-                                            {typeof attr === 'string' ? attr : attr.name}
-                                          </span>
-                                          <span className={styles.attributeType}>
-                                            {typeof attr === 'string' ? 'string' : attr.type}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </AccordionPanel>
-                          </AccordionItem>
-                        )}
-
-                        {/* Relationships Section */}
-                        {parsedRelationships.length > 0 && (
-                          <AccordionItem value="relationships">
-                            <AccordionHeader>
-                              <Text className={styles.accordionHeaderText}>
-                                Relationships ({parsedRelationships.length} relationships)
-                              </Text>
-                            </AccordionHeader>
-                            <AccordionPanel>
-                              <div className={styles.accordionContent}>
-                                {parsedRelationships.map((rel, index) => (
-                                  <div key={index} className={styles.entityCard}>
-                                    <div className={styles.relationshipContent}>
-                                      <Text className={styles.relationshipTitle}>
-                                        {rel.fromEntity} → {rel.toEntity}
-                                      </Text>
-                                      <Text className={styles.relationshipDetails}>
-                                        {(typeof rel.cardinality === 'object' ? rel.cardinality?.type : rel.cardinality) || 'relationship'} - {rel.displayName || rel.name || 'Unnamed relationship'}
-                                      </Text>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </AccordionPanel>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                          </AccordionPanel>
-                        </AccordionItem>
-                      </Accordion>
+                                  ) : (
+                                    <textarea
+                                      value={editedERDContent}
+                                      onChange={(e) => setEditedERDContent(e.target.value)}
+                                      style={{
+                                        padding: '16px',
+                                        paddingTop: '48px',
+                                        backgroundColor: tokens.colorNeutralBackground2,
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        lineHeight: '1.5',
+                                        margin: 0,
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        width: '100%',
+                                        minHeight: '400px',
+                                        border: `1px solid ${tokens.colorNeutralStroke1}`,
+                                        color: tokens.colorNeutralForeground1,
+                                        fontFamily: 'monospace',
+                                        resize: 'vertical'
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </AccordionPanel>
+                            </AccordionItem>
+                          </Accordion>
                         </>
                       )}
             </>
@@ -1842,11 +2054,28 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
             paddingTop: '16px',
             borderTop: `1px solid ${tokens.colorNeutralStroke2}`
           }}>
+            {/* Debug info */}
+            {(() => {
+              const isDataverseImport = importSource === 'dataverse';
+              const isDisabled = !uploadedFile || !(entityChoice || !cdmDetected) || (!isDataverseImport && safeEntities.length === 0);
+              console.log('🔘 DEBUG: Next button state:', {
+                uploadedFile: !!uploadedFile,
+                entityChoice,
+                cdmDetected,
+                safeEntitiesLength: safeEntities.length,
+                isDataverseImport,
+                condition1: !uploadedFile,
+                condition2: !(entityChoice || !cdmDetected),
+                condition3: !isDataverseImport && safeEntities.length === 0,
+                isDisabled
+              });
+              return null;
+            })()}
             <Button 
               appearance="primary"
               size="large"
               className={styles.nextButton}
-              disabled={!uploadedFile || !(entityChoice || !cdmDetected) || (parsedEntities.length === 0)}
+              disabled={!uploadedFile || !(entityChoice || !cdmDetected) || (importSource !== 'dataverse' && safeEntities.length === 0)}
               onClick={onNext}
             >
               Next: Solution & Publisher

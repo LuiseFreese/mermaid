@@ -10,8 +10,7 @@ import {
 } from '@fluentui/react-components';
 import { 
   DocumentRegular, 
-  CloudDatabaseRegular,
-  ArrowRightRegular
+  CloudDatabaseRegular
 } from '@fluentui/react-icons';
 
 export type ImportSource = 'file' | 'dataverse';
@@ -19,11 +18,15 @@ export type ImportSource = 'file' | 'dataverse';
 interface ImportSourceSelectorProps {
   selectedSource: ImportSource | null;
   onSourceSelect: (source: ImportSource) => void;
+  isDataverseImported?: boolean;
+  isFileUploaded?: boolean;
 }
 
 export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
   selectedSource,
-  onSourceSelect
+  onSourceSelect,
+  isDataverseImported = false,
+  isFileUploaded = false
 }) => {
   return (
     <div style={{ marginBottom: '24px' }}>
@@ -37,11 +40,13 @@ export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
         <Card 
           appearance={selectedSource === 'file' ? 'filled' : 'outline'}
           style={{ 
-            cursor: 'pointer',
+            cursor: isDataverseImported ? 'not-allowed' : 'pointer',
             border: selectedSource === 'file' ? `2px solid ${tokens.colorBrandBackground}` : undefined,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            opacity: isDataverseImported ? 0.5 : 1,
+            pointerEvents: isDataverseImported ? 'none' : 'auto'
           }}
-          onClick={() => onSourceSelect('file')}
+          onClick={() => !isDataverseImported && onSourceSelect('file')}
         >
           <CardHeader
             header={
@@ -57,25 +62,6 @@ export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
               <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
                 Upload an existing Mermaid ERD file to validate and convert to Dataverse
               </Text>
-              
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                <Badge appearance="tint" size="small">Local Files</Badge>
-                <Badge appearance="tint" size="small">Quick Upload</Badge>
-                <Badge appearance="tint" size="small">Validation</Badge>
-              </div>
-
-              {selectedSource === 'file' && (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '4px', 
-                  marginTop: '8px',
-                  color: tokens.colorBrandForeground1 
-                }}>
-                  <ArrowRightRegular fontSize={14} />
-                  <Text size={200} weight="semibold">Selected</Text>
-                </div>
-              )}
             </div>
           </CardPreview>
         </Card>
@@ -84,11 +70,13 @@ export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
         <Card 
           appearance={selectedSource === 'dataverse' ? 'filled' : 'outline'}
           style={{ 
-            cursor: 'pointer',
+            cursor: isFileUploaded ? 'not-allowed' : 'pointer',
             border: selectedSource === 'dataverse' ? `2px solid ${tokens.colorBrandBackground}` : undefined,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            opacity: isFileUploaded ? 0.5 : 1,
+            pointerEvents: isFileUploaded ? 'none' : 'auto'
           }}
-          onClick={() => onSourceSelect('dataverse')}
+          onClick={() => !isFileUploaded && onSourceSelect('dataverse')}
         >
           <CardHeader
             header={
@@ -98,32 +86,13 @@ export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
                 <Badge appearance="filled" color="brand" size="small">BETA</Badge>
               </div>
             }
-            description="Reverse engineer from existing Dataverse solution"
+            description="Reverse engineer from an existing Dataverse solution"
           />
           <CardPreview style={{ padding: '12px 16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-                Connect to a Dataverse environment and extract ERD from existing solutions
+                Extract a mermaid ERD to either download or modify it
               </Text>
-              
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                <Badge appearance="tint" size="small">Live Data</Badge>
-                <Badge appearance="tint" size="small">Relationships</Badge>
-                <Badge appearance="tint" size="small">CDM Detection</Badge>
-              </div>
-
-              {selectedSource === 'dataverse' && (
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '4px', 
-                  marginTop: '8px',
-                  color: tokens.colorBrandForeground1 
-                }}>
-                  <ArrowRightRegular fontSize={14} />
-                  <Text size={200} weight="semibold">Selected</Text>
-                </div>
-              )}
             </div>
           </CardPreview>
         </Card>

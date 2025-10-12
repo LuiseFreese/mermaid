@@ -121,7 +121,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
   }, []);
 
   return (
-    <Card style={{ minHeight: '400px' }}>
+    <Card>
       <CardHeader
         header={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -132,15 +132,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
         description="Upload an existing Mermaid ERD file to validate and convert"
       />
 
-      <CardPreview style={{ padding: '16px 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <CardPreview style={{ padding: '12px 16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           
           {/* File Upload Area */}
           <div
             style={{
               border: `2px dashed ${isDragOver ? tokens.colorBrandBackground : tokens.colorNeutralStroke1}`,
               borderRadius: '8px',
-              padding: '32px',
+              padding: '20px',
               textAlign: 'center',
               backgroundColor: isDragOver ? tokens.colorNeutralBackground1Hover : tokens.colorNeutralBackground1,
               transition: 'all 0.2s ease',
@@ -152,16 +152,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
             onClick={handleSelectFile}
           >
             {uploadedFile ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <CheckmarkCircleRegular fontSize={48} style={{ color: tokens.colorPaletteGreenForeground1 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <CheckmarkCircleRegular fontSize={32} style={{ color: tokens.colorPaletteGreenForeground1 }} />
                 <Text weight="semibold">{uploadedFile}</Text>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   File uploaded successfully
                 </Text>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <CloudArrowUpRegular fontSize={48} style={{ color: tokens.colorNeutralForeground3 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <CloudArrowUpRegular fontSize={32} style={{ color: tokens.colorNeutralForeground3 }} />
                 <div>
                   <Text weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>
                     {isDragOver ? 'Drop your file here' : 'Drop your Mermaid file here'}
@@ -170,7 +170,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
                     or click to browse files
                   </Text>
                 </div>
-                <Button appearance="secondary" disabled={isUploading}>
+                <Button appearance="secondary" size="small" disabled={isUploading}>
                   Select File
                 </Button>
               </div>
@@ -193,23 +193,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
               <MessageBarBody>{uploadError}</MessageBarBody>
             </MessageBar>
           )}
-
-          {/* File Requirements */}
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: tokens.colorNeutralBackground2, 
-            borderRadius: '6px',
-            fontSize: '12px'
-          }}>
-            <Text weight="semibold" style={{ marginBottom: '4px', display: 'block' }}>
-              File Requirements:
-            </Text>
-            <div style={{ color: tokens.colorNeutralForeground3 }}>
-              • File extension: .mmd
-              • Valid Mermaid ERD syntax
-              • Maximum file size: 10MB
-            </div>
-          </div>
 
           <input
             ref={fileInputRef}

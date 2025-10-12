@@ -1,8 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
-  Card,
-  CardHeader,
-  CardPreview,
   Text,
   Button,
   Combobox,
@@ -11,14 +8,14 @@ import {
   MessageBarBody,
   Spinner,
   tokens,
-  Badge,
 } from '@fluentui/react-components';
 import { 
-  CloudDatabaseRegular, 
   SearchRegular,
   CheckmarkCircleRegular,
   CopyRegular,
-  EditRegular
+  EditRegular,
+  CheckmarkRegular,
+  DismissRegular
 } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext } from '../../../../context/WizardContext';
@@ -47,10 +44,50 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   const [importedContent, setImportedContent] = useState<string | null>(null);
   const [importedMetadata, setImportedMetadata] = useState<any>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState<string>('');
   const mermaidRef = useRef<HTMLDivElement>(null);
   
   // Theme context
   const { effectiveTheme } = useTheme();
+  
+  // Get theme-aware success colors
+  const getSuccessColor = useCallback(() => {
+    switch (effectiveTheme) {
+      case 'dark':
+        return '#107c10'; // Dark green for dark theme
+      case 'pink':
+        return '#c71585'; // Magenta for pink theme
+      case 'neon':
+        return '#00ff00'; // Neon green for neon theme
+      default:
+        return '#0f7b0f'; // Standard green for light theme
+    }
+  }, [effectiveTheme]);
+
+  const getSuccessBackgroundColor = useCallback(() => {
+    switch (effectiveTheme) {
+      case 'dark':
+        return 'rgba(16, 124, 16, 0.2)'; // Dark green with transparency
+      case 'pink':
+        return 'rgba(199, 21, 133, 0.2)'; // Magenta with transparency
+      case 'neon':
+        return 'rgba(0, 255, 0, 0.15)'; // Neon green with transparency
+      default:
+        return 'rgba(15, 123, 15, 0.15)'; // Green with transparency for light theme
+    }
+  }, [effectiveTheme]);
+
+  const getCardBackgroundColor = useCallback(() => {
+    switch (effectiveTheme) {
+      case 'dark':
+        return '#2d2d30'; // Dark gray for dark theme
+      case 'neon':
+        return 'rgba(60, 30, 90, 0.3)'; // Semi-transparent purple for neon theme (matches card background)
+      default:
+        return '#ffffff'; // White for light and pink themes
+    }
+  }, [effectiveTheme]);
   
   // CDM Detection
   const { detectCDMEntities, cdmDetection, setCDMChoice } = useCDMDetection();
@@ -255,21 +292,37 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   }, [cdmDetection.choice, importedContent, effectiveTheme, getMermaidConfig]);
 
   const handleCopyCode = useCallback(async () => {
-    if (!importedContent) return;
+    const contentToCopy = isEditing ? editedContent : importedContent;
+    if (!contentToCopy) return;
     
     try {
-      await navigator.clipboard.writeText(importedContent);
+      await navigator.clipboard.writeText(contentToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (error) {
       console.error('Failed to copy code:', error);
     }
-  }, [importedContent]);
+  }, [importedContent, isEditing, editedContent]);
 
   const handleEditCode = useCallback(() => {
-    // This will trigger navigation to the editor with the code
-    // The wizard context already has the content, so just notify parent
-    console.log('Edit code clicked - content ready in wizard context');
+    setIsEditing(true);
+    setEditedContent(importedContent || '');
+  }, [importedContent]);
+
+  const handleSaveEdit = useCallback(() => {
+    setImportedContent(editedContent);
+    setIsEditing(false);
+    
+    // Update wizard context with edited content
+    updateWizardData({
+      originalErdContent: editedContent,
+      correctedErdContent: editedContent,
+    });
+  }, [editedContent, updateWizardData]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditedContent('');
   }, []);
 
   const handleImport = useCallback(async () => {
@@ -323,20 +376,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   }, [selectedSolution, environmentUrl, updateWizardData, onImportCompleted, detectCDMEntities, cdmDetection.detected]);
 
   return (
-    <Card style={{ minHeight: '400px' }}>
-      <CardHeader
-        header={
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CloudDatabaseRegular fontSize={20} />
-            <Text weight="semibold">Import from Dataverse Solution</Text>
-            <Badge appearance="filled" color="brand" size="small">BETA</Badge>
-          </div>
-        }
-        description="Extract ERD diagrams from existing Dataverse solutions"
-      />
-
-      <CardPreview style={{ padding: '16px 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Solution Selector */}
           <div>
@@ -378,7 +418,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
                   }}
                   onInput={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
                   style={{ width: '100%', marginBottom: '8px' }}
-                  disabled={isImporting || environmentLoading || !environmentUrl}
+                  disabled={isImporting || environmentLoading || !environmentUrl || importedContent !== null}
                 >
                   {filteredSolutions.map((solution) => (
                     <Option 
@@ -397,11 +437,6 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
                     </Option>
                   ))}
                 </Combobox>
-                
-                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  {filteredSolutions.length} solution{filteredSolutions.length !== 1 ? 's' : ''} available
-                  {searchTerm && ` • Filtered by "${searchTerm}"`}
-                </Text>
               </>
             )}
           </div>
@@ -410,7 +445,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
           {selectedSolution && (
             <div style={{ 
               padding: '12px', 
-              backgroundColor: tokens.colorNeutralBackground2, 
+              backgroundColor: getCardBackgroundColor(), 
               borderRadius: '8px',
               border: `1px solid ${tokens.colorNeutralStroke2}`
             }}>
@@ -501,85 +536,6 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
               onChoiceChanged={() => setCDMChoice(null)}
             />
           )}
-
-          {/* ER Diagram Display - Show after CDM choice is made */}
-          {importedContent && cdmDetection.choice && (
-            <>
-              <Card style={{ marginTop: '16px' }}>
-                <CardHeader
-                  header={<Text weight="semibold">Entity Relationship Diagram</Text>}
-                  description={<Text size={200}>Preview of your imported Dataverse solution</Text>}
-                />
-                <CardPreview>
-                  <div 
-                    ref={mermaidRef} 
-                    style={{ 
-                      padding: '20px', 
-                      backgroundColor: tokens.colorNeutralBackground1,
-                      minHeight: '200px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }} 
-                  />
-                </CardPreview>
-              </Card>
-
-              <Card style={{ marginTop: '16px' }}>
-                <CardHeader
-                  header={<Text weight="semibold">Mermaid Diagram Code</Text>}
-                />
-                <CardPreview>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '12px', 
-                      right: '12px', 
-                      display: 'flex', 
-                      gap: '8px',
-                      zIndex: 1
-                    }}>
-                      <Button
-                        appearance="subtle"
-                        icon={<CopyRegular />}
-                        onClick={handleCopyCode}
-                        title="Copy code"
-                        size="small"
-                        style={{ 
-                          backgroundColor: copySuccess ? tokens.colorPaletteGreenBackground2 : tokens.colorNeutralBackground1
-                        }}
-                      >
-                        {copySuccess ? 'Copied!' : ''}
-                      </Button>
-                      <Button
-                        appearance="subtle"
-                        icon={<EditRegular />}
-                        onClick={handleEditCode}
-                        title="Edit code"
-                        size="small"
-                        style={{ backgroundColor: tokens.colorNeutralBackground1 }}
-                      />
-                    </div>
-                    <pre style={{ 
-                      padding: '16px', 
-                      paddingTop: '48px',
-                      backgroundColor: tokens.colorNeutralBackground2,
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      lineHeight: '1.5',
-                      margin: 0,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}>
-                      <code>{importedContent}</code>
-                    </pre>
-                  </div>
-                </CardPreview>
-              </Card>
-            </>
-          )}
-        </div>
-      </CardPreview>
-    </Card>
+    </div>
   );
 };
