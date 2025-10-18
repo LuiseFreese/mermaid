@@ -70,10 +70,51 @@
   margin-bottom: 0;
 }
 
+/* ERD Diagram and Code Styles */
+.schemaAccordion {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+  overflow: hidden;
+}
+
+.accordionHeaderText {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.mermaidDiagram {
+  padding: 24px;
+  background-color: var(--colorNeutralBackground1);
+  border-radius: 4px;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.erdCodeBlock {
+  background-color: var(--colorNeutralBackground2);
+  border-radius: 4px;
+  padding: 16px;
+  overflow-x: auto;
+  position: relative;
+}
+
+.erdCodeText {
+  margin: 0;
+  padding: 0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--colorNeutralForeground1);
+}
+
 .actionButtons {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 16px;
   padding-top: 24px;
   border-top: 1px solid var(--colorNeutralStroke2);
   margin-top: 8px;
@@ -156,4 +197,148 @@
   .stepCard {
     box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
   }
+}
+
+/* Parsed Schema Overview - needed by DeploymentStep */
+.schemaOverviewDescription {
+  color: var(--colorNeutralForeground2);
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.accordionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.entityCard {
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  padding: 16px;
+  background-color: var(--colorNeutralBackground1);
+}
+
+.entityHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.entityName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+}
+
+.entityBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cdmBadge {
+  background-color: var(--colorBrandBackground);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.customBadge {
+  background-color: var(--colorNeutralBackground4);
+  color: var(--colorNeutralForeground1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.attributeCount {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+}
+
+.entityDescription {
+  margin-bottom: 8px;
+}
+
+.cdmDescription {
+  color: var(--colorNeutralForeground1);
+  font-size: 14px;
+}
+
+.cdmNote {
+  background-color: var(--colorNeutralBackground2);
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid var(--colorBrandBackground);
+}
+
+.cdmNoteText {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--colorNeutralForeground2);
+}
+
+.attributeList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attribute {
+  display: grid;
+  grid-template-columns: 30px 200px 80px;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.attributeLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--colorNeutralForeground2);
+  background-color: var(--colorNeutralBackground2);
+  padding: 2px 4px;
+  border-radius: 2px;
+  text-align: center;
+  justify-self: center;
+}
+
+.attributeName {
+  font-weight: 500;
+  color: var(--colorNeutralForeground1);
+  justify-self: start;
+}
+
+.attributeType {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
+  background-color: var(--colorNeutralBackground2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  justify-self: start;
+}
+
+/* Relationships - styled like entities */
+.relationshipContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relationshipTitle {
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  font-size: 14px;
+}
+
+.relationshipDetails {
+  font-size: 12px;
+  color: var(--colorNeutralForeground2);
 }
