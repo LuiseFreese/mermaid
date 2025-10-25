@@ -11,11 +11,7 @@ import {
 } from '@fluentui/react-components';
 import { 
   SearchRegular,
-  CheckmarkCircleRegular,
-  CopyRegular,
-  EditRegular,
-  CheckmarkRegular,
-  DismissRegular
+  CheckmarkCircleRegular
 } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext } from '../../../../context/WizardContext';
@@ -43,40 +39,10 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   const [environmentLoading, setEnvironmentLoading] = useState(true);
   const [importedContent, setImportedContent] = useState<string | null>(null);
   const [importedMetadata, setImportedMetadata] = useState<any>(null);
-  const [copySuccess, setCopySuccess] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedContent, setEditedContent] = useState<string>('');
   const mermaidRef = useRef<HTMLDivElement>(null);
   
   // Theme context
   const { effectiveTheme } = useTheme();
-  
-  // Get theme-aware success colors
-  const getSuccessColor = useCallback(() => {
-    switch (effectiveTheme) {
-      case 'dark':
-        return '#107c10'; // Dark green for dark theme
-      case 'pink':
-        return '#c71585'; // Magenta for pink theme
-      case 'neon':
-        return '#00ff00'; // Neon green for neon theme
-      default:
-        return '#0f7b0f'; // Standard green for light theme
-    }
-  }, [effectiveTheme]);
-
-  const getSuccessBackgroundColor = useCallback(() => {
-    switch (effectiveTheme) {
-      case 'dark':
-        return 'rgba(16, 124, 16, 0.2)'; // Dark green with transparency
-      case 'pink':
-        return 'rgba(199, 21, 133, 0.2)'; // Magenta with transparency
-      case 'neon':
-        return 'rgba(0, 255, 0, 0.15)'; // Neon green with transparency
-      default:
-        return 'rgba(15, 123, 15, 0.15)'; // Green with transparency for light theme
-    }
-  }, [effectiveTheme]);
 
   const getCardBackgroundColor = useCallback(() => {
     switch (effectiveTheme) {
@@ -199,17 +165,12 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
       updateWizardData({
         originalErdContent: importedContent,
         correctedErdContent: importedContent,
-        importSource: {
-          type: 'dataverse',
-          environmentUrl,
-          solutionName: selectedSolution?.friendlyname,
-          metadata: importedMetadata
-        }
+        importSource: 'dataverse'
       });
 
       onImportCompleted?.(importedContent, importedMetadata);
     }
-  }, [importedContent, importedMetadata, cdmDetection.detected, isImporting, updateWizardData, environmentUrl, onImportCompleted]);
+  }, [importedContent, importedMetadata, cdmDetection.detected, isImporting, updateWizardData, environmentUrl]); // Removed onImportCompleted
 
   // Filter solutions based on search term
   const filteredSolutions = useMemo(() => {
@@ -252,19 +213,13 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
       updateWizardData({
         originalErdContent: importedContent,
         correctedErdContent: importedContent,
-        importSource: {
-          type: 'dataverse',
-          environmentUrl,
-          solutionName: selectedSolution?.friendlyname,
-          metadata: importedMetadata
-        },
-        cdmChoice: choice,
+        importSource: 'dataverse',
         entityChoice: choice
       });
 
       onImportCompleted?.(importedContent, metadataWithChoice);
     }
-  }, [cdmDetection.entities, setCDMChoice, onCDMChoiceSelected, importedContent, importedMetadata, updateWizardData, environmentUrl, selectedSolution, onImportCompleted]);
+  }, [cdmDetection.entities, setCDMChoice, onCDMChoiceSelected, importedContent, importedMetadata, updateWizardData, environmentUrl, selectedSolution]); // Removed onImportCompleted
 
   // Render the diagram when CDM choice is made and we have content
   useEffect(() => {
@@ -297,40 +252,6 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
 
     renderDiagram();
   }, [cdmDetection.choice, importedContent, effectiveTheme, getMermaidConfig]);
-
-  const handleCopyCode = useCallback(async () => {
-    const contentToCopy = isEditing ? editedContent : importedContent;
-    if (!contentToCopy) return;
-    
-    try {
-      await navigator.clipboard.writeText(contentToCopy);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy code:', error);
-    }
-  }, [importedContent, isEditing, editedContent]);
-
-  const handleEditCode = useCallback(() => {
-    setIsEditing(true);
-    setEditedContent(importedContent || '');
-  }, [importedContent]);
-
-  const handleSaveEdit = useCallback(() => {
-    setImportedContent(editedContent);
-    setIsEditing(false);
-    
-    // Update wizard context with edited content
-    updateWizardData({
-      originalErdContent: editedContent,
-      correctedErdContent: editedContent,
-    });
-  }, [editedContent, updateWizardData]);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-    setEditedContent('');
-  }, []);
 
   const handleImport = useCallback(async () => {
     if (!selectedSolution) {
