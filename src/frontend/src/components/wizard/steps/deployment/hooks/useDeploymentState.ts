@@ -4,12 +4,14 @@
 
 import { useState, useCallback } from 'react';
 import { useWizardContext } from '../../../../../context/WizardContext';
+import { useDeploymentContext } from '../../../../../context/DeploymentContext';
 import { ApiService } from '../../../../../services/apiService';
 import { transformWizardDataToDeploymentData, validateDeploymentData } from '../utils';
 import type { UseDeploymentStateResult, DeploymentState } from '../types';
 
 export const useDeploymentState = (): UseDeploymentStateResult => {
   const { wizardData } = useWizardContext();
+  const { startDeployment, finishDeployment } = useDeploymentContext();
 
   const [deploymentState, setDeploymentState] = useState<DeploymentState>({
     isDeploying: false,
@@ -33,6 +35,10 @@ export const useDeploymentState = (): UseDeploymentStateResult => {
 
   const handleDeploy = useCallback(async () => {
     console.log('Deploying with data:', wizardData);
+    
+    // Start deployment tracking
+    const deploymentId = `deployment-${Date.now()}`;
+    startDeployment(deploymentId);
     
     setDeploymentState(prev => ({
       ...prev,
@@ -111,8 +117,11 @@ export const useDeploymentState = (): UseDeploymentStateResult => {
         ...prev,
         isDeploying: false,
       }));
+      
+      // Finish deployment tracking
+      finishDeployment();
     }
-  }, [wizardData]);
+  }, [wizardData, startDeployment, finishDeployment]);
 
   return {
     deploymentState,

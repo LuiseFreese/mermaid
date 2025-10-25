@@ -47,13 +47,6 @@ class DataverseRepository extends BaseRepository {
             
             if (!dataverseConfig) {
                 const configResult = await this.configRepository?.getDataverseConfig();
-                console.log('🔍 DEBUG: configResult from repository:', {
-                    type: typeof configResult,
-                    keys: Object.keys(configResult || {}),
-                    hasData: !!configResult?.data,
-                    dataKeys: Object.keys(configResult?.data || {}),
-                    dataContent: configResult?.data
-                });
                 // Extract the actual config data from the wrapped response
                 dataverseConfig = configResult?.data || configResult;
                 
@@ -67,64 +60,23 @@ class DataverseRepository extends BaseRepository {
                 throw new Error('Dataverse configuration not available');
             }
 
-            console.log('🔍 DEBUG: dataverseConfig:', {
-                hasServerUrl: !!dataverseConfig.serverUrl,
-                hasClientId: !!dataverseConfig.clientId,
-                hasTenantId: !!dataverseConfig.tenantId,
-                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId,
-                rawConfig: Object.keys(dataverseConfig)
-            });
-
             // Create cache key
             const cacheKey = `${dataverseConfig.serverUrl}_${dataverseConfig.clientId}`;
             
             // Return cached client if available
             if (this.clientCache.has(cacheKey)) {
                 const cachedClient = this.clientCache.get(cacheKey);
-                console.log('🔍 DEBUG: returning cached client:', {
-                    type: typeof cachedClient,
-                    constructor: cachedClient?.constructor?.name,
-                    hasEnsurePublisher: typeof cachedClient?.ensurePublisher
-                });
                 return cachedClient;
             }
 
-            console.log('🔍 DEBUG: Creating new DataverseClient with:', {
-                DataverseClientType: typeof this.DataverseClient,
-                DataverseClientName: this.DataverseClient?.name
-            });
-
             // Create new client
-            console.log('🔍 DEBUG: About to create DataverseClient with credentials:', {
-                dataverseUrl: dataverseConfig.serverUrl?.substring(0, 30) + '...',
-                tenantId: dataverseConfig.tenantId?.substring(0, 10) + '...',
-                clientId: dataverseConfig.clientId?.substring(0, 10) + '...',
-                hasClientSecret: !!dataverseConfig.clientSecret, // Log client secret availability
-                managedIdentityClientId: dataverseConfig.managedIdentityClientId?.substring(0, 10) + '...',
-                hasServerUrl: !!dataverseConfig.serverUrl,
-                hasTenantId: !!dataverseConfig.tenantId,
-                hasClientId: !!dataverseConfig.clientId,
-                hasManagedIdentity: !!dataverseConfig.managedIdentityClientId,
-                authMode: process.env.AUTH_MODE
-            });
-            
             const client = new this.DataverseClient({
                 dataverseUrl: dataverseConfig.serverUrl,
                 tenantId: dataverseConfig.tenantId,
                 clientId: dataverseConfig.clientId,
                 clientSecret: dataverseConfig.clientSecret, // Pass client secret
                 managedIdentityClientId: dataverseConfig.managedIdentityClientId,
-                verbose: true
-            });
-
-            console.log('🔍 DEBUG: Created client:', {
-                type: typeof client,
-                constructor: client?.constructor?.name,
-                hasEnsurePublisher: typeof client?.ensurePublisher,
-                hasGet: typeof client?.get,
-                hasPost: typeof client?.post,
-                methods: Object.getOwnPropertyNames(client).filter(name => typeof client[name] === 'function'),
-                prototypeMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(client)).filter(name => typeof client[name] === 'function')
+                verbose: process.env.NODE_ENV === 'development' || process.env.DATAVERSE_VERBOSE === 'true'
             });
 
             // Validate client configuration
@@ -166,9 +118,7 @@ class DataverseRepository extends BaseRepository {
             const client = await this.getClient(config);
             const result = await client.createPublisher(publisherData);
             
-            console.log('🔧 DEBUG: DataverseRepository.createPublisher client result:', result);
             const successResult = this.createSuccess(result, 'Publisher created successfully');
-            console.log('🔧 DEBUG: DataverseRepository.createPublisher final result:', successResult);
             
             return successResult;
         });

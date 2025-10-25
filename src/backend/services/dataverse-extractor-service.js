@@ -669,7 +669,10 @@ class DataverseExtractorService extends BaseService {
                     console.log(`  🔑 PK attribute: ${attr.logicalName}`);
                 }
                 
-                mermaid += `        ${attr.dataType} ${attr.logicalName}${pk}${fk}${description}\n`;
+                // Strip publisher prefix from attribute name to prevent double-prefixing in wizard
+                const cleanAttributeName = this.stripPublisherPrefix(attr.logicalName);
+                
+                mermaid += `        ${attr.dataType} ${cleanAttributeName}${pk}${fk}${description}\n`;
             });
             
             mermaid += '    }\n\n';
@@ -815,7 +818,7 @@ class DataverseExtractorService extends BaseService {
      * @param {Object} connection - Connection details
      * @returns {Promise<Object>} Dataverse client
      */
-    async getDataverseClient(connection) {
+    async getDataverseClient(connection) { // eslint-disable-line no-unused-vars
         try {
             // For MVP, use the existing dataverse repository
             // In future versions, this could support different auth methods

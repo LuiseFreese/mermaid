@@ -343,7 +343,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
                     ? 'Many-to-Many Relationship Converted' 
                     : warning.message}
                 </strong><br />
-                {warning.corrections && (
+                {/* {warning.corrections && (
                   <>
                     <Text style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}>
                       Original: {warning.corrections.originalRelationship}
@@ -355,7 +355,7 @@ export const ValidationResults: React.FC<ValidationResultsProps> = ({
                       New relationships: {warning.corrections.newRelationships.join(' and ')}
                     </Text>
                   </>
-                )}
+                )} */}
               </MessageBarBody>
             </MessageBar>
           ))}

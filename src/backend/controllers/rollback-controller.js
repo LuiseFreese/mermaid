@@ -15,12 +15,9 @@ class RollbackController {
      * Check if a deployment can be rolled back
      * GET /api/rollback/{deploymentId}/can-rollback
      */
-    async checkRollbackCapability(req, res, deploymentId) {
-        console.log('🔍 ROLLBACK CONTROLLER: Checking rollback capability for deployment', deploymentId);
-        
+    async checkRollbackCapability(req, res, deploymentId) {        
         try {
             const capability = await this.rollbackService.canRollback(deploymentId);
-            console.log('🔍 ROLLBACK CONTROLLER: Capability check result:', JSON.stringify(capability));
             
             const response = {
                 success: true,
@@ -45,7 +42,7 @@ class RollbackController {
      * POST /api/rollback/{deploymentId}/execute
      */
     async executeRollback(req, res, deploymentId) {
-        console.log('🎯 ROLLBACK CONTROLLER: Starting async rollback for deployment', deploymentId);
+        console.log('🎯 ROLLBACK CONTROLLER: Starting rollback for deployment', deploymentId);
         
         // Parse request body
         let body = {};
@@ -62,6 +59,7 @@ class RollbackController {
 
         // Require explicit confirmation
         if (!confirm) {
+            console.error('❌ ROLLBACK CONTROLLER: Confirmation not received');
             return this.sendError(res, 400, 'Rollback requires explicit confirmation. Set "confirm": true in request body.');
         }
 
@@ -164,9 +162,7 @@ class RollbackController {
      * Get rollback status
      * GET /api/rollback/{rollbackId}/status
      */
-    async getRollbackStatus(req, res, rollbackId) {
-        console.log(`📊 ROLLBACK CONTROLLER: Getting status for rollback ${rollbackId}`);
-        
+    async getRollbackStatus(req, res, rollbackId) {        
         const status = this.statusTracker.get(rollbackId);
         
         if (!status) {

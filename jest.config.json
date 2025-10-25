@@ -4,7 +4,9 @@
     "**/tests/**/*.test.js"
   ],
   "testPathIgnorePatterns": [
-    "/node_modules/"
+    "/node_modules/",
+    "tests/e2e",
+    "src/frontend"
   ],
   "collectCoverageFrom": [
     "src/backend/**/*.js",

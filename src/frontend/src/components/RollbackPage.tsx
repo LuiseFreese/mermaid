@@ -53,7 +53,7 @@ export const RollbackPage: React.FC = () => {
         </Button>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <ArrowUndoRegular fontSize={28} style={{ color: tokens.colorPaletteOrangeForeground1 }} />
+          <ArrowUndoRegular fontSize={28} style={{ color: tokens.colorPaletteDarkOrangeForeground1 }} />
           <Text size={700} weight="bold">Rollback Solution</Text>
           <Badge appearance="filled" color="warning" size="small">Enterprise</Badge>
         </div>

@@ -134,38 +134,81 @@ class BaseController {
     setupStreaming(res) {
         res.writeHead(200, { 
             'Content-Type': 'application/json', 
-            'Transfer-Encoding': 'chunked' 
+            'Transfer-Encoding': 'chunked',
+            'Connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no' // Disable proxy buffering
+        });
+
+        // Send initial keep-alive ping to establish connection
+        res.write(JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() }) + '\n');
+
+        // Setup periodic heartbeat to prevent timeout (every 15 seconds)
+        const heartbeatInterval = setInterval(() => {
+            try {
+                if (!res.writableEnded) {
+                    res.write(JSON.stringify({ type: 'heartbeat', timestamp: new Date().toISOString() }) + '\n');
+                } else {
+                    clearInterval(heartbeatInterval);
+                }
+            } catch (error) {
+                console.error('Heartbeat write failed:', error.message);
+                clearInterval(heartbeatInterval);
+            }
+        }, 15000); // 15 seconds
+
+        // Clean up interval when client disconnects
+        res.on('close', () => {
+            clearInterval(heartbeatInterval);
+        });
+
+        res.on('error', () => {
+            clearInterval(heartbeatInterval);
         });
 
         return {
             sendProgress: (step, message, details = {}) => {
-                const progressData = JSON.stringify({
-                    type: 'progress',
-                    step,
-                    message,
-                    timestamp: new Date().toISOString(),
-                    ...details
-                }) + '\n';
-                res.write(progressData);
+                try {
+                    const progressData = JSON.stringify({
+                        type: 'progress',
+                        step,
+                        message,
+                        timestamp: new Date().toISOString(),
+                        ...details
+                    }) + '\n';
+                    res.write(progressData);
+                } catch (error) {
+                    console.error('Progress write failed:', error.message);
+                }
             },
 
             sendLog: (message) => {
-                const logData = JSON.stringify({
-                    type: 'log',
-                    message,
-                    timestamp: new Date().toISOString()
-                }) + '\n';
-                res.write(logData);
+                try {
+                    const logData = JSON.stringify({
+                        type: 'log',
+                        message,
+                        timestamp: new Date().toISOString()
+                    }) + '\n';
+                    res.write(logData);
+                } catch (error) {
+                    console.error('Log write failed:', error.message);
+                }
             },
 
             sendFinal: (data) => {
-                const finalData = JSON.stringify({
-                    type: 'final',
-                    data,
-                    timestamp: new Date().toISOString()
-                }) + '\n';
-                res.write(finalData);
-                res.end();
+                try {
+                    clearInterval(heartbeatInterval);
+                    const finalData = JSON.stringify({
+                        type: 'final',
+                        data,
+                        timestamp: new Date().toISOString()
+                    }) + '\n';
+                    res.write(finalData);
+                    res.end();
+                } catch (error) {
+                    console.error('Final write failed:', error.message);
+                    res.end();
+                }
             }
         };
     }

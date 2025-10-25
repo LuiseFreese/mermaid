@@ -22,55 +22,41 @@ class RequestLoggerMiddleware {
         // Add request ID to request object
         req.requestId = requestId;
 
-        // Log request start
-        const logData = {
-            requestId,
-            timestamp: new Date().toISOString(),
-            method: req.method,
-            url: req.url,
-            userAgent: req.headers['user-agent'],
-            remoteAddress: req.connection?.remoteAddress || req.socket?.remoteAddress,
-            headers: this.sanitizeHeaders(req.headers)
-        };
-
-        this.logger.log(`[${requestId}] REQUEST START: ${req.method} ${req.url}`, logData);
+        // Log request start (concise for status polls, detailed for others)
+        const isStatusPoll = req.url.includes('/status') || req.url.includes('/rollback/');
+        
+        if (isStatusPoll) {
+            // Minimal logging for frequent status checks
+            this.logger.log(`[${requestId}] ${req.method} ${req.url}`);
+        } else {
+            // Simplified logging for other requests
+            this.logger.log(`[${requestId}] REQUEST START: ${req.method} ${req.url}`);
+        }
 
         // Capture response details
         const originalEnd = res.end;
-        const originalWrite = res.write;
-        let responseSize = 0;
         const middlewareLogger = this.logger; // Capture logger reference
 
-        res.write = function(chunk, encoding) {
-            if (chunk) {
-                responseSize += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, encoding);
-            }
-            originalWrite.call(this, chunk, encoding);
-        };
-
         res.end = function(chunk, encoding) {
-            if (chunk) {
-                responseSize += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, encoding);
-            }
 
             const duration = Date.now() - start;
-            const responseLogData = {
-                requestId,
-                statusCode: res.statusCode,
-                duration: `${duration}ms`,
-                responseSize: `${responseSize} bytes`,
-                contentType: res.getHeader('content-type')
-            };
-
-            middlewareLogger.log(`[${requestId}] REQUEST END: ${res.statusCode} (${duration}ms)`, responseLogData);
+            
+            if (isStatusPoll) {
+                // Minimal logging for status polls
+                middlewareLogger.log(`[${requestId}] ${res.statusCode} (${duration}ms)`);
+            } else {
+                // Simplified logging for other requests
+                middlewareLogger.log(`[${requestId}] REQUEST END: ${res.statusCode} (${duration}ms)`);
+            }
             
             originalEnd.call(res, chunk, encoding);
         };
 
-        // Log request body if enabled - MUST await before calling next()
-        if (this.includeBody && req.method !== 'GET' && req.method !== 'HEAD') {
+        // Always read body for POST/PUT/PATCH - required for req.rawBody
+        // Log it only if includeBody is enabled
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
             try {
-                await this.logRequestBody(req, requestId);
+                await this.readRequestBody(req, requestId);
                 next();
             } catch (error) {
                 middlewareLogger.error(`[${requestId}] Failed to read request body:`, error);
@@ -83,11 +69,11 @@ class RequestLoggerMiddleware {
     }
 
     /**
-     * Log request body
+     * Read request body and store in req.rawBody
      * @param {IncomingMessage} req - HTTP request
      * @param {string} requestId - Request ID
      */
-    async logRequestBody(req, requestId) {
+    async readRequestBody(req, requestId) {
         return new Promise((resolve, reject) => {
             let body = '';
             
@@ -107,7 +93,8 @@ class RequestLoggerMiddleware {
                 // Store the body on the request object for later use
                 req.rawBody = body;
                 
-                if (body) {
+                // Only log if includeBody is enabled
+                if (this.includeBody && body) {
                     this.logger.log(`[${requestId}] REQUEST BODY:`, {
                         requestId,
                         body: body,

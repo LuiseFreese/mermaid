@@ -26,21 +26,18 @@ class ProgressTracker {
                     { id: 'validation', label: 'Validating ERD', estimate: 5 },
                     { id: 'publisher', label: 'Creating Publisher', estimate: 10 },
                     { id: 'solution', label: 'Setting up Solution', estimate: 15 },
-                    { id: 'globalChoices', label: 'Creating Global Choices', estimate: 20 },
                     { id: 'entities', label: 'Creating Entities', estimate: 30 },
                     { id: 'relationships', label: 'Setting up Relationships', estimate: 25 },
+                    { id: 'globalChoices', label: 'Creating Global Choices', estimate: 20 },
                     { id: 'finalization', label: 'Finalizing Deployment', estimate: 10 }
                 ];
                 break;
             case 'rollback':
                 this.steps = [
                     { id: 'preparation', label: 'Preparing Rollback', estimate: 5 },
-                    { id: 'relationships', label: 'Removing Relationships', estimate: 15 },
-                    { id: 'entities', label: 'Removing Custom Entities', estimate: 20 },
-                    { id: 'globalChoices', label: 'Removing Global Choices', estimate: 10 },
-                    { id: 'solution', label: 'Removing Solution', estimate: 10 },
-                    { id: 'publisher', label: 'Removing Publisher', estimate: 5 },
-                    { id: 'cleanup', label: 'Cleanup Operations', estimate: 5 }
+                    { id: 'validation', label: 'Validating Rollback', estimate: 10 }
+                    // Dynamic steps will be added by rollback service based on what needs to be removed:
+                    // - relationships, customEntities, cdmEntities, globalChoices, solution, publisher, finalization
                 ];
                 break;
             case 'validation':
@@ -67,6 +64,12 @@ class ProgressTracker {
      * Start a step
      */
     startStep(stepId, message) {
+        // Mark previous step as completed if still active
+        if (this.currentStep && this.currentStep !== stepId && !this.completedSteps.includes(this.currentStep)) {
+            console.log(`⚠️ PROGRESS: Auto-completing previous step ${this.currentStep} before starting ${stepId}`);
+            this.completedSteps.push(this.currentStep);
+        }
+        
         this.currentStep = stepId;
         const step = this.steps.find(s => s.id === stepId);
         const stepLabel = step ? step.label : stepId;
@@ -272,16 +275,46 @@ class ProgressTracker {
     /**
      * Add a new step dynamically
      */
-    addStep(stepId, label, estimate = 10) {
+    addStep(stepId, label, estimate = 10, insertAfter = null) {
         if (!this.hasStep(stepId)) {
-            this.steps.push({
+            const newStep = {
                 id: stepId,
                 label: label,
                 estimate: estimate,
                 status: 'pending',
                 startTime: null,
                 endTime: null
-            });
+            };
+            
+            if (insertAfter) {
+                const insertIndex = this.steps.findIndex(step => step.id === insertAfter);
+                if (insertIndex !== -1) {
+                    this.steps.splice(insertIndex + 1, 0, newStep);
+                } else {
+                    this.steps.push(newStep);
+                }
+            } else {
+                this.steps.push(newStep);
+            }
+        }
+    }
+
+    /**
+     * Remove a step dynamically
+     */
+    removeStep(stepId) {
+        const index = this.steps.findIndex(step => step.id === stepId);
+        if (index !== -1) {
+            this.steps.splice(index, 1);
+            // Also remove from completed steps if it was there
+            const completedIndex = this.completedSteps.indexOf(stepId);
+            if (completedIndex !== -1) {
+                this.completedSteps.splice(completedIndex, 1);
+            }
+            // Reset current step if it was the removed step
+            if (this.currentStep === stepId) {
+                this.currentStep = null;
+            }
         }
     }
 }

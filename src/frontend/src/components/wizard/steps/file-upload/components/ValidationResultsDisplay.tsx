@@ -34,11 +34,20 @@ export const ValidationResultsDisplay: React.FC<ValidationResultsDisplayProps> =
   entities,
   relationships,
   hasBackendWarnings,
-  hasAnyIssues,
+  // hasAnyIssues,
   fixedIssues,
   onApplyFix,
   onApplyAllFixes
 }) => {
+  // Don't show validation results if there's nothing to display
+  const hasWarnings = validationResults?.warnings && validationResults.warnings.length > 0;
+  const hasSuccess = !isValidating && !validationError && !hasBackendWarnings && entities.length > 0 && !hasWarnings;
+  const hasContent = isValidating || validationError || hasWarnings || hasSuccess;
+  
+  if (!hasContent) {
+    return null;
+  }
+  
   return (
     <Accordion multiple collapsible defaultOpenItems={["validation-results"]} className={styles.schemaAccordion}>
       <AccordionItem value="validation-results">

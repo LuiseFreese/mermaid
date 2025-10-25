@@ -376,36 +376,41 @@ class RollbackService extends BaseService {
             
             progressTracker.completeStep('validation', 'Rollback validation completed');
 
+            // Step 5: Execute rollback using dataverse client
+            // Note: We don't create a generic "execution" step here because the dataverse client
+            // will provide specific progress updates for each operation (relationships, entities, etc.)
+            
             // Dynamically configure steps based on what will be rolled back
-            if (validation.config.relationships && filteredRollbackData.relationships?.length > 0) {
-                progressTracker.addStep('relationships', `Removing ${filteredRollbackData.relationships.length} relationships`);
-            }
+            // Add steps in the correct logical order for the UI
+            // Note: Relationships step will be added dynamically by dataverse client if needed
             
+            // Step 2: Custom Tables
             if (validation.config.customEntities && filteredRollbackData.customEntities?.length > 0) {
-                progressTracker.addStep('customEntities', `Removing ${filteredRollbackData.customEntities.length} custom entities`);
+                progressTracker.addStep('customEntities', `Removing ${filteredRollbackData.customEntities.length} custom tables`);
             }
             
+            // Step 3: CDM Entities 
             if (validation.config.cdmEntities && filteredRollbackData.cdmEntities?.length > 0) {
                 progressTracker.addStep('cdmEntities', `Removing ${filteredRollbackData.cdmEntities.length} CDM entities from solution`);
             }
             
+            // Step 4: Global Choices
             if (validation.config.customGlobalChoices && filteredRollbackData.globalChoicesCreated?.length > 0) {
                 progressTracker.addStep('globalChoices', `Removing ${filteredRollbackData.globalChoicesCreated.length} global choices`);
             }
             
+            // Step 5: Solution
             if (validation.config.solution && filteredRollbackData.solutionInfo?.solutionId) {
                 progressTracker.addStep('solution', `Removing solution: ${filteredRollbackData.solutionInfo.solutionName}`);
             }
             
+            // Step 6: Publisher
             if (validation.config.publisher && filteredRollbackData.solutionInfo?.publisherId) {
                 progressTracker.addStep('publisher', `Removing publisher: ${filteredRollbackData.solutionInfo.publisherName}`);
             }
             
+            // Add finalization step LAST so it appears after all dynamic steps
             progressTracker.addStep('finalization', 'Finalizing rollback operation');
-
-            
-            // Step 5: Execute rollback using dataverse client
-            progressTracker.startStep('execution', 'Executing rollback operation...');
             console.log(`🚀 ROLLBACK SERVICE: Starting dataverse rollback execution...`);
             
             this.updateRollbackStatus(rollbackId, 'executing');
@@ -424,86 +429,79 @@ class RollbackService extends BaseService {
                     
                     // Map dataverse progress to our step tracking
                     if (status === 'relationships') {
-                        if (progressTracker.hasStep('relationships')) {
-                            // Start the step if this is the first relationships message
-                            if (!progressTracker.isStepActive('relationships') && !progressTracker.isStepCompleted('relationships')) {
-                                progressTracker.startStep('relationships', `Starting relationships deletion...`);
-                            } else {
-                                progressTracker.updateStep('relationships', message);
+                        // Add the relationships step after validation if it doesn't exist
+                        if (!progressTracker.hasStep('relationships')) {
+                            progressTracker.addStep('relationships', message, 15, 'validation');
+                        } else {
+                            // Update the step label with the actual count
+                            const step = progressTracker.steps.find(s => s.id === 'relationships');
+                            if (step) {
+                                step.label = message; // Update with actual count
                             }
                         }
-                    } else if (status === 'entities') {
+                        progressTracker.startStep('relationships', message);
+                    } else if (status === 'skipRelationships') {
+                        // Remove the relationships step since none are needed
+                        if (progressTracker.hasStep('relationships')) {
+                            progressTracker.removeStep('relationships');
+                        }
+                    } else if (status === 'customEntities') {
                         if (progressTracker.hasStep('customEntities')) {
-                            // Start the step if this is the first entities message
-                            if (!progressTracker.isStepActive('customEntities') && !progressTracker.isStepCompleted('customEntities')) {
-                                progressTracker.startStep('customEntities', `Starting entities deletion...`);
-                            } else {
-                                progressTracker.updateStep('customEntities', message);
-                            }
+                            progressTracker.startStep('customEntities', message);
                         }
                     } else if (status === 'globalChoices') {
                         if (progressTracker.hasStep('globalChoices')) {
-                            // Start the step if this is the first global choices message
-                            if (!progressTracker.isStepActive('globalChoices') && !progressTracker.isStepCompleted('globalChoices')) {
-                                progressTracker.startStep('globalChoices', `Starting global choices deletion...`);
-                            } else {
-                                progressTracker.updateStep('globalChoices', message);
-                            }
+                            progressTracker.startStep('globalChoices', message);
                         }
                     } else if (status === 'solution') {
                         if (progressTracker.hasStep('solution')) {
-                            // Start the step if this is the first solution message
-                            if (!progressTracker.isStepActive('solution') && !progressTracker.isStepCompleted('solution')) {
-                                progressTracker.startStep('solution', `Starting solution deletion...`);
-                            } else {
-                                progressTracker.updateStep('solution', message);
-                            }
+                            progressTracker.startStep('solution', message);
                         }
                     } else if (status === 'publisher') {
                         if (progressTracker.hasStep('publisher')) {
-                            // Start the step if this is the first publisher message
-                            if (!progressTracker.isStepActive('publisher') && !progressTracker.isStepCompleted('publisher')) {
-                                progressTracker.startStep('publisher', `Starting publisher deletion...`);
-                            } else {
-                                progressTracker.updateStep('publisher', message);
-                            }
+                            progressTracker.startStep('publisher', message);
+                        }
+                    } else if (status === 'completed') {
+                        if (progressTracker.hasStep('finalization')) {
+                            progressTracker.startStep('finalization', message);
                         }
                     }
                     
-                    // Send enhanced progress to frontend
-                    const progressData = {
-                        type: 'progress',
-                        operationType: 'rollback',
-                        currentStep: status,
-                        message,
-                        timestamp: new Date().toISOString(),
-                        steps: progressTracker.getAllStepsStatus(),
-                        stepId: status,
-                        stepLabel: message,
-                        status: 'active',
-                        percentage: progressTracker.getProgressPercentage(),
-                        timeEstimate: progressTracker.getTimeEstimate()
-                    };
+                    // Send progress to external callback if provided
                     if (progressCallback) {
-                        progressCallback('progress', message, progressData);
+                        const progressSummary = {
+                            operationType: 'rollback',
+                            currentStep: status,
+                            message: message,
+                            steps: progressTracker.getAllStepsStatus(),
+                            percentage: progressTracker.getProgressPercentage(),
+                            timeEstimate: progressTracker.getTimeEstimate(),
+                            timestamp: new Date().toISOString()
+                        };
+                        // Call with correct signature: (type, message, progressData)
+                        progressCallback('progress', message, progressSummary);
                     }
                 },
                 validation.config
             );
+
+            console.log(`✅ ROLLBACK SERVICE: Rollback completed successfully`);
             console.log(`✅ ROLLBACK SERVICE: Dataverse rollback completed!`);
 
             // Complete the component steps that were processed
             ['relationships', 'customEntities', 'cdmEntities', 'globalChoices', 'solution', 'publisher'].forEach(component => {
-                if (progressTracker.hasStep(component)) {
-                    progressTracker.completeStep(component, `${component} removal completed`);
+                // Only complete steps that exist and are the current active step or have been started
+                if (progressTracker.hasStep(component) && 
+                   (progressTracker.isStepActive(component) || progressTracker.isStepCompleted(component))) {
+                    if (!progressTracker.isStepCompleted(component)) {
+                        progressTracker.completeStep(component, `${component} removal completed`);
+                    }
                 }
             });
 
             // Extract the actual results from the repository response
             const rollbackResults = rollbackResponse.data || rollbackResponse;
             
-            progressTracker.completeStep('execution', 'Rollback execution completed');
-
             // Step: Finalization
             progressTracker.startStep('finalization', 'Recording rollback and updating deployment status...');
             console.log(`📝 ROLLBACK SERVICE: Recording rollback...`);

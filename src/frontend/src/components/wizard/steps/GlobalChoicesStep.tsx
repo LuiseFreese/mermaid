@@ -160,12 +160,12 @@ export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
           <AccordionItem value="global-choice-sets">
             <AccordionHeader expandIconPosition="start">
               <Text className={styles.accordionHeaderText}>
-                Global Choice Sets
+                Built-in Choices
               </Text>
             </AccordionHeader>
             <AccordionPanel>
               <Text size={300} style={{ color: '#6b6b6b', marginBottom: '24px' }}>
-                Select existing global choice sets from your environment.
+                Select existing built-in choice sets from your environment.
               </Text>
 
               <Field label={<Text weight="semibold">Search</Text>}>
@@ -201,47 +201,43 @@ export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
               )}
 
               {!loading && !error && (
-                <Accordion multiple defaultOpenItems={['built-in']}>
-                  <AccordionItem value="built-in">
-                    <AccordionHeader>
-                      <Text className={styles.accordionHeaderText}>
-                        Built-in Global Choices ({filteredBuiltInChoices.length})
-                      </Text>
-                    </AccordionHeader>
-                    <AccordionPanel>
-                      <div className={styles.choicesList}>
-                        {filteredBuiltInChoices.slice(0, 20).map((choice) => (
-                          <div key={choice.id} className={styles.choiceItem}>
-                            <Checkbox
-                              checked={selectedGlobalChoices?.some(c => c.id === choice.id) || false}
-                              onChange={(_, data) => handleChoiceSelect(choice.id, data.checked === true)}
-                              label={
-                                <div>
-                                  <Text size={300} weight="medium">{choice.displayName}</Text>
-                                  <Text size={200} style={{ color: '#6b6b6b', display: 'block' }}>
-                                    {choice.logicalName}
-                                  </Text>
-                                </div>
-                              }
-                            />
-                          </div>
-                        ))}
-                        {filteredBuiltInChoices.length > 20 && (
-                          <Text size={200} style={{ color: '#6b6b6b', fontStyle: 'italic', padding: '8px' }}>
-                            ... and {filteredBuiltInChoices.length - 20} more. Use search to find specific choices.
-                          </Text>
-                        )}
+                <div>
+                  {/* Built-in Global Choices - Direct display without nested accordion */}
+                  <Text className={styles.accordionHeaderText} style={{ marginBottom: '12px', display: 'block' }}>
+                    Built-in Global Choices ({filteredBuiltInChoices.length})
+                  </Text>
+                  
+                  <div className={styles.choicesList}>
+                    {filteredBuiltInChoices.slice(0, 20).map((choice) => (
+                      <div key={choice.id} className={styles.choiceItem}>
+                        <Checkbox
+                          checked={selectedGlobalChoices?.some(c => c.id === choice.id) || false}
+                          onChange={(_, data) => handleChoiceSelect(choice.id, data.checked === true)}
+                          label={
+                            <div>
+                              <Text size={300} weight="medium">{choice.displayName}</Text>
+                              <Text size={200} style={{ color: '#6b6b6b', display: 'block' }}>
+                                {choice.logicalName}
+                              </Text>
+                            </div>
+                          }
+                        />
                       </div>
-                    </AccordionPanel>
-                  </AccordionItem>
+                    ))}
+                    {filteredBuiltInChoices.length > 20 && (
+                      <Text size={200} style={{ color: '#6b6b6b', fontStyle: 'italic', padding: '8px' }}>
+                        ... and {filteredBuiltInChoices.length - 20} more. Use search to find specific choices.
+                      </Text>
+                    )}
+                  </div>
 
-                  <AccordionItem value="custom">
-                    <AccordionHeader>
-                      <Text className={styles.accordionHeaderText}>
+                  {/* Custom Global Choices - Display if any exist */}
+                  {filteredCustomChoices.length > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <Text className={styles.accordionHeaderText} style={{ marginBottom: '12px', display: 'block' }}>
                         Custom Global Choices ({filteredCustomChoices.length})
                       </Text>
-                    </AccordionHeader>
-                    <AccordionPanel>
+                      
                       <div className={styles.choicesList}>
                         {filteredCustomChoices.map((choice) => (
                           <div key={choice.id} className={styles.choiceItem}>
@@ -260,9 +256,9 @@ export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
                           </div>
                         ))}
                       </div>
-                    </AccordionPanel>
-                  </AccordionItem>
-                </Accordion>
+                    </div>
+                  )}
+                </div>
               )}
             </AccordionPanel>
           </AccordionItem>

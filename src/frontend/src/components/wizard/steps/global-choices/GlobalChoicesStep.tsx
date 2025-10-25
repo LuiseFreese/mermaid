@@ -66,79 +66,59 @@ export const GlobalChoicesStep: React.FC<GlobalChoicesStepProps> = ({
       />
 
       <div className={styles.cardContent}>
+        {/* Single Search Bar at the top */}
+        <div style={{ marginBottom: '16px' }}>
+          <ChoiceSearch
+            value={globalChoicesSearchTerm || ''}
+            onChange={handleSearchChange}
+          />
+        </div>
+
+        {/* Error Handling */}
+        {error && (
+          <MessageBar intent="error" style={{ marginBottom: '16px' }}>
+            <MessageBarBody>
+              {error}
+              <Button 
+                appearance="transparent" 
+                size="small" 
+                onClick={refetch}
+                style={{ marginLeft: '8px' }}
+              >
+                Retry
+              </Button>
+            </MessageBarBody>
+          </MessageBar>
+        )}
+
         <Accordion
           multiple
-          defaultOpenItems={['global-choice-sets', 'upload-choices']}
+          defaultOpenItems={['built-in-choices', 'upload-choices']}
           className={styles.accordion}
         >
-          {/* Existing Global Choice Sets */}
-          <AccordionItem value="global-choice-sets">
-            <AccordionHeader expandIconPosition="start">
-              <Text className={styles.accordionHeaderText}>
-                Global Choice Sets
-              </Text>
-            </AccordionHeader>
-            <AccordionPanel>
-              <Text size={300} style={{ color: '#6b6b6b', marginBottom: '24px' }}>
-                Select existing global choice sets from your environment.
-              </Text>
+          {/* Built-in Choices - Single accordion with choices directly below */}
+          {builtInChoices.length > 0 && (
+            <AccordionItem value="built-in-choices">
+              <AccordionHeader expandIconPosition="start">
+                <Text className={styles.accordionHeaderText}>
+                  Built-in Choices ({builtInChoices.length})
+                </Text>
+              </AccordionHeader>
+              <AccordionPanel>
+                <Text size={300} style={{ color: '#6b6b6b', marginBottom: '16px' }}>
+                  Select existing built-in choice sets from your environment.
+                </Text>
 
-              {/* Search Component */}
-              <ChoiceSearch
-                value={globalChoicesSearchTerm || ''}
-                onChange={handleSearchChange}
-              />
-
-              {/* Error Handling */}
-              {error && (
-                <MessageBar intent="error" style={{ marginBottom: '16px' }}>
-                  <MessageBarBody>
-                    {error}
-                    <Button 
-                      appearance="transparent" 
-                      size="small" 
-                      onClick={refetch}
-                      style={{ marginLeft: '8px' }}
-                    >
-                      Retry
-                    </Button>
-                  </MessageBarBody>
-                </MessageBar>
-              )}
-
-              {/* Built-in Choices List */}
-              {builtInChoices.length > 0 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <Text weight="semibold" style={{ marginBottom: '12px', display: 'block' }}>
-                    Built-in Choices ({builtInChoices.length})
-                  </Text>
-                  <GlobalChoicesList
-                    choices={builtInChoices}
-                    selectedChoices={selectedChoices}
-                    onChoiceSelect={handleChoiceSelect}
-                    searchTerm={globalChoicesSearchTerm || ''}
-                    loading={loading}
-                  />
-                </div>
-              )}
-
-              {/* Custom Choices List */}
-              {customChoices.length > 0 && (
-                <div>
-                  <Text weight="semibold" style={{ marginBottom: '12px', display: 'block' }}>
-                    Custom Choices ({customChoices.length})
-                  </Text>
-                  <GlobalChoicesList
-                    choices={customChoices}
-                    selectedChoices={selectedChoices}
-                    onChoiceSelect={handleChoiceSelect}
-                    searchTerm={globalChoicesSearchTerm || ''}
-                    loading={loading}
-                  />
-                </div>
-              )}
-            </AccordionPanel>
-          </AccordionItem>
+                <GlobalChoicesList
+                  choices={builtInChoices}
+                  selectedChoices={selectedChoices}
+                  onChoiceSelect={handleChoiceSelect}
+                  searchTerm={globalChoicesSearchTerm || ''}
+                  loading={loading}
+                />
+              </AccordionPanel>
+            </AccordionItem>
+          )}
 
           {/* Upload Custom Choices */}
           <AccordionItem value="upload-choices">

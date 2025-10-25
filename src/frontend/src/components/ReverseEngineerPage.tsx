@@ -15,10 +15,10 @@ import {
   AccordionItem,
   AccordionHeader,
   AccordionPanel,
-  Textarea,
+  // Textarea,
   Field,
-  Dropdown,
-  Option,
+  // Dropdown,
+  // Option,
 } from '@fluentui/react-components';
 import { 
   ArrowDownloadRegular,
@@ -41,7 +41,7 @@ export const ReverseEngineerPage: React.FC = () => {
   const [showSolutionDropdown, setShowSolutionDropdown] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<any>(null);
+  // const [previewData, setPreviewData] = useState<any>(null);
   const [extractedErd, setExtractedErd] = useState<string | null>(null);
   const [extractionMetadata, setExtractionMetadata] = useState<any>(null);
   const [publisherPrefix, setPublisherPrefix] = useState<string>('');
@@ -82,23 +82,23 @@ export const ReverseEngineerPage: React.FC = () => {
   // Show solutions to display (all solutions when no search, filtered when searching)
   const solutionsToShow = solutionSearchTerm.trim() ? filteredSolutions : solutions;
 
-  const getPreviewData = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        environmentUrl,
-        ...(selectedSolution && { solutionName: selectedSolution.uniquename })
-      });
+  // const getPreviewData = useCallback(async () => {
+  //   try {
+  //     const params = new URLSearchParams({
+  //       environmentUrl,
+  //       ...(selectedSolution && { solutionName: selectedSolution.uniquename })
+  //     });
 
-      const response = await fetch(`/api/import/dataverse-solution/preview?${params}`);
-      const result = await response.json();
+  //     const response = await fetch(`/api/import/dataverse-solution/preview?${params}`);
+  //     const result = await response.json();
 
-      if (result.success) {
-        setPreviewData(result.data);
-      }
-    } catch (error) {
-      console.error('Failed to get preview data:', error);
-    }
-  }, [environmentUrl, selectedSolution]);
+  //     if (result.success) {
+  //       setPreviewData(result.data);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to get preview data:', error);
+  //   }
+  // }, [environmentUrl, selectedSolution]);
 
   const handleExtractSolution = useCallback(async () => {
     setIsExtracting(true);
@@ -197,7 +197,7 @@ export const ReverseEngineerPage: React.FC = () => {
         </Button>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <ArrowDownloadRegular fontSize={28} style={{ color: tokens.colorPaletteBlueForeground1 }} />
+          <ArrowDownloadRegular fontSize={28} style={{ color: tokens.colorPaletteBlueForeground2 }} />
           <Text size={700} weight="bold">Solution to Mermaid</Text>
           <Badge appearance="filled" color="brand" size="small">BETA</Badge>
         </div>
@@ -323,12 +323,12 @@ export const ReverseEngineerPage: React.FC = () => {
                           e.currentTarget.style.backgroundColor = tokens.colorNeutralBackground1;
                         }}
                       >
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <Text weight="semibold">{solution.friendlyname}</Text>
-                          <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                            {solution.uniquename} • Version {solution.version}
-                          </Text>
-                        </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <Text weight="semibold">{solution.friendlyname}</Text>
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          {solution.uniquename}
+                        </Text>
+                      </div>
                       </div>
                     ))}
                   </div>
@@ -390,7 +390,7 @@ export const ReverseEngineerPage: React.FC = () => {
       </Card>
 
       {/* Preview Section */}
-      {previewData && (
+      {/* {previewData && (
         <Card style={{ marginBottom: '24px' }}>
           <CardHeader
             header={<Text weight="semibold">Extraction Preview</Text>}
@@ -425,6 +425,7 @@ export const ReverseEngineerPage: React.FC = () => {
                 </div>
               </div>
             )}
+      */}
 
             {/* Extract Button */}
             <div style={{ marginTop: '16px' }}>
@@ -432,7 +433,7 @@ export const ReverseEngineerPage: React.FC = () => {
                 appearance="primary"
                 icon={isExtracting ? <Spinner size="tiny" /> : <ArrowDownloadRegular />}
                 onClick={handleExtractSolution}
-                disabled={connectionStatus !== 'success' || isExtracting}
+                disabled={!selectedSolution || isExtracting || solutionsLoading}
                 style={{ minWidth: '160px' }}
               >
                 {isExtracting ? 'Extracting...' : 'Extract Solution'}
@@ -445,9 +446,9 @@ export const ReverseEngineerPage: React.FC = () => {
                 <MessageBarBody>{extractionError}</MessageBarBody>
               </MessageBar>
             )}
-          </CardPreview>
+          {/* </CardPreview>
         </Card>
-      )}
+      )} */}
 
       {/* Results Section */}
       {extractedErd && (

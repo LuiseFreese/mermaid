@@ -6,6 +6,7 @@ import { MainMenu } from './components/MainMenu';
 import { RollbackPage } from './components/RollbackPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { DeploymentProvider } from './context/DeploymentContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { lightTheme, darkTheme, pinkTheme, neonTheme } from './styles/FluentTheme';
 import './styles/themes.css';
@@ -58,7 +59,9 @@ function App() {
   return (
     <AuthProvider requireAuth={!isTestMode}>
       <ThemeProvider>
-        <AppContent />
+        <DeploymentProvider>
+          <AppContent />
+        </DeploymentProvider>
       </ThemeProvider>
     </AuthProvider>
   );

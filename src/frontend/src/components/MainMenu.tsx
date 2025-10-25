@@ -7,19 +7,24 @@ import {
   Button,
   tokens,
   Badge,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import { 
   ArrowUploadRegular,
   ArrowUndoRegular,
-  ArrowDownloadRegular,
+  // ArrowDownloadRegular,
   DatabaseRegular,
-  DocumentRegular,
-  ChevronRightRegular
+  // DocumentRegular,
+  ChevronRightRegular,
+  WarningRegular
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import { useDeploymentContext } from '../context/DeploymentContext';
 
 export const MainMenu: React.FC = () => {
   const navigate = useNavigate();
+  const { blockNavigation, isDeploymentActive, isRollbackActive } = useDeploymentContext();
 
   const menuItems = [
     {
@@ -45,8 +50,8 @@ export const MainMenu: React.FC = () => {
       subtitle: 'Undo Deployment',
       description: 'Safely rollback previously deployed solutions with automatic dependency checking and data preservation.',
       icon: <ArrowUndoRegular fontSize={32} />,
-      color: tokens.colorPaletteOrangeForeground1,
-      backgroundColor: tokens.colorPaletteOrangeBackground3,
+      color: tokens.colorPaletteDarkOrangeForeground1,
+      backgroundColor: tokens.colorPaletteDarkOrangeBackground3,
       route: '/rollback',
       badges: ['Enterprise', 'Safe'],
       features: [
@@ -59,6 +64,9 @@ export const MainMenu: React.FC = () => {
   ];
 
   const handleNavigate = (route: string) => {
+    if (blockNavigation) {
+      return; // Prevent navigation during active operations
+    }
     navigate(route);
   };
 
@@ -70,6 +78,21 @@ export const MainMenu: React.FC = () => {
       minHeight: '100vh',
       backgroundColor: tokens.colorNeutralBackground1
     }}>
+      {/* Active Operation Warning */}
+      {blockNavigation && (
+        <div style={{ marginBottom: '24px' }}>
+          <MessageBar intent="warning">
+            <MessageBarBody>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <WarningRegular />
+                {isDeploymentActive && "Deployment in progress - Please wait for completion before navigating"}
+                {isRollbackActive && "Rollback in progress - Please wait for completion before navigating"}
+              </div>
+            </MessageBarBody>
+          </MessageBar>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ 
         textAlign: 'center', 
@@ -114,11 +137,7 @@ export const MainMenu: React.FC = () => {
             style={{
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              border: `1px solid ${tokens.colorNeutralStroke1}`,
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: tokens.shadow8
-              }
+              border: `1px solid ${tokens.colorNeutralStroke1}`
             }}
             onClick={() => handleNavigate(item.route)}
           >

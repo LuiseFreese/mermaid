@@ -75,8 +75,6 @@ class DeploymentHistoryService extends BaseService {
             // Cleanup old deployments
             await this.cleanupOldDeployments(deploymentData.environmentSuffix);
             
-            console.log(`🔍 Deployment recorded: ${deploymentId} for environment: ${record.environmentSuffix}`);
-            
             return deploymentId;
         });
     }
@@ -109,8 +107,6 @@ class DeploymentHistoryService extends BaseService {
             // Save updated record
             await this.saveDeploymentRecord(record);
             
-            console.log(`🔍 Deployment updated: ${deploymentId} status: ${record.status}`);
-            
             return record;
         });
     }
@@ -124,27 +120,21 @@ class DeploymentHistoryService extends BaseService {
     async getDeploymentHistory(environmentSuffix, limit = 20) {
         return this.executeOperation('getDeploymentHistory', async () => {
             const indexFile = path.join(this.storageDir, `${environmentSuffix || 'default'}_index.json`);
-            console.log('🔍 DEBUG: Looking for index file:', indexFile);
             
             try {
                 const indexData = await fs.readFile(indexFile, 'utf8');
                 const index = JSON.parse(indexData);
-                console.log('🔍 DEBUG: Index data loaded, deployments count:', index.deployments?.length);
                 
                 // Sort by timestamp (newest first) and limit
                 const sortedDeployments = index.deployments
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                     .slice(0, limit);
                 
-                console.log('🔍 DEBUG: Sorted deployments after limit:', sortedDeployments.length);
-                
                 // Load full deployment data
                 const fullDeployments = await Promise.all(
                     sortedDeployments.map(async (summary) => {
                         try {
-                            console.log('🔍 DEBUG: Loading deployment:', summary.deploymentId);
                             const deployment = await this.getDeploymentById(summary.deploymentId);
-                            console.log('🔍 DEBUG: Loaded deployment result:', deployment ? 'SUCCESS' : 'NULL');
                             return deployment;
                         } catch (error) {
                             console.warn(`Failed to load deployment ${summary.deploymentId}:`, error);
@@ -154,16 +144,13 @@ class DeploymentHistoryService extends BaseService {
                 );
                 
                 const filtered = fullDeployments.filter(d => d !== null);
-                console.log('🔍 DEBUG: Final deployments count after filtering:', filtered.length);
                 return filtered;
                 
             } catch (error) {
                 if (error.code === 'ENOENT') {
-                    console.log('🔍 DEBUG: Index file not found, returning empty array');
                     // No deployments yet
                     return [];
                 }
-                console.error('🔍 DEBUG: Error reading index file:', error);
                 throw error;
             }
         });
@@ -177,19 +164,15 @@ class DeploymentHistoryService extends BaseService {
     async getDeploymentById(deploymentId) {
         return this.executeOperation('getDeploymentById', async () => {
             const recordFile = path.join(this.storageDir, `${deploymentId}.json`);
-            console.log('🔍 DEBUG: Looking for deployment file:', recordFile);
             
             try {
                 const recordData = await fs.readFile(recordFile, 'utf8');
                 const deployment = JSON.parse(recordData);
-                console.log('🔍 DEBUG: Successfully loaded deployment:', deploymentId);
                 return deployment;
             } catch (error) {
                 if (error.code === 'ENOENT') {
-                    console.log('🔍 DEBUG: Deployment file not found:', recordFile);
                     return null;
                 }
-                console.error('🔍 DEBUG: Error loading deployment file:', error);
                 throw error;
             }
         });
@@ -340,7 +323,6 @@ class DeploymentHistoryService extends BaseService {
                     const recordFile = path.join(this.storageDir, `${deployment.deploymentId}.json`);
                     try {
                         await fs.unlink(recordFile);
-                        console.log(`🧹 Cleaned up old deployment: ${deployment.deploymentId}`);
                     } catch (error) {
                         console.warn(`Failed to delete old deployment file: ${recordFile}`, error);
                     }

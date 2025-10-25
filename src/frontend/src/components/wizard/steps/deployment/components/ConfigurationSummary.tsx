@@ -30,6 +30,17 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
     allGlobalChoices,
   } = useConfigurationSummary();
 
+  // Debug logging
+  console.log('📋 ConfigurationSummary data:', {
+    parsedEntities: wizardData.parsedEntities,
+    parsedRelationships: wizardData.parsedRelationships,
+    entities,
+    cdmEntities,
+    relationships,
+    selectedGlobalChoices,
+    uploadedChoices
+  });
+
   return (
     <Accordion 
       multiple 

@@ -4,8 +4,6 @@ import {
   CardHeader,
   CardPreview,
   Text,
-  Button,
-  Badge,
   tokens,
 } from '@fluentui/react-components';
 import { 
@@ -83,7 +81,6 @@ export const ImportSourceSelector: React.FC<ImportSourceSelectorProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <CloudDatabaseRegular fontSize={20} />
                 <Text weight="semibold">Import from Dataverse</Text>
-                <Badge appearance="filled" color="brand" size="small">BETA</Badge>
               </div>
             }
             description="Reverse engineer from an existing Dataverse solution"

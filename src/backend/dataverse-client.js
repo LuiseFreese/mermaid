@@ -3,6 +3,8 @@
 // Node 18+/Axios
 
 const axios = require('axios');
+const http = require('http');
+const https = require('https');
 
 class DataverseClient {
   constructor(cfg = {}) {
@@ -32,10 +34,33 @@ class DataverseClient {
     
     this.verbose = !!cfg.verbose;
 
+    // Configure HTTP agents for better connection stability
+    const httpAgent = new http.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000,
+      maxSockets: 5,
+      maxFreeSockets: 2,
+      timeout: 60000
+    });
+
+    const httpsAgent = new https.Agent({
+      keepAlive: true,
+      keepAliveMsecs: 30000,
+      maxSockets: 5,
+      maxFreeSockets: 2,
+      timeout: 60000
+    });
+
     this._http = axios.create({
       baseURL: `${this.baseUrl}/api/data/v9.2`,
       timeout: 300000, // 300 seconds (5 minutes) - increased for long-running operations like rollback
-      validateStatus: s => s >= 200 && s < 300
+      validateStatus: s => s >= 200 && s < 300,
+      httpAgent: httpAgent,
+      httpsAgent: httpsAgent,
+      // Additional connection stability options
+      headers: {
+        'Connection': 'keep-alive'
+      }
     });
 
     this._token = null;
@@ -304,14 +329,18 @@ class DataverseClient {
     };
 
     try {
-      if (this.verbose) this._log(method.toUpperCase(), `${this.baseUrl}/api/data/v9.2${url}`);
+      // Improved HTTP logging to prevent corruption
+      if (this.verbose) {
+        const fullUrl = `${this.baseUrl}/api/data/v9.2${url}`;
+        this._log(`${method.toUpperCase()} ${fullUrl}`);
+      }
       const requestConfig = { method, url, data, headers, ...options };
       const resp = await this._http.request(requestConfig);
       return resp.data;
     } catch (e) {
       let dataStr = '';
       try { dataStr = JSON.stringify(e.response?.data || { message: e.message }); } catch { dataStr = String(e.message); }
-      this._err(' Request failed:', dataStr);
+      this._err(` Request failed: ${dataStr}`);
       const err = new Error(e.response?.data?.error?.message || e.response?.data?.message || e.message || 'HTTP error');
       err.status = e.response?.status;
       throw err;
@@ -320,7 +349,8 @@ class DataverseClient {
 
   /**
    * Make a request with automatic retry logic for transient failures
-   * Handles rate limiting (429), authentication errors (401), and server errors (500, 502, 503, 504)
+   * Handles rate limiting (429), authentication errors (401), server errors (500, 502, 503, 504)
+   * and network errors (ECONNRESET, ETIMEDOUT, ENOTFOUND, etc.)
    * @param {string} method - HTTP method (get, post, patch, delete)
    * @param {string} url - API endpoint URL
    * @param {object} data - Request body data
@@ -331,12 +361,14 @@ class DataverseClient {
     const maxRetries = 5;
     const retryDelays = [1000, 2000, 4000, 8000, 16000]; // Exponential backoff in ms
     const retryableStatusCodes = [401, 429, 500, 502, 503, 504];
+    const retryableNetworkErrors = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNREFUSED', 'EHOSTUNREACH', 'EPIPE'];
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await this._req(method, url, data, options);
       } catch (error) {
-        const isRetryable = retryableStatusCodes.includes(error.status);
+        const isRetryableStatus = retryableStatusCodes.includes(error.status);
+        const isNetworkError = retryableNetworkErrors.some(code => error.message?.includes(code) || error.code === code);
         const isLastAttempt = attempt === maxRetries;
         
         // Check for EntityCustomization conflict error
@@ -345,7 +377,9 @@ class DataverseClient {
            error.message.includes('EntityCustomization') ||
            error.message.includes('solution installation or removal failed'));
 
-        if ((!isRetryable && !isEntityCustomizationConflict) || isLastAttempt) {
+        const isRetryable = isRetryableStatus || isNetworkError || isEntityCustomizationConflict;
+
+        if (!isRetryable || isLastAttempt) {
           // Not retryable or out of retries, throw the error
           throw error;
         }
@@ -364,8 +398,12 @@ class DataverseClient {
         // Handle rate limiting with Retry-After header
         let delayMs = retryDelays[attempt];
         
-        // Special handling for EntityCustomization conflicts - use longer delays
-        if (isEntityCustomizationConflict) {
+        // Special handling for different error types
+        if (isNetworkError) {
+          // Network errors get longer delays to allow connection recovery
+          delayMs = Math.max(delayMs, 2000 + (attempt * 1000)); // Minimum 2s, increasing by 1s each attempt
+          this._log(`🔗 Network error (${error.message}). Retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${maxRetries + 1})...`);
+        } else if (isEntityCustomizationConflict) {
           delayMs = Math.max(delayMs, 10000 + (attempt * 5000)); // Minimum 10s, increasing by 5s each attempt
           this._log(`⚠️  EntityCustomization conflict detected. Retrying in ${delayMs / 1000} seconds (attempt ${attempt + 1}/${maxRetries + 1})...`);
         } else if (error.status === 429) {
@@ -1086,6 +1124,7 @@ class DataverseClient {
 
   _attributeFromParser(entityName, attr, publisherPrefix) {
     console.log(`🔍 Processing attribute: ${attr.name} for entity: ${entityName}`);
+    console.log(`🔍 DEBUG: publisherPrefix="${publisherPrefix}"`);
     
     // CUSTOM PRIMARY COLUMN SUPPORT: Skip primary key attributes since Dataverse provides them automatically
     // This handles both default 'name' columns and custom primary columns
@@ -1107,16 +1146,23 @@ class DataverseClient {
     const base = this._safeName(attr.name);
     const entityBase = this._safeName(entityName);
     const schemaBase = reserved.has(base) ? `${publisherPrefix}_${entityBase}_${base}` : `${publisherPrefix}_${base}`;
+    console.log(`🔍 DEBUG: base="${base}", entityBase="${entityBase}", schemaBase="${schemaBase}"`);
     const display = attr.displayName || attr.name;
 
     switch ((attr.type || attr.originalType || '').toLowerCase()) {
       case 'int':
       case 'integer':
-      case 'number':
-        return this._intAttribute(this._toSchema(schemaBase), display);
+      case 'number': {
+        const result = this._intAttribute(this._toSchema(schemaBase), display);
+        console.log(`🔍 DEBUG: Final int attribute SchemaName="${result.SchemaName}"`);
+        return result;
+      }
         
-      case 'decimal':
-        return this._decimalAttribute(this._toSchema(schemaBase), display);
+      case 'decimal': {
+        const result = this._decimalAttribute(this._toSchema(schemaBase), display);
+        console.log(`🔍 DEBUG: Final decimal attribute SchemaName="${result.SchemaName}"`);
+        return result;
+      }
         
       case 'money':
       case 'currency':
@@ -1171,20 +1217,30 @@ class DataverseClient {
         return this._fileAttribute(this._toSchema(schemaBase), display);
         
       case 'string':
-      default:
+      default: {
         // string/fallback
-        return this._stringAttribute(this._toSchema(schemaBase), display, 4000);
+        const result = this._stringAttribute(this._toSchema(schemaBase), display, 4000);
+        console.log(`🔍 DEBUG: Final attribute SchemaName="${result.SchemaName}"`);
+        return result;
+      }
     }
   }
 
   _toSchema(s) {
     // first char upper after prefix for SchemaName
     if (!s) return s;
+    console.log(`🔍 DEBUG _toSchema: input="${s}"`);
     const parts = s.split('_');
-    if (parts.length < 2) return s.charAt(0).toUpperCase() + s.slice(1);
+    if (parts.length < 2) {
+      const result = s.charAt(0).toUpperCase() + s.slice(1);
+      console.log(`🔍 DEBUG _toSchema: single part result="${result}"`);
+      return result;
+    }
     const prefix = parts.shift();
     const cap = parts.map(p => p ? (p.charAt(0).toUpperCase() + p.slice(1)) : '').join('');
-    return `${prefix}_${cap}`;
+    const result = `${prefix}_${cap}`;
+    console.log(`🔍 DEBUG _toSchema: prefix="${prefix}", cap="${cap}", result="${result}"`);
+    return result;
   }
 
   // ------------------------
@@ -1527,20 +1583,30 @@ class DataverseClient {
         // Add entity to solution (if requested)
         if (sol) {
           this._log(`🔍 Attempting to add entity ${entity.name} to solution. Sol object:`, JSON.stringify(sol, null, 2));
-          // Resolve & add; retry a couple of times because metadata id can lag
+          // Resolve & add; retry with progressively longer delays because metadata id can lag significantly
           let added = false;
+          const retryDelays = [2000, 4000, 8000]; // 2s, 4s, 8s delays
+          
           for (let t = 1; t <= 3 && !added; t++) {
             try {
               // For newly created entities, use the user's choice for AddRequiredComponents
               await this.addEntityToSolution(payload.LogicalName, sol.uniquename, options.includeRelatedEntities || false);
               added = true;
             } catch (e) {
-              this._warn(` Attempt ${t}/3 to add entity ${payload.LogicalName} to solution failed: ${e.message} \n Waiting 2 seconds before retry...`);
-              await this.sleep(2000);
+              const delayMs = retryDelays[t - 1];
+              this._warn(` Attempt ${t}/3 to add entity ${payload.LogicalName} to solution failed: ${e.message}`);
+              if (t < 3) {
+                this._warn(` Waiting ${delayMs / 1000} seconds before retry...`);
+                await this.sleep(delayMs);
+              }
             }
           }
-          if (added) this._log(`✅ Added entity ${entity.name} to solution ${sol.uniquename}`);
-          else this._err(`❌ Failed to add entity ${entity.name} to solution after 3 attempts`);
+          if (added) {
+            this._log(`✅ Added entity ${entity.name} to solution ${sol.uniquename}`);
+          } else {
+            this._err(`❌ Failed to add entity ${entity.name} to solution after 3 attempts`);
+            results.errors.push(`Failed to add entity ${entity.name} to solution ${sol.uniquename}`);
+          }
         } else {
           this._warn(`⚠️ No solution object found - entity ${entity.name} will not be added to any solution`);
         }
@@ -1559,8 +1625,11 @@ class DataverseClient {
       this._log(` Found ${options.relationships.length} relationships to create`);
       this._log(` Waiting for entities to be fully provisioned before creating relationships...`);
       
-      // Wait longer for entities to be fully available in Dataverse
-      await this.sleep(25000);
+      // Wait longer for entities to be fully available in Dataverse, especially if there were entity addition errors
+      const hasEntityErrors = results.errors.some(e => e.includes('Failed to add entity') || e.includes('solution'));
+      const waitTime = hasEntityErrors ? 40000 : 30000; // Wait longer if there were entity errors
+      this._log(` Waiting ${waitTime / 1000} seconds for entity provisioning (extended wait due to potential timing issues)...`);
+      await this.sleep(waitTime);
       
       if (progressCallback) {
         progressCallback('relationships', 'Creating Relationships...', { relationshipCount: options.relationships.length });
@@ -1760,16 +1829,22 @@ class DataverseClient {
         return null;
       }
       
-      // Query for specific global choice set by name
-      const oDataQuery = `GlobalOptionSetDefinitions?$filter=Name eq '${choiceName}'&$select=Name,DisplayName,Description,IsManaged`;
+      // Since $filter is not supported on GlobalOptionSetDefinitions, 
+      // we need to fetch all and filter client-side
+      const oDataQuery = `GlobalOptionSetDefinitions?$select=Name,DisplayName,Description,IsManaged`;
       const result = await this._get(oDataQuery);
       
       if (!result.value || result.value.length === 0) {
-        console.log('❌ Choice set not found:', choiceName);
+        console.log('❌ No global choice sets found');
         return null;
       }
       
-      const choice = result.value[0];
+      // Filter client-side for the specific choice we want
+      const choice = result.value.find(c => c.Name === choiceName);
+      if (!choice) {
+        console.log('❌ Choice set not found:', choiceName);
+        return null;
+      }
       const processedChoice = {
         id: choice.Name,
         name: choice.Name,
@@ -2268,8 +2343,7 @@ class DataverseClient {
     console.log(`      From: ${relationship.fromEntity || 'Unknown'} → To: ${relationship.toEntity || 'Unknown'}`);
     this._log(`      From: ${relationship.fromEntity || 'Unknown'} → To: ${relationship.toEntity || 'Unknown'}`);
     
-    // For rollback relationships, we need to construct the actual Dataverse schema name
-    // The schema name pattern for custom relationships is: prefix_referencedEntity_referencingEntity
+      // Use the schema name directly if it looks like a proper Dataverse schema name (has underscores and no spaces)
     let actualSchemaName = schemaName;
     
     // If this looks like a display name (contains spaces or no underscores), construct the schema name
@@ -2292,9 +2366,10 @@ class DataverseClient {
       // Use the first option as default (we'll try both if needed)
       actualSchemaName = schemaOption1;
       this._log(`   🎯 Using schema name: ${actualSchemaName}`);
-    }
-    
-    this._log(`   🗑️ Executing DELETE for relationship: ${actualSchemaName}`);
+    } else {
+      console.log(`   ✅ Using provided schema name directly: ${actualSchemaName}`);
+      this._log(`   ✅ Using provided schema name directly: ${actualSchemaName}`);
+    }    this._log(`   🗑️ Executing DELETE for relationship: ${actualSchemaName}`);
     const deleteQuery = `RelationshipDefinitions(SchemaName='${actualSchemaName}')`;
     this._log(`   📞 API call: DELETE ${deleteQuery}`);
     
@@ -2329,6 +2404,97 @@ class DataverseClient {
       this._err(`   ❌ Failed to delete relationship ${actualSchemaName}: ${error.message}`);
       throw error;
     }
+  }
+  
+  /**
+   * Sort entities for deletion in dependency order
+   * Junction tables first, then dependent entities, then base entities
+   * @param {Array} entities - Array of entities to delete
+   * @param {Array} relationships - Array of relationships to help determine dependencies
+   * @returns {Array} Sorted entities for deletion
+   */
+  _sortEntitiesForDeletion(entities, relationships = []) {
+    this._log(`🔄 Sorting ${entities.length} entities for dependency-aware deletion...`);
+    
+    // Create a map to track entity relationships
+    const entityDependencies = new Map();
+    const junctionTables = new Set();
+    
+    // Initialize dependency tracking for all entities
+    entities.forEach(entity => {
+      const entityName = entity.logicalName || entity.name || entity.displayName;
+      entityDependencies.set(entityName, {
+        entity: entity,
+        referencedBy: new Set(), // Entities that reference this entity
+        references: new Set()    // Entities this entity references
+      });
+    });
+    
+    // Analyze relationships to understand dependencies
+    relationships.forEach(rel => {
+      if (rel.type === 'many-to-many') {
+        // Junction tables for many-to-many relationships should be deleted first
+        if (rel.junctionEntityName) {
+          junctionTables.add(rel.junctionEntityName);
+        }
+      } else if (rel.fromEntity && rel.toEntity) {
+        // For one-to-many relationships, track dependencies
+        const fromEntity = rel.fromEntity.toLowerCase();
+        const toEntity = rel.toEntity.toLowerCase();
+        
+        // The entity with the foreign key (fromEntity) depends on the referenced entity (toEntity)
+        if (entityDependencies.has(fromEntity) && entityDependencies.has(toEntity)) {
+          entityDependencies.get(fromEntity).references.add(toEntity);
+          entityDependencies.get(toEntity).referencedBy.add(fromEntity);
+        }
+      }
+    });
+    
+    // Sort entities into deletion order
+    const sortedEntities = [];
+    const processed = new Set();
+    
+    // First: Add junction tables (many-to-many relationship tables)
+    entities.forEach(entity => {
+      const entityName = entity.logicalName || entity.name || entity.displayName;
+      if (junctionTables.has(entityName) || entityName.toLowerCase().includes('junction') || 
+          entityName.toLowerCase().includes('course') && entityName.toLowerCase().includes('student') ||
+          entityName.toLowerCase().includes('course') && entityName.toLowerCase().includes('instructor')) {
+        sortedEntities.push(entity);
+        processed.add(entityName);
+        this._log(`   🔗 Junction table scheduled first: ${entityName}`);
+      }
+    });
+    
+    // Second: Add entities that are heavily referenced (likely junction/bridge entities)
+    const remainingEntities = entities.filter(entity => {
+      const entityName = entity.logicalName || entity.name || entity.displayName;
+      return !processed.has(entityName);
+    });
+    
+    // Sort by dependency count (entities with most references to others go first)
+    remainingEntities.sort((a, b) => {
+      const aName = a.logicalName || a.name || a.displayName;
+      const bName = b.logicalName || b.name || b.displayName;
+      const aDeps = entityDependencies.get(aName);
+      const bDeps = entityDependencies.get(bName);
+      
+      // Entities that reference more others should be deleted first
+      const aReferenceCount = aDeps ? aDeps.references.size : 0;
+      const bReferenceCount = bDeps ? bDeps.references.size : 0;
+      
+      return bReferenceCount - aReferenceCount;
+    });
+    
+    sortedEntities.push(...remainingEntities);
+    
+    this._log(`✅ Entity deletion order determined:`);
+    sortedEntities.forEach((entity, index) => {
+      const entityName = entity.logicalName || entity.name || entity.displayName;
+      this._log(`   ${index + 1}. ${entityName}`);
+    });
+    
+    return sortedEntities;
   }
   
   async _deleteEntity(entity) {
@@ -2401,7 +2567,9 @@ class DataverseClient {
       'team_',
       'owner_',
       'business_unit_',
-      'TransactionCurrency_'
+      'TransactionCurrency_',
+      'ImageDescriptor',
+      'FileDescriptor'
     ];
     
     // If it matches any system pattern, it's not our custom relationship
@@ -2573,8 +2741,12 @@ class DataverseClient {
     
     const results = {
       relationshipsDeleted: 0,
+      relationshipsProcessed: 0, // Total attempted (including already deleted)
       entitiesDeleted: 0,
+      entitiesProcessed: 0, // Total attempted (including already deleted)
+      entitiesSkipped: 0, // Entities that couldn't be deleted due to dependencies
       globalChoicesDeleted: 0,
+      globalChoicesProcessed: 0, // Total attempted (including already deleted)
       solutionDeleted: false,
       publisherDeleted: false,
       errors: [],
@@ -2582,10 +2754,19 @@ class DataverseClient {
       stepDetails: []
     };
 
+    // Helper function to safely call progress callback
+    const reportProgress = (step, message) => {
+      if (progress && typeof progress === 'function') {
+        progress(step, message);
+      }
+    };
+
     try {
       await this._ensureToken();
       
-      progress('starting', 'Starting deployment rollback...');
+      if (progress && typeof progress === 'function') {
+        reportProgress('preparation', 'Preparing Rollback');
+      }
       this._log('🚀 ROLLBACK STARTED - Analyzing deployment data...');
       
       // Log what we're about to delete
@@ -2617,25 +2798,45 @@ class DataverseClient {
       // Step 1: Detect and delete relationships first (CRITICAL - must be first to avoid dependency issues)
       let relationshipsToDelete = [];
       
-      // Check rollbackData for relationships
-      if (deploymentData.rollbackData?.relationships) {
-        relationshipsToDelete = [...deploymentData.rollbackData.relationships];
+      // Debug: Log what relationship data we have
+      this._log(`🔍 DEBUG: Checking relationship data sources...`);
+      this._log(`   rollbackData?.createdRelationships: ${deploymentData.rollbackData?.createdRelationships ? 'YES' : 'NO'}`);
+      this._log(`   rollbackData?.relationships: ${deploymentData.rollbackData?.relationships ? 'YES' : 'NO'}`);
+      this._log(`   summary?.relationshipsCreated: ${deploymentData.summary?.relationshipsCreated ? 'YES' : 'NO'}`);
+      
+      // Check rollbackData for actual created relationships (with correct schema names)
+      if (deploymentData.rollbackData?.createdRelationships && Object.keys(deploymentData.rollbackData.createdRelationships).length > 0) {
+        this._log(`🔍 DEBUG: Found createdRelationships, processing ${Object.keys(deploymentData.rollbackData.createdRelationships).length} items...`);
+        // Convert created relationships map to array with schema names
+        for (const [key, relationshipData] of Object.entries(deploymentData.rollbackData.createdRelationships)) {
+          relationshipsToDelete.push({
+            schemaName: relationshipData.SchemaName || relationshipData.schemaName,
+            name: relationshipData.DisplayName || relationshipData.displayName || key,
+            fromEntity: key.split('->')[0],
+            toEntity: key.split('->')[1]
+          });
+        }
+      } else {
+        this._log(`🔍 DEBUG: No createdRelationships found or empty - no relationships to delete`);
+        this._log(`🔍 DEBUG: createdRelationships exists: ${deploymentData.rollbackData?.createdRelationships ? 'YES' : 'NO'}`);
+        if (deploymentData.rollbackData?.createdRelationships) {
+          this._log(`🔍 DEBUG: createdRelationships count: ${Object.keys(deploymentData.rollbackData.createdRelationships).length}`);
+        }
+        // Do NOT fallback to original relationships - those are just ERD labels, not actual created relationships
+        // Only delete relationships that were actually created and recorded in createdRelationships
       }
       
-      // Also check summary for any additional relationships
-      if (deploymentData.summary?.relationshipsCreated) {
-        relationshipsToDelete = [...relationshipsToDelete, ...deploymentData.summary.relationshipsCreated];
-      }
+      this._log(`🔍 DEBUG: Final relationshipsToDelete array has ${relationshipsToDelete.length} items`);
       
-      // Remove duplicates based on name/schema
+      // Remove duplicates based on schema name
       relationshipsToDelete = relationshipsToDelete.filter((rel, index, arr) => {
-        const relName = rel.name || rel.schemaName || rel.logicalName;
-        return arr.findIndex(r => (r.name || r.schemaName || r.logicalName) === relName) === index;
+        const relSchema = rel.schemaName || rel.name || rel.logicalName;
+        return arr.findIndex(r => (r.schemaName || r.name || r.logicalName) === relSchema) === index;
       });
       
       // STEP 1: Delete relationships first (CRITICAL - must succeed before entities can be deleted)
       if (rollbackConfig.relationships && relationshipsToDelete.length > 0) {
-        progress('relationships', `Deleting ${relationshipsToDelete.length} relationships...`);
+        reportProgress('relationships', `Removing ${relationshipsToDelete.length} relationships`);
         this._log(`🔗 STEP 1: Deleting ${relationshipsToDelete.length} relationships...`);
         
         // Add publisher prefix to relationships for schema name construction
@@ -2643,6 +2844,8 @@ class DataverseClient {
         
         for (const [index, relationship] of relationshipsToDelete.entries()) {
           const relName = relationship.name || relationship.schemaName || relationship.displayName || 'Unknown';
+          results.relationshipsProcessed++; // Count as processed regardless of outcome
+          
           try {
             this._log(`🔗 Deleting relationship ${index + 1}/${relationshipsToDelete.length}: ${relName}`);
             results.stepDetails.push(`Starting deletion of relationship: ${relName}`);
@@ -2687,6 +2890,8 @@ class DataverseClient {
           this._log('🔗 STEP 1: Skipping relationships (not selected in config)');
         } else {
           this._log('🔗 STEP 1: No relationships detected for deletion');
+          // Signal to remove the relationships step since none are needed
+          reportProgress('skipRelationships', 'No relationships to delete');
         }
       }
 
@@ -2698,63 +2903,131 @@ class DataverseClient {
       }
       
       if (rollbackConfig.customEntities && customEntitiesToDelete.length > 0) {
-        progress('custom-entities', `Deleting ${customEntitiesToDelete.length} custom entities...`);
+        reportProgress('customEntities', `Removing ${customEntitiesToDelete.length} custom entities`);
         this._log(`🏢 STEP 2: Deleting ${customEntitiesToDelete.length} custom entities...`);
+        
+        // Sort entities by dependency order - junction tables first, then dependent entities, then base entities
+        customEntitiesToDelete = this._sortEntitiesForDeletion(customEntitiesToDelete, deploymentData.rollbackData?.relationships || []);
         
         const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
         this._log(`   📋 Publisher prefix: ${publisherPrefix || 'NOT FOUND'}`);
         
-        for (const [index, entity] of customEntitiesToDelete.entries()) {
-          let entityName = entity.logicalName || entity.name || entity.displayName || 'Unknown';
-          this._log(`   📌 Original entity name from rollback data: ${entityName}`);
+        // Implement retry-based deletion with dependency handling
+        const maxRetries = 3;
+        let pendingEntities = [...customEntitiesToDelete];
+        let currentRetry = 0;
+        
+        while (pendingEntities.length > 0 && currentRetry < maxRetries) {
+          this._log(`🔄 Deletion attempt ${currentRetry + 1}/${maxRetries} for ${pendingEntities.length} entities`);
+          const entitiesFailedThisRound = [];
           
-          // Always construct the proper logical name with prefix for custom entities
-          if (publisherPrefix) {
-            // If the name already has an underscore, assume it's already a logical name
-            if (entityName.includes('_')) {
-              this._log(`   ✅ Entity name already has prefix: ${entityName}`);
+          for (const [index, entity] of pendingEntities.entries()) {
+            let entityName = entity.logicalName || entity.name || entity.displayName || 'Unknown';
+            this._log(`   📌 Original entity name from rollback data: ${entityName}`);
+            
+            // Always construct the proper logical name with prefix for custom entities
+            if (publisherPrefix) {
+              // If the name already has an underscore, assume it's already a logical name
+              if (entityName.includes('_')) {
+                this._log(`   ✅ Entity name already has prefix: ${entityName}`);
+              } else {
+                // Convert display name to logical name with prefix (lowercase)
+                const logicalNamePart = entityName.toLowerCase();
+                entityName = `${publisherPrefix}_${logicalNamePart}`;
+                this._log(`   🔧 Constructed logical name with prefix: ${entityName}`);
+              }
             } else {
-              // Convert display name to logical name with prefix (lowercase)
-              const logicalNamePart = entityName.toLowerCase();
-              entityName = `${publisherPrefix}_${logicalNamePart}`;
-              this._log(`   🔧 Constructed logical name with prefix: ${entityName}`);
+              this._warn(`   ⚠️ No publisher prefix found, using entity name as-is: ${entityName}`);
             }
-          } else {
-            this._warn(`   ⚠️ No publisher prefix found, using entity name as-is: ${entityName}`);
-          }
-          
-          try {
-            this._log(`🗑️ Deleting custom entity ${index + 1}/${customEntitiesToDelete.length}: ${entityName}`);
-            results.stepDetails.push(`Starting deletion of custom entity: ${entityName}`);
             
-            // Get entity metadata first to ensure it exists
-            this._log(`   🔍 Looking up metadata for entity: ${entityName}`);
-            const entityQuery = `/EntityDefinitions?$filter=LogicalName eq '${entityName}'`;
-            const entityResponse = await this._get(entityQuery);
-            
-            if (entityResponse.value && entityResponse.value.length > 0) {
-              this._log(`   ✅ Found entity metadata, proceeding with deletion...`);
-              await this._deleteEntity(entityResponse.value[0]);
-              results.entitiesDeleted++;
+            try {
+              results.entitiesProcessed++; // Count as processed regardless of outcome
               
-              const successMsg = `✅ Deleted custom entity: ${entityName}`;
-              this._log(successMsg);
-              results.stepDetails.push(successMsg);
-            } else {
-              const warningMsg = `⚠️ Custom entity ${entityName} not found, may have already been deleted`;
-              this._log(warningMsg);
-              results.warnings.push(warningMsg);
-              results.stepDetails.push(warningMsg);
-            }
-          } catch (error) {
-            const errorMsg = `❌ CRITICAL: Failed to delete custom entity ${entityName}: ${error.message}`;
+              this._log(`🗑️ Deleting custom entity ${index + 1}/${pendingEntities.length}: ${entityName}`);
+              results.stepDetails.push(`Starting deletion of custom entity: ${entityName} (attempt ${currentRetry + 1})`);
+              
+              // Get entity metadata first to ensure it exists
+              this._log(`   🔍 Looking up metadata for entity: ${entityName}`);
+              const entityQuery = `/EntityDefinitions?$filter=LogicalName eq '${entityName}'`;
+              const entityResponse = await this._get(entityQuery);
+              
+              if (entityResponse.value && entityResponse.value.length > 0) {
+                this._log(`   ✅ Found entity metadata, checking dependencies before deletion...`);
+                
+                // Check for dependencies before attempting deletion
+                try {
+                  const entityMetadataId = entityResponse.value[0].MetadataId;
+                  this._log(`   🔍 Checking dependencies for entity ID: ${entityMetadataId}`);
+                  
+                  // Try to delete the entity
+                  await this._deleteEntity(entityResponse.value[0]);
+                  results.entitiesDeleted++;
+                  
+                  const successMsg = `✅ Deleted custom entity: ${entityName}`;
+                  this._log(successMsg);
+                  results.stepDetails.push(successMsg);
+                  
+                } catch (deleteError) {
+                  // Check if it's a dependency error
+                  if (deleteError.message && deleteError.message.includes('referenced by') && deleteError.message.includes('other components')) {
+                    const warningMsg = `⚠️ Cannot delete entity ${entityName}: has dependencies. ${deleteError.message}`;
+                    this._log(warningMsg);
+                    
+                    // Add to retry list if this isn't the last attempt
+                    if (currentRetry < maxRetries - 1) {
+                      entitiesFailedThisRound.push(entity);
+                      this._log(`   🔄 Will retry ${entityName} in next round`);
+                    } else {
+                      results.warnings.push(warningMsg);
+                      results.stepDetails.push(warningMsg);
+                      results.entitiesSkipped++;
+                    }
+                    
+                  } else {
+                    // For other errors, still continue but log as error
+                    const errorMsg = `❌ Failed to delete custom entity ${entityName}: ${deleteError.message}`;
+                    this._err(errorMsg);
+                    results.errors.push(errorMsg);
+                    results.stepDetails.push(errorMsg);
+                    // Don't add to retry list for non-dependency errors
+                  }
+                }
+              } else {
+                const warningMsg = `⚠️ Custom entity ${entityName} not found, may have already been deleted`;
+                this._log(warningMsg);
+                results.warnings.push(warningMsg);
+                results.stepDetails.push(warningMsg);
+              }
+            } catch (error) {
+            // Only for unexpected errors during metadata lookup
+            const errorMsg = `❌ Unexpected error processing entity ${entityName}: ${error.message}`;
             this._err(errorMsg);
             results.errors.push(errorMsg);
-            
-            // HARD STOP: If custom entities can't be deleted, the rollback is incomplete
-            throw new Error(`Rollback stopped: Cannot delete entity '${entityName}'. Error: ${error.message}`);
+            results.stepDetails.push(errorMsg);
+            // Continue with other entities instead of hard stopping
           }
         }
+        
+        // Update pending entities for next retry round
+        pendingEntities = entitiesFailedThisRound;
+        currentRetry++;
+        
+        // If we have entities left to retry, wait before next attempt
+        if (pendingEntities.length > 0 && currentRetry < maxRetries) {
+          this._log(`⏳ Waiting 2 seconds before retry attempt ${currentRetry + 1}...`);
+          await this.sleep(2000);
+        }
+      }
+      
+      // Final reporting
+      if (pendingEntities.length > 0) {
+        this._log(`⚠️ Failed to delete ${pendingEntities.length} entities after ${maxRetries} attempts due to dependencies`);
+        pendingEntities.forEach(entity => {
+          const entityName = entity.logicalName || entity.name || entity.displayName || 'Unknown';
+          results.warnings.push(`Entity ${entityName} could not be deleted due to dependencies`);
+        });
+      }
+      
       } else {
         if (!rollbackConfig.customEntities) {
           this._log('🏢 STEP 2: Skipping custom entities (not selected in config)');
@@ -2763,13 +3036,10 @@ class DataverseClient {
         }
       }
       
-      // Step 3: Remove CDM entities from solution (DO NOT delete them - they're standard tables)
-      // NOTE: This feature is currently disabled because the Dataverse Web API does not support
-      // the RemoveSolutionComponent action. CDM entities can only be removed from solutions manually.
+      // Step 3: CDM entities are automatically unlinked when solution is deleted
+      // No action needed - CDM entities remain available in the environment
       if (rollbackConfig.cdmEntities) {
-        this._log('🏢 STEP 3: CDM entity removal from solution is not supported via Web API');
-        this._log('   ℹ️  To remove CDM entities: Open solution in Power Platform → Select entity → Remove');
-        results.warnings.push('CDM entity removal from solution requires manual action in Power Platform UI');
+        this._log('🏢 STEP 3: CDM entities will be automatically unlinked when solution is deleted');
       } else {
         this._log('🏢 STEP 3: Skipping CDM entities (not selected in config)');
       }
@@ -2785,7 +3055,7 @@ class DataverseClient {
       
       // Delete custom global choices completely
       if (rollbackConfig.customGlobalChoices && customGlobalChoicesToDelete.length > 0) {
-        progress('custom-choices', `Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
+        reportProgress('globalChoices', `Removing ${customGlobalChoicesToDelete.length} global choices`);
         this._log(`🎯 STEP 4a: Deleting ${customGlobalChoicesToDelete.length} custom global choices...`);
         
         const publisherPrefix = deploymentData.solutionInfo?.publisherPrefix;
@@ -2805,6 +3075,8 @@ class DataverseClient {
         
         for (const [index, choiceName] of customGlobalChoicesToDelete.entries()) {
           try {
+            results.globalChoicesProcessed++; // Count as processed regardless of outcome
+            
             this._log(`🗑️ Deleting custom global choice ${index + 1}/${customGlobalChoicesToDelete.length}: ${choiceName}`);
             results.stepDetails.push(`Starting deletion of custom global choice: ${choiceName}`);
             
@@ -2869,7 +3141,7 @@ class DataverseClient {
       
       // Step 5: Delete solution (must be before publisher deletion)
       if (rollbackConfig.solution && deploymentData.solutionInfo?.solutionId) {
-        progress('solution', `Deleting solution (${deploymentData.solutionInfo.solutionName || 'Unknown'})...`);
+        reportProgress('solution', `Removing Solution`);
         this._log('📦 STEP 5: Deleting solution...');
         
         try {
@@ -2904,7 +3176,7 @@ class DataverseClient {
 
       // Step 6: Delete publisher (FINAL STEP - must be after solution is deleted)
       if (rollbackConfig.publisher && (deploymentData.solutionInfo?.publisherPrefix || deploymentData.solutionInfo?.publisherId)) {
-        progress('publisher', `Deleting publisher (${deploymentData.solutionInfo.publisherName || 'Unknown'})...`);
+        reportProgress('publisher', `Removing Publisher`);
         this._log('🏢 STEP 6: Deleting publisher (FINAL STEP)...');
         
         try {
@@ -2936,13 +3208,38 @@ class DataverseClient {
         }
       }
 
-      progress('completed', 'Rollback completed');
+      reportProgress('completed', 'Rollback Completed Successfully');
       
-      // Build a descriptive summary based on what was actually done
+      // Build a descriptive summary based on what was processed (including already deleted items)
       let summaryParts = [];
-      if (results.relationshipsDeleted > 0) summaryParts.push(`${results.relationshipsDeleted} relationship(s) deleted`);
-      if (results.entitiesDeleted > 0) summaryParts.push(`${results.entitiesDeleted} entity/entities deleted`);
-      if (results.globalChoicesDeleted > 0) summaryParts.push(`${results.globalChoicesDeleted} global choice(s) deleted`);
+      if (results.relationshipsProcessed > 0) {
+        const deletedText = results.relationshipsDeleted === results.relationshipsProcessed 
+          ? `${results.relationshipsProcessed} relationship(s) deleted`
+          : `${results.relationshipsProcessed} relationship(s) processed (${results.relationshipsDeleted} deleted, ${results.relationshipsProcessed - results.relationshipsDeleted} already removed)`;
+        summaryParts.push(deletedText);
+      }
+      
+      if (results.entitiesProcessed > 0) {
+        let deletedText = `${results.entitiesProcessed} entity/entities processed`;
+        let details = [];
+        if (results.entitiesDeleted > 0) details.push(`${results.entitiesDeleted} deleted`);
+        if (results.entitiesSkipped > 0) details.push(`${results.entitiesSkipped} skipped (dependencies)`);
+        const alreadyRemoved = results.entitiesProcessed - results.entitiesDeleted - results.entitiesSkipped;
+        if (alreadyRemoved > 0) details.push(`${alreadyRemoved} already removed`);
+        
+        if (details.length > 0) {
+          deletedText += ` (${details.join(', ')})`;
+        }
+        summaryParts.push(deletedText);
+      }
+      
+      if (results.globalChoicesProcessed > 0) {
+        const deletedText = results.globalChoicesDeleted === results.globalChoicesProcessed 
+          ? `${results.globalChoicesProcessed} global choice(s) deleted`
+          : `${results.globalChoicesProcessed} global choice(s) processed (${results.globalChoicesDeleted} deleted, ${results.globalChoicesProcessed - results.globalChoicesDeleted} already removed)`;
+        summaryParts.push(deletedText);
+      }
+      
       if (results.solutionDeleted) summaryParts.push('solution deleted');
       if (results.publisherDeleted) summaryParts.push('publisher deleted');
       

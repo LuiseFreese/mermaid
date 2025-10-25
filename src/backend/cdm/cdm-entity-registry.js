@@ -116,6 +116,4 @@ class CDMEntityRegistry {
     }
 }
 
-module.exports = {
-    CDMEntityRegistry
-};
+module.exports = CDMEntityRegistry;

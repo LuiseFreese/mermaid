@@ -9,8 +9,8 @@ import {
   CardPreview,
   Text,
   Button,
-  MessageBar,
-  MessageBarBody
+  // MessageBar,
+  // MessageBarBody
 } from '@fluentui/react-components';
 import type { CDMDetectionCardProps } from '../types/file-upload.types';
 import styles from './CDMDetectionCard.module.css';
@@ -18,7 +18,7 @@ import styles from './CDMDetectionCard.module.css';
 export const CDMDetectionCard: React.FC<CDMDetectionCardProps> = ({
   detectionResult,
   onChoiceSelected,
-  onChoiceChanged,
+  // onChoiceChanged,
   className
 }) => {
   const { detected, entities, choice } = detectionResult;

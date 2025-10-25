@@ -52,7 +52,7 @@ export const useFileValidation = ({
 }: UseFileValidationOptions): UseFileValidationReturn => {
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const lastRevalidatedChoiceRef = useRef<string | null>(null);
+  const lastRevalidatedChoiceRef = useRef<'cdm' | 'custom' | null>(null);
   const revalidationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if there are any backend validation warnings
@@ -145,18 +145,18 @@ export const useFileValidation = ({
     lastRevalidatedChoiceRef.current = entityChoice;
 
     try {
-      const revalidationResult = await validateFile({
-        name: uploadedFile.name,
-        content: originalErdContent,
-        size: uploadedFile.size,
-        lastModified: uploadedFile.lastModified
-      }, entityChoice);
+      // const revalidationResult = await validateFile({
+      //   name: uploadedFile.name,
+      //   content: originalErdContent,
+      //   size: uploadedFile.size,
+      //   lastModified: uploadedFile.lastModified
+      // }, entityChoice);
       
       console.log('🔧 DEBUG: Revalidation completed');
     } catch (error) {
       console.error('Error during revalidation:', error);
     }
-  }, [entityChoice, uploadedFile, originalErdContent, validateFile]);
+  }, [entityChoice, uploadedFile, originalErdContent]);
 
   /**
    * Apply a fix for choice/category columns
@@ -293,7 +293,7 @@ export const useFileValidation = ({
       w.autoFixable
     ) || [];
     
-    console.log('🔧 DEBUG: Processing fixes for warnings:', autoFixableWarnings.map(w => w.id));
+    console.log('🔧 DEBUG: Processing fixes for warnings:', autoFixableWarnings.map((w: ValidationWarning) => w.id));
 
     // Clear fixedIssues before applying fixes to allow all fixes to be attempted
     onFixedIssuesUpdate(new Set());
@@ -355,16 +355,25 @@ export const useFileValidation = ({
       entityChoice,
       hasUploadedFile: !!uploadedFile,
       hasOriginalContent: !!originalErdContent,
-      lastRevalidatedChoice: lastRevalidatedChoiceRef.current
+      lastRevalidatedChoice: lastRevalidatedChoiceRef.current,
+      isChoiceActuallyDifferent: entityChoice !== lastRevalidatedChoiceRef.current,
+      shouldRevalidate: !!(entityChoice && 
+        entityChoice !== lastRevalidatedChoiceRef.current &&
+        uploadedFile && 
+        originalErdContent)
     });
 
+    // Only revalidate if entityChoice is not null and truly different from last revalidated choice
     if (entityChoice && 
+        entityChoice !== lastRevalidatedChoiceRef.current &&
         uploadedFile && 
-        originalErdContent && 
-        entityChoice !== lastRevalidatedChoiceRef.current) {
+        originalErdContent) {
+      console.log('🔧 DEBUG: Triggering revalidation due to entity choice change');
       revalidateWithChoice();
+    } else {
+      console.log('🔧 DEBUG: Skipping revalidation - conditions not met');
     }
-  }, [entityChoice, uploadedFile, originalErdContent, revalidateWithChoice]);
+  }, [entityChoice, uploadedFile, originalErdContent]); // Removed revalidateWithChoice from dependencies
 
   // Cleanup timeout on unmount
   useEffect(() => {

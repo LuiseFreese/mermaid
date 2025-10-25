@@ -30,7 +30,7 @@ export const ERDDiagramDisplay: React.FC<ERDDiagramDisplayProps> = ({
   erdEditor
 }) => {
   const mermaidElementRef = useRef<HTMLDivElement>(null);
-  const { renderDiagram, isRendering } = useMermaidRenderer();
+  const { renderDiagram } = useMermaidRenderer();
 
   const {
     isEditingERD,

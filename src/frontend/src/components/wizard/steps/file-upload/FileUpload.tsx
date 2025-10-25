@@ -62,12 +62,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
       updateWizardData({
         originalErdContent: content,
         correctedErdContent: content,
-        importSource: {
-          type: 'file',
-          fileName: file.name,
-          size: file.size,
-          lastModified: file.lastModified
-        }
+        importSource: 'file'
       });
 
       setUploadedFile(file.name);

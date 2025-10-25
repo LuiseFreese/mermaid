@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,7 +14,7 @@ import {
 import { DocumentArrowUpRegular } from '@fluentui/react-icons';
 import { useWizardContext } from '../../../context/WizardContext';
 import { useTheme } from '../../../context/ThemeContext';
-import { ApiService } from '../../../services/apiService';
+// import { ApiService } from '../../../services/apiService';
 import styles from './FileUploadStep.module.css';
 import { ImportSourceSelector, ImportSource } from './file-upload/ImportSourceSelector';
 import { FileUpload } from './file-upload/FileUpload';
@@ -94,7 +94,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   const erdEditor = useERDEditor({
     correctedErdContent,
     uploadedFile,
-    importSource,
+    importSource: importSource as string | null,
     entityChoice,
     onContentUpdate: (content) => {
       updateWizardData({ correctedErdContent: content });
@@ -113,25 +113,49 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   });
 
   // Handle Dataverse import completion
-  const handleImportCompleted = useCallback((content: string, metadata?: any) => {
-    console.log('🔍 DEBUG: Import completed', {
-      contentLength: content.length,
-      hasMetadata: !!metadata,
-      entityChoice: metadata?.entityChoice,
-      cdmDetected: metadata?.cdmDetected,
-      entitiesCount: metadata?.entities?.length
-    });
+  const handleImportCompleted = useCallback(async (content: string, metadata?: any) => {
+    // Debounce to prevent multiple rapid calls
+    if (content === lastImportContentRef.current) {
+      console.log('� DEBUG: Duplicate import detected, skipping');
+      return;
+    }
+    
+    lastImportContentRef.current = content;
+    
+    // Clear any existing timeout
+    if (importTimeoutRef.current) {
+      clearTimeout(importTimeoutRef.current);
+    }
+    
+    // Debounce the import processing
+    importTimeoutRef.current = setTimeout(async () => {
+      console.log('�🔍 DEBUG: Import completed', {
+        contentLength: content.length,
+        hasMetadata: !!metadata,
+        entityChoice: metadata?.entityChoice,
+        cdmDetected: metadata?.cdmDetected,
+        entitiesCount: metadata?.entities?.length
+      });
 
-    setValidationError(null);
+      setValidationError(null);
 
-    try {
-      const virtualFile = new File([content], 'dataverse-import.mmd', { type: 'text/plain' });
+      try {
+        const virtualFile = new File([content], 'dataverse-import.mmd', { type: 'text/plain' });
+
+        // Call validation to parse entities and relationships
+      console.log('🔍 DEBUG: Validating Dataverse import...');
+      const validationResults = await validateFile({
+        name: virtualFile.name,
+        content,
+        size: virtualFile.size,
+        lastModified: virtualFile.lastModified
+      }, metadata?.entityChoice || null);
 
       updateWizardData({
         correctedErdContent: content,
         originalErdContent: content,
-        parsedEntities: metadata?.entities || [],
-        parsedRelationships: metadata?.relationships || [],
+        parsedEntities: validationResults.entities || [],
+        parsedRelationships: validationResults.relationships || [],
         cdmDetected: metadata?.cdmDetected || false,
         detectedEntities: metadata?.detectedEntities || [],
         entityChoice: metadata?.entityChoice || null,
@@ -146,7 +170,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       console.error('Import processing error:', error);
       setValidationError(error instanceof Error ? error.message : 'Import processing failed');
     }
-  }, [updateWizardData, onFileUploaded, selectedImportSource, setValidationError]);
+  }, [updateWizardData, onFileUploaded, selectedImportSource, setValidationError, validateFile]);
 
   // Handle CDM choice selection
   const handleCDMChoice = useCallback(async (choice: 'cdm' | 'custom') => {
@@ -249,16 +273,29 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       console.log('🔍 DEBUG: No CDM entities detected, validating immediately');
       updateWizardData({ cdmDetected: false });
 
-      // No CDM detected - validate immediately
+      // No CDM detected - validate immediately with 'custom' entity choice
       try {
         const validationResult = await validateFile({
           name: fileName,
           content,
           size: content.length,
           lastModified: Date.now()
+        }, 'custom'); // Default to custom entities when no CDM detected
+
+        console.log('✅ DEBUG: Validation completed (no CDM)', {
+          correctedERD: !!validationResult.correctedERD,
+          entitiesCount: validationResult.entities?.length || 0,
+          relationshipsCount: validationResult.relationships?.length || 0
         });
 
-        console.log('✅ DEBUG: Validation completed (no CDM)');
+        // Update wizard data with validation results
+        updateWizardData({
+          correctedErdContent: validationResult.correctedERD || content,
+          parsedEntities: validationResult.entities || [],
+          parsedRelationships: validationResult.relationships || [],
+          validationResults: validationResult,
+          entityChoice: 'custom' // Set default choice for no CDM
+        });
       } catch (error) {
         console.error('Validation error:', error);
         setValidationError(error instanceof Error ? error.message : 'Validation failed');
@@ -269,18 +306,18 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
   }, [updateWizardData, validateFile, onFileUploaded, setValidationError]);
 
   // Auto-select 'preloaded' option if we have pre-loaded content
-  useEffect(() => {
-    if (originalErdContent && !selectedImportSource) {
-      setSelectedImportSource('preloaded');
-    }
-  }, [originalErdContent, selectedImportSource]);
+  // useEffect(() => {
+  //   if (originalErdContent && !selectedImportSource) {
+  //     setSelectedImportSource('preloaded');
+  //   }
+  // }, [originalErdContent, selectedImportSource]);
 
   // Process pre-loaded content when 'preloaded' is selected
-  useEffect(() => {
-    if (selectedImportSource === 'preloaded' && originalErdContent && !correctedErdContent) {
-      handleImportCompleted(originalErdContent);
-    }
-  }, [selectedImportSource, originalErdContent, correctedErdContent, handleImportCompleted]);
+  // useEffect(() => {
+  //   if (selectedImportSource === 'preloaded' && originalErdContent && !correctedErdContent) {
+  //     handleImportCompleted(originalErdContent);
+  //   }
+  // }, [selectedImportSource, originalErdContent, correctedErdContent, handleImportCompleted]);
 
   return (
     <Card style={{ boxShadow: tokens.shadow4 }}>

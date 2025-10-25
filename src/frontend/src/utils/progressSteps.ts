@@ -19,10 +19,6 @@ export const DEPLOYMENT_STEPS: Record<string, Omit<ProgressStep, 'status'>> = {
     id: 'solution',
     label: 'Setting up Solution'
   },
-  globalChoices: {
-    id: 'globalChoices',
-    label: 'Creating Global Choices'
-  },
   entities: {
     id: 'entities',
     label: 'Creating Entities'
@@ -30,6 +26,10 @@ export const DEPLOYMENT_STEPS: Record<string, Omit<ProgressStep, 'status'>> = {
   relationships: {
     id: 'relationships',
     label: 'Setting up Relationships'
+  },
+  globalChoices: {
+    id: 'globalChoices',
+    label: 'Creating Global Choices'
   },
   finalization: {
     id: 'finalization',

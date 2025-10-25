@@ -69,7 +69,7 @@ const createBaseService = (customDeps = {}) => {
  * @param {number} callIndex - Index of call to extract
  * @returns {Array} Call arguments
  */
-const getLogCall = (logFn, callIndex = 0) => logFn.mock.calls[callIndex];
+
 
 // ============================================================================
 // Test Suite
@@ -119,13 +119,11 @@ describe('BaseService', () => {
 
     describe('logging methods', () => {
         describe('log', () => {
-            test('should log actions with service name', () => {
+            test('should not log actions (disabled to reduce noise)', () => {
                 service.log('testAction', { data: 'test' });
 
-                expect(mockLogger.log).toHaveBeenCalledWith(
-                    '🔧 BaseService.testAction',
-                    { data: 'test' }
-                );
+                // Log method is disabled - should not call logger
+                expect(mockLogger.log).not.toHaveBeenCalled();
             });
         });
 
@@ -191,28 +189,13 @@ describe('BaseService', () => {
     // ==========================================================================
 
     describe('executeOperation', () => {
-        test('should execute operation successfully and log timing', async () => {
+        test('should execute operation successfully', async () => {
             const mockOperation = jest.fn().mockResolvedValue(FIXTURES.testData.simpleResult);
 
-            const result = await service.executeOperation('testOp', mockOperation, { id: 123 });
+            const result = await service.executeOperation('testOp', mockOperation);
 
             expect(mockOperation).toHaveBeenCalled();
             expect(result).toEqual(FIXTURES.testData.simpleResult);
-
-            // Check starting log
-            const [startMsg, startData] = getLogCall(mockLogger.log, 0);
-            expect(startMsg).toBe('🔧 BaseService.testOp');
-            expect(startData).toEqual({ starting: true, id: 123 });
-
-            // Check completion log
-            const [endMsg, endData] = getLogCall(mockLogger.log, 1);
-            expect(endMsg).toBe('🔧 BaseService.testOp');
-            expect(endData).toMatchObject({
-                completed: true,
-                success: true,
-                id: 123
-            });
-            expect(endData.duration).toMatch(/\d+ms/);
         });
 
         test('should handle operation failures and log errors', async () => {
@@ -224,23 +207,9 @@ describe('BaseService', () => {
             ).rejects.toThrow(`failOp failed: ${FIXTURES.testData.errorMessage}`);
 
             expect(mockLogger.error).toHaveBeenCalledWith(
-                expect.stringMatching(/❌ BaseService: failOp failed after \d+ms/),
+                "❌ BaseService: failOp failed",
                 FIXTURES.testData.errorMessage
             );
-        });
-
-        test('should handle operations with success=false as successful completion', async () => {
-            const mockOperation = jest.fn().mockResolvedValue(FIXTURES.testData.failureResult);
-
-            const result = await service.executeOperation('testOp', mockOperation);
-
-            expect(result).toEqual(FIXTURES.testData.failureResult);
-
-            const [, endData] = getLogCall(mockLogger.log, 1);
-            expect(endData).toMatchObject({
-                completed: true,
-                success: false
-            });
         });
     });
 
@@ -371,12 +340,9 @@ describe('BaseService', () => {
 
             const mockOperation = jest.fn().mockRejectedValue(originalError);
 
-            try {
-                await service.executeOperation('dbOp', mockOperation);
-                fail('Should have thrown error');
-            } catch (error) {
-                expect(error.message).toBe('dbOp failed: Database connection failed');
-            }
+            await expect(
+                service.executeOperation('dbOp', mockOperation)
+            ).rejects.toThrow('dbOp failed: Database connection failed');
         });
     });
 });

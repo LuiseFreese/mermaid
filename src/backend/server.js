@@ -277,7 +277,7 @@ async function handleCleanup(req, res) {
       tenantId: data.tenantId, 
       clientId: data.clientId, 
       useManagedIdentity: true,
-      verbose: true 
+      verbose: process.env.NODE_ENV === 'development' || process.env.DATAVERSE_VERBOSE === 'true'
     };
     
     const client = new DataverseClient(cfg);
