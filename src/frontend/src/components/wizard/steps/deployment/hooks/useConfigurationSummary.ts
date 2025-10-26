@@ -11,12 +11,12 @@ export const useConfigurationSummary = (): UseConfigurationSummaryResult => {
   const { wizardData } = useWizardContext();
 
   const summaryData = useMemo(() => {
-    // Get entities from the parsed mermaid data
-    const allEntities = wizardData.parsedEntities || [];
+    // Get entities from the parsed mermaid data - ensure it's always an array
+    const allEntities = Array.isArray(wizardData.parsedEntities) ? wizardData.parsedEntities : [];
     const { customEntities, cdmEntities } = filterEntitiesByType(allEntities);
     
-    // Get relationships from the parsed mermaid data
-    const relationships = wizardData.parsedRelationships || [];
+    // Get relationships from the parsed mermaid data - ensure it's always an array
+    const relationships = Array.isArray(wizardData.parsedRelationships) ? wizardData.parsedRelationships : [];
 
     // Get selected global choices
     const selectedGlobalChoices = wizardData.selectedGlobalChoices || [];

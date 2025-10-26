@@ -73,8 +73,10 @@ export const validateDeploymentData = (data: DeploymentData): { isValid: boolean
  * Filter entities by type (CDM vs Custom)
  */
 export const filterEntitiesByType = (entities: any[]) => {
-  const customEntities = entities.filter(entity => !entity.isCdm);
-  const cdmEntities = entities.filter(entity => entity.isCdm);
+  // Ensure entities is always an array
+  const safeEntities = Array.isArray(entities) ? entities : [];
+  const customEntities = safeEntities.filter(entity => !entity.isCdm);
+  const cdmEntities = safeEntities.filter(entity => entity.isCdm);
   
   return { customEntities, cdmEntities };
 };

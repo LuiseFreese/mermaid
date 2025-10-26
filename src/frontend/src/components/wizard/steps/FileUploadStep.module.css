@@ -360,10 +360,38 @@
 }
 
 .accordionHeaderText {
-  font-size: 16px !important;
-  font-weight: 500 !important; 
+  font-size: 14px !important;
+  font-weight: 400 !important; 
   font-family: var(--fontFamilyBase) !important;
   color: var(--colorNeutralForeground1) !important;
+  line-height: 20px !important;
+}
+
+/* Override Fluent UI's default bold styling for open accordion items */
+/* Target the accordion header button directly */
+.schemaAccordion :global(.fui-AccordionHeader) button {
+  font-weight: 400 !important;
+  font-size: 14px !important;
+}
+
+.schemaAccordion :global(.fui-AccordionHeader__button) {
+  font-weight: 400 !important;
+  font-size: 14px !important;
+}
+
+/* Ensure text inside is also not bold */
+.schemaAccordion :global(.fui-AccordionHeader) button span,
+.schemaAccordion :global(.fui-AccordionHeader) button div {
+  font-weight: 400 !important;
+  font-size: 14px !important;
+}
+
+/* Force all text elements with accordionHeaderText class to be regular weight */
+.schemaAccordion span.accordionHeaderText,
+.schemaAccordion div.accordionHeaderText {
+  font-weight: 400 !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
 }
 
 .accordionContent {

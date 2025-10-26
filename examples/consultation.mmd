@@ -1,0 +1,63 @@
+erDiagram
+  Consultation ||--o{ ConsultationParticipant : has
+  SystemUser ||--o{ ConsultationParticipant : participates
+  Consultation ||--o{ Stakeholder : has
+  SystemUser ||--o{ Stakeholder : views
+  Consultation ||--o{ Decision : logs
+  SystemUser ||--o{ Decision : makes
+  ConsultationParticipant ||--o{ Decision : targets
+
+  Consultation {
+    uuid ConsultationId PK
+    string Title
+    string CaseNumber
+    int Status "1–8"
+    string ProblemStatement
+    string Question
+    string ProposedSolution
+    int Category "None, NonPIE, PIE_public, NonPIE_public"
+    bool Dissens
+    bool IsClosed
+    uuid FinalDecisionBy FK
+    datetime FinalDecisionAt
+  }
+
+  ConsultationParticipant {
+    uuid ParticipantId PK
+    uuid ConsultationId FK
+    uuid UserId FK
+    int Role "Lead, CoConsultant, Reviewer"
+    bool IndependenceDeclared
+    datetime IndependenceAt
+    bool ApprovalGiven
+    datetime ApprovalAt
+    bool CanClose
+    bool IsActive
+    string CompositeKey_Consultation_User
+  }
+
+  Stakeholder {
+    uuid StakeholderId PK
+    uuid ConsultationId FK
+    uuid UserId FK
+    bool NotifyOnStatusChange
+  }
+
+  Decision {
+    uuid DecisionId PK
+    uuid ConsultationId FK
+    uuid ByUserId FK
+    uuid TargetParticipantId FK
+    int Type "Independence, Approval, Escalation, FinalDecision"
+    int Value "Yes, No, Abstain"
+    string Comment
+    datetime At
+  }
+
+  SystemUser {
+    string systemuserid PK "CDM"
+    string fullname "CDM"
+    string firstname "CDM" 
+    string lastname "CDM"
+    string internalemailaddress "CDM"
+  }

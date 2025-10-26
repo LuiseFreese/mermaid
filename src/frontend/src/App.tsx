@@ -2,8 +2,11 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { FluentProvider, makeStyles } from '@fluentui/react-components';
 import { WizardShell } from './components/wizard/WizardShell';
 import { DeploymentHistory } from './components/deployment-history';
+import { MainMenu } from './components/MainMenu';
+import { RollbackPage } from './components/RollbackPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { DeploymentProvider } from './context/DeploymentContext';
 import { AuthProvider } from './auth/AuthProvider';
 import { lightTheme, darkTheme, pinkTheme, neonTheme } from './styles/FluentTheme';
 import './styles/themes.css';
@@ -37,8 +40,11 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Navigate to="/wizard" replace />} />
             <Route path="/wizard/*" element={<WizardShell />} />
+            <Route path="/rollback" element={<RollbackPage />} />
             <Route path="/deployment-history" element={<DeploymentHistory />} />
-            {/* Future routes can be added here */}
+            {/* Redirect old routes */}
+            <Route path="/home" element={<Navigate to="/wizard" replace />} />
+            <Route path="/menu" element={<MainMenu />} />
           </Routes>
         </ErrorBoundary>
       </div>
@@ -53,7 +59,9 @@ function App() {
   return (
     <AuthProvider requireAuth={!isTestMode}>
       <ThemeProvider>
-        <AppContent />
+        <DeploymentProvider>
+          <AppContent />
+        </DeploymentProvider>
       </ThemeProvider>
     </AuthProvider>
   );

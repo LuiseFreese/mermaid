@@ -97,25 +97,9 @@ class DeploymentService extends BaseService {
                 const dataverseConfigResult = await this.configRepository.getDataverseConfig();
                 const dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
                 
-                console.log('🔧 DEBUG: DeploymentService dataverseConfig:', {
-                    hasServerUrl: !!dataverseConfig?.serverUrl,
-                    hasClientId: !!dataverseConfig?.clientId,
-                    hasManagedIdentity: !!dataverseConfig?.managedIdentityClientId,
-                    hasTenantId: !!dataverseConfig?.tenantId,
-                    keys: Object.keys(dataverseConfig || {})
-                });
-                
                 // Step 3: Ensure publisher
                 progressTracker.updateStep('publisher', config.useExistingSolution ? 'Using existing solution publisher' : 'Creating publisher...');
                 const publisherResult = await this.ensurePublisher(config, dataverseConfig);
-                
-                console.log('🔧 DEBUG: publisherResult:', {
-                    type: typeof publisherResult,
-                    keys: Object.keys(publisherResult || {}),
-                    hasData: !!publisherResult?.data,
-                    publisherData: publisherResult?.data,
-                    success: publisherResult?.success
-                });
                 
                 progressTracker.completeStep('publisher', 'Publisher setup completed');
                 
@@ -130,25 +114,8 @@ class DeploymentService extends BaseService {
                 
                 progressTracker.completeStep('solution', 'Solution setup completed');
 
-                console.log('🔧 DEBUG: Final solution being used:', {
-                    uniquename: solution?.uniquename,
-                    friendlyname: solution?.friendlyname,
-                    solutionid: solution?.solutionid,
-                    publisher: solution?.publisherid?.uniquename || solution?.publisher?.uniquename
-                });
-
                 // Step 5: Determine entity processing strategy
                 const cdmMatches = parseResult.cdmDetection?.detectedCDM || [];
-                console.log('🔧 DEBUG: CDM detection results:', {
-                    hasCdmDetection: !!parseResult.cdmDetection,
-                    detectedCDMCount: cdmMatches.length,
-                    cdmMatches: cdmMatches.map(m => ({
-                        originalEntity: m.originalEntity?.name,
-                        cdmEntity: m.cdmEntity?.logicalName,
-                        matchType: m.matchType,
-                        confidence: m.confidence
-                    }))
-                });
                 
                 const { cdmEntities, customEntities } = this.categorizeEntities(
                     parseResult.entities, 
@@ -189,11 +156,6 @@ class DeploymentService extends BaseService {
                 // Step 5: Process CDM entities if any
                 if (cdmEntities.length > 0) {
                     progressTracker.startStep('entities', `Processing ${cdmEntities.length} CDM Tables...`);
-                    console.log('🔧 DEBUG: Processing CDM entities:', {
-                        count: cdmEntities.length,
-                        entities: cdmEntities.map(e => e?.originalEntity?.name || e?.name),
-                        userChoice: config.cdmChoice
-                    });
                     
                     results.cdmResults = await this.processCDMEntities(
                         cdmEntities, 
@@ -247,17 +209,6 @@ class DeploymentService extends BaseService {
                         }
                         
                         progressTracker.updateStep('entities', `Successfully created ${results.customResults.entitiesCreated} custom entities`);
-                        
-                        console.log('🔍 DEBUG: Updated results after custom entities:', {
-                            entitiesCreated: results.entitiesCreated,
-                            relationshipsCreated: results.relationshipsCreated,
-                            warningsCount: results.warnings.length,
-                            customResultsData: {
-                                entitiesCreated: results.customResults.entitiesCreated,
-                                relationshipsCreated: results.customResults.relationshipsCreated,
-                                warnings: results.customResults.warnings?.length || 0
-                            }
-                        });
                     } else {
                         progressTracker.updateStep('entities', `Custom entities creation completed with warnings`);
                     }
@@ -267,7 +218,16 @@ class DeploymentService extends BaseService {
                     progressTracker.completeStep('entities', `Entity creation completed - ${results.entitiesCreated} entities created`);
                 }
 
-                // Step 7: Process global choices
+                // Step 7: Mark relationships step (relationships were already created during entity creation)
+                progress('relationships-summary', `Summarizing ${results.relationshipsCreated} relationships...`);
+                progressTracker.startStep('relationships', `Processing ${parseResult.relationships?.length || 0} relationships...`);
+                
+                // Brief delay to ensure progress update is sent
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                progressTracker.completeStep('relationships', `${results.relationshipsCreated} relationships created successfully`);
+
+                // Step 8: Process global choices
                 if (config.selectedChoices?.length > 0 || config.customChoices?.length > 0) {
                     progressTracker.startStep('globalChoices', 'Processing Global Choices...');
                     
@@ -278,18 +238,15 @@ class DeploymentService extends BaseService {
                     // If solution already exists, use its publisher prefix
                     if (solution.publisherid?.customizationprefix) {
                         publisherPrefix = solution.publisherid.customizationprefix;
-                        console.log('🔧 DEBUG: Using existing solution publisher prefix:', publisherPrefix);
                     } else {
                         publisherPrefix = publisherData.prefix;
-                        console.log('🔧 DEBUG: Using new publisher prefix:', publisherPrefix);
                     }
                     
                     results.globalChoicesResults = await this.processGlobalChoices(
                         config,
                         solution.uniquename,
                         publisherPrefix,
-                        dataverseConfig,
-                        progress
+                        dataverseConfig
                     );
                     
                     if (results.globalChoicesResults.success) {
@@ -305,10 +262,6 @@ class DeploymentService extends BaseService {
                     progressTracker.startStep('globalChoices', 'No global choices to process');
                     progressTracker.completeStep('globalChoices', 'Skipped global choices - none specified');
                 }
-
-                // Step 8: Process relationships (this happens during entity creation but we track it separately)
-                progressTracker.startStep('relationships', `Setting up ${parseResult.relationships?.length || 0} relationships...`);
-                progressTracker.completeStep('relationships', `${results.relationshipsCreated} relationships created successfully`);
 
                 // Step 9: Finalize deployment
                 progressTracker.startStep('finalization', 'Finalizing deployment...');
@@ -343,6 +296,8 @@ class DeploymentService extends BaseService {
                         // Include relationship details for rollback capability
                         const rollbackData = {
                             relationships: parseResult.relationships || [],
+                            // Store actual created relationships with schema names for accurate rollback
+                            createdRelationships: results.customResults?.relationshipMap || {},
                             customEntities: customEntities.map(e => ({
                                 name: e.name,
                                 logicalName: e.logicalName || e.name,
@@ -468,7 +423,6 @@ class DeploymentService extends BaseService {
     async ensurePublisher(config, dataverseConfig) {
         // If using existing solution with selected publisher, use that publisher
         if (config.useExistingSolution && config.selectedPublisher) {
-            console.log('🔧 DEBUG: Using existing solution publisher:', config.selectedPublisher);
             return {
                 success: true,
                 data: {
@@ -486,8 +440,6 @@ class DeploymentService extends BaseService {
             friendlyName: config.publisherName || 'Custom Mermaid Publisher',
             prefix: config.publisherPrefix || 'cmmd'
         };
-
-        console.log('🔧 DEBUG: Publisher config:', publisherConfig);
 
         if (this.publisherService) {
             return await this.publisherService.createPublisher(publisherConfig, dataverseConfig);
@@ -654,10 +606,9 @@ class DeploymentService extends BaseService {
      * @param {string} solutionName - Solution unique name
      * @param {string} publisherPrefix - Publisher prefix
      * @param {Object} dataverseConfig - Dataverse configuration
-     * @param {Function} progress - Progress callback
      * @returns {Promise<Object>} Global choices processing result
      */
-    async processGlobalChoices(config, solutionName, publisherPrefix, dataverseConfig, progress) {
+    async processGlobalChoices(config, solutionName, publisherPrefix, dataverseConfig) {
         let totalAdded = 0;
         let totalCreated = 0;
         let totalExistingAdded = 0;
@@ -666,7 +617,8 @@ class DeploymentService extends BaseService {
         // Process selected global choices (existing ones added to solution)
         if (config.selectedChoices?.length > 0) {
             try {
-                progress('global-choices-solution', 'Adding Global Choices to Solution...');
+                // Don't send progress callback here - it interferes with step tracking
+                // The main deployment flow already tracks the globalChoices step
                 const selectedResult = await this.dataverseRepository.addGlobalChoicesToSolution(
                     config.selectedChoices,
                     solutionName,
@@ -687,13 +639,14 @@ class DeploymentService extends BaseService {
         // Process custom global choices (newly created)
         if (config.customChoices?.length > 0) {
             try {
-                progress('custom-choices', 'Creating Custom Global Choices...');
+                // Don't send progress callback here - it interferes with step tracking
+                // Pass no-op function to avoid premature step updates but satisfy API contract
                 const customResult = await this.dataverseRepository.createAndAddCustomGlobalChoices(
                     config.customChoices,
                     solutionName,
                     publisherPrefix,
                     dataverseConfig,
-                    progress
+                    () => {} // No-op function to avoid interference but satisfy tests
                 );
                 const createdCount = customResult.created || 0;
                 const skippedCount = customResult.skipped || 0;

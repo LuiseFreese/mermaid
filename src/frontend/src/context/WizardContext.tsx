@@ -68,6 +68,7 @@ export interface WizardData {
   fixedIssues: Set<string>;
   validationResults?: any;
   hasErrors?: boolean;
+  importSource?: 'file' | 'dataverse' | 'preloaded' | null; // Track where the ERD came from
   
   // Solution Setup Step
   solutionType: 'new' | 'existing';
@@ -98,6 +99,7 @@ const initialWizardData: WizardData = {
   cdmDetected: false,
   detectedEntities: [],
   entityChoice: null,
+  importSource: null,
   fixedIssues: new Set(),
   validationResults: null,
   

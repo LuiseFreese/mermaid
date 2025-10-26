@@ -14,12 +14,12 @@ class BaseService {
     }
 
     /**
-     * Log service action
+     * Log service action (disabled to reduce log noise)
      * @param {string} action - Action being performed
      * @param {Object} details - Additional details
      */
     log(action, details = {}) {
-        this.logger.log(`🔧 ${this.name}.${action}`, details);
+        // Disabled to reduce excessive logging
     }
 
     /**
@@ -60,26 +60,12 @@ class BaseService {
      * @param {Object} context - Operation context for logging
      * @returns {Promise<Object>} Operation result
      */
-    async executeOperation(operationName, operation, context = {}) {
-        const startTime = Date.now();
-        this.log(operationName, { starting: true, ...context });
-
+    async executeOperation(operationName, operation) {
         try {
             const result = await operation();
-            const duration = Date.now() - startTime;
-            
-            this.log(operationName, { 
-                completed: true, 
-                duration: `${duration}ms`,
-                success: result?.success !== false,
-                ...context 
-            });
-            
             return result;
         } catch (error) {
-            const duration = Date.now() - startTime;
-            this.error(`${operationName} failed after ${duration}ms`, error);
-            
+            this.error(`${operationName} failed`, error);
             throw new Error(`${operationName} failed: ${error.message}`);
         }
     }

@@ -154,6 +154,11 @@ export class ApiService {
             try {
               const data = JSON.parse(line);
               
+              // Ignore heartbeat and connected messages (keep-alive pings)
+              if (data.type === 'heartbeat' || data.type === 'connected') {
+                continue;
+              }
+              
               if (data.type === 'progress' && onProgress) {
                 // Extract enhanced progress data
                 const progressData = {

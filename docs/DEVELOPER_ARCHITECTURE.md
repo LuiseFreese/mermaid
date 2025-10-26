@@ -1299,6 +1299,7 @@ POST /api/upload
 **Key Features**:
 - **Enhanced Progress Tracking**: Real-time step-by-step progress indicators with pink pulsing animations
 - **Safe Rollback Operations**: Validates rollback eligibility and preserves data integrity
+- **Dependency-Aware Deletion**: Gracefully handles entities with dependencies - continues rollback instead of failing, skipping blocked entities and providing detailed reporting
 - **Comprehensive Component Removal**: Handles entities, relationships, global choices, solutions, and publishers
 - **Retry Logic**: Robust handling of Dataverse API concurrency conflicts
 - **Deployment History Integration**: Seamless rollback initiation from deployment history modal

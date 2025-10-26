@@ -9,7 +9,7 @@ import {
   Badge,
   Button
 } from '@fluentui/react-components';
-import { ChevronRightRegular, HistoryRegular } from '@fluentui/react-icons';
+import { ChevronRightRegular, HistoryRegular, ArrowLeftRegular } from '@fluentui/react-icons';
 import { FileUploadStep } from './steps/FileUploadStep';
 import { SolutionSetupStep } from './steps/SolutionSetupStep';
 import { GlobalChoicesStep } from './steps/global-choices';
@@ -18,7 +18,8 @@ import { WizardProvider } from '../../context/WizardContext';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserMenu } from '../../auth/UserMenu';
 
-export const WizardShell: React.FC = () => {
+// Inner component that can use the wizard context
+const WizardContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -55,12 +56,11 @@ export const WizardShell: React.FC = () => {
   };
 
   return (
-    <WizardProvider>
-      <div data-testid="wizard-container" style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-background)',
-        color: 'var(--color-text-primary)',
-      }}>
+    <div data-testid="wizard-container" style={{
+      minHeight: '100vh',
+      backgroundColor: 'var(--color-background)',
+      color: 'var(--color-text-primary)',
+    }}>
         {/* Header Section with proper banner theme variables */}
         <header style={{
           backgroundColor: 'var(--color-banner-background)',
@@ -78,6 +78,18 @@ export const WizardShell: React.FC = () => {
             gap: '12px',
             alignItems: 'center',
           }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <Button 
+                appearance="subtle"
+                icon={<ArrowLeftRegular />}
+                style={{ 
+                  color: 'var(--color-banner-text)',
+                  border: `1px solid ${tokens.colorNeutralStroke2}`,
+                }}
+              >
+                Menu
+              </Button>
+            </Link>
             <Link to="/deployment-history" style={{ textDecoration: 'none' }}>
               <Button 
                 appearance="subtle"
@@ -181,6 +193,14 @@ export const WizardShell: React.FC = () => {
           </div>
         </main>
       </div>
+  );
+};
+
+// Main component that wraps WizardContent in the provider
+export const WizardShell: React.FC = () => {
+  return (
+    <WizardProvider>
+      <WizardContent />
     </WizardProvider>
   );
 };

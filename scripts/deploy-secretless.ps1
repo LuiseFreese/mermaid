@@ -578,8 +578,8 @@ $maxRetries = 3
 $retryCount = 0
 $deploymentSuccess = $false
 
-# Fast timeout strategy: 2 minutes each (app should be warm from previous deployments)
-$timeouts = @(120, 120, 120)  # 2 min, 2 min, 2 min
+# Longer timeout strategy to handle Kudu connection issues
+$timeouts = @(300, 300, 300)  # 5 min, 5 min, 5 min
 
 while (-not $deploymentSuccess -and $retryCount -lt $maxRetries) {
     $retryCount++
