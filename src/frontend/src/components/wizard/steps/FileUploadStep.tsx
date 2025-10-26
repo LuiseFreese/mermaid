@@ -114,22 +114,7 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
 
   // Handle Dataverse import completion
   const handleImportCompleted = useCallback(async (content: string, metadata?: any) => {
-    // Debounce to prevent multiple rapid calls
-    if (content === lastImportContentRef.current) {
-      console.log('� DEBUG: Duplicate import detected, skipping');
-      return;
-    }
-    
-    lastImportContentRef.current = content;
-    
-    // Clear any existing timeout
-    if (importTimeoutRef.current) {
-      clearTimeout(importTimeoutRef.current);
-    }
-    
-    // Debounce the import processing
-    importTimeoutRef.current = setTimeout(async () => {
-      console.log('�🔍 DEBUG: Import completed', {
+    console.log('🔍 DEBUG: Import completed', {
         contentLength: content.length,
         hasMetadata: !!metadata,
         entityChoice: metadata?.entityChoice,
