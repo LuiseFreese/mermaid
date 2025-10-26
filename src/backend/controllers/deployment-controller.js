@@ -37,8 +37,18 @@ class DeploymentController extends BaseController {
             // Parse request body
             const data = await this.parseRequestBody(req);
             
+            console.log('📦 Deployment request received. Keys in data:', Object.keys(data));
+            console.log('📦 targetEnvironment in data:', data.targetEnvironment);
+            
             // Validate required fields for deployment
             this.validateRequiredFields(data, ['mermaidContent', 'solutionName', 'publisherName']);
+            
+            // Log target environment for debugging
+            if (data.targetEnvironment) {
+                console.log(`🎯 Deployment target environment: ${data.targetEnvironment.name} (${data.targetEnvironment.url})`);
+            } else {
+                console.log('⚠️ No target environment specified, using default');
+            }
             
             // Create deployment configuration
             const deploymentConfig = {
@@ -58,7 +68,8 @@ class DeploymentController extends BaseController {
                 customChoices: data.customChoices || [],
                 includeRelatedEntities: data.includeRelatedEntities,
                 entities: data.entities || [],
-                relationships: data.relationships || []
+                relationships: data.relationships || [],
+                targetEnvironment: data.targetEnvironment || null
             };
 
             // For tests, return regular JSON instead of streaming

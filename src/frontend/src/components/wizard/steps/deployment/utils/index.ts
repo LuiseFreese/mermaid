@@ -8,6 +8,13 @@ import type { DeploymentData } from '../types';
  * Transform wizard data into deployment data format
  */
 export const transformWizardDataToDeploymentData = (wizardData: any): DeploymentData => {
+  // Log target environment for debugging
+  if (wizardData.targetEnvironment) {
+    console.log('🎯 Transforming deployment data with target environment:', wizardData.targetEnvironment.name);
+  } else {
+    console.log('⚠️ No target environment in wizard data');
+  }
+  
   return {
     mermaidContent: wizardData.originalErdContent || '',
     // Use existing solution name when adding to existing solution
@@ -37,7 +44,14 @@ export const transformWizardDataToDeploymentData = (wizardData: any): Deployment
     customChoices: wizardData.uploadedGlobalChoices || [],
     includeRelatedEntities: wizardData.includeRelatedTables || false,
     entities: wizardData.parsedEntities || [],
-    relationships: wizardData.parsedRelationships || []
+    relationships: wizardData.parsedRelationships || [],
+    // Target environment for deployment
+    targetEnvironment: wizardData.targetEnvironment ? {
+      id: wizardData.targetEnvironment.id,
+      name: wizardData.targetEnvironment.name,
+      url: wizardData.targetEnvironment.url,
+      powerPlatformEnvironmentId: wizardData.targetEnvironment.powerPlatformEnvironmentId
+    } : null
   };
 };
 

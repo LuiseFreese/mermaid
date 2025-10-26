@@ -38,7 +38,9 @@ class DataverseRepository extends BaseRepository {
     async getClient(config = null) {
         console.log('🔗 DataverseRepository.getClient: Creating real Dataverse client', {
             useClientSecret: process.env.USE_CLIENT_SECRET === 'true',
-            useManagedIdentity: process.env.USE_MANAGED_IDENTITY === 'true'
+            useManagedIdentity: process.env.USE_MANAGED_IDENTITY === 'true',
+            configProvided: !!config,
+            configServerUrl: config?.serverUrl
         });
         
         try {
@@ -46,6 +48,7 @@ class DataverseRepository extends BaseRepository {
             let dataverseConfig = config;
             
             if (!dataverseConfig) {
+                console.log('⚠️ No config provided to getClient(), fetching default from ConfigurationRepository');
                 const configResult = await this.configRepository?.getDataverseConfig();
                 // Extract the actual config data from the wrapped response
                 dataverseConfig = configResult?.data || configResult;
@@ -54,20 +57,27 @@ class DataverseRepository extends BaseRepository {
                 if (dataverseConfig?.success && dataverseConfig?.data) {
                     dataverseConfig = dataverseConfig.data;
                 }
+            } else {
+                console.log('✅ Using provided config with serverUrl:', dataverseConfig.serverUrl);
             }
             
             if (!dataverseConfig) {
                 throw new Error('Dataverse configuration not available');
             }
 
+            console.log(`🔗 DataverseRepository.getClient: Creating client for URL: ${dataverseConfig.serverUrl}`);
+
             // Create cache key
             const cacheKey = `${dataverseConfig.serverUrl}_${dataverseConfig.clientId}`;
             
             // Return cached client if available
             if (this.clientCache.has(cacheKey)) {
+                console.log(`✅ Using cached client for: ${dataverseConfig.serverUrl}`);
                 const cachedClient = this.clientCache.get(cacheKey);
                 return cachedClient;
             }
+
+            console.log(`🆕 Creating NEW client for: ${dataverseConfig.serverUrl}`);
 
             // Create new client
             const client = new this.DataverseClient({

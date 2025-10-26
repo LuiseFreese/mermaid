@@ -39,6 +39,14 @@ class DeploymentService extends BaseService {
     async deploySolution(config, progressCallback) {
         const deploymentId = this.generateDeploymentId();
         
+        console.log('🚀 DEPLOYMENT START - targetEnvironment:', config.targetEnvironment);
+        
+        // Clear any cached Dataverse clients to ensure we use the correct environment
+        if (this.dataverseRepository && this.dataverseRepository.clearClientCache) {
+            console.log('🗑️ Clearing Dataverse client cache for fresh deployment');
+            this.dataverseRepository.clearClientCache();
+        }
+        
         // Initialize enhanced progress tracker
         const progressTracker = new ProgressTracker('deployment', progressCallback);
         
@@ -94,8 +102,28 @@ class DeploymentService extends BaseService {
 
                 // Step 2: Setup Dataverse connection
                 progressTracker.startStep('publisher', 'Connecting to Dataverse...');
-                const dataverseConfigResult = await this.configRepository.getDataverseConfig();
-                const dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
+                
+                // Get Dataverse configuration - use targetEnvironment if provided
+                let dataverseConfig;
+                if (config.targetEnvironment && config.targetEnvironment.url) {
+                    // Use the selected environment
+                    console.log(`🎯 Using target environment: ${config.targetEnvironment.name} (${config.targetEnvironment.url})`);
+                    const defaultConfigResult = await this.configRepository.getDataverseConfig();
+                    const defaultConfig = defaultConfigResult?.data || defaultConfigResult;
+                    
+                    // Override the serverUrl with the target environment's URL
+                    dataverseConfig = {
+                        ...defaultConfig,
+                        serverUrl: config.targetEnvironment.url
+                    };
+                } else {
+                    // Use default environment
+                    console.log('🎯 Using default environment');
+                    const dataverseConfigResult = await this.configRepository.getDataverseConfig();
+                    dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
+                }
+                
+                console.log(`🔗 Connecting to Dataverse: ${dataverseConfig.serverUrl}`);
                 
                 // Step 3: Ensure publisher
                 progressTracker.updateStep('publisher', config.useExistingSolution ? 'Using existing solution publisher' : 'Creating publisher...');

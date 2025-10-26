@@ -319,9 +319,9 @@ if ($DataverseUrl -and -not $SkipDataverseUser) {
         Write-Host "   Service Principal: $spObjectId" -ForegroundColor Yellow
     }
 } elseif ($SkipDataverseUser) {
-    Write-Host "Skipping Dataverse Application User setup (explicitly skipped)" -ForegroundColor Yellow
+    Write-Host "ℹ️  Dataverse Application User setup explicitly skipped" -ForegroundColor Cyan
 } else {
-    Write-Host "Skipping Dataverse Application User setup (no DataverseUrl provided)" -ForegroundColor Yellow
+    Write-Host "ℹ️  Multi-environment deployment - Dataverse application users managed during setup phase" -ForegroundColor Cyan
 }
 
 # ========================================================================
@@ -403,6 +403,14 @@ Copy-Item -Path "src/backend" -Destination "deploy-temp/" -Recurse
 Write-Host "Copying shared..." -ForegroundColor Yellow  
 if (Test-Path "src/shared") {
     Copy-Item -Path "src/shared" -Destination "deploy-temp/" -Recurse
+}
+
+Write-Host "Copying data directory (multi-environment config)..." -ForegroundColor Yellow
+if (Test-Path "data") {
+    Copy-Item -Path "data" -Destination "deploy-temp/" -Recurse
+    Write-Host "   └─ Included environments.json for multi-environment support" -ForegroundColor Gray
+} else {
+    Write-Warning "data directory not found - multi-environment support may not work"
 }
 
 Write-Host "Copying frontend build..." -ForegroundColor Yellow

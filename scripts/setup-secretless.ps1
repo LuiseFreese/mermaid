@@ -35,6 +35,7 @@ param(
     [Parameter(Mandatory = $false)] [switch]$Unattended,
     [Parameter(Mandatory = $false)] [string]$DataverseUrl,
     [Parameter(Mandatory = $false)] [string]$PowerPlatformEnvironmentId,
+    [Parameter(Mandatory = $false)] [string]$EnvironmentName,
     [Parameter(Mandatory = $false)] [string]$ResourceGroup,
     [Parameter(Mandatory = $false)] [string]$Location = "West Europe",
     [Parameter(Mandatory = $false)] [string]$AppRegistrationName,
@@ -168,6 +169,30 @@ if ($existingSp -and $existingSp.Length -gt 0) {
 
 $servicePrincipalObjectId = $servicePrincipal.id
 Write-Info "Service Principal Object ID: $servicePrincipalObjectId"
+
+# ---------- 3.2 Create Client Secret for Local Development ----------
+Write-Info "Creating client secret for local development..."
+
+# Check if a secret already exists
+$existingSecrets = az ad app credential list --id $clientId | ConvertFrom-Json
+$localDevSecret = $existingSecrets | Where-Object { $_.displayName -eq "Local Development Secret" }
+
+if ($localDevSecret) {
+    Write-Warning "A 'Local Development Secret' already exists. Skipping secret creation."
+    Write-Info "If you need a new secret, manually delete the old one first or create via Azure Portal."
+    $clientSecret = $null
+} else {
+    # Create new client secret (valid for 1 year)
+    $secretInfo = az ad app credential reset --id $clientId --append --display-name "Local Development Secret" --years 1 | ConvertFrom-Json
+    $clientSecret = $secretInfo.password
+    Write-Success "Created client secret for local development (expires: $($secretInfo.endDateTime))"
+    
+    # Save to .env file
+    Update-EnvFile -Key "CLIENT_ID" -Value $clientId
+    Update-EnvFile -Key "CLIENT_SECRET" -Value $clientSecret
+    Update-EnvFile -Key "TENANT_ID" -Value $tenantId
+    Write-Success "Saved authentication credentials to .env file"
+}
 
 # ---------- 4. Deploy Azure Infrastructure ----------
 Write-Info "Deploying Azure infrastructure with Bicep..."
@@ -597,12 +622,78 @@ try {
     Write-Warning "Failed to configure logging (non-critical): $_"
 }
 
+# ---------- 10.5. Create Environment Configuration ----------
+if ($DataverseUrl) {
+    Write-Info "Creating environment configuration..."
+    
+    # Try to auto-detect environment name if not provided
+    if (-not $EnvironmentName) {
+        if ($PowerPlatformEnvironmentId) {
+            try {
+                $envInfo = pac admin list --json | ConvertFrom-Json | Where-Object { $_.EnvironmentId -eq $PowerPlatformEnvironmentId }
+                if ($envInfo) {
+                    $EnvironmentName = $envInfo.DisplayName
+                    Write-Success "Auto-detected environment name: $EnvironmentName"
+                }
+            }
+            catch {
+                Write-Warning "Could not auto-detect environment name"
+            }
+        }
+        
+        if (-not $EnvironmentName) {
+            # Extract organization name from URL as fallback
+            if ($DataverseUrl -match "https://([^.]+)\.crm") {
+                $EnvironmentName = $matches[1]
+                Write-Info "Using organization name as environment name: $EnvironmentName"
+            } else {
+                $EnvironmentName = "Default Environment"
+            }
+        }
+    }
+    
+    # Create environment configuration
+    $environmentConfig = @{
+        version = "1.0.0"
+        defaultEnvironmentId = "default"
+        environments = @(
+            @{
+                id = "default"
+                name = $EnvironmentName
+                url = $DataverseUrl.TrimEnd('/')
+                description = "Created during initial setup"
+                color = "blue"
+                lastConnected = $null
+                metadata = @{
+                    organizationName = if ($DataverseUrl -match "https://([^.]+)\.crm") { $matches[1] } else { "" }
+                    organizationDisplayName = $EnvironmentName
+                    region = "Unknown"
+                }
+            }
+        )
+    }
+    
+    # Ensure data directory exists
+    $dataDir = Join-Path $PSScriptRoot ".." "data"
+    if (-not (Test-Path $dataDir)) {
+        New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+    }
+    
+    # Save environment configuration
+    $configPath = Join-Path $dataDir "environments.json"
+    $environmentConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8
+    Write-Success "Environment configuration saved to: data/environments.json"
+}
+
 # ---------- 11. Summary ----------
 Write-Success "🎉 Secretless setup completed successfully!"
 Write-Host ""
 Write-Host "Setup Summary:" -ForegroundColor Cyan
 Write-Host "  App Registration: $AppRegistrationName ($clientId)"
 Write-Host "  Service Principal: Created automatically ($servicePrincipalObjectId)"
+if ($clientSecret) {
+    Write-Host "  Client Secret: Created for local development (saved to .env)"
+}
 Write-Host "  Azure Resources: Deployed to $ResourceGroup"
 Write-Host "  App Service: $AppServiceName (Node.js 20)"
 Write-Host "  Managed Identity: $ManagedIdentityName ($managedIdentityClientId)"
@@ -628,4 +719,12 @@ Write-Host "Authentication Info:" -ForegroundColor Cyan
 Write-Host "  Users will need to sign in with Microsoft credentials"
 Write-Host "  Redirect URI configured: https://$appServiceUrl"
 Write-Host "  Local dev can use AUTH_ENABLED=false for testing"
+Write-Host ""
+if ($clientSecret) {
+    Write-Host "Local Development:" -ForegroundColor Cyan
+    Write-Host "  Client credentials saved to .env file"
+    Write-Host "  CLIENT_ID: $clientId"
+    Write-Host "  TENANT_ID: $tenantId"
+    Write-Host "  You can now test deployments locally with all configured environments"
+}
 

@@ -1,0 +1,65 @@
+{
+    "version": "1.0.0",
+    "environments": [
+        {
+            "id": "33ba429d-d577-e7e1-8134-11e72dc99c51",
+            "name": "dev-princess",
+            "url": "https://org4caa9250.crm4.dynamics.com",
+            "powerPlatformEnvironmentId": "33ba429d-d577-e7e1-8134-11e72dc99c51",
+            "color": "blue",
+            "isDefault": true,
+            "metadata": {
+                "organizationName": "org4caa9250",
+                "organizationDisplayName": "dev-princess",
+                "region": "Europe",
+                "purpose": "Development and testing",
+                "owner": "Development Team"
+            }
+        },
+        {
+            "id": "61b386a4-5c51-ed5c-94ee-9f3303c38e4e",
+            "name": "test-princess",
+            "url": "https://org32dda8c3.crm4.dynamics.com",
+            "powerPlatformEnvironmentId": "61b386a4-5c51-ed5c-94ee-9f3303c38e4e",
+            "color": "yellow",
+            "isDefault": false,
+            "metadata": {
+                "organizationName": "org32dda8c3",
+                "organizationDisplayName": "test-princess",
+                "region": "Europe",
+                "purpose": "Integration and user acceptance testing",
+                "owner": "QA Team"
+            }
+        },
+        {
+            "id": "eb34d160-8d25-e131-81d1-719f87fa824b",
+            "name": "prod-princess",
+            "url": "https://org8efac90e.crm4.dynamics.com",
+            "powerPlatformEnvironmentId": "eb34d160-8d25-e131-81d1-719f87fa824b",
+            "color": "red",
+            "isDefault": false,
+            "metadata": {
+                "organizationName": "org8efac90e",
+                "organizationDisplayName": "prod-princess",
+                "region": "Europe",
+                "purpose": "Live production workloads",
+                "owner": "Operations Team"
+            }
+        }
+    ],
+    "defaultEnvironmentId": "33ba429d-d577-e7e1-8134-11e72dc99c51",
+    "deploymentSettings": {
+        "resourceGroup": "rg-mermaid-{suffix}",
+        "appName": "app-mermaid-{suffix}",
+        "location": "West Europe",
+        "appRegistrationName": "mermaid-dataverse-{suffix}",
+        "managedIdentityName": "mi-mermaid-{suffix}",
+        "defaultSecurityRole": "System Administrator"
+    },
+    "metadata": {
+        "createdDate": "2025-10-26T13:00:00Z",
+        "lastModified": "2025-10-26T13:00:00Z",
+        "version": "1.0.0",
+        "description": "Multi-environment configuration for Mermaid Dataverse Princess project"
+    }
+}

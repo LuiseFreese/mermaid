@@ -81,6 +81,13 @@ export interface WizardData {
   newPublisherInternalName: string;
   newPublisherPrefix: string;
   includeRelatedTables: boolean;
+  targetEnvironment?: {
+    id: string;
+    name: string;
+    url: string;
+    powerPlatformEnvironmentId?: string;
+    color?: string;
+  } | null;
   
   // Global Choices Step
   globalChoicesSearchTerm: string;
@@ -114,6 +121,7 @@ const initialWizardData: WizardData = {
   newPublisherInternalName: '',
   newPublisherPrefix: '',
   includeRelatedTables: false,
+  targetEnvironment: null,
   
   // Global Choices Step
   globalChoicesSearchTerm: '',

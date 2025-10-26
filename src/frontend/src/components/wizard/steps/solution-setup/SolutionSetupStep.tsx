@@ -7,7 +7,9 @@
  * - UI Components (SearchableDropdown, SolutionConfigSection, PublisherConfigSection)
  * - Business Logic Hooks (useSolutionConfiguration, usePublisherConfiguration)
  * - Utilities and Types (validation, filtering, name generation)
- */import React, { useState, useCallback, useEffect } from 'react';
+ */
+
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Text,
   Button,
@@ -100,6 +102,12 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
     publisherPrefix: externalFormData?.newPublisherPrefix || '',
     publisherDescription: '',
   });
+
+  // Environment state (loaded but not displayed in this component)
+  const [_environments, setEnvironments] = useState<any[]>([]);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<{ id: string; name: string; url: string; powerPlatformEnvironmentId?: string; color?: string; } | null>(null);
+  const [_environmentsLoading, setEnvironmentsLoading] = useState(false);
+  const [_environmentsError, setEnvironmentsError] = useState<string | null>(null);
 
   // Configuration hooks
   const solutionConfig = useSolutionConfiguration();
@@ -244,10 +252,41 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
     }
   }, [solutionFormData, publisherFormData, autoValidate, showValidation, handleFullValidation]);
 
+  // Load environments on component mount
+  useEffect(() => {
+    const loadEnvironments = async () => {
+      setEnvironmentsLoading(true);
+      setEnvironmentsError(null);
+      
+      try {
+        const response = await fetch('/api/environments');
+        if (!response.ok) {
+          throw new Error(`Failed to load environments: ${response.statusText}`);
+        }
+        
+        const envData = await response.json();
+        setEnvironments(envData);
+        
+        // Auto-select first environment if available
+        if (envData.length > 0 && !selectedEnvironment) {
+          setSelectedEnvironment(envData[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load environments:', error);
+        setEnvironmentsError(error instanceof Error ? error.message : 'Failed to load environments');
+      } finally {
+        setEnvironmentsLoading(false);
+      }
+    };
+    
+    loadEnvironments();
+  }, []);
+
   // Determine overall configuration status
   const isConfigurationComplete = Boolean(
     (currentSolution || (solutionFormData.name && solutionFormData.internalName)) &&
-    (currentPublisher || (publisherFormData.name && publisherFormData.internalName && publisherFormData.prefix))
+    (currentPublisher || (publisherFormData.name && publisherFormData.internalName && publisherFormData.prefix)) &&
+    selectedEnvironment
   );
 
   const hasValidationErrors = Object.keys(combinedValidationErrors).length > 0;
@@ -277,6 +316,12 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Environment Selection Section */}
+      <div style={{ backgroundColor: 'red', padding: '20px', margin: '20px 0' }}>
+        <h2>ENVIRONMENT SECTION TEST</h2>
+        <p>If you see this red box, the environment section is rendering!</p>
       </div>
 
       {/* Global Error Display */}
@@ -336,7 +381,7 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
       {!loading && showValidation && (
         <Card className={styles.statusCard}>
           <div className={styles.statusContent}>
-            {isConfigurationComplete && !hasValidationErrors ? (
+            {isConfigurationComplete && !hasValidationErrors && selectedEnvironment ? (
               <div className={styles.statusSuccess}>
                 <CheckmarkCircleRegular className={styles.statusIcon} />
                 <div>
@@ -344,6 +389,19 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
                   <Text size={200} className={styles.statusDetails}>
                     Your schema will be deployed to {currentSolution?.friendlyname || solutionFormData.name} 
                     (Publisher: {currentPublisher?.friendlyname || publisherFormData.name})
+                    {selectedEnvironment && (
+                      <> in the <strong>{selectedEnvironment.name}</strong> environment</>
+                    )}
+                  </Text>
+                </div>
+              </div>
+            ) : !selectedEnvironment ? (
+              <div className={styles.statusPending}>
+                <InfoRegular className={styles.statusIcon} />
+                <div>
+                  <Text size={400} weight="semibold">Environment Required</Text>
+                  <Text size={200} className={styles.statusDetails}>
+                    Please select a target environment for deployment
                   </Text>
                 </div>
               </div>

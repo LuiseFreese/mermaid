@@ -1,0 +1,402 @@
+.environmentComparison {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.header h2 {
+  color: #1e293b;
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 16px;
+}
+
+.selectionSection {
+  display: flex;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.environmentSelector {
+  flex: 1;
+}
+
+.comparisonArrow {
+  font-size: 24px;
+  color: #6b7280;
+  padding-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.actionSection {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.compareButton {
+  padding: 16px 32px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.compareButton:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.compareButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.error {
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  margin-bottom: 24px;
+}
+
+.results {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.resultHeader {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.resultHeader h3 {
+  color: #1e293b;
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.environmentNames {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 18px;
+}
+
+.sourceName {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.vs {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.targetName {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.summaryItem {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.summaryNumber {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.summaryLabel {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detailSections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.sectionTitle {
+  color: #1e293b;
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.solutionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.solutionItem {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.solutionItem:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.solutionItem.versionDifference {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.solutionName {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.solutionDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.version {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.publisher {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.versionWarning {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.noResults {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .environmentComparison {
+    padding: 16px;
+  }
+  
+  .selectionSection {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .comparisonArrow {
+    align-self: center;
+    transform: rotate(90deg);
+  }
+  
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .summaryItem {
+    padding: 16px;
+  }
+  
+  .summaryNumber {
+    font-size: 24px;
+  }
+  
+  .solutionDetails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .environmentNames {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .environmentComparison {
+    background: #1e293b;
+    color: #f1f5f9;
+  }
+  
+  .header {
+    border-color: #334155;
+  }
+  
+  .header h2 {
+    color: #f1f5f9;
+  }
+  
+  .header p {
+    color: #94a3b8;
+  }
+  
+  .comparisonArrow {
+    color: #94a3b8;
+  }
+  
+  .error {
+    background: #7f1d1d;
+    border-color: #dc2626;
+    color: #fecaca;
+  }
+  
+  .results {
+    background: #334155;
+    border-color: #475569;
+  }
+  
+  .resultHeader h3 {
+    color: #f1f5f9;
+  }
+  
+  .vs {
+    color: #94a3b8;
+  }
+  
+  .summaryItem {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  
+  .summaryNumber {
+    color: #f1f5f9;
+  }
+  
+  .summaryLabel {
+    color: #94a3b8;
+  }
+  
+  .section {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  
+  .sectionTitle {
+    color: #f1f5f9;
+  }
+  
+  .solutionItem {
+    background: #334155;
+    border-color: #475569;
+  }
+  
+  .solutionItem:hover {
+    border-color: #60a5fa;
+  }
+  
+  .solutionItem.versionDifference {
+    border-color: #f59e0b;
+    background: #451a03;
+  }
+  
+  .solutionName {
+    color: #f1f5f9;
+  }
+  
+  .version {
+    background: #1e3a8a;
+    color: #dbeafe;
+  }
+  
+  .publisher {
+    background: #475569;
+    color: #f1f5f9;
+  }
+  
+  .versionWarning {
+    background: #451a03;
+    color: #fef3c7;
+  }
+  
+  .noResults {
+    color: #94a3b8;
+  }
+}

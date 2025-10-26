@@ -18,12 +18,26 @@ import {
   AccordionPanel,
   MessageBar,
   MessageBarBody,
+  Spinner,
+  Dropdown,
+  Option,
 } from '@fluentui/react-components';
-import { SettingsRegular, InfoRegular } from '@fluentui/react-icons';
+import { SettingsRegular, InfoRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import { usePublishers } from '../../../hooks/usePublishers';
 import { useSolutions } from '../../../hooks/useSolutions';
 import { useWizardContext } from '../../../context/WizardContext';
+
 import styles from './SolutionSetupStep.module.css';
+
+// Type definition for environment
+interface DataverseEnvironment {
+  id: string;
+  name: string;
+  url: string;
+  powerPlatformEnvironmentId?: string;
+  color?: string;
+  metadata?: any;
+}
 
 interface SolutionSetupStepProps {
   onNext?: () => void;
@@ -54,6 +68,12 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
   const [publisherSearchTerm, setPublisherSearchTerm] = useState('');
   const [showPublisherDropdown, setShowPublisherDropdown] = useState(false);
   
+  // Environment state
+  const [environments, setEnvironments] = useState<DataverseEnvironment[]>([]);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<DataverseEnvironment | null>(null);
+  const [environmentsLoading, setEnvironmentsLoading] = useState(false);
+  const [environmentsError, setEnvironmentsError] = useState<string | null>(null);
+  
   // Use the custom hooks for publisher and solution data
   const { publishers, loading: loadingPublishers, error: publisherError, refetch: refetchPublishers } = usePublishers();
   const { solutions, loading: loadingSolutions, error: solutionError, refetch: refetchSolutions } = useSolutions();
@@ -65,6 +85,46 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
       setSolutionSearchTerm('');
     }
   }, [wizardData.originalErdContent]);
+
+  // Load environments on component mount
+  useEffect(() => {
+    const loadEnvironments = async () => {
+      setEnvironmentsLoading(true);
+      setEnvironmentsError(null);
+      
+      try {
+        const response = await fetch('/api/environments');
+        if (!response.ok) {
+          throw new Error(`Failed to load environments: ${response.statusText}`);
+        }
+        
+        const envData = await response.json();
+        setEnvironments(envData.environments || []);
+        
+        // Auto-select first environment if available
+        if (envData.environments && envData.environments.length > 0 && !selectedEnvironment) {
+          setSelectedEnvironment(envData.environments[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load environments:', error);
+        setEnvironmentsError(error instanceof Error ? error.message : 'Failed to load environments');
+      } finally {
+        setEnvironmentsLoading(false);
+      }
+    };
+    
+    loadEnvironments();
+  }, []);
+
+  // Handle environment selection
+  const handleEnvironmentChange = (environment: DataverseEnvironment) => {
+    setSelectedEnvironment(environment);
+    
+    // Store in wizard data
+    updateWizardData({
+      targetEnvironment: environment,
+    });
+  };
 
   // Filter solutions based on search term
   const filteredSolutions = useMemo(() => {
@@ -168,6 +228,66 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
           flex: 1,
           minHeight: '600px'
         }}>
+          
+          {/* Environment Selection Accordion */}
+          <Accordion multiple collapsible defaultOpenItems={["environment-config"]} className={styles.schemaAccordion}>
+            <AccordionItem value="environment-config">
+              <AccordionHeader>
+                <Text className={styles.accordionHeaderText}>
+                  Target Environment
+                </Text>
+              </AccordionHeader>
+              <AccordionPanel>
+                {environmentsLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', justifyContent: 'center', color: 'var(--colorNeutralForeground3)' }}>
+                    <Spinner size="small" />
+                    <Text size={300}>Loading environments...</Text>
+                  </div>
+                ) : environmentsError ? (
+                  <MessageBar intent="error">
+                    <MessageBarBody>
+                      <ErrorCircleRegular style={{ marginRight: '8px' }} />
+                      {environmentsError}
+                    </MessageBarBody>
+                  </MessageBar>
+                ) : (
+                  <Field label="Search and Select Environment">
+                    <Dropdown
+                      placeholder="Select an environment"
+                      value={selectedEnvironment ? selectedEnvironment.name : ''}
+                      selectedOptions={selectedEnvironment ? [selectedEnvironment.id] : []}
+                      onOptionSelect={(_, data) => {
+                        const env = environments.find(e => e.id === data.optionValue);
+                        if (env) {
+                          handleEnvironmentChange(env);
+                        }
+                      }}
+                    >
+                      {environments.map(env => (
+                        <Option key={env.id} value={env.id} text={env.name}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '50%',
+                              backgroundColor: env.color === 'blue' ? '#0078d4' : 
+                                              env.color === 'yellow' ? '#ffd23f' :
+                                              env.color === 'red' ? '#d13438' : '#6b6b6b',
+                              flexShrink: 0
+                            }}></div>
+                            <div>
+                              <div style={{ fontWeight: '600' }}>{env.name}</div>
+                              <div style={{ fontSize: '12px', color: '#605e5c' }}>{env.url}</div>
+                            </div>
+                          </div>
+                        </Option>
+                      ))}
+                    </Dropdown>
+                  </Field>
+                )}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
           
           {/* Solution Configuration Accordion */}
           <Accordion multiple collapsible defaultOpenItems={["solution-config"]} className={styles.schemaAccordion}>

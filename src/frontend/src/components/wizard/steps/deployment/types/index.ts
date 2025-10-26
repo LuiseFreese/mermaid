@@ -106,6 +106,12 @@ export interface DeploymentData {
   includeRelatedEntities: boolean;
   entities: any[];
   relationships: any[];
+  targetEnvironment?: {
+    id: string;
+    name: string;
+    url: string;
+    powerPlatformEnvironmentId?: string;
+  } | null;
 }
 
 // Hook return types

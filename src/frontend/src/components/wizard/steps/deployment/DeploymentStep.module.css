@@ -8,6 +8,29 @@
   padding: 24px;
 }
 
+.environmentSelection {
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: var(--colorNeutralBackground1);
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke2);
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--colorNeutralForeground1);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sectionDescription {
+  font-size: 14px;
+  color: var(--colorNeutralForeground2);
+  margin-bottom: 16px;
+  display: block;
+}
+
 .accordionHeader {
   display: flex;
   align-items: center;

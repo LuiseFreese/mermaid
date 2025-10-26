@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
         'USAGE-GUIDE',
         'LOCAL-DEVELOPMENT',
         'DEPLOYMENT',
+        'AZURE-MULTI-ENVIRONMENT',
         'GLOBAL-CHOICES-GUIDE',
         'RELATIONSHIP_TYPES',
         'VALIDATION-AND-AUTOFIX',

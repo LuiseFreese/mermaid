@@ -47,7 +47,7 @@ export const DeploymentStep: React.FC<DeploymentStepProps> = ({
       
       <div className={styles.cardContent}>
         <Text className={fileUploadStyles.schemaOverviewDescription}>
-          Review your deployment configuration. This summary shows what will be created in your Dataverse environment.
+          Review your deployment configuration and proceed with deployment.
         </Text>
 
         {/* Configuration Summary */}

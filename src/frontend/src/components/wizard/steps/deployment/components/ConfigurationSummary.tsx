@@ -45,9 +45,41 @@ export const ConfigurationSummary: React.FC<ConfigurationSummaryProps> = ({
     <Accordion 
       multiple 
       collapsible 
-      defaultOpenItems={['solution', 'publisher', 'entities', 'relationships', 'cdm', 'choices']} 
+      defaultOpenItems={['environment', 'solution', 'publisher', 'entities', 'relationships', 'cdm', 'choices']} 
       className={`${fileUploadStyles.schemaAccordion} ${className || ''}`}
     >
+      
+      {/* Target Environment Section */}
+      {wizardData.targetEnvironment && (
+        <AccordionItem value="environment">
+          <AccordionHeader>
+            <Text className={fileUploadStyles.accordionHeaderText}>Target Environment</Text>
+          </AccordionHeader>
+          <AccordionPanel>
+            <div className={fileUploadStyles.accordionContent}>
+              <div className={fileUploadStyles.entityCard}>
+                <div className={fileUploadStyles.entityHeader}>
+                  <Text className={fileUploadStyles.entityName}>
+                    {wizardData.targetEnvironment.name}
+                  </Text>
+                  <div className={fileUploadStyles.entityBadge}>
+                    <span className={fileUploadStyles.cdmBadge}>ENVIRONMENT</span>
+                  </div>
+                </div>
+                <div className={fileUploadStyles.attributeList}>
+                  <div className={fileUploadStyles.attribute}>
+                    <span></span>
+                    <span className={fileUploadStyles.attributeName}>URL</span>
+                    <span className={fileUploadStyles.attributeType}>
+                      {wizardData.targetEnvironment.url}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AccordionPanel>
+        </AccordionItem>
+      )}
       
       {/* Solution Section */}
       <AccordionItem value="solution">

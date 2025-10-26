@@ -1,0 +1,147 @@
+.environmentContext {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.operationHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.operationIcon {
+  font-size: 18px;
+}
+
+.operationText {
+  text-transform: capitalize;
+}
+
+.environmentDetails {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.environmentCard {
+  flex: 1;
+  min-width: 250px;
+}
+
+.environmentLabel {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+}
+
+.environmentBadge {
+  border: 2px solid;
+  border-radius: 6px;
+  padding: 12px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.environmentBadge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.environmentName {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.environmentUrl {
+  font-size: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  opacity: 0.8;
+  word-break: break-all;
+  margin-bottom: 2px;
+}
+
+.environmentOrg {
+  font-size: 11px;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.operationArrow {
+  font-size: 24px;
+  color: #64748b;
+  font-weight: bold;
+  margin: 0 8px;
+}
+
+.productionWarning {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .environmentDetails {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .operationArrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 8px 0;
+  }
+  
+  .environmentCard {
+    min-width: auto;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .environmentContext {
+    background: #1e293b;
+    border-color: #374151;
+  }
+  
+  .operationHeader {
+    color: #f1f5f9;
+  }
+  
+  .environmentLabel {
+    color: #94a3b8;
+  }
+  
+  .environmentBadge {
+    background: #0f172a;
+  }
+  
+  .operationArrow {
+    color: #94a3b8;
+  }
+  
+  .productionWarning {
+    background: #431a1a;
+    border-color: #dc2626;
+    color: #fca5a5;
+  }
+}

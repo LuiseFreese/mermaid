@@ -34,9 +34,10 @@ class PublisherService extends BaseService {
     /**
      * Create a new publisher
      * @param {Object} publisherData - Publisher configuration
+     * @param {Object} dataverseConfig - Optional Dataverse configuration
      * @returns {Promise<Object>} Creation result
      */
-    async createPublisher(publisherData) {
+    async createPublisher(publisherData, dataverseConfig = null) {
         return this.executeOperation('createPublisher', async () => {
             this.validateInput(publisherData, ['uniqueName', 'friendlyName', 'prefix'], {
                 uniqueName: 'string',
@@ -50,7 +51,7 @@ class PublisherService extends BaseService {
             }
 
             // Check if publisher already exists
-            const existingPublishers = await this.dataverseRepository.getPublishers();
+            const existingPublishers = await this.dataverseRepository.getPublishers(dataverseConfig);
             if (existingPublishers.success) {
                 const duplicate = existingPublishers.data.find(pub => 
                     pub.uniquename === publisherData.uniqueName || 
@@ -62,7 +63,7 @@ class PublisherService extends BaseService {
                 }
             }
 
-            const result = await this.dataverseRepository.createPublisher(publisherData);
+            const result = await this.dataverseRepository.createPublisher(publisherData, dataverseConfig);
             
             if (result.success) {
                 return this.createSuccess(result.data, 'Publisher created successfully');

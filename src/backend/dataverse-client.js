@@ -9,6 +9,11 @@ const https = require('https');
 class DataverseClient {
   constructor(cfg = {}) {
     this.baseUrl = (cfg.dataverseUrl || cfg.DATAVERSE_URL || process.env.DATAVERSE_URL || '').replace(/\/$/, '');
+    
+    console.log(`🌐 DataverseClient constructor - Using URL: ${this.baseUrl}`);
+    console.log(`   - From cfg.dataverseUrl: ${cfg.dataverseUrl}`);
+    console.log(`   - From process.env.DATAVERSE_URL: ${process.env.DATAVERSE_URL}`);
+    
     this.tenantId = cfg.tenantId || cfg.TENANT_ID || process.env.TENANT_ID;
     this.clientId = cfg.clientId || cfg.CLIENT_ID || process.env.CLIENT_ID;
     this.clientSecret = cfg.clientSecret || cfg.CLIENT_SECRET || process.env.CLIENT_SECRET;
@@ -33,6 +38,12 @@ class DataverseClient {
     this.clientAssertionFile = cfg.clientAssertionFile || process.env.CLIENT_ASSERTION_FILE;
     
     this.verbose = !!cfg.verbose;
+
+    // Debug: Log authentication mode
+    console.log(`🔐 Authentication mode:`);
+    console.log(`   - useClientSecret: ${this.useClientSecret} (clientId: ${this.clientId ? 'SET' : 'NOT SET'}, secret: ${this.clientSecret ? 'SET' : 'NOT SET'}, tenant: ${this.tenantId ? 'SET' : 'NOT SET'})`);
+    console.log(`   - useFederatedCredential: ${this.useFederatedCredential}`);
+    console.log(`   - useManagedIdentity: ${this.useManagedIdentity}`);
 
     // Configure HTTP agents for better connection stability
     const httpAgent = new http.Agent({
@@ -300,6 +311,20 @@ class DataverseClient {
       );
 
       this._log(' OK   Client secret token acquired.');
+      
+      // Debug: decode and log token claims
+      try {
+        const tokenParts = tokenRes.data.access_token.split('.');
+        const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+        this._log(' 🔍 Token Claims:');
+        this._log(`    - aud (audience): ${payload.aud}`);
+        this._log(`    - oid (object id): ${payload.oid}`);
+        this._log(`    - appid: ${payload.appid}`);
+        this._log(`    - tid (tenant): ${payload.tid}`);
+      } catch (e) {
+        this._log(' ⚠️  Could not decode token for debugging');
+      }
+      
       return tokenRes.data.access_token;
       
     } catch (error) {
@@ -458,6 +483,31 @@ class DataverseClient {
       return { success: true, message: 'Connected to Dataverse' };
     } catch (e) {
       return { success: false, message: e.message };
+    }
+  }
+
+  async whoAmI() {
+    try {
+      await this._ensureToken();
+      const response = await this._req('get', '/WhoAmI()');
+      return response;
+    } catch (e) {
+      throw new Error(`WhoAmI failed: ${e.message}`);
+    }
+  }
+
+  async getOrganizationInfo() {
+    try {
+      await this._ensureToken();
+      const response = await this._req('get', '/organizations?$select=organizationid,uniquename,friendlyname,version,geo');
+      
+      if (response.value && response.value.length > 0) {
+        return response.value[0];
+      }
+      
+      throw new Error('No organization information found');
+    } catch (e) {
+      throw new Error(`Failed to get organization info: ${e.message}`);
     }
   }
 

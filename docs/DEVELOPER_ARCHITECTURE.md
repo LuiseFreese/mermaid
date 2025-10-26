@@ -13,6 +13,7 @@ The Mermaid to Dataverse Converter is a modern React-based web application deplo
 - **CDM Integration** - Automatic detection and mapping to Microsoft Common Data Model entities
 - **Global Choices Integration** - Upload and manage option sets
 - **Publisher Management** - Create or select existing publishers
+- **Multi-Environment Support** - Deploy to multiple Dataverse environments (dev/test/prod) from single deployment
 - **Deployment History** - Comprehensive tracking with solution links and Power Platform integration
 - **Azure AD Authentication** - Enterprise-grade user authentication with MSAL
 - **Backend API Protection** - JWT token validation on all API endpoints
@@ -1747,6 +1748,224 @@ validateConfiguration() {
 **Optional Fields**:
 - `description`: Description of the choice set
 - `value`: Numeric value for each option (auto-generated if not provided)
+
+### 9. Multi-Environment Support (`src/backend/environment-manager.js`, `data/environments.json`)
+
+**Purpose**: Enable deployments to multiple Dataverse environments (dev/test/prod) from a single Azure deployment with dynamic environment selection at deployment time.
+
+**Location**: 
+- Backend: `src/backend/environment-manager.js`, `src/backend/dataverse-client-factory.js`
+- Frontend: `src/frontend/src/components/wizard/steps/SolutionSetupStep.tsx`
+- Configuration: `data/environments.json`
+- API: `src/backend/controllers/environment-controller.js`
+
+**Key Features**:
+- **Single Deployment**: One Azure App Service serves all environments
+- **User Selection**: Environment dropdown in wizard UI
+- **Dynamic Routing**: Backend routes to selected environment URL
+- **Managed Identity**: Same managed identity authenticates to all environments
+- **No Secrets**: Secretless architecture using managed identity with federated credentials
+- **Configuration-Driven**: All environments defined in `data/environments.json`
+
+**Architecture Overview**:
+
+```mermaid
+graph TB
+    User[User] --> UI[Environment Dropdown]
+    UI --> |Selects: test-princess| Frontend[Frontend]
+    Frontend --> |targetEnvironment: test-princess| API[Deployment API]
+    API --> EM[Environment Manager]
+    EM --> |Reads config| Config[data/environments.json]
+    Config --> |Returns URL| EM
+    EM --> |Creates config with URL| DCF[DataverseClientFactory]
+    DCF --> |Authenticates| MI[Managed Identity + FIC]
+    MI --> |Token| DC[Dataverse Client]
+    DC --> |Deploys to| TestEnv[test-princess Environment]
+    
+    style TestEnv fill:#ffd23f
+    style Config fill:#0078d4
+    style MI fill:#00a859
+```
+
+**Environment Configuration** (`data/environments.json`):
+
+```json
+{
+  "version": "1.0.0",
+  "environments": [
+    {
+      "id": "env-guid-1",
+      "name": "dev-princess",
+      "url": "https://org4caa9250.crm4.dynamics.com",
+      "powerPlatformEnvironmentId": "env-guid-1",
+      "color": "blue",
+      "isDefault": true,
+      "metadata": {
+        "organizationName": "org4caa9250",
+        "region": "Europe",
+        "purpose": "Development and testing"
+      }
+    },
+    {
+      "id": "env-guid-2",
+      "name": "test-princess",
+      "url": "https://org32dda8c3.crm4.dynamics.com",
+      "powerPlatformEnvironmentId": "env-guid-2",
+      "color": "yellow",
+      "metadata": {
+        "purpose": "Integration and UAT"
+      }
+    }
+  ],
+  "defaultEnvironmentId": "env-guid-1"
+}
+```
+
+**Backend Implementation**:
+
+**EnvironmentManager** (`src/backend/environment-manager.js`):
+```javascript
+class EnvironmentManager {
+  async initialize() {
+    // Load environments.json from data/ directory
+    const configData = await fs.readFile(this.configPath, 'utf8');
+    const config = JSON.parse(configData);
+    
+    // Store environments in memory
+    config.environments.forEach(env => {
+      this.environments.set(env.id, env);
+    });
+  }
+  
+  getEnvironmentByName(name) {
+    // Find environment by name (e.g., "test-princess")
+    return Array.from(this.environments.values())
+      .find(env => env.name === name);
+  }
+}
+```
+
+**DataverseClientFactory** (`src/backend/dataverse-client-factory.js`):
+```javascript
+class DataverseClientFactory {
+  createClient(config = {}) {
+    // Override Dataverse URL if specified
+    const dataverseConfig = {
+      dataverseUrl: config.dataverseUrl || process.env.DATAVERSE_URL,
+      useManagedIdentity: true,
+      useFederatedCredential: true,
+      // ... other auth config
+    };
+    
+    return new DataverseClient(dataverseConfig);
+  }
+}
+```
+
+**Deployment Flow**:
+
+1. **User Selection**: User selects environment from dropdown in Solution Setup step
+2. **Frontend Sends**: `POST /upload` with `targetEnvironment: "test-princess"` in request body
+3. **Backend Processes**:
+   ```javascript
+   // deployment-service.js
+   async processDeployment(deploymentRequest) {
+     const { targetEnvironment, erdContent, solutionName } = deploymentRequest;
+     
+     // Get environment details
+     const env = environmentManager.getEnvironmentByName(targetEnvironment);
+     
+     // Create Dataverse client with environment-specific URL
+     const dataverseConfig = {
+       dataverseUrl: env.url,
+       useManagedIdentity: true,
+       useFederatedCredential: true
+     };
+     
+     const client = dataverseClientFactory.createClient(dataverseConfig);
+     
+     // Deploy to selected environment
+     await this.deployToDataverse(client, erdContent, solutionName);
+   }
+   ```
+4. **Authentication**: Managed identity authenticates to target environment
+5. **Deployment**: Tables/relationships created in selected environment
+
+**Frontend Integration**:
+
+```typescript
+// SolutionSetupStep.tsx
+const [environments, setEnvironments] = useState<DataverseEnvironment[]>([]);
+const [selectedEnvironment, setSelectedEnvironment] = useState<string | undefined>();
+
+useEffect(() => {
+  // Load available environments from API
+  fetch('/api/environments')
+    .then(res => res.json())
+    .then(data => setEnvironments(data));
+}, []);
+
+// Environment dropdown
+<Dropdown
+  placeholder="Select target environment"
+  value={selectedEnvironment}
+  onOptionSelect={(_, data) => {
+    setSelectedEnvironment(data.optionValue);
+    // Update wizard context with selected environment
+    updateWizardState({
+      targetEnvironment: environments.find(e => e.id === data.optionValue)
+    });
+  }}
+>
+  {environments.map(env => (
+    <Option key={env.id} value={env.id} text={env.name}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          backgroundColor: env.color === 'blue' ? '#0078d4' : 
+                          env.color === 'yellow' ? '#ffd23f' : '#d13438'
+        }}></div>
+        <div>
+          <div style={{ fontWeight: '600' }}>{env.name}</div>
+          <div style={{ fontSize: '12px' }}>{env.url}</div>
+        </div>
+      </div>
+    </Option>
+  ))}
+</Dropdown>
+```
+
+**Authentication Architecture**:
+
+The managed identity is **organization-wide**, not environment-specific:
+
+1. **Setup Phase** (`setup-from-config.ps1`):
+   - Creates app registration with federated credentials
+   - Creates application users in ALL configured environments
+   - Application users have `accessmode=4` (Non-interactive)
+   - Assigns System Administrator role in each environment
+
+2. **Runtime Authentication**:
+   - User selects environment → Backend gets environment URL
+   - Dataverse client uses managed identity + federated credentials
+   - Token request includes target environment URL as resource
+   - Same managed identity, different tokens for each environment
+
+**Benefits**:
+
+✅ **No Per-Environment Configuration**: Single Azure deployment serves all environments
+✅ **User-Controlled Targeting**: Explicit environment selection, no accidents
+✅ **Secretless**: Managed identity authentication, no client secrets
+✅ **Easy to Add Environments**: Just update `data/environments.json`
+✅ **Environment Isolation**: Each deployment tracked separately per environment
+✅ **Scalable**: Add unlimited environments without infrastructure changes
+
+**Related Documentation**:
+- Complete setup guide: [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md)
+- Local testing: [Local Development Guide](./LOCAL-DEVELOPMENT.md#multi-environment-testing-optional)
+- Deployment guide: [Deployment Guide](./DEPLOYMENT.md#multi-environment-support)
 
 ### Global Choice Creation & Verification Process
 

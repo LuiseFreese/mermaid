@@ -249,6 +249,24 @@
   outline: none;
 }
 
+/* Environment Selection Styles */
+.environmentContext {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--colorNeutralBackground2);
+  border-radius: 8px;
+  border: 1px solid var(--colorNeutralStroke3);
+}
+
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  justify-content: center;
+  color: var(--colorNeutralForeground3);
+}
+
 /* Print styles */
 @media print {
   .container {

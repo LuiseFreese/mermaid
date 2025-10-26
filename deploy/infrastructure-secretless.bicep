@@ -17,7 +17,7 @@ param appServicePlanSku string = 'B1'
 param environment string = 'prod'
 
 // User-assigned managed identity
-resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
   name: managedIdentityName
   location: location
   tags: {
@@ -28,7 +28,7 @@ resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-
 }
 
 // App Service Plan
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   name: appServicePlanName
   location: location
   tags: {
@@ -45,7 +45,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
 }
 
 // App Service
-resource appService 'Microsoft.Web/sites@2023-01-01' = {
+resource appService 'Microsoft.Web/sites@2022-09-01' = {
   name: appServiceName
   location: location
   tags: {

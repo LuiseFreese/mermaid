@@ -1,0 +1,347 @@
+.environmentSelector {
+  position: relative;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.selectorContainer {
+  position: relative;
+}
+
+.selectedEnvironment {
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+}
+
+.selectedEnvironment:hover:not(.disabled) {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.selectedEnvironment.disabled {
+  background: #f9fafb;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.environmentDisplay {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.environmentInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.environmentDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.environmentText {
+  flex: 1;
+  min-width: 0;
+}
+
+.environmentName {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.environmentUrl {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  word-break: break-all;
+}
+
+.environmentDescription {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.environmentActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdownArrow {
+  color: #6b7280;
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #9ca3af;
+  font-size: 14px;
+  width: 100%;
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  margin-top: 4px;
+  max-height: 400px;
+  overflow: hidden;
+}
+
+.searchContainer {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.environmentList {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.environmentOption {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.environmentOption:hover {
+  background: #f9fafb;
+}
+
+.environmentOption.selected {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+}
+
+.environmentOption:last-child {
+  border-bottom: none;
+}
+
+.environmentStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.editButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  font-size: 12px;
+}
+
+.editButton:hover {
+  background: #e5e7eb;
+}
+
+.noResults {
+  padding: 20px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.addEnvironmentContainer {
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.addEnvironmentButton {
+  width: 100%;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.addEnvironmentButton:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .dropdown {
+    max-height: 300px;
+  }
+  
+  .environmentList {
+    max-height: 200px;
+  }
+  
+  .environmentOption {
+    padding: 10px;
+  }
+  
+  .environmentUrl {
+    font-size: 11px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .label {
+    color: #f9fafb;
+  }
+  
+  .selectedEnvironment {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .selectedEnvironment:hover:not(.disabled) {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+  
+  .selectedEnvironment.disabled {
+    background: #111827;
+  }
+  
+  .environmentName {
+    color: #f9fafb;
+  }
+  
+  .environmentUrl {
+    color: #9ca3af;
+  }
+  
+  .environmentDescription {
+    color: #6b7280;
+  }
+  
+  .dropdownArrow {
+    color: #9ca3af;
+  }
+  
+  .placeholder {
+    color: #6b7280;
+  }
+  
+  .dropdown {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .searchContainer {
+    border-color: #374151;
+  }
+  
+  .searchInput {
+    background: #111827;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+  
+  .searchInput:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  }
+  
+  .environmentOption {
+    border-color: #374151;
+  }
+  
+  .environmentOption:hover {
+    background: #374151;
+  }
+  
+  .environmentOption.selected {
+    background: #1e3a8a;
+    border-left-color: #60a5fa;
+  }
+  
+  .editButton:hover {
+    background: #4b5563;
+  }
+  
+  .noResults {
+    color: #9ca3af;
+  }
+  
+  .addEnvironmentContainer {
+    border-color: #374151;
+  }
+  
+  .addEnvironmentButton {
+    background: #374151;
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+  
+  .addEnvironmentButton:hover {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #d1d5db;
+  }
+}

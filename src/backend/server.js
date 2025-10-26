@@ -11,17 +11,28 @@ const url  = require('url');
 const path = require('path');
 
 // Load environment variables - check .env.local first (for local dev), then .env
+// IMPORTANT: Use override: true to prioritize .env over shell environment variables
 const fs = require('fs');
 const envLocalPath = path.join(__dirname, '../../.env.local');
 const envPath = path.join(__dirname, '../../.env');
 
 if (fs.existsSync(envLocalPath)) {
-  require('dotenv').config({ path: envLocalPath });
+  require('dotenv').config({ path: envLocalPath, override: true });
+  console.log('📄 Loaded .env.local (overriding shell environment variables)');
 } else if (fs.existsSync(envPath)) {
-  require('dotenv').config({ path: envPath });
+  require('dotenv').config({ path: envPath, override: true });
+  console.log('📄 Loaded .env (overriding shell environment variables)');
 } else {
-  require('dotenv').config(); // fallback to default behavior
+  require('dotenv').config({ override: true }); // fallback to default behavior
+  console.log('📄 Loaded default .env (overriding shell environment variables)');
 }
+
+// Log what was actually loaded
+console.log('🔑 Authentication config loaded:');
+console.log(`   CLIENT_ID: ${process.env.CLIENT_ID ? process.env.CLIENT_ID.substring(0, 8) + '...' : 'NOT SET'}`);
+console.log(`   CLIENT_SECRET: ${process.env.CLIENT_SECRET ? 'SET (' + process.env.CLIENT_SECRET.substring(0, 10) + '...)' : 'NOT SET'}`);
+console.log(`   DATAVERSE_URL: ${process.env.DATAVERSE_URL || 'NOT SET'}`);
+console.log(`   Expected CLIENT_ID: 1048116d...`);
 
 // --- Import New Architecture Layers ------------------------------------
 
@@ -42,10 +53,15 @@ const { GlobalChoicesService } = require('./services/global-choices-service');
 const { SolutionService } = require('./services/solution-service');
 const { RollbackService } = require('./services/rollback-service');
 const { DataverseExtractorService } = require('./services/dataverse-extractor-service');
+const CrossEnvironmentService = require('./services/cross-environment-service');
 
 // Repositories
 const { DataverseRepository } = require('./repositories/dataverse-repository');
 const { ConfigurationRepository } = require('./repositories/configuration-repository');
+
+// Environment Management
+const EnvironmentManager = require('./environment-manager');
+const DataverseClientFactory = require('./dataverse-client-factory');
 
 // Middleware
 const { RequestLoggerMiddleware } = require('./middleware/request-logger-middleware');
@@ -205,6 +221,23 @@ async function initializeComponents() {
       validationService
     });
 
+    // Initialize environment manager
+    const environmentManager = new EnvironmentManager();
+    await environmentManager.initialize();
+
+    // Initialize Dataverse client factory
+    const dataverseClientFactory = new DataverseClientFactory(environmentManager);
+
+    // Initialize cross-environment service (depends on environmentManager and dataverseClientFactory)
+    const crossEnvironmentService = new CrossEnvironmentService({
+      environmentManager,
+      dataverseClientFactory,
+      validationService,
+      deploymentService,
+      rollbackService,
+      logger: console
+    });
+
     appComponents = {
       // Repositories
       configRepo,
@@ -215,9 +248,14 @@ async function initializeComponents() {
       deploymentService,
       rollbackService,
       dataverseExtractorService,
+      crossEnvironmentService,
       globalChoicesService,
       publisherService,
       solutionService,
+      
+      // Environment Management
+      environmentManager,
+      dataverseClientFactory,
       
       // Middleware
       requestLogger,
@@ -548,11 +586,178 @@ async function handleApiRoutes(pathname, req, res, components) {
   if (route === 'config/environment') {
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        dataverseUrl: process.env.DATAVERSE_URL || '',
-        tenantId: process.env.TENANT_ID || '',
-        clientId: process.env.CLIENT_ID || ''
-      }));
+      
+      // For backward compatibility, return default environment or legacy config
+      const defaultEnv = components.environmentManager.getDefaultEnvironment();
+      if (defaultEnv) {
+        res.end(JSON.stringify({
+          dataverseUrl: defaultEnv.url,
+          tenantId: process.env.TENANT_ID || '',
+          clientId: process.env.CLIENT_ID || ''
+        }));
+      } else {
+        // Fallback to legacy environment variables
+        res.end(JSON.stringify({
+          dataverseUrl: process.env.DATAVERSE_URL || '',
+          tenantId: process.env.TENANT_ID || '',
+          clientId: process.env.CLIENT_ID || ''
+        }));
+      }
+      return;
+    }
+  }
+
+  // Multi-environment management routes
+  if (route === 'environments') {
+    if (req.method === 'GET') {
+      try {
+        const environments = components.environmentManager.getEnvironments();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          environments,
+          defaultEnvironmentId: components.environmentManager.defaultEnvironmentId
+        }));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+    
+    if (req.method === 'POST') {
+      try {
+        const body = await readRequestBody(req);
+        const environment = JSON.parse(body);
+        
+        await components.environmentManager.setEnvironment(environment);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, environment }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+  }
+
+  if (route.startsWith('environments/')) {
+    const envId = route.replace('environments/', '');
+    
+    if (req.method === 'GET') {
+      try {
+        const environment = components.environmentManager.getEnvironment(envId);
+        if (!environment) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Environment not found' }));
+          return;
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(environment));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+    
+    if (req.method === 'PUT') {
+      try {
+        const body = await readRequestBody(req);
+        const environment = JSON.parse(body);
+        environment.id = envId; // Ensure ID matches URL
+        
+        await components.environmentManager.setEnvironment(environment);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, environment }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+    
+    if (req.method === 'DELETE') {
+      try {
+        await components.environmentManager.removeEnvironment(envId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+  }
+
+  if (route === 'environments/default') {
+    if (req.method === 'POST') {
+      try {
+        const body = await readRequestBody(req);
+        const { environmentId } = JSON.parse(body);
+        
+        await components.environmentManager.setDefaultEnvironment(environmentId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, defaultEnvironmentId: environmentId }));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+  }
+
+  if (route.startsWith('environments/') && route.endsWith('/validate')) {
+    const envId = route.replace('environments/', '').replace('/validate', '');
+    
+    if (req.method === 'POST') {
+      try {
+        const validation = await components.environmentManager.validateEnvironment(envId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(validation));
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+  }
+
+  if (route.startsWith('environments/') && route.endsWith('/test-connection')) {
+    const envId = route.replace('environments/', '').replace('/test-connection', '');
+    
+    if (req.method === 'POST') {
+      try {
+        const result = await components.dataverseClientFactory.testConnection(envId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
+      return;
+    }
+  }
+
+  if (route.startsWith('environments/') && route.endsWith('/metadata')) {
+    const envId = route.replace('environments/', '').replace('/metadata', '');
+    
+    if (req.method === 'GET') {
+      try {
+        const metadata = await components.dataverseClientFactory.getEnvironmentMetadata(envId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(metadata));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
       return;
     }
   }
@@ -760,6 +965,110 @@ async function handleApiRoutes(pathname, req, res, components) {
     if (rollbackRoute === 'active') {
       if (req.method === 'GET') {
         return components.rollbackController.getActiveRollbacks(req, res);
+      }
+    }
+  }
+
+  // Cross-environment routes
+  if (route.startsWith('cross-environment/')) {
+    const crossEnvRoute = route.replace('cross-environment/', '');
+    
+    if (crossEnvRoute === 'import') {
+      if (req.method === 'POST') {
+        try {
+          const body = await readRequestBody(req);
+          const { sourceEnvironmentId, solutionName } = JSON.parse(body);
+          
+          const result = await components.crossEnvironmentService.importFromEnvironment(
+            sourceEnvironmentId, 
+            solutionName
+          );
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+      }
+    }
+    
+    if (crossEnvRoute === 'deploy') {
+      if (req.method === 'POST') {
+        try {
+          const body = await readRequestBody(req);
+          const { targetEnvironmentId, solutionData, deploymentOptions } = JSON.parse(body);
+          
+          const result = await components.crossEnvironmentService.deployToEnvironment(
+            targetEnvironmentId, 
+            solutionData, 
+            deploymentOptions
+          );
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+      }
+    }
+    
+    if (crossEnvRoute === 'pipeline') {
+      if (req.method === 'POST') {
+        try {
+          const body = await readRequestBody(req);
+          const pipelineConfig = JSON.parse(body);
+          
+          const result = await components.crossEnvironmentService.executePipeline(pipelineConfig);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+      }
+    }
+    
+    if (crossEnvRoute.startsWith('solutions/')) {
+      const envId = crossEnvRoute.replace('solutions/', '');
+      
+      if (req.method === 'GET') {
+        try {
+          const solutions = await components.crossEnvironmentService.getAvailableSolutions(envId);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ solutions }));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
+      }
+    }
+    
+    if (crossEnvRoute === 'compare') {
+      if (req.method === 'POST') {
+        try {
+          const body = await readRequestBody(req);
+          const { sourceEnvironmentId, targetEnvironmentId } = JSON.parse(body);
+          
+          const comparison = await components.crossEnvironmentService.compareEnvironments(
+            sourceEnvironmentId, 
+            targetEnvironmentId
+          );
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(comparison));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: error.message }));
+        }
+        return;
       }
     }
   }

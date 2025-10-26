@@ -3,16 +3,19 @@
 This guide explains how to deploy the Mermaid to Dataverse Converter to Azure for production use with enterprise-grade security.
 
 > **Note**: For local development setup, see [Local Development Guide](./LOCAL-DEVELOPMENT.md)
+> 
+> **Multi-Environment Support**: This application supports deploying to multiple Dataverse environments (dev/test/prod). See [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md) for details.
 
 ## Table of Contents
 
 1. [Quick Start - Azure Deployment](#quick-start---azure-deployment)
-2. [Prerequisites](#prerequisites)
-3. [Security Architecture](#security-architecture)
-4. [Deployment Process](#deployment-process)
-5. [Authentication & Authorization](#authentication--authorization)
-6. [Post-Deployment Configuration](#post-deployment-configuration)
-7. [Troubleshooting](#troubleshooting)
+2. [Multi-Environment Support](#multi-environment-support)
+3. [Prerequisites](#prerequisites)
+4. [Security Architecture](#security-architecture)
+5. [Deployment Process](#deployment-process)
+6. [Authentication & Authorization](#authentication--authorization)
+7. [Post-Deployment Configuration](#post-deployment-configuration)
+8. [Troubleshooting](#troubleshooting)
 
 ## Quick Start - Azure Deployment
 
@@ -43,11 +46,39 @@ cd mermaid
 
 **The deployment script will:**
 - Build the React frontend locally using Vite
-- Package only necessary backend files (no node_modules)
+- Package backend files and **multi-environment configuration** (`data/environments.json`)
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
 - Enable deployment history tracking with Power Platform integration
 - Inject Azure AD authentication configuration into frontend build
+
+## Multi-Environment Support
+
+The application supports deploying to multiple Dataverse environments from a single Azure deployment. Users can select the target environment at deployment time.
+
+### How It Works
+
+1. **Environment Configuration**: `data/environments.json` contains all configured environments
+2. **User Selection**: Environment dropdown in the Solution Setup wizard step
+3. **Dynamic Routing**: Backend routes deployments to the selected environment
+4. **Managed Identity**: Single managed identity with application users in each environment
+
+### Quick Setup for Multiple Environments
+
+```powershell
+# Configure all environments in config/environments.json
+# Then run setup to create application users in each environment
+.\scripts\setup-from-config.ps1
+```
+
+**Key Features:**
+- ✅ Select target environment from dropdown (dev/test/prod)
+- ✅ Single Azure deployment serves all environments
+- ✅ No secrets needed - managed identity authenticates to all environments
+- ✅ Environment-specific deployment tracking
+- ✅ Easy to add new environments - just update configuration
+
+For complete details, see [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md).
 - Configure authentication middleware for API protection
 
 ## Local Development Setup

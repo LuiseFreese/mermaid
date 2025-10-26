@@ -2,6 +2,8 @@
 
 **Zero configuration required!** Just clone, install, and run.
 
+> **Multi-Environment Support**: The application supports deploying to multiple Dataverse environments (dev/test/prod). In local development, you can test against any configured environment. See [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md) for setup details.
+
 ## Quick Start (3 Commands)
 
 ```powershell
@@ -48,6 +50,81 @@ When you run `npm run dev`, two servers start automatically:
 - **PowerShell 7+** or Windows PowerShell 5.1 (for scripts)
 
 That's all! No Azure setup needed for local development.
+
+## Multi-Environment Testing (Optional)
+
+Want to test deploying to different environments (dev/test/prod) locally?
+
+### Setup
+
+**1. Configure your environments** in `data/environments.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "environments": [
+    {
+      "id": "env-guid-1",
+      "name": "dev-local",
+      "url": "https://your-dev-org.crm.dynamics.com",
+      "powerPlatformEnvironmentId": "env-guid-1",
+      "color": "blue",
+      "isDefault": true
+    },
+    {
+      "id": "env-guid-2",
+      "name": "test-local",
+      "url": "https://your-test-org.crm.dynamics.com",
+      "powerPlatformEnvironmentId": "env-guid-2",
+      "color": "yellow"
+    }
+  ],
+  "defaultEnvironmentId": "env-guid-1"
+}
+```
+
+**2. Create `.env.local` with credentials** that have access to all environments:
+
+```bash
+# Authentication Method
+USE_CLIENT_SECRET=true
+USE_MANAGED_IDENTITY=false
+
+# Microsoft Entra Configuration
+TENANT_ID=your-tenant-id
+CLIENT_ID=your-app-registration-id
+CLIENT_SECRET=your-client-secret
+
+# Default environment (can be overridden by user selection)
+DATAVERSE_URL=https://your-dev-org.crm.dynamics.com
+POWER_PLATFORM_ENVIRONMENT_ID=env-guid-1
+
+# Authentication still disabled for local dev
+AUTH_ENABLED=false
+```
+
+**3. Start the dev server:**
+
+```powershell
+npm run dev
+```
+
+**4. Test environment selection:**
+- Open `http://localhost:3003/wizard`
+- Navigate to Solution Setup step
+- You'll see the environment dropdown with your configured environments
+- Select an environment and deploy
+- Backend will dynamically route to the selected environment
+
+### How It Works
+
+1. **User selects environment** from dropdown in UI
+2. **Frontend sends** `targetEnvironment` with the deployment request
+3. **Backend reads** `data/environments.json` to find the environment details
+4. **Backend authenticates** using the credentials from `.env.local`
+5. **Deployment proceeds** to the selected environment URL
+
+**Note**: Your app registration needs API permissions for all environments you want to test against. See [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md) for complete setup.
 
 ## Advanced: Testing with Real Dataverse (Optional)
 
