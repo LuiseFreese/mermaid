@@ -219,7 +219,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
 
       onImportCompleted?.(importedContent, metadataWithChoice);
     }
-  }, [cdmDetection.entities, setCDMChoice, onCDMChoiceSelected, importedContent, importedMetadata, updateWizardData, environmentUrl, selectedSolution]); // Removed onImportCompleted
+  }, [cdmDetection.entities, setCDMChoice, importedContent, importedMetadata, updateWizardData, environmentUrl, selectedSolution]); // Removed onImportCompleted and onCDMChoiceSelected
 
   // Render the diagram when CDM choice is made and we have content
   useEffect(() => {
@@ -301,7 +301,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
     } finally {
       setIsImporting(false);
     }
-  }, [selectedSolution, environmentUrl, updateWizardData, onImportCompleted, detectCDMEntities, cdmDetection.detected]);
+  }, [selectedSolution, environmentUrl, updateWizardData, detectCDMEntities, cdmDetection.detected]); // Removed onImportCompleted
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
