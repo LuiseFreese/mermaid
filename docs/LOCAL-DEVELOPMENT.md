@@ -154,7 +154,15 @@ AUTH_ENABLED=false
 Want to test the full authentication flow locally?
 
 ### Prerequisites
-1. Deploy to Azure first: `.\scripts\setup-secretless.ps1`
+1. Deploy to Azure first (creates App Registration):
+   ```powershell
+   # Configure environments first
+   Copy-Item data/environments.example.json data/environments.json
+   # Edit data/environments.json with your Dataverse environments
+   
+   # Run setup
+   .\scripts\setup-secretless.ps1 -EnvironmentSuffix "dev" -Unattended
+   ```
 2. This creates the Azure AD App Registration you need
 
 ### Configuration
@@ -512,8 +520,15 @@ npm run build
 npm test
 
 # Deploy to Azure
-.\scripts\setup-secretless.ps1      # First time setup
-.\scripts\deploy-secretless.ps1     # Deploy code updates
+# Step 1: Configure environments
+Copy-Item data/environments.example.json data/environments.json
+# Edit data/environments.json
+
+# Step 2: First time setup
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
+
+# Step 3: Deploy code updates
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 
 ## Next Steps

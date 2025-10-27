@@ -238,7 +238,7 @@ describe('Solution Setup - Phase 4: Main Component Integration', () => {
       expect(containsPatterns(content, [
         'const isConfigurationComplete = Boolean(',
         'const hasValidationErrors = Object.keys(combinedValidationErrors).length > 0;',
-        '{isConfigurationComplete && !hasValidationErrors ?',
+        '{isConfigurationComplete && !hasValidationErrors && selectedEnvironment ?',
         'Configuration Complete',
         'Configuration Issues',
         'Configuration Required',

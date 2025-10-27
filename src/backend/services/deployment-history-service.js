@@ -47,6 +47,10 @@ class DeploymentHistoryService extends BaseService {
                 deploymentId,
                 timestamp,
                 environmentSuffix: deploymentData.environmentSuffix || 'default',
+                // Multi-environment support
+                environmentId: deploymentData.environmentId || deploymentData.environmentSuffix || 'default',
+                environmentName: deploymentData.environmentName || deploymentData.environmentSuffix || 'Default',
+                environmentUrl: deploymentData.environmentUrl || null,
                 erdContent: deploymentData.erdContent,
                 status: deploymentData.status || 'pending',
                 summary: deploymentData.summary || this.generateDeploymentSummary(deploymentData),
@@ -175,6 +179,28 @@ class DeploymentHistoryService extends BaseService {
                 }
                 throw error;
             }
+        });
+    }
+
+    /**
+     * Get deployments filtered by environment
+     * @param {string} environmentId - Environment ID to filter by (or 'all' for all environments)
+     * @returns {Promise<Array>} Filtered deployment records
+     */
+    async getDeploymentsByEnvironment(environmentId) {
+        return this.executeOperation('getDeploymentsByEnvironment', async () => {
+            const allDeployments = await this.getAllDeployments();
+            
+            // If 'all' or no environmentId specified, return all deployments
+            if (!environmentId || environmentId === 'all') {
+                return allDeployments;
+            }
+            
+            // Filter deployments by environmentId (check both environmentId and environmentSuffix for backward compatibility)
+            return allDeployments.filter(deployment => 
+                deployment.environmentId === environmentId || 
+                deployment.environmentSuffix === environmentId
+            );
         });
     }
 

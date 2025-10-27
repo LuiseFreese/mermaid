@@ -30,7 +30,9 @@ import {
   MessageBar,
   MessageBarBody,
   Checkbox,
-  Tooltip
+  Tooltip,
+  Dropdown,
+  Option
 } from '@fluentui/react-components';
 import {
   HistoryRegular,
@@ -49,9 +51,9 @@ import {
   CheckmarkRegular,
   DismissCircleRegular
 } from '@fluentui/react-icons';
-import { DeploymentHistoryService } from '../../services/deploymentHistoryService';
 import { ApiService } from '../../services/apiService';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
+import type { DataverseEnvironment } from '../../../../shared/types/environment';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserMenu } from '../../auth/UserMenu';
 import { EnhancedProgress } from '../common';
@@ -188,6 +190,10 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [solutionUrl, setSolutionUrl] = useState<string | null>(null);
   
+  // Multi-environment state
+  const [environments, setEnvironments] = useState<DataverseEnvironment[]>([]);
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
+  
   // Rollback state
   const [showRollbackModal, setShowRollbackModal] = useState(false);
   const [rollbackDeployment, setRollbackDeployment] = useState<DeploymentSummary | null>(null);
@@ -219,6 +225,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   useEffect(() => {
     // Only load deployment history after user is authenticated
     if (accounts.length > 0 && inProgress === 'none') {
+      loadEnvironments();
       loadDeploymentHistory();
     }
     
@@ -230,34 +237,59 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     });
   }, [accounts.length, inProgress]);
 
+  // Reload deployments when selected environment changes
+  useEffect(() => {
+    if (accounts.length > 0 && inProgress === 'none') {
+      loadDeploymentHistory();
+    }
+  }, [selectedEnvironment]);
+
+  const loadEnvironments = async () => {
+    try {
+      const response = await fetch('/api/environments');
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setEnvironments(data);
+      }
+    } catch (error) {
+      console.error('Failed to load environments:', error);
+    }
+  };
+
   const loadDeploymentHistory = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await DeploymentHistoryService.getDeploymentHistory('default', 50);
+      // Use environment parameter for filtering
+      const url = selectedEnvironment === 'all' 
+        ? '/api/deployments/history'
+        : `/api/deployments/history?environment=${selectedEnvironment}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
       
       console.log('🔧 DEBUG: Deployment History API Response:', {
-        success: response.success,
-        count: response.count,
-        environmentSuffix: response.environmentSuffix,
-        deploymentsLength: response.deployments?.length || 0,
-        deployments: response.deployments,
-        fullResponse: response
+        success: data.success,
+        count: data.count,
+        environment: data.environment || data.environmentSuffix,
+        deploymentsLength: data.deployments?.length || 0,
+        deployments: data.deployments,
+        fullResponse: data
       });
       
-      if (response.success) {
+      if (data.success) {
         // Filter out rollback records - only show original deployments
-        const originalDeployments = response.deployments.filter((deployment: DeploymentSummary) => {
+        const originalDeployments = data.deployments.filter((deployment: DeploymentSummary) => {
           const isRollbackRecord = deployment.summary?.operationType === 'rollback' || 
                                    deployment.metadata?.deploymentMethod === 'rollback';
           return !isRollbackRecord;
         });
         
         console.log('🔧 DEBUG: Filtered deployments:', {
-          totalCount: response.deployments.length,
+          totalCount: data.deployments.length,
           originalCount: originalDeployments.length,
-          filteredOutCount: response.deployments.length - originalDeployments.length
+          filteredOutCount: data.deployments.length - originalDeployments.length
         });
         
         setDeployments(originalDeployments);
@@ -604,10 +636,14 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
         cdmEntities: rollbackOptions.solution
       };
       
+      // Get environment ID from deployment
+      const environmentId = (rollbackDeployment as any).environmentId || (rollbackDeployment as any).environmentSuffix;
+      
       // Start rollback - will return 202 Accepted with rollback ID
       const response = await apiClient.post(`/rollback/${rollbackDeployment.deploymentId}/execute`, { 
         confirm: true,
-        options: backendOptions
+        options: backendOptions,
+        environmentId: environmentId // Pass environment ID to backend
       });
 
       // Check for 202 Accepted (async operation started)
@@ -721,6 +757,22 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
 
   const canShowRollbackButton = (deployment: DeploymentSummary) => {
     return (deployment.status === 'success' || deployment.status === 'modified') && deployment.rollbackData;
+  };
+
+  const getEnvironmentColor = (deployment: DeploymentSummary) => {
+    const envId = (deployment as any).environmentId || (deployment as any).environmentSuffix;
+    const env = environments.find(e => e.id === envId);
+    if (!env) return '#6b6b6b';
+    
+    return env.color === 'blue' ? '#0078d4' : 
+           env.color === 'yellow' ? '#ffd23f' :
+           env.color === 'red' ? '#d13438' : '#6b6b6b';
+  };
+
+  const getEnvironmentName = (deployment: DeploymentSummary) => {
+    const envId = (deployment as any).environmentId || (deployment as any).environmentSuffix;
+    const env = environments.find(e => e.id === envId);
+    return env?.name || envId || 'Default';
   };
 
   if (loading) {
@@ -911,9 +963,39 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       <div className={styles.content}>
         <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Title2>Recent Deployments</Title2>
-          <Button appearance="primary" onClick={loadDeploymentHistory}>
-            Refresh
-          </Button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Text size={300}>Environment:</Text>
+              <Dropdown
+                placeholder="All Environments"
+                value={selectedEnvironment === 'all' ? 'All Environments' : environments.find(e => e.id === selectedEnvironment)?.name || 'All Environments'}
+                onOptionSelect={(_, data) => setSelectedEnvironment(data.optionValue as string)}
+                style={{ minWidth: '200px' }}
+              >
+                <Option key="all" value="all" text="All Environments">
+                  All Environments
+                </Option>
+                {environments.map(env => (
+                  <Option key={env.id} value={env.id} text={env.name}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        backgroundColor: env.color === 'blue' ? '#0078d4' : 
+                                        env.color === 'yellow' ? '#ffd23f' :
+                                        env.color === 'red' ? '#d13438' : '#6b6b6b'
+                      }}></div>
+                      <span>{env.name}</span>
+                    </div>
+                  </Option>
+                ))}
+              </Dropdown>
+            </div>
+            <Button appearance="primary" onClick={loadDeploymentHistory}>
+              Refresh
+            </Button>
+          </div>
         </div>
 
         <div className={styles.tableContainer}>
@@ -965,7 +1047,15 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                       </TableCell>
                       <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
                         <TableCellLayout>
-                          <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: getEnvironmentColor(deployment)
+                            }} title={getEnvironmentName(deployment)}></div>
+                            <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
+                          </div>
                         </TableCellLayout>
                       </TableCell>
                       <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>

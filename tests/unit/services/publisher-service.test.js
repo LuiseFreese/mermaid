@@ -247,7 +247,8 @@ describe('PublisherService', () => {
                 }
 
                 expect(mockDataverseRepository.createPublisher).toHaveBeenCalledWith(
-                    FIXTURES.validPublisherData
+                    FIXTURES.validPublisherData,
+                    null // environmentId parameter
                 );
             });
         });

@@ -32,31 +32,39 @@ A modern React-based Azure App Service application that converts [Mermaid](https
 
 ## Quick Start
 
-**Two steps to deploy everything:**
+**Two scripts to deploy everything:**
 
 ```powershell
 # Clone the repository
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Step 1: Create Azure infrastructure and identity setup
-.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp" -DataverseUrl "https://your-org.crm.dynamics.com" -Unattended
+# Step 1: Configure your environments (REQUIRED)
+# Copy and edit data/environments.json with your Dataverse environment(s)
+Copy-Item data/environments.example.json data/environments.json
+# Edit data/environments.json with your dev/test/prod URLs and IDs
 
-# Step 2: Deploy the application
-.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+# Step 2: Create Azure infrastructure and identity setup
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
+
+# Step 3: Deploy the application
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 
 **The setup script will:**
+- **Validate that `data/environments.json` exists** (required!)
 - Create App Registration with federated credentials
 - Deploy Azure infrastructure (App Service, Managed Identity, etc.)
 - Configure secure managed identity authentication
-- Set up Dataverse application user with proper permissions
+- **Automatically create application users in ALL environments** from `data/environments.json`
 
 **The deploy script will:**
 - Build the React frontend locally
-- Package only necessary backend files (no node_modules)
+- Package backend + `data/environments.json` (multi-environment config)
 - Deploy to Azure App Service
 - Configure proper static file serving
+
+**See [.github/DEPLOYMENT-WORKFLOW.md](.github/DEPLOYMENT-WORKFLOW.md) for detailed deployment guide.**
 
 
 ### Prerequisites

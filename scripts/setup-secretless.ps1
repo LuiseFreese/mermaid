@@ -21,21 +21,19 @@
 
 .EXAMPLE
     # Unattended mode (for CI/CD)
-    .\scripts\setup-secretless.ps1 -Unattended -DataverseUrl "https://org12345.crm4.dynamics.com" -PowerPlatformEnvironmentId "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" -ResourceGroup "rg-mermaid-dev" -Location "westeurope"
+    .\scripts\setup-secretless.ps1 -Unattended -EnvironmentSuffix "prod" -ResourceGroup "rg-mermaid-prod" -Location "westeurope"
 
 .NOTES
     Prerequisites:
     - Azure CLI installed and logged in (az login)
     - Power Platform Admin or Dataverse System Admin access
     - No secrets needed - fully managed identity based!
+    - Configure data/environments.json with your Dataverse environments BEFORE running this script
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)] [switch]$Unattended,
-    [Parameter(Mandatory = $false)] [string]$DataverseUrl,
-    [Parameter(Mandatory = $false)] [string]$PowerPlatformEnvironmentId,
-    [Parameter(Mandatory = $false)] [string]$EnvironmentName,
     [Parameter(Mandatory = $false)] [string]$ResourceGroup,
     [Parameter(Mandatory = $false)] [string]$Location = "West Europe",
     [Parameter(Mandatory = $false)] [string]$AppRegistrationName,
@@ -185,7 +183,10 @@ if ($localDevSecret) {
     # Create new client secret (valid for 1 year)
     $secretInfo = az ad app credential reset --id $clientId --append --display-name "Local Development Secret" --years 1 | ConvertFrom-Json
     $clientSecret = $secretInfo.password
-    Write-Success "Created client secret for local development (expires: $($secretInfo.endDateTime))"
+    
+    # Handle both endDateTime and endDate properties (Azure CLI version differences)
+    $expiryDate = if ($secretInfo.endDateTime) { $secretInfo.endDateTime } elseif ($secretInfo.endDate) { $secretInfo.endDate } else { "1 year" }
+    Write-Success "Created client secret for local development (expires: $expiryDate)"
     
     # Save to .env file
     Update-EnvFile -Key "CLIENT_ID" -Value $clientId
@@ -293,58 +294,56 @@ az webapp config appsettings set --name $AppServiceName --resource-group $Resour
 
 Write-Success "App Service configuration completed"
 
-# ---------- 7. Interactive Dataverse Configuration ----------
-if (-not $DataverseUrl -and -not $Unattended) {
-    Write-Info "Dataverse Configuration Setup"
+# ---------- 7. Validate Multi-Environment Configuration ----------
+$envConfigPath = Join-Path $PSScriptRoot ".." "data" "environments.json"
+
+if (-not (Test-Path $envConfigPath)) {
+    Write-Error "❌ Multi-environment configuration file not found!"
     Write-Host ""
-    Write-Host "Please provide your Dataverse environment URL."
-    Write-Host "You can find this in the Power Platform Admin Center:"
-    Write-Host "  1. Go to https://admin.powerplatform.microsoft.com/"
-    Write-Host "  2. Select your environment"
-    Write-Host "  3. Copy the Environment URL (e.g., https://yourorg.crm4.dynamics.com/)"
+    Write-Host "Expected file: $envConfigPath" -ForegroundColor Yellow
     Write-Host ""
+    Write-Host "Please create data/environments.json with your Dataverse environments." -ForegroundColor Yellow
+    Write-Host "See data/environments.example.json for the required format." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Example structure:" -ForegroundColor Cyan
+    Write-Host @"
+{
+  "version": "1.0.0",
+  "defaultEnvironmentId": "your-env-id",
+  "environments": [
+    {
+      "id": "env-guid",
+      "name": "dev",
+      "url": "https://yourorg.crm4.dynamics.com",
+      "powerPlatformEnvironmentId": "env-guid",
+      "color": "blue"
+    }
+  ]
+}
+"@ -ForegroundColor Gray
+    exit 1
+}
+
+Write-Info "📋 Loading multi-environment configuration from data/environments.json"
+try {
+    $envConfig = Get-Content $envConfigPath | ConvertFrom-Json
+    $environments = $envConfig.environments
     
-    do {
-        $DataverseUrl = Read-Host "Enter Dataverse URL"
-        if (-not $DataverseUrl -or -not $DataverseUrl.StartsWith("https://")) {
-            Write-Warning "Please enter a valid HTTPS URL"
-        }
-    } while (-not $DataverseUrl -or -not $DataverseUrl.StartsWith("https://"))
-    
-    # Ensure URL ends with /
-    if (-not $DataverseUrl.EndsWith("/")) {
-        $DataverseUrl = $DataverseUrl + "/"
+    if ($environments.Count -eq 0) {
+        Write-Error "❌ No environments found in data/environments.json"
+        Write-Host "Please add at least one environment to the configuration file." -ForegroundColor Yellow
+        exit 1
     }
     
-    Write-Host ""
-    Write-Info "Power Platform Environment ID is needed to generate solution links."
-    Write-Info "You can find this in the Power Platform Admin Center or in your environment URL."
-    
-    do {
-        $PowerPlatformEnvironmentId = Read-Host "Enter Power Platform Environment ID"
-        if (-not $PowerPlatformEnvironmentId -or $PowerPlatformEnvironmentId.Length -ne 36) {
-            Write-Warning "Please enter a valid GUID (36 characters with dashes)"
-        }
-    } while (-not $PowerPlatformEnvironmentId -or $PowerPlatformEnvironmentId.Length -ne 36)
+    Write-Success "Found $($environments.Count) configured environment(s):"
+    foreach ($env in $environments) {
+        Write-Info "   • $($env.name) - $($env.url)"
+    }
+} catch {
+    Write-Error "❌ Could not parse environments.json: $_"
+    Write-Host "Please check that the file is valid JSON." -ForegroundColor Yellow
+    exit 1
 }
-
-if ($DataverseUrl) {
-    Write-Info "Setting Dataverse URL configuration..."
-    az webapp config appsettings set --name $AppServiceName --resource-group $ResourceGroup --settings `
-        "DATAVERSE_URL=$DataverseUrl" | Out-Null
-    Write-Success "Dataverse URL configured: $DataverseUrl"
-    
-    # Update local .env file
-    Update-EnvFile -Key "DATAVERSE_URL" -Value $DataverseUrl
-}
-
-if ($PowerPlatformEnvironmentId) {
-    Write-Info "Setting Power Platform Environment ID configuration..."
-    az webapp config appsettings set --name $AppServiceName --resource-group $ResourceGroup --settings `
-        "POWER_PLATFORM_ENVIRONMENT_ID=$PowerPlatformEnvironmentId" | Out-Null
-    Write-Success "Power Platform Environment ID configured: $PowerPlatformEnvironmentId"
-    
-    # Update local .env file
     Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
 }
 
@@ -482,72 +481,88 @@ Write-Info "   └─ Azure AD Tenant ID: $azureAdTenantId"
 Write-Info "   └─ Redirect URI: https://$appServiceUrl"
 Write-Info "   └─ App Service setting AUTH_ENABLED: true"
 
-# ---------- 9. Create Dataverse Application User ----------
-if (-not $SkipDataverseUser -and $DataverseUrl) {
-    Write-Info "👤 Creating Dataverse Application User..."
+# ---------- 9. Create Dataverse Application User(s) ----------
+# Load multi-environment configuration (already validated in step 7)
+$envConfigPath = Join-Path $PSScriptRoot ".." "data" "environments.json"
+$envConfig = Get-Content $envConfigPath | ConvertFrom-Json
+$environments = $envConfig.environments
+
+# Create application users in all environments
+if (-not $SkipDataverseUser) {
+    Write-Info "👤 Creating Dataverse Application User(s) in $($environments.Count) environment(s)..."
+    Write-Host ""
     
-    try {
-        # Get admin access token
-        Write-Info "Getting admin access token..."
-        $envBase = $DataverseUrl.TrimEnd('/')
-        $accessToken = az account get-access-token --resource $envBase --query accessToken -o tsv
+    $successCount = 0
+    $failCount = 0
+    
+    foreach ($env in $environments) {
+        $envName = $env.name
+        $envUrl = $env.url
         
-        if (-not $accessToken -or $accessToken.Length -lt 100) {
-            throw "Could not obtain admin access token. Ensure you're logged in as a Dataverse admin."
-        }
+        Write-Info "🌐 Processing environment: $envName"
+        Write-Info "   URL: $envUrl"
         
-        Write-Success "Access token obtained"
-        
-        # Set up headers
-        $jsonHeaders = @{
-            "Authorization"    = "Bearer $accessToken"
-            "Content-Type"     = "application/json"
-            "Accept"           = "application/json"
-            "OData-MaxVersion" = "4.0"
-            "OData-Version"    = "4.0"
-        }
-        
-        # Get root Business Unit
-        Write-Info "Resolving root Business Unit..."
-        $buUrl = "$envBase/api/data/v9.2/businessunits?`$select=businessunitid,name&`$filter=parentbusinessunitid eq null"
-        $bu = Invoke-RestMethod -Uri $buUrl -Headers $jsonHeaders -Method Get
-        
-        if (-not $bu.value -or $bu.value.Count -lt 1) {
-            throw "Root Business Unit not found"
-        }
-        
-        $rootBuId = $bu.value[0].businessunitid
-        $rootBuName = $bu.value[0].name
-        Write-Success "Root BU: $rootBuName ($rootBuId)"
-        
-        # Check for existing Application User
-        Write-Info "Checking for existing Application User..."
-        $filter = "applicationid eq $clientId or azureactivedirectoryobjectid eq $servicePrincipalObjectId"
-        $userUrl = "$envBase/api/data/v9.2/systemusers?`$select=systemuserid,applicationid,azureactivedirectoryobjectid,domainname&`$filter=$filter"
-        $existing = Invoke-RestMethod -Uri $userUrl -Headers $jsonHeaders -Method Get
-        
-        $userId = $null
-        if ($existing.value -and $existing.value.Count -gt 0) {
-            $userId = $existing.value[0].systemuserid
-            Write-Success "Found existing Application User: $userId"
+        try {
+            # Get admin access token
+            $envBase = $envUrl.TrimEnd('/')
+            $accessToken = az account get-access-token --resource $envBase --query accessToken -o tsv
             
-            # Update the azureactivedirectoryobjectid if needed
-            if (-not $existing.value[0].azureactivedirectoryobjectid -or $existing.value[0].azureactivedirectoryobjectid -ne $servicePrincipalObjectId) {
-                Write-Info "Updating Service Principal Object ID..."
-                $patchBody = @{ azureactivedirectoryobjectid = $servicePrincipalObjectId } | ConvertTo-Json -Depth 3
-                Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)" -Headers $jsonHeaders -Method Patch -Body $patchBody -ContentType "application/json"
-                Write-Success "Service Principal Object ID updated"
+            if (-not $accessToken -or $accessToken.Length -lt 100) {
+                throw "Could not obtain admin access token for $envName"
             }
-        } else {
-            # Create new Application User
-            Write-Info "Creating new Application User..."
-            $body = @{
-                applicationid               = $clientId
-                azureactivedirectoryobjectid= $servicePrincipalObjectId
-                "businessunitid@odata.bind" = "/businessunits($rootBuId)"
-                firstname                   = "Mermaid"
-                lastname                    = "$EnvironmentSuffix Service"
-                domainname                  = "app-$($clientId.ToLower())@mermaid.local"
+            
+            Write-Success "   Access token obtained"
+            
+            # Set up headers
+            $jsonHeaders = @{
+                "Authorization"    = "Bearer $accessToken"
+                "Content-Type"     = "application/json"
+                "Accept"           = "application/json"
+                "OData-MaxVersion" = "4.0"
+                "OData-Version"    = "4.0"
+            }
+            
+            # Get root Business Unit
+            Write-Info "   Resolving root Business Unit..."
+            $buUrl = "$envBase/api/data/v9.2/businessunits?`$select=businessunitid,name&`$filter=parentbusinessunitid eq null"
+            $bu = Invoke-RestMethod -Uri $buUrl -Headers $jsonHeaders -Method Get
+            
+            if (-not $bu.value -or $bu.value.Count -lt 1) {
+                throw "Root Business Unit not found"
+            }
+            
+            $rootBuId = $bu.value[0].businessunitid
+            $rootBuName = $bu.value[0].name
+            Write-Success "   Root BU: $rootBuName ($rootBuId)"
+            
+            # Check for existing Application User
+            Write-Info "   Checking for existing Application User..."
+            $filter = "applicationid eq $clientId or azureactivedirectoryobjectid eq $servicePrincipalObjectId"
+            $userUrl = "$envBase/api/data/v9.2/systemusers?`$select=systemuserid,applicationid,azureactivedirectoryobjectid,domainname&`$filter=$filter"
+            $existing = Invoke-RestMethod -Uri $userUrl -Headers $jsonHeaders -Method Get
+            
+            $userId = $null
+            if ($existing.value -and $existing.value.Count -gt 0) {
+                $userId = $existing.value[0].systemuserid
+                Write-Success "   Found existing Application User: $userId"
+                
+                # Update the azureactivedirectoryobjectid if needed
+                if (-not $existing.value[0].azureactivedirectoryobjectid -or $existing.value[0].azureactivedirectoryobjectid -ne $servicePrincipalObjectId) {
+                    Write-Info "   Updating Service Principal Object ID..."
+                    $patchBody = @{ azureactivedirectoryobjectid = $servicePrincipalObjectId } | ConvertTo-Json -Depth 3
+                    Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)" -Headers $jsonHeaders -Method Patch -Body $patchBody -ContentType "application/json"
+                    Write-Success "   Service Principal Object ID updated"
+                }
+            } else {
+                # Create new Application User
+                Write-Info "   Creating new Application User..."
+                $body = @{
+                    applicationid               = $clientId
+                    azureactivedirectoryobjectid= $servicePrincipalObjectId
+                    "businessunitid@odata.bind" = "/businessunits($rootBuId)"
+                    firstname                   = "Mermaid"
+                    lastname                    = "$EnvironmentSuffix Service"
+                    domainname                  = "app-$($clientId.ToLower())@mermaid.local"
             } | ConvertTo-Json -Depth 5
             
             $hdr = $jsonHeaders.Clone()
@@ -559,57 +574,65 @@ if (-not $SkipDataverseUser -and $DataverseUrl) {
                 throw "Dataverse did not return a systemuserid for the created Application User"
             }
             
-            Write-Success "Application User created: $userId"
-        }
-        
-        # Resolve and assign security role
-        Write-Info "Resolving security role '$SecurityRole'..."
-        $roleNameEsc = $SecurityRole.Replace("'", "''")
-        $rolesUrl = "$envBase/api/data/v9.2/roles?`$select=roleid,name,_businessunitid_value&`$filter=name eq '$roleNameEsc' and _businessunitid_value eq $rootBuId"
-        $roleResp = Invoke-RestMethod -Uri $rolesUrl -Headers $jsonHeaders -Method Get
-        
-        if (-not $roleResp.value -or $roleResp.value.Count -lt 1) {
-            throw "Security Role '$SecurityRole' not found in root Business Unit"
-        }
-        
-        $roleId = $roleResp.value[0].roleid
-        Write-Success "Role found: $SecurityRole ($roleId)"
-        
-        # Check if user already has the role
-        Write-Info "Checking existing role assignments..."
-        $hasRole = $false
-        try {
-            $checkUserRoles = Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)/systemuserroles_association?`$select=roleid" -Headers $jsonHeaders -Method Get
+                    Write-Success "   Application User created: $userId"
+            }
+            
+            # Resolve and assign security role
+            Write-Info "   Resolving security role '$SecurityRole'..."
+            $roleNameEsc = $SecurityRole.Replace("'", "''")
+            $rolesUrl = "$envBase/api/data/v9.2/roles?`$select=roleid,name,_businessunitid_value&`$filter=name eq '$roleNameEsc' and _businessunitid_value eq $rootBuId"
+            $roleResp = Invoke-RestMethod -Uri $rolesUrl -Headers $jsonHeaders -Method Get
+            
+            if (-not $roleResp.value -or $roleResp.value.Count -lt 1) {
+                throw "Security Role '$SecurityRole' not found in root Business Unit"
+            }
+            
+            $roleId = $roleResp.value[0].roleid
+            Write-Success "   Role found: $SecurityRole ($roleId)"
+            
+            # Check if user already has the role
+            Write-Info "   Checking existing role assignments..."
+            $hasRole = $false
+            try {
+                $checkUserRoles = Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)/systemuserroles_association?`$select=roleid" -Headers $jsonHeaders -Method Get
             if ($checkUserRoles.value) {
                 $hasRole = $null -ne ($checkUserRoles.value | Where-Object { $_.roleid -eq $roleId })
+                }
+            } catch {
+                Write-Warning "   Could not check existing roles: $_"
             }
+            
+            if (-not $hasRole) {
+                Write-Info "   Assigning security role '$SecurityRole'..."
+                $assignBody = @{ "@odata.id" = "$envBase/api/data/v9.2/roles($roleId)" } | ConvertTo-Json
+                Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)/systemuserroles_association/`$ref" -Headers $jsonHeaders -Method Post -Body $assignBody -ContentType "application/json"
+                Write-Success "   Security role assigned!"
+            } else {
+                Write-Success "   User already has the required role"
+            }
+            
+            Write-Success "✅ Application User setup completed for $envName"
+            Write-Info "   User ID: $userId"
+            Write-Info "   Role: $SecurityRole"
+            Write-Info "   Business Unit: $rootBuName"
+            $successCount++
+            
         } catch {
-            Write-Warning "Could not check existing roles: $_"
+            Write-Warning "❌ Failed to create Application User in ${envName}: $_"
+            Write-Warning "   You can add it manually later using:"
+            Write-Warning "   .\scripts\setup-dataverse-user.ps1 -DataverseUrl `"$envUrl`" -AppId `"$clientId`" -ServicePrincipalId `"$servicePrincipalObjectId`""
+            $failCount++
         }
         
-        if (-not $hasRole) {
-            Write-Info "Assigning security role '$SecurityRole'..."
-            $assignBody = @{ "@odata.id" = "$envBase/api/data/v9.2/roles($roleId)" } | ConvertTo-Json
-            Invoke-RestMethod -Uri "$envBase/api/data/v9.2/systemusers($userId)/systemuserroles_association/`$ref" -Headers $jsonHeaders -Method Post -Body $assignBody -ContentType "application/json"
-            Write-Success "Security role assigned!"
-        } else {
-            Write-Success "User already has the required role"
-        }
-        
-        Write-Success "Dataverse Application User setup completed successfully!"
-        Write-Info "   User ID: $userId"
-        Write-Info "   Role: $SecurityRole"
-        Write-Info "   Business Unit: $rootBuName"
-        
-    } catch {
-        Write-Error "❌ Failed to create Dataverse Application User: $_"
-        Write-Warning "Please ensure:"
-        Write-Warning "  1. You're logged in as a Dataverse System Administrator"
-        Write-Warning "  2. The environment URL is correct"
-        Write-Warning "  3. The App Registration and Service Principal exist"
-        Write-Warning ""
-        Write-Warning "You can complete this step manually or run the separate script:"
-        Write-Warning "  .\scripts\debug\create-dataverse-user.ps1 -EnvironmentUrl `"$DataverseUrl`" -AppId `"$clientId`" -ServicePrincipalObjectId `"$servicePrincipalObjectId`""
+        Write-Host ""
+    }
+    
+    # Summary
+    Write-Host ""
+    Write-Success "📊 Application User Setup Summary:"
+    Write-Info "   Successful: $successCount environment(s)"
+    if ($failCount -gt 0) {
+        Write-Warning "   Failed: $failCount environment(s) - review errors above"
     }
 }
 
@@ -620,69 +643,6 @@ try {
     Write-Success "Application logging enabled at Information level"
 } catch {
     Write-Warning "Failed to configure logging (non-critical): $_"
-}
-
-# ---------- 10.5. Create Environment Configuration ----------
-if ($DataverseUrl) {
-    Write-Info "Creating environment configuration..."
-    
-    # Try to auto-detect environment name if not provided
-    if (-not $EnvironmentName) {
-        if ($PowerPlatformEnvironmentId) {
-            try {
-                $envInfo = pac admin list --json | ConvertFrom-Json | Where-Object { $_.EnvironmentId -eq $PowerPlatformEnvironmentId }
-                if ($envInfo) {
-                    $EnvironmentName = $envInfo.DisplayName
-                    Write-Success "Auto-detected environment name: $EnvironmentName"
-                }
-            }
-            catch {
-                Write-Warning "Could not auto-detect environment name"
-            }
-        }
-        
-        if (-not $EnvironmentName) {
-            # Extract organization name from URL as fallback
-            if ($DataverseUrl -match "https://([^.]+)\.crm") {
-                $EnvironmentName = $matches[1]
-                Write-Info "Using organization name as environment name: $EnvironmentName"
-            } else {
-                $EnvironmentName = "Default Environment"
-            }
-        }
-    }
-    
-    # Create environment configuration
-    $environmentConfig = @{
-        version = "1.0.0"
-        defaultEnvironmentId = "default"
-        environments = @(
-            @{
-                id = "default"
-                name = $EnvironmentName
-                url = $DataverseUrl.TrimEnd('/')
-                description = "Created during initial setup"
-                color = "blue"
-                lastConnected = $null
-                metadata = @{
-                    organizationName = if ($DataverseUrl -match "https://([^.]+)\.crm") { $matches[1] } else { "" }
-                    organizationDisplayName = $EnvironmentName
-                    region = "Unknown"
-                }
-            }
-        )
-    }
-    
-    # Ensure data directory exists
-    $dataDir = Join-Path $PSScriptRoot ".." "data"
-    if (-not (Test-Path $dataDir)) {
-        New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
-    }
-    
-    # Save environment configuration
-    $configPath = Join-Path $dataDir "environments.json"
-    $environmentConfig | ConvertTo-Json -Depth 10 | Set-Content -Path $configPath -Encoding UTF8
-    Write-Success "Environment configuration saved to: data/environments.json"
 }
 
 # ---------- 11. Summary ----------

@@ -6,9 +6,12 @@
 const { RollbackStatusTracker } = require('../services/rollback-status-tracker');
 
 class RollbackController {
-    constructor(rollbackService) {
+    constructor(rollbackService, dependencies = {}) {
         this.rollbackService = rollbackService;
         this.statusTracker = new RollbackStatusTracker();
+        this.deploymentHistoryService = dependencies.deploymentHistoryService;
+        this.environmentManager = dependencies.environmentManager;
+        this.dataverseClientFactory = dependencies.dataverseClientFactory;
     }
 
     /**
@@ -55,7 +58,7 @@ class RollbackController {
             }
         }
         
-        const { confirm, options } = body;
+        const { confirm, options, environmentId } = body;
 
         // Require explicit confirmation
         if (!confirm) {
@@ -64,6 +67,18 @@ class RollbackController {
         }
 
         try {
+            // Get deployment info to determine environment
+            let deployment = null;
+            let targetEnvironmentId = environmentId;
+            
+            if (this.deploymentHistoryService) {
+                deployment = await this.deploymentHistoryService.getDeploymentById(deploymentId);
+                if (deployment && !targetEnvironmentId) {
+                    // Use environment from deployment if not provided
+                    targetEnvironmentId = deployment.environmentId || deployment.environmentSuffix || 'default';
+                }
+            }
+            
             // Check if rollback is possible
             const capability = await this.rollbackService.canRollback(deploymentId);
             
@@ -78,7 +93,7 @@ class RollbackController {
             this.statusTracker.create(rollbackId, deploymentId);
             
             // Start rollback in background (don't await)
-            this.executeRollbackAsync(rollbackId, deploymentId, options);
+            this.executeRollbackAsync(rollbackId, deploymentId, options, targetEnvironmentId);
             
             // Return immediately with 202 Accepted
             const response = {
@@ -86,6 +101,7 @@ class RollbackController {
                 message: 'Rollback started. Poll /api/rollback/{rollbackId}/status for progress.',
                 rollbackId,
                 deploymentId,
+                environmentId: targetEnvironmentId,
                 statusUrl: `/api/rollback/${rollbackId}/status`,
                 timestamp: new Date().toISOString()
             };
@@ -109,10 +125,11 @@ class RollbackController {
      * @param {string} rollbackId - Rollback identifier
      * @param {string} deploymentId - Deployment to rollback
      * @param {Object} options - Rollback options
+     * @param {string} environmentId - Target environment ID
      */
-    async executeRollbackAsync(rollbackId, deploymentId, options) {
+    async executeRollbackAsync(rollbackId, deploymentId, options, environmentId) {
         try {
-            console.log(`🚀 Starting background rollback ${rollbackId} for deployment ${deploymentId}`);
+            console.log(`🚀 Starting background rollback ${rollbackId} for deployment ${deploymentId} in environment ${environmentId || 'default'}`);
             
             // Update status to in-progress
             this.statusTracker.updateStatus(rollbackId, 'in-progress');

@@ -19,28 +19,32 @@ This guide explains how to deploy the Mermaid to Dataverse Converter to Azure fo
 
 ## Quick Start - Azure Deployment
 
-**Two steps to deploy everything:**
+**Three steps to deploy everything:**
 
 ```powershell
 # Clone the repository
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Step 1: Create Azure infrastructure and identity setup
-.\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp" -DataverseUrl "https://your-org.crm.dynamics.com" -Unattended
+# Step 1: Configure your environments (REQUIRED)
+Copy-Item data/environments.example.json data/environments.json
+# Edit data/environments.json with your Dataverse environment(s)
 
-# Step 2: Deploy the application code
-.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+# Step 2: Create Azure infrastructure and identity setup
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
+
+# Step 3: Deploy the application code
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 
 **The setup script will:**
+- **Validate that `data/environments.json` exists** (required!)
 - Create Backend App Registration with federated credentials (linked to managed identity)
 - Create Frontend App Registration with Microsoft Entra authentication for user sign-in
 - Deploy Azure infrastructure (App Service, Managed Identity, etc.)
 - Configure secure managed identity authentication for backend
-- Set up Dataverse Application User (linked to backend App Registration)
-- Assign System Customizer security role to Application User (grants table access)
-- Configure Power Platform Environment ID for deployment history solution links
+- **Automatically create Application Users in ALL configured environments** from `data/environments.json`
+- Assign System Customizer security role to all Application Users (grants table access)
 - Enable Azure App Service authentication for frontend protection
 - Configure SPA platform for frontend authentication (MSAL integration)
 
@@ -75,10 +79,18 @@ The application supports deploying to multiple Dataverse environments from a sin
 - ✅ Select target environment from dropdown (dev/test/prod)
 - ✅ Single Azure deployment serves all environments
 - ✅ No secrets needed - managed identity authenticates to all environments
-- ✅ Environment-specific deployment tracking
+- ✅ **Environment-specific deployment tracking** with colored badges
+- ✅ **Multi-environment rollback** - safely undo deployments from any environment
 - ✅ Easy to add new environments - just update configuration
 
-For complete details, see [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md).
+**Deployment History & Rollback:**
+- View deployment history filtered by environment (Dev/Test/Prod)
+- Each deployment shows colored environment badge for easy identification
+- Rollback feature automatically targets the correct environment
+- Environment-specific deployment history stored separately
+- "All Environments" view merges history from all configured environments
+
+For complete details, see [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md) and [Usage Guide](./USAGE-GUIDE.md#deployment-history--multi-environment-management).
 - Configure authentication middleware for API protection
 
 ## Local Development Setup
@@ -211,14 +223,17 @@ app.use('/wizard', authenticateToken);
 The setup script creates all necessary Azure resources and configures authentication:
 
 ```powershell
-# Interactive mode (prompts for configuration)
-.\scripts\setup-secretless.ps1
+# Interactive mode (prompts for configuration if needed)
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod"
 
-# OR unattended mode (provide all parameters)
-.\scripts\setup-secretless.ps1 -Unattended `
-  -EnvironmentSuffix "myapp" `
-  -DataverseUrl "https://orgXXXXX.crm4.dynamics.com"
+# OR unattended mode (CI/CD friendly)
+.\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
 ```
+
+**Prerequisites:**
+- `data/environments.json` must be configured with your Dataverse environments BEFORE running setup
+- The script will validate this file exists and contains valid environment configurations
+- See `data/environments.example.json` for the required format
 
 **What gets created:**
 1. **Frontend App Registration** - For user sign-in with Microsoft Entra
@@ -236,9 +251,9 @@ The setup script creates all necessary Azure resources and configures authentica
    - App Service + App Service Plan (Linux, Node.js 20)
    - User-Assigned Managed Identity
 
-4. **Dataverse Configuration**:
-   - Application User created (linked to backend App Registration)
-   - System Customizer security role assigned (grants access to tables)
+4. **Dataverse Configuration** (for ALL environments in `data/environments.json`):
+   - Application Users created (one per environment, linked to backend App Registration)
+   - System Customizer security role assigned to each Application User
    - Security role determines what tables and operations are allowed
 
 5. **App Service Authentication**:
@@ -252,15 +267,16 @@ Deploy your application code to the configured infrastructure:
 
 ```powershell
 # Deploy code to existing infrastructure
-.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 
 **Deployment steps:**
 1. **Build Frontend**: Vite builds React app for production
 2. **Package Backend**: Excludes node_modules and source files
-3. **Deploy to App Service**: Uses Azure CLI with ZIP deploy
-4. **Configure Settings**: Updates App Service configuration
-5. **Validate**: Tests endpoints and authentication
+3. **Package Configuration**: Includes `data/environments.json` for multi-environment routing
+4. **Deploy to App Service**: Uses Azure CLI with ZIP deploy
+5. **Configure Settings**: Updates App Service configuration
+6. **Validate**: Tests endpoints and authentication
 
 
 
@@ -365,7 +381,7 @@ By default, any user in your Azure tenant can sign in. To restrict access:
 
 ### Enable Deployment History
 
-💡 Only in case you did not provide the Power Platform Enbvironment ID during deployment: 
+💡 Only in case you did not provide the Power Platform Environment ID during deployment: 
 
 
 1. **Find your Environment ID**:
@@ -381,6 +397,31 @@ By default, any user in your Azure tenant can sign in. To restrict access:
      --settings POWER_PLATFORM_ENVIRONMENT_ID="your-environment-id"
    ```
 
+### View Deployment History & Rollback
+
+After deploying solutions, users can:
+
+1. **View Deployment History**:
+   - Click "View History" button in the application
+   - Filter by environment (All/Dev/Test/Prod)
+   - See colored environment badges on each deployment
+   - View deployment details including entities, relationships, and status
+
+2. **Rollback Deployments**:
+   - Select a deployment with "success" or "partial" status
+   - Click "Rollback" button
+   - Rollback automatically targets the correct environment
+   - Monitor real-time progress as components are removed
+   - Deployment history updates to show rollback status
+
+**Multi-Environment Features**:
+- Each environment maintains separate deployment history
+- Rollback operations are environment-aware
+- "All Environments" view merges history from all environments
+- Environment badges provide visual confirmation of target environment
+
+For user instructions, see [Usage Guide - Deployment History](./USAGE-GUIDE.md#deployment-history--multi-environment-management).
+
 
 ## Updating the Application
 
@@ -390,14 +431,28 @@ After making code changes, deploy updates:
 
 ```powershell
 # Rebuild and redeploy
-.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "myapp"
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 
 **The deployment is idempotent:**
 - Safe to run multiple times
 - Only updates application code
-- Preserves configuration and secrets
+- Preserves configuration and environment settings
 - No downtime during deployment
+
+### Update Environment Configuration
+
+If you need to add or modify Dataverse environments after initial setup:
+
+```powershell
+# Step 1: Edit data/environments.json with new environments
+
+# Step 2: Add application users to new environments
+.\scripts\add-app-user-to-all-envs.ps1 -AppRegistrationClientId "your-backend-app-id"
+
+# Step 3: Redeploy to include updated configuration
+.\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
+```
 
 ### Update Configuration
 
@@ -465,8 +520,11 @@ The only credentials that exist are Azure-managed and rotate automatically.
 - **Cause**: Infrastructure setup didn't complete successfully
 - **Solution**:
   ```powershell
+  # Verify data/environments.json exists and is valid
+  Get-Content data/environments.json | ConvertFrom-Json
+  
   # Re-run infrastructure setup
-  .\scripts\setup-secretless.ps1 -EnvironmentSuffix "myapp"
+  .\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
   ```
 
 ### Dataverse Issues
@@ -478,13 +536,28 @@ The only credentials that exist are Azure-managed and rotate automatically.
   # Verify Application User exists in Power Platform Admin Center
   # Go to Environments → Your Environment → Settings → Users + permissions → Application users
   
-  # Re-run setup to recreate Application User
-  .\scripts\setup-local-dataverse-user.ps1
+  # Check which environments are configured
+  Get-Content data/environments.json | ConvertFrom-Json | Select-Object -ExpandProperty environments
+  
+  # Add application users to all configured environments
+  .\scripts\add-app-user-to-all-envs.ps1 -AppRegistrationClientId "your-backend-app-id"
   ```
 
 **Problem: "Insufficient permissions" when creating tables**
-- **Cause**: Application User doesn't have System Customizer role
-- **Solution**: In Power Platform Admin Center, assign System Customizer role to the Application User
+- **Cause**: Application User doesn't have System Customizer role in the target environment
+- **Solution**: In Power Platform Admin Center, verify the Application User has System Customizer role assigned in each environment
+
+**Problem: "Environment not found in configuration"**
+- **Cause**: Selected environment isn't in `data/environments.json`
+- **Solution**:
+  ```powershell
+  # Add the environment to data/environments.json
+  # Then add application user for the new environment
+  .\scripts\add-app-user-to-all-envs.ps1 -AppRegistrationClientId "your-backend-app-id"
+  
+  # Redeploy to include updated configuration
+  .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
+  ```
 
 ### Monitoring and Diagnostics
 

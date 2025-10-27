@@ -214,19 +214,23 @@ async function initializeComponents() {
       solutionService
     );
 
-    const rollbackController = new RollbackController(rollbackService);
-
-    const importController = new ImportController({
-      dataverseExtractorService,
-      validationService
-    });
-
-    // Initialize environment manager
+    // Initialize environment manager (before rollbackController)
     const environmentManager = new EnvironmentManager();
     await environmentManager.initialize();
 
     // Initialize Dataverse client factory
     const dataverseClientFactory = new DataverseClientFactory(environmentManager);
+
+    const rollbackController = new RollbackController(rollbackService, {
+      deploymentHistoryService,
+      environmentManager,
+      dataverseClientFactory
+    });
+
+    const importController = new ImportController({
+      dataverseExtractorService,
+      validationService
+    });
 
     // Initialize cross-environment service (depends on environmentManager and dataverseClientFactory)
     const crossEnvironmentService = new CrossEnvironmentService({

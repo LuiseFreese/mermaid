@@ -241,7 +241,9 @@ class DeploymentController extends BaseController {
             const url = require('url');
             const urlParts = url.parse(req.url, true);
             console.log('Debug URL parsing:', req.url, urlParts.query);
-            const environmentSuffix = (urlParts.query && urlParts.query.environmentSuffix) || 'default';
+            
+            // Support both 'environment' and 'environmentSuffix' query parameters
+            const environmentId = (urlParts.query && (urlParts.query.environment || urlParts.query.environmentSuffix)) || 'all';
             const limit = parseInt((urlParts.query && urlParts.query.limit)) || 20;
 
             if (limit > 100) {
@@ -251,14 +253,15 @@ class DeploymentController extends BaseController {
                 });
             }
 
-            const deployments = await this.deploymentHistoryService.getDeploymentHistory(
-                environmentSuffix, 
-                limit
-            );
+            // Use new getDeploymentsByEnvironment method for filtering
+            let deployments = await this.deploymentHistoryService.getDeploymentsByEnvironment(environmentId);
+            
+            // Apply limit
+            deployments = deployments.slice(0, limit);
 
             this.sendJson(res, 200, {
                 success: true,
-                environmentSuffix,
+                environment: environmentId,
                 count: deployments.length,
                 deployments
             });
