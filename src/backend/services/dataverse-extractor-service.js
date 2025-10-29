@@ -19,17 +19,23 @@ class DataverseExtractorService extends BaseService {
      * @param {string} connection.environmentUrl - Dataverse environment URL
      * @param {string} [connection.solutionName] - Optional solution name filter
      * @param {string} [connection.authMethod] - Authentication method (managedIdentity, oauth, connectionString)
+     * @param {Object} [environmentConfig] - Optional environment configuration for multi-environment support
      * @returns {Promise<Object>} Extracted solution data
      */
-    async extractSolution(connection) {
-        this.log('extractSolution', { environmentUrl: connection.environmentUrl, solutionName: connection.solutionName });
+    async extractSolution(connection, environmentConfig = null) {
+        this.log('extractSolution', { 
+            environmentUrl: connection.environmentUrl, 
+            solutionName: connection.solutionName,
+            hasEnvironmentConfig: !!environmentConfig,
+            configServerUrl: environmentConfig?.dataverseUrl
+        });
 
         try {
             // Validate connection parameters
             this.validateConnection(connection);
 
-            // Get Dataverse client instance
-            const client = await this.getDataverseClient(connection);
+            // Get Dataverse client instance (with environment config if provided)
+            const client = await this.getDataverseClient(connection, environmentConfig);
 
             // Extract entities and metadata
             const entities = await this.extractEntities(client, connection.solutionName);
@@ -818,10 +824,28 @@ class DataverseExtractorService extends BaseService {
      * @param {Object} connection - Connection details
      * @returns {Promise<Object>} Dataverse client
      */
-    async getDataverseClient(connection) { // eslint-disable-line no-unused-vars
+    async getDataverseClient(connection, environmentConfig = null) {
         try {
-            // For MVP, use the existing dataverse repository
+            // If environment config is provided, use it to get environment-specific client
+            if (environmentConfig) {
+                this.log('getDataverseClient with environment config', { 
+                    configServerUrl: environmentConfig.dataverseUrl,
+                    useManagedIdentity: environmentConfig.useManagedIdentity
+                });
+                
+                // Normalize config to ensure serverUrl is set
+                const normalizedConfig = {
+                    ...environmentConfig,
+                    serverUrl: environmentConfig.dataverseUrl || environmentConfig.serverUrl
+                };
+                
+                // Use dataverse repository's method to get client with specific config
+                return this.dataverseRepository.getClient(normalizedConfig);
+            }
+            
+            // For MVP fallback, use the existing dataverse repository default client
             // In future versions, this could support different auth methods
+            this.log('getDataverseClient using default client');
             return this.dataverseRepository.getClient();
             
         } catch (error) {

@@ -74,11 +74,11 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-          value: 'true'
+          value: 'true'  // Let Oryx build from our source files
         }
         {
           name: 'ENABLE_ORYX_BUILD'
-          value: 'true'
+          value: 'true'  // Oryx will npm install using our source
         }
       ]
     }

@@ -124,14 +124,48 @@
   stroke: #C71585 !important;
 }
 
-/* Column type indicators (PK, FK) styling */
+/* Column type indicators (PK, FK) styling - Light theme */
 .mermaid svg .er-attributeBoxOdd,
-.mermaid svg .er-attributeBoxEven {
+.mermaid svg .er-attributeBoxEven,
+.mermaid svg .row-rect-odd,
+.mermaid svg .row-rect-even {
   fill: #ffffff !important;
 }
 
+/* Dark theme - ensure proper contrast for alternating rows */
+/* Target the actual classes used by Mermaid: row-rect-odd and row-rect-even */
+[data-theme="dark"] .mermaid svg .row-rect-odd,
+[data-theme="dark"] .mermaid svg path.row-rect-odd,
+[data-theme="dark"] .mermaid svg g .row-rect-odd {
+  fill: #2d2d30 !important;
+}
+
+[data-theme="dark"] .mermaid svg .row-rect-even,
+[data-theme="dark"] .mermaid svg path.row-rect-even,
+[data-theme="dark"] .mermaid svg g .row-rect-even {
+  fill: #3e3e42 !important;
+}
+
+/* Legacy support for older Mermaid class names */
 [data-theme="dark"] .mermaid svg .er-attributeBoxOdd,
-[data-theme="dark"] .mermaid svg .er-attributeBoxEven {
+[data-theme="dark"] .mermaid svg g .er-attributeBoxOdd,
+[data-theme="dark"] .mermaid svg g.er-entityBox .er-attributeBoxOdd,
+[data-theme="dark"] .mermaid svg rect.er-attributeBoxOdd {
+  fill: #2d2d30 !important;
+}
+
+[data-theme="dark"] .mermaid svg .er-attributeBoxEven,
+[data-theme="dark"] .mermaid svg g .er-attributeBoxEven,
+[data-theme="dark"] .mermaid svg g.er-entityBox .er-attributeBoxEven,
+[data-theme="dark"] .mermaid svg rect.er-attributeBoxEven {
+  fill: #3e3e42 !important;
+}
+
+/* Override any light fills in entity boxes for dark theme */
+[data-theme="dark"] .mermaid svg g.er-entityBox rect[fill="#ffffff"],
+[data-theme="dark"] .mermaid svg g.er-entityBox rect[fill="white"],
+[data-theme="dark"] .mermaid svg g.er-entityBox rect[fill="#f8f8f8"],
+[data-theme="dark"] .mermaid svg g.er-entityBox rect[fill="#f0f0f0"] {
   fill: #2d2d30 !important;
 }
 

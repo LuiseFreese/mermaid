@@ -248,7 +248,9 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     try {
       const response = await fetch('/api/environments');
       const data = await response.json();
-      if (Array.isArray(data)) {
+      if (data.environments && Array.isArray(data.environments)) {
+        setEnvironments(data.environments);
+      } else if (Array.isArray(data)) {
         setEnvironments(data);
       }
     } catch (error) {

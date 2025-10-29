@@ -115,16 +115,8 @@ class DeploymentController extends BaseController {
                 progressCallback
             );
 
-            // Capture deployment history on success
-            if (result.success && this.deploymentHistoryService) {
-                try {
-                    await this.deploymentHistoryService.saveDeployment(deploymentConfig, result);
-                    this.log('deploySolution', 'Deployment history captured successfully');
-                } catch (historyError) {
-                    this.log('deploySolution', 'Failed to capture deployment history', historyError);
-                    // Don't fail the deployment if history capture fails
-                }
-            }
+            // Note: Deployment history is already captured by deployment-service.js
+            // No need to duplicate that here
 
             // Send final result
             streaming.sendFinal(result);

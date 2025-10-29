@@ -36,6 +36,17 @@ utputFormat
 *.tmp
 *.temp
 *.github
+fresh-logs/
+latest-logs/
+fresh-logs.zip
+deploy.zip
+app-logs/
+latest-logs.zip
+webapp_logs.zip
+app-logs-new/
+fresh-logs-after-oryx.zip
+fresh-logs-after-oryx/
+
 
 
 # Project management

@@ -40,7 +40,7 @@ class DataverseRepository extends BaseRepository {
             useClientSecret: process.env.USE_CLIENT_SECRET === 'true',
             useManagedIdentity: process.env.USE_MANAGED_IDENTITY === 'true',
             configProvided: !!config,
-            configServerUrl: config?.serverUrl
+            configServerUrl: config?.serverUrl || config?.dataverseUrl
         });
         
         try {
@@ -58,6 +58,10 @@ class DataverseRepository extends BaseRepository {
                     dataverseConfig = dataverseConfig.data;
                 }
             } else {
+                // Normalize config: ensure serverUrl is set (some configs use dataverseUrl)
+                if (dataverseConfig.dataverseUrl && !dataverseConfig.serverUrl) {
+                    dataverseConfig.serverUrl = dataverseConfig.dataverseUrl;
+                }
                 console.log('✅ Using provided config with serverUrl:', dataverseConfig.serverUrl);
             }
             
@@ -439,13 +443,33 @@ class DataverseRepository extends BaseRepository {
      * Rollback a deployment
      * @param {Object} deploymentData - Deployment data containing entities, relationships, etc.
      * @param {Function} progressCallback - Optional callback for progress updates
-     * @param {Object} config - Rollback configuration (granular options)
+     * @param {Object} config - Rollback configuration (granular options) or environment config
+     * @param {Object} rollbackOptions - Optional rollback options when config is environment config
      * @returns {Promise<Object>} Rollback result
      */
-    async rollbackDeployment(deploymentData, progressCallback = null, config = null) {
+    async rollbackDeployment(deploymentData, progressCallback = null, config = null, rollbackOptions = null) {
         return this.executeOperation('rollbackDeployment', async () => {
-            const client = await this.getClient();
-            const result = await client.rollbackDeployment(deploymentData, progressCallback, config);
+            // If rollbackOptions is provided, config is environment config
+            // Otherwise, config is the rollback options
+            let environmentConfig = null;
+            let actualRollbackConfig = null;
+            
+            if (rollbackOptions) {
+                // 4th parameter provided - 3rd is environment config, 4th is rollback options
+                environmentConfig = config;
+                actualRollbackConfig = rollbackOptions;
+            } else if (config && (config.dataverseUrl || config.serverUrl)) {
+                // No 4th parameter, but 3rd has URL - it's environment config, no rollback options
+                environmentConfig = config;
+                actualRollbackConfig = null;
+            } else {
+                // 3rd parameter is rollback options, no environment override
+                environmentConfig = null;
+                actualRollbackConfig = config;
+            }
+            
+            const client = await this.getClient(environmentConfig);
+            const result = await client.rollbackDeployment(deploymentData, progressCallback, actualRollbackConfig);
             
             // The rollback client returns a results object with detailed information
             // Consider it successful if there are no fatal errors (errors array can have non-fatal warnings)

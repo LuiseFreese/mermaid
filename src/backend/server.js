@@ -108,6 +108,10 @@ async function initializeComponents() {
   console.log('Initializing application components...');
   
   try {
+    // Initialize environment manager FIRST (needed by services)
+    const environmentManager = new EnvironmentManager();
+    await environmentManager.initialize();
+    
     // Initialize repositories with managed identity
     const configRepo = new ConfigurationRepository({
       logger: console
@@ -129,6 +133,7 @@ async function initializeComponents() {
 
     const globalChoicesService = new GlobalChoicesService({
       dataverseRepository: dataverseRepo,
+      environmentManager,
       logger: console
     });
 
@@ -150,6 +155,7 @@ async function initializeComponents() {
     const deploymentService = new DeploymentService({
       dataverseRepository: dataverseRepo,
       configRepository: configRepo,
+      environmentManager,
       validationService,
       globalChoicesService,
       solutionService,
@@ -208,18 +214,19 @@ async function initializeComponents() {
     // Set deployment history service on the deployment controller
     deploymentController.setDeploymentHistoryService(deploymentHistoryService);
 
+    // Environment manager already initialized at the top of this function
+    // Initialize Dataverse client factory
+    const dataverseClientFactory = new DataverseClientFactory(environmentManager);
+
     const adminController = new AdminController(
       publisherService,
       globalChoicesService,
-      solutionService
+      solutionService,
+      {
+        environmentManager,
+        dataverseClientFactory
+      }
     );
-
-    // Initialize environment manager (before rollbackController)
-    const environmentManager = new EnvironmentManager();
-    await environmentManager.initialize();
-
-    // Initialize Dataverse client factory
-    const dataverseClientFactory = new DataverseClientFactory(environmentManager);
 
     const rollbackController = new RollbackController(rollbackService, {
       deploymentHistoryService,
@@ -229,7 +236,8 @@ async function initializeComponents() {
 
     const importController = new ImportController({
       dataverseExtractorService,
-      validationService
+      validationService,
+      environmentManager
     });
 
     // Initialize cross-environment service (depends on environmentManager and dataverseClientFactory)
@@ -872,17 +880,17 @@ async function handleApiRoutes(pathname, req, res, components) {
     switch (deploymentRoute) {
       case 'publishers':
         if (req.method === 'GET') {
-          return handleGetPublishers(req, res);
+          return components.adminController.getPublishers(req, res);
         }
         break;
       case 'solutions':
         if (req.method === 'GET') {
-          return handleGetSolutions(req, res);
+          return components.adminController.getSolutions(req, res);
         }
         break;
       case 'global-choices':
         if (req.method === 'GET') {
-          return handleGetGlobalChoices(req, res);
+          return components.adminController.getGlobalChoices(req, res);
         }
         break;
       case 'deploy':
@@ -1098,19 +1106,19 @@ async function handleApiRoutes(pathname, req, res, components) {
 
     case 'publishers':
       if (req.method === 'GET') {
-        return handleGetPublishers(req, res);
+        return components.adminController.getPublishers(req, res);
       }
       break;
 
     case 'solutions':
       if (req.method === 'GET') {
-        return handleGetSolutions(req, res);
+        return components.adminController.getSolutions(req, res);
       }
       break;
 
     case 'global-choices-list':
       if (req.method === 'GET') {
-        return handleGetGlobalChoices(req, res);
+        return components.adminController.getGlobalChoices(req, res);
       }
       break;
 
@@ -1184,7 +1192,7 @@ async function startServer() {
   try {
     const { server } = await createLayeredServer();
     
-    const port = Number(process.env.PORT) || 8080;
+    const port = process.env.PORT !== undefined ? Number(process.env.PORT) : 8080;
     
     server.listen(port, '0.0.0.0', () => {
       console.log(`Dataverse ERD-to-Solution Wizard Server running on port ${port}`);

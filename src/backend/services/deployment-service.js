@@ -11,10 +11,11 @@ class DeploymentService extends BaseService {
         super(dependencies);
         
         // Validate required dependencies
-        this.validateDependencies(['dataverseRepository', 'configRepository']);
+        this.validateDependencies(['dataverseRepository', 'configRepository', 'environmentManager']);
         
         this.dataverseRepository = dependencies.dataverseRepository;
         this.configRepository = dependencies.configRepository;
+        this.environmentManager = dependencies.environmentManager;
         this.validationService = dependencies.validationService;
         this.publisherService = dependencies.publisherService;
         this.solutionService = dependencies.solutionService;
@@ -105,22 +106,14 @@ class DeploymentService extends BaseService {
                 
                 // Get Dataverse configuration - use targetEnvironment if provided
                 let dataverseConfig;
-                if (config.targetEnvironment && config.targetEnvironment.url) {
-                    // Use the selected environment
+                if (config.targetEnvironment && config.targetEnvironment.id) {
+                    // Use environmentManager to get config for target environment
                     console.log(`🎯 Using target environment: ${config.targetEnvironment.name} (${config.targetEnvironment.url})`);
-                    const defaultConfigResult = await this.configRepository.getDataverseConfig();
-                    const defaultConfig = defaultConfigResult?.data || defaultConfigResult;
-                    
-                    // Override the serverUrl with the target environment's URL
-                    dataverseConfig = {
-                        ...defaultConfig,
-                        serverUrl: config.targetEnvironment.url
-                    };
+                    dataverseConfig = this.environmentManager.getEnvironmentConfig(config.targetEnvironment.id);
                 } else {
                     // Use default environment
                     console.log('🎯 Using default environment');
-                    const dataverseConfigResult = await this.configRepository.getDataverseConfig();
-                    dataverseConfig = dataverseConfigResult?.data || dataverseConfigResult;
+                    dataverseConfig = this.environmentManager.getEnvironmentConfig();
                 }
                 
                 console.log(`🔗 Connecting to Dataverse: ${dataverseConfig.serverUrl}`);
@@ -334,9 +327,21 @@ class DeploymentService extends BaseService {
                             globalChoicesCreated: await this.extractGlobalChoiceNames(config.customChoices || [], 'custom')
                         };
                         
+                        // Get environment information from config
+                        const environmentData = config.targetEnvironment || {};
+                        console.log('🎯 Deployment-service: Recording deployment with environment:', {
+                            targetEnvironmentFromConfig: config.targetEnvironment,
+                            environmentData: environmentData,
+                            environmentId: environmentData.id || 'default',
+                            environmentName: environmentData.name || 'Default'
+                        });
+                        
                         await this.deploymentHistoryService.recordDeployment({
                             deploymentId: deploymentId,
-                            environmentSuffix: 'default',
+                            environmentSuffix: environmentData.id || 'default',
+                            environmentId: environmentData.id || 'default',
+                            environmentName: environmentData.name || 'Default',
+                            environmentUrl: environmentData.url || null,
                             status: 'success',
                             erdContent: config.mermaidContent,
                             summary: deploymentSummary,

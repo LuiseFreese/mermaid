@@ -225,6 +225,14 @@ class RollbackService extends BaseService {
                 startTime: Date.now()
             });
 
+            // Get environment config if provided
+            const environmentConfig = rollbackOptions.environmentConfig;
+            if (environmentConfig) {
+                console.log(`✅ ROLLBACK SERVICE: Using environment-specific configuration for ${environmentConfig.serverUrl}`);
+            } else {
+                console.log('📋 ROLLBACK SERVICE: Using default Dataverse configuration');
+            }
+
             // Initialize enhanced progress tracking with callback
             const progressTracker = new ProgressTracker('rollback', progressCallback);
             
@@ -482,7 +490,10 @@ class RollbackService extends BaseService {
                         progressCallback('progress', message, progressSummary);
                     }
                 },
-                validation.config
+                // If environment config provided, pass it as config and validation.config as rollbackOptions
+                // Otherwise just pass validation.config as config
+                environmentConfig || validation.config,
+                environmentConfig ? validation.config : null
             );
 
             console.log(`✅ ROLLBACK SERVICE: Rollback completed successfully`);
@@ -512,9 +523,22 @@ class RollbackService extends BaseService {
             // Pass rollback history to check what's already been rolled back
             // Use validation.config (normalized options) instead of selectedOptions
             const wasCompleteRollback = this.isCompleteRollback(validation.config, deployment.rollbackData, deployment.solutionInfo, rollbackHistory);
-            const newStatus = wasCompleteRollback ? 'rolled-back' : 'modified';
-
-            console.log(`📊 ROLLBACK TYPE: ${wasCompleteRollback ? 'Complete' : 'Partial'} - Setting status to '${newStatus}'`);
+            
+            // Check if there were any errors during rollback
+            const hasErrors = rollbackResults.errors && rollbackResults.errors.length > 0;
+            
+            // Determine final status based on errors and rollback completeness
+            let newStatus;
+            if (hasErrors) {
+                newStatus = 'failed'; // Rollback had errors
+                console.log(`❌ ROLLBACK HAD ERRORS - Setting status to 'failed'`);
+            } else if (wasCompleteRollback) {
+                newStatus = 'rolled-back'; // Successfully rolled back completely
+                console.log(`📊 ROLLBACK TYPE: Complete - Setting status to 'rolled-back'`);
+            } else {
+                newStatus = 'modified'; // Partially rolled back
+                console.log(`📊 ROLLBACK TYPE: Partial - Setting status to 'modified'`);
+            }
 
             // Step 7: Update deployment status
             const updateData = {
@@ -551,14 +575,17 @@ class RollbackService extends BaseService {
             // End performance monitoring
             this.performanceMonitor.endOperation(rollbackId, rollbackResults);
             
+            // Determine final return status
+            const returnStatus = hasErrors ? 'error' : 'success';
+            
             return {
                 rollbackId,
                 deploymentId,
-                status: 'success',
+                status: returnStatus,
                 isCompleteRollback: wasCompleteRollback,
                 newDeploymentStatus: newStatus,
                 results: rollbackResults,
-                summary: `Rollback completed: ${rollbackResults.relationshipsDeleted} relationships, ${rollbackResults.entitiesDeleted} entities, ${rollbackResults.globalChoicesDeleted} choices deleted, solution ${rollbackResults.solutionDeleted ? 'deleted' : 'not deleted'}`
+                summary: `Rollback ${hasErrors ? 'failed with errors' : 'completed'}: ${rollbackResults.relationshipsDeleted} relationships, ${rollbackResults.entitiesDeleted} entities, ${rollbackResults.globalChoicesDeleted} choices deleted, solution ${rollbackResults.solutionDeleted ? 'deleted' : 'not deleted'}${hasErrors ? ` (${rollbackResults.errors.length} error(s))` : ''}`
             };
 
         } catch (error) {
@@ -643,6 +670,9 @@ class RollbackService extends BaseService {
         const rollbackRecord = {
             deploymentId: rollbackId,
             originalDeploymentId: originalDeployment.deploymentId,
+            environmentId: originalDeployment.environmentId,
+            environmentName: originalDeployment.environmentName,
+            environmentUrl: originalDeployment.environmentUrl,
             environmentSuffix: originalDeployment.environmentSuffix,
             status: 'success',
             erdContent: originalDeployment.erdContent,

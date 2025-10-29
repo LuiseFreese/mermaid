@@ -715,7 +715,13 @@ class MermaidERDParser {
             relationship: `${relationship.fromEntity} → ${relationship.toEntity}`,
             message: `Relationship '${relationship.fromEntity} → ${relationship.toEntity}' exists with foreign keys present in '${relationship.toEntity}', but no FK named '${expectedFK}' was found.`,
             suggestion: `If using a different FK name, ensure it properly references '${relationship.fromEntity}'. Otherwise, consider renaming to '${expectedFK} FK' for clarity.`,
-            category: 'relationships'
+            category: 'relationships',
+            autoFixable: true,
+            fixData: {
+              entityName: relationship.toEntity,
+              columnName: expectedFK,
+              referencedEntity: relationship.fromEntity
+            }
           });
         }
       }

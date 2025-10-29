@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Welcome to Mermaid to Dataverse Converter
 
-The **Mermaid to Dataverse Converter** is a powerful tool that converts Mermaid ERD diagrams into fully functional Microsoft Dataverse solutions. This tool streamlines the process of creating Dataverse data models, saving hours of manual configuration.
+The **Mermaid to Dataverse Converter** is a powerful tool that converts [Mermaid.js](https://mermaid.js.org/) ERD diagrams into fully functional Microsoft Dataverse solutions. This tool streamlines the process of creating Dataverse data models, saving hours of manual configuration.
 
 ## What You Can Do
 
@@ -47,7 +47,7 @@ The backend will be available at `http://localhost:8080` and the frontend wizard
 
 ### Intuitive UI
 A wizard-based interface guides you through the process:
-1. Upload your Mermaid ERD file
+1. Upload or Import your Mermaid ERD file
 2. Configure solution and publisher settings
 3. Validate and preview your data model
 4. Deploy to Dataverse

@@ -2,22 +2,29 @@
 
 <#
 .SYNOPSIS
-    🚀 Complete Secretless Setup for Mermaid → Dataverse on Azure
+    🚀 Complete Secretless Multi-Environment Setup for Mermaid → Dataverse on Azure
 
 .DESCRIPTION
-    This script sets up a complete secretless deployment using:
-    - App Registration with Federated Credentials (no client secrets)
-    - User-Assigned Managed Identity
-    - Azure Infrastructure via Bicep
-    - Dataverse Application User with proper permissions
+    This script sets up a complete secretless multi-environment deployment using:
+    - App Registration with Federated Credentials (no client secrets in Azure)
+    - User-Assigned Managed Identity for Azure → Dataverse authentication
+    - Azure Infrastructure (App Service, etc.) via Bicep
+    - Dataverse Application Users in ALL configured environments with proper permissions
     - Azure AD App Registration for user authentication
+    
+    Multi-Environment Support:
+    - Automatically reads data/environments.json and creates application users in ALL environments
+    - No need to specify individual Dataverse URLs - all environments configured from one file
+    - Supports dev/test/prod/any environment configuration you define
     
     Configuration values are stored in App Service settings (not Key Vault secrets).
     Everything is idempotent - safe to run multiple times.
 
 .EXAMPLE
-    # Interactive mode (recommended for first-time setup)
-    .\scripts\setup-secretless.ps1
+    # First time setup - Configure environments first!
+    # 1. Edit data/environments.json with your Dataverse environments (dev/test/prod/etc.)
+    # 2. Run setup script:
+    .\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod"
 
 .EXAMPLE
     # Unattended mode (for CI/CD)
@@ -26,9 +33,17 @@
 .NOTES
     Prerequisites:
     - Azure CLI installed and logged in (az login)
-    - Power Platform Admin or Dataverse System Admin access
-    - No secrets needed - fully managed identity based!
-    - Configure data/environments.json with your Dataverse environments BEFORE running this script
+    - Power Platform Admin or Dataverse System Admin access in ALL environments
+    - data/environments.json configured with all Dataverse environments (REQUIRED!)
+    - No secrets needed in Azure - fully managed identity based!
+    
+    What this script does:
+    1. Creates App Registration with Federated Credentials
+    2. Creates Managed Identity and Azure resources
+    3. Reads data/environments.json
+    4. Creates Application Users in ALL configured environments automatically
+    5. Assigns System Customizer role to each Application User
+    6. Configures Azure AD authentication for user login
 #>
 
 [CmdletBinding()]
@@ -185,7 +200,13 @@ if ($localDevSecret) {
     $clientSecret = $secretInfo.password
     
     # Handle both endDateTime and endDate properties (Azure CLI version differences)
-    $expiryDate = if ($secretInfo.endDateTime) { $secretInfo.endDateTime } elseif ($secretInfo.endDate) { $secretInfo.endDate } else { "1 year" }
+    $expiryDate = if ($secretInfo.PSObject.Properties['endDateTime']) { 
+        $secretInfo.endDateTime 
+    } elseif ($secretInfo.PSObject.Properties['endDate']) { 
+        $secretInfo.endDate 
+    } else { 
+        "1 year" 
+    }
     Write-Success "Created client secret for local development (expires: $expiryDate)"
     
     # Save to .env file
@@ -344,8 +365,6 @@ try {
     Write-Host "Please check that the file is valid JSON." -ForegroundColor Yellow
     exit 1
 }
-    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
-}
 
 # ---------- 8. Setup Azure AD App Registration (for Authentication) ----------
 Write-Info "🔐 Setting up Azure AD authentication..."
@@ -360,31 +379,34 @@ if ($existingAzureAdApp) {
     $azureAdAppObjectId = $existingAzureAdApp.id
     $azureAdTenantId = (az account show --query "tenantId" -o tsv)
     
-    # Update existing app to include both production and localhost redirect URIs
-    Write-Info "   └─ Updating redirect URIs to include localhost..."
+    # Update existing app to include web redirect URI for Easy Auth (NO localhost to prevent redirect issues)
+    Write-Info "   └─ Updating redirect URIs for production Easy Auth..."
     $appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
-    $productionRedirectUri = "https://$appServiceUrl"
-    $localhostRedirectUri = "http://localhost:3003"
+    $webRedirectUri = "https://$appServiceUrl/.auth/login/aad/callback"  # Easy Auth callback
+    $spaProductionUri = "https://$appServiceUrl"  # Direct app access
     
-    $spaConfigFile = [System.IO.Path]::GetTempFileName()
+    $configFile = [System.IO.Path]::GetTempFileName()
     try {
-        # Create SPA configuration JSON with both redirect URIs
-        @{ spa = @{ redirectUris = @($productionRedirectUri, $localhostRedirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
+        # Create configuration JSON with web (for Easy Auth) and SPA redirect URIs (NO localhost)
+        @{ 
+            web = @{ redirectUris = @($webRedirectUri) }
+            spa = @{ redirectUris = @($spaProductionUri) } 
+        } | ConvertTo-Json -Depth 3 | Out-File $configFile -Encoding utf8
         
         # Apply configuration using Graph API
         az rest --method PATCH `
             --uri "https://graph.microsoft.com/v1.0/applications/$azureAdAppObjectId" `
             --headers "Content-Type=application/json" `
-            --body "@$spaConfigFile" `
+            --body "@$configFile" `
             --output none
         
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Failed to update redirect URIs"
         } else {
-            Write-Success "Redirect URIs updated (production + localhost)"
+            Write-Success "Redirect URIs updated (production only - no localhost)"
         }
     } finally {
-        Remove-Item $spaConfigFile -Force -ErrorAction SilentlyContinue
+        Remove-Item $configFile -Force -ErrorAction SilentlyContinue
     }
 } else {
     Write-Info "Creating Azure AD App Registration for authentication: $azureAdAppName"
@@ -394,8 +416,8 @@ if ($existingAzureAdApp) {
     
     # Get the App Service URL for redirect URI
     $appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
-    $productionRedirectUri = "https://$appServiceUrl"
-    $localhostRedirectUri = "http://localhost:3003"
+    $webRedirectUri = "https://$appServiceUrl/.auth/login/aad/callback"  # Easy Auth callback
+    $spaProductionUri = "https://$appServiceUrl"  # Direct app access
     
     # Create App Registration for Single Page Application
     Write-Info "   └─ Creating App Registration..."
@@ -417,27 +439,31 @@ if ($existingAzureAdApp) {
     
     Write-Info "   └─ App ID: $azureAdClientId"
     
-    # Configure SPA platform settings using Microsoft Graph API
-    Write-Info "   └─ Configuring SPA platform (production + localhost)..."
-    $spaConfigFile = [System.IO.Path]::GetTempFileName()
+    # Configure both Web (for Easy Auth) and SPA platform settings using Microsoft Graph API
+    Write-Info "   └─ Configuring redirect URIs for production Easy Auth..."
+    $configFile = [System.IO.Path]::GetTempFileName()
     try {
-        # Create SPA configuration JSON with both redirect URIs
-        @{ spa = @{ redirectUris = @($productionRedirectUri, $localhostRedirectUri) } } | ConvertTo-Json -Depth 3 | Out-File $spaConfigFile -Encoding utf8
+        # Create configuration JSON with web redirect URI for Easy Auth callback and SPA for production access
+        # NOTE: Localhost NOT included - local dev should use AUTH_ENABLED=false instead
+        @{ 
+            web = @{ redirectUris = @($webRedirectUri) }
+            spa = @{ redirectUris = @($spaProductionUri) } 
+        } | ConvertTo-Json -Depth 3 | Out-File $configFile -Encoding utf8
         
         # Apply configuration using Graph API
         az rest --method PATCH `
             --uri "https://graph.microsoft.com/v1.0/applications/$azureAdAppObjectId" `
             --headers "Content-Type=application/json" `
-            --body "@$spaConfigFile" `
+            --body "@$configFile" `
             --output none
         
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to configure SPA platform via Graph API"
+            Write-Warning "Failed to configure redirect URIs via Graph API"
         } else {
-            Write-Success "SPA platform configured successfully with both redirect URIs"
+            Write-Success "Production redirect URIs configured for Easy Auth"
         }
     } finally {
-        Remove-Item $spaConfigFile -Force -ErrorAction SilentlyContinue
+        Remove-Item $configFile -Force -ErrorAction SilentlyContinue
     }
     
     # Add Microsoft Graph User.Read permission
@@ -475,10 +501,34 @@ if ($LASTEXITCODE -ne 0) {
     throw "App Service configuration failed"
 }
 
+# Enable Azure App Service Easy Auth with Azure AD
+Write-Info "Enabling Easy Auth with Azure AD..."
+$issuerUrl = "https://sts.windows.net/$azureAdTenantId/"
+$appServiceUrl = az webapp show --name $AppServiceName --resource-group $ResourceGroup --query "defaultHostName" -o tsv
+
+az webapp auth update `
+    --name $AppServiceName `
+    --resource-group $ResourceGroup `
+    --enabled true `
+    --action LoginWithAzureActiveDirectory `
+    --aad-client-id $azureAdClientId `
+    --aad-token-issuer-url $issuerUrl `
+    --aad-allowed-token-audiences "https://$appServiceUrl/.auth/login/aad/callback" `
+    --output none
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Failed to enable Easy Auth - you may need to configure it manually in the portal"
+} else {
+    Write-Success "Easy Auth enabled successfully"
+}
+
 Write-Success "Authentication configured"
+Write-Info "   └─ Frontend App (Easy Auth): $azureAdAppName"
 Write-Info "   └─ Azure AD Client ID: $azureAdClientId"
 Write-Info "   └─ Azure AD Tenant ID: $azureAdTenantId"
-Write-Info "   └─ Redirect URI: https://$appServiceUrl"
+Write-Info "   └─ Easy Auth: Enabled (LoginWithAzureActiveDirectory)"
+Write-Info "   └─ Web Redirect URI (Easy Auth): https://$appServiceUrl/.auth/login/aad/callback"
+Write-Info "   └─ SPA Redirect URIs (Dev): https://$appServiceUrl, http://localhost:3003"
 Write-Info "   └─ App Service setting AUTH_ENABLED: true"
 
 # ---------- 9. Create Dataverse Application User(s) ----------
@@ -664,20 +714,14 @@ Write-Host "  Authentication: Azure AD App Registration configured ($azureAdAppN
 Write-Host "    └─ Client ID: $azureAdClientId"
 Write-Host "    └─ AUTH_ENABLED: true"
 
-if ($DataverseUrl) {
-    Write-Host "  Dataverse URL: $DataverseUrl"
-    if (-not $SkipDataverseUser) {
-        Write-Host "  Dataverse Application User: Created and role assigned"
-    }
-}
-
 Write-Host ""
 Write-Host "Next Step:" -ForegroundColor Green
 Write-Host "Deploy your application: .\scripts\deploy-secretless.ps1 -EnvironmentSuffix `"$EnvironmentSuffix`""
 Write-Host ""
 Write-Host "Authentication Info:" -ForegroundColor Cyan
 Write-Host "  Users will need to sign in with Microsoft credentials"
-Write-Host "  Redirect URI configured: https://$appServiceUrl"
+Write-Host "  Web Redirect URI (Easy Auth): https://$appServiceUrl/.auth/login/aad/callback"
+Write-Host "  SPA Redirect URIs (Dev): https://$appServiceUrl, http://localhost:3003"
 Write-Host "  Local dev can use AUTH_ENABLED=false for testing"
 Write-Host ""
 if ($clientSecret) {

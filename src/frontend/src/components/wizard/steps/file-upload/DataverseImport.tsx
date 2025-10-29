@@ -8,10 +8,12 @@ import {
   MessageBarBody,
   Spinner,
   tokens,
+  Label,
 } from '@fluentui/react-components';
 import { 
   SearchRegular,
-  CheckmarkCircleRegular
+  CheckmarkCircleRegular,
+  DatabaseRegular
 } from '@fluentui/react-icons';
 import mermaid from 'mermaid';
 import { useWizardContext } from '../../../../context/WizardContext';
@@ -19,6 +21,13 @@ import { useSolutions } from '../../../../hooks/useSolutions';
 import { useCDMDetection } from './hooks/useCDMDetection';
 import { CDMDetectionCard } from './components/CDMDetectionCard';
 import { useTheme } from '../../../../context/ThemeContext';
+
+interface DataverseEnvironment {
+  id: string;
+  name: string;
+  url: string;
+  color?: string;
+}
 
 interface DataverseImportProps {
   onImportCompleted?: (erdContent: string, metadata: any) => void;
@@ -30,13 +39,15 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   onCDMChoiceSelected
 }) => {
   const { updateWizardData } = useWizardContext();
-  const { solutions, loading: solutionsLoading, error: solutionsError } = useSolutions();
+  const [environments, setEnvironments] = useState<DataverseEnvironment[]>([]);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | undefined>(undefined);
+  const [environmentsLoading, setEnvironmentsLoading] = useState(true);
+  const { solutions, loading: solutionsLoading, error: solutionsError } = useSolutions(selectedEnvironmentId);
   const [selectedSolutionId, setSelectedSolutionId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [environmentUrl, setEnvironmentUrl] = useState('');
-  const [environmentLoading, setEnvironmentLoading] = useState(true);
   const [importedContent, setImportedContent] = useState<string | null>(null);
   const [importedMetadata, setImportedMetadata] = useState<any>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
@@ -142,21 +153,40 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
   useEffect(() => {
     const detectEnvironmentUrl = async () => {
       try {
-        const response = await fetch('/api/config/environment');
+        const response = await fetch('/api/environments');
         if (response.ok) {
-          const config = await response.json();
-          setEnvironmentUrl(config.dataverseUrl || '');
+          const data = await response.json();
+          const envs = data.environments || [];
+          setEnvironments(envs);
+          
+          // Auto-select first environment if available
+          if (envs.length > 0) {
+            setSelectedEnvironmentId(envs[0].id);
+            setEnvironmentUrl(envs[0].url);
+          }
         }
       } catch (error) {
-        // Fallback: try to detect from current deployment or use placeholder
-        setEnvironmentUrl('https://your-env.crm.dynamics.com');
+        console.error('Error fetching environments:', error);
+        setEnvironments([]);
       } finally {
-        setEnvironmentLoading(false);
+        setEnvironmentsLoading(false);
       }
     };
     
     detectEnvironmentUrl();
   }, []);
+
+  // Update environment URL when selected environment changes
+  useEffect(() => {
+    if (selectedEnvironmentId) {
+      const env = environments.find(e => e.id === selectedEnvironmentId);
+      if (env) {
+        setEnvironmentUrl(env.url);
+        // Reset solution selection when environment changes
+        setSelectedSolutionId('');
+      }
+    }
+  }, [selectedEnvironmentId, environments]);
 
   // Handle CDM detection completion - auto-complete if no CDM entities found
   useEffect(() => {
@@ -305,12 +335,85 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      
+      {/* Environment Selector */}
+      <div>
+        <Label weight="semibold" style={{ marginBottom: '8px', display: 'block' }}>
+          <DatabaseRegular style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+          Select Dataverse Environment *
+        </Label>
+        
+        {environmentsLoading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
+            <Spinner size="tiny" />
+            <Text size={300}>Loading environments...</Text>
+          </div>
+        )}
+
+        {!environmentsLoading && environments.length === 0 && (
+          <MessageBar intent="warning" style={{ marginBottom: '12px' }}>
+            <MessageBarBody>
+              No environments configured. Please configure environments in data/environments.json
+            </MessageBarBody>
+          </MessageBar>
+        )}
+
+        {!environmentsLoading && environments.length > 0 && (
+          <Combobox
+            placeholder="Select target environment..."
+            value={environments.find(e => e.id === selectedEnvironmentId)?.name || ''}
+            selectedOptions={selectedEnvironmentId ? [selectedEnvironmentId] : []}
+            onOptionSelect={(_, data) => {
+              setSelectedEnvironmentId(data.optionValue || undefined);
+            }}
+            style={{ width: '100%' }}
+            disabled={isImporting || importedContent !== null}
+          >
+            {environments.map((env) => (
+              <Option 
+                key={env.id} 
+                value={env.id}
+                text={env.name}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div 
+                    style={{ 
+                      width: '12px', 
+                      height: '12px', 
+                      borderRadius: '50%', 
+                      backgroundColor: env.color === 'blue' ? '#0078d4' : 
+                                      env.color === 'yellow' ? '#ffd23f' :
+                                      env.color === 'red' ? '#d13438' : '#6b6b6b'
+                    }} 
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <Text weight="semibold" size={300}>
+                      {env.name}
+                    </Text>
+                    <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                      {env.url}
+                    </Text>
+                  </div>
+                </div>
+              </Option>
+            ))}
+          </Combobox>
+        )}
+      </div>
           
-          {/* Solution Selector */}
-          <div>
-            <Text weight="semibold" style={{ marginBottom: '8px', display: 'block' }}>
-              Select Dataverse Solution *
-            </Text>
+      {/* Solution Selector */}
+      <div>
+        <Text weight="semibold" style={{ marginBottom: '8px', display: 'block' }}>
+          Select Dataverse Solution *
+        </Text>
+        
+        {!selectedEnvironmentId && !environmentsLoading && (
+          <MessageBar intent="info" style={{ marginBottom: '12px' }}>
+            <MessageBarBody>
+              Please select an environment first to load available solutions.
+            </MessageBarBody>
+          </MessageBar>
+        )}
             
             {solutionsLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px' }}>
@@ -327,7 +430,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
               </MessageBar>
             )}
 
-            {!solutionsLoading && !solutionsError && !environmentUrl && !environmentLoading && (
+            {!solutionsLoading && !solutionsError && !environmentUrl && !environmentsLoading && (
               <MessageBar intent="warning" style={{ marginBottom: '12px' }}>
                 <MessageBarBody>
                   Environment configuration is required before selecting solutions.
@@ -346,7 +449,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
                   }}
                   onInput={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
                   style={{ width: '100%', marginBottom: '8px' }}
-                  disabled={isImporting || environmentLoading || !environmentUrl || importedContent !== null}
+                  disabled={isImporting || environmentsLoading || !environmentUrl || importedContent !== null}
                 >
                   {filteredSolutions.map((solution) => (
                     <Option 
@@ -402,7 +505,7 @@ export const DataverseImport: React.FC<DataverseImportProps> = ({
               appearance="primary"
               icon={isImporting ? <Spinner size="tiny" /> : <SearchRegular />}
               onClick={handleImport}
-              disabled={!selectedSolution || !environmentUrl || isImporting || environmentLoading || importedContent !== null}
+              disabled={!selectedSolution || !environmentUrl || isImporting || environmentsLoading || importedContent !== null}
             >
               {isImporting ? 'Importing Solution...' : 'Import Selected Solution'}
             </Button>

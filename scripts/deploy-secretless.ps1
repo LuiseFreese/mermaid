@@ -338,6 +338,28 @@ if ($azureAdClientId -and $azureAdTenantId) {
     Write-Host "✅ Authentication configuration found" -ForegroundColor Green
     Write-Host "   └─ Client ID: $azureAdClientId" -ForegroundColor Gray
     Write-Host "   └─ Tenant ID: $azureAdTenantId" -ForegroundColor Gray
+    
+    # Configure redirect URI for Easy Auth
+    Write-Host "Configuring App Registration redirect URI..." -ForegroundColor Cyan
+    $appUrl = "https://$AppName.azurewebsites.net"
+    $redirectUri = "$appUrl/.auth/login/aad/callback"
+    
+    try {
+        # Get current redirect URIs to avoid overwriting
+        $currentUris = az ad app show --id $azureAdClientId --query "web.redirectUris" -o json | ConvertFrom-Json
+        
+        # Add our redirect URI if not already present
+        if ($currentUris -notcontains $redirectUri) {
+            $allUris = @($currentUris) + @($redirectUri)
+            az ad app update --id $azureAdClientId --web-redirect-uris $allUris | Out-Null
+            Write-Host "✅ Added redirect URI: $redirectUri" -ForegroundColor Green
+        } else {
+            Write-Host "✅ Redirect URI already configured" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "⚠️  Failed to configure redirect URI: $_" -ForegroundColor Yellow
+        Write-Host "   You may need to add manually in Azure AD: $redirectUri" -ForegroundColor Yellow
+    }
 } else {
     Write-Host "⚠️  Authentication not configured in App Service settings" -ForegroundColor Yellow
     Write-Host "   Run setup-secretless.ps1 to configure Azure AD authentication" -ForegroundColor Yellow
@@ -456,6 +478,10 @@ if (Test-Path "package-lock.json") {
     Copy-Item -Path "package-lock.json" -Destination "deploy-temp\package-lock.json" -Force
 }
 
+# DON'T install node_modules locally - let Azure Oryx build do it
+# This ensures Oryx uses OUR source files, not cached versions
+Write-Host "⚠️  Skipping local npm install - letting Azure Oryx build from source" -ForegroundColor Yellow
+
 Write-Host "Creating secretless backend server..." -ForegroundColor Yellow
 
 # Copy the backend server (already configured for managed identity)
@@ -504,80 +530,28 @@ try {
 Write-Host "Configuring App Service for Node.js runtime..." -ForegroundColor Cyan
 
 # Set the runtime stack with the EXACT format from working environment
-Write-Host "Setting Node.js runtime stack..." -ForegroundColor Yellow
-az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "NODE|20-LTS" | Out-Null
+az webapp config set --name $AppName --resource-group $ResourceGroup --linux-fx-version "NODE|20-LTS" 2>&1 | Out-Null
 
 # Set the startup command
-Write-Host "Setting startup command..." -ForegroundColor Yellow
-az webapp config set --name $AppName --resource-group $ResourceGroup --startup-file "node server.js" | Out-Null
+az webapp config set --name $AppName --resource-group $ResourceGroup --startup-file "node server.js" 2>&1 | Out-Null
 
-# Configure runtime settings (keep Oryx build enabled as per Bicep template)
-Write-Host "Configuring runtime settings..." -ForegroundColor Yellow
+Write-Host "✅ Node.js 20 runtime configured successfully" -ForegroundColor Green
+
+# Configure runtime settings  
 $runtimeSettings = @(
     "WEBSITES_PORT=8080",
     "WEBSITE_NODE_DEFAULT_VERSION=20",
-    "NODE_ENV=production"
+    "NODE_ENV=production",
+    "SCM_DO_BUILD_DURING_DEPLOYMENT=true",  # Enable Oryx build
+    "ENABLE_ORYX_BUILD=true"  # Explicitly enable Oryx
 )
 
-# Add Dataverse URL if provided, or get it from existing App Service settings
-if ($DataverseUrl) {
-    Write-Host "   └─ Setting DATAVERSE_URL: $DataverseUrl" -ForegroundColor Gray
-    $runtimeSettings += "DATAVERSE_URL=$DataverseUrl"
-} else {
-    # Try to get existing DATAVERSE_URL from App Service settings
-    try {
-        $existingSettings = az webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query "[?name=='DATAVERSE_URL'].value" -o tsv 2>$null
-        if ($existingSettings) {
-            Write-Host "   └─ Using existing DATAVERSE_URL from App Service settings" -ForegroundColor Gray
-            $runtimeSettings += "DATAVERSE_URL=$existingSettings"
-        } else {
-            Write-Warning "DATAVERSE_URL not provided and not found in App Service settings. This may cause runtime issues."
-        }
-    } catch {
-        Write-Warning "Could not retrieve existing DATAVERSE_URL from App Service settings."
-    }
-}
-
-# Add Power Platform Environment ID if provided, or get it from existing App Service settings
-if ($PowerPlatformEnvironmentId) {
-    Write-Host "   └─ Setting POWER_PLATFORM_ENVIRONMENT_ID: $PowerPlatformEnvironmentId" -ForegroundColor Gray
-    $runtimeSettings += "POWER_PLATFORM_ENVIRONMENT_ID=$PowerPlatformEnvironmentId"
-} else {
-    # Try to get existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings
-    try {
-        $existingPowerPlatformId = az webapp config appsettings list --name $AppName --resource-group $ResourceGroup --query "[?name=='POWER_PLATFORM_ENVIRONMENT_ID'].value" -o tsv 2>$null
-        if ($existingPowerPlatformId) {
-            Write-Host "   └─ Using existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings" -ForegroundColor Gray
-            $runtimeSettings += "POWER_PLATFORM_ENVIRONMENT_ID=$existingPowerPlatformId"
-        } else {
-            Write-Warning "POWER_PLATFORM_ENVIRONMENT_ID not provided and not found in App Service settings. Solution links may not work correctly."
-        }
-    } catch {
-        Write-Warning "Could not retrieve existing POWER_PLATFORM_ENVIRONMENT_ID from App Service settings."
-    }
-}
+# Note: Multi-environment deployment uses environments.json included in deployment package
+# No need to set individual DATAVERSE_URL or POWER_PLATFORM_ENVIRONMENT_ID in App Service settings
 
 az webapp config appsettings set --name $AppName --resource-group $ResourceGroup --settings $runtimeSettings | Out-Null
 
-# Update local .env file with the same configuration for local development
-Write-Host "Updating local .env file for development consistency..." -ForegroundColor Cyan
-if ($DataverseUrl) {
-    Update-EnvFile -Key "DATAVERSE_URL" -Value $DataverseUrl
-} elseif ($existingSettings) {
-    Update-EnvFile -Key "DATAVERSE_URL" -Value $existingSettings
-}
-
-if ($PowerPlatformEnvironmentId) {
-    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $PowerPlatformEnvironmentId
-} elseif ($existingPowerPlatformId) {
-    Update-EnvFile -Key "POWER_PLATFORM_ENVIRONMENT_ID" -Value $existingPowerPlatformId
-}
-
-# Restart to ensure runtime takes effect
-Write-Host "Restarting App Service to apply runtime changes..." -ForegroundColor Yellow
-az webapp restart --name $AppName --resource-group $ResourceGroup | Out-Null
-
-Write-Host "Node.js runtime configuration completed" -ForegroundColor Green
+Write-Host "✅ Runtime configuration completed (multi-environment support via environments.json)" -ForegroundColor Green
 
 # Deploy to App Service
 Write-Host "Deploying application with retry logic..." -ForegroundColor Cyan
@@ -597,7 +571,8 @@ while (-not $deploymentSuccess -and $retryCount -lt $maxRetries) {
     Write-Host "Attempting deployment (attempt $retryCount of $maxRetries, timeout: $timeoutMinutes min)..." -ForegroundColor Yellow
     
     try {
-        az webapp deploy --resource-group $ResourceGroup --name $AppName --src-path "deploy.zip" --type zip --async false --timeout $currentTimeout
+        # Remove --type zip to allow Oryx build to run
+        az webapp deploy --resource-group $ResourceGroup --name $AppName --src-path "deploy.zip" --async false --timeout $currentTimeout
         
         if ($LASTEXITCODE -eq 0) {
             $deploymentSuccess = $true

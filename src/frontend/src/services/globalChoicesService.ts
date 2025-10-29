@@ -13,14 +13,22 @@ export interface GlobalChoice {
 }
 
 export interface GlobalChoicesService {
-  getGlobalChoices(): Promise<GlobalChoice[]>;
+  getGlobalChoices(environmentId?: string): Promise<GlobalChoice[]>;
 }
 
 class DataverseGlobalChoicesService implements GlobalChoicesService {
-  async getGlobalChoices(): Promise<GlobalChoice[]> {
+  async getGlobalChoices(environmentId?: string): Promise<GlobalChoice[]> {
     try {
+      // Build query params - environmentId is required for multi-environment support
+      const params = new URLSearchParams();
+      if (environmentId) {
+        params.append('environmentId', environmentId);
+      }
+      
+      const url = `/global-choices-list${params.toString() ? `?${params.toString()}` : ''}`;
+      
       // Use authenticated apiClient instead of raw fetch
-      const response = await apiClient.get('/global-choices-list');
+      const response = await apiClient.get(url);
       
       console.log('📋 Frontend received global choices response:', response.data);
       
@@ -44,7 +52,7 @@ class DataverseGlobalChoicesService implements GlobalChoicesService {
 }
 
 class MockGlobalChoicesService implements GlobalChoicesService {
-  async getGlobalChoices(): Promise<GlobalChoice[]> {
+  async getGlobalChoices(_environmentId?: string): Promise<GlobalChoice[]> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 800));
     

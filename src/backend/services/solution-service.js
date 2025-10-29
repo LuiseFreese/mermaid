@@ -44,7 +44,9 @@ class SolutionService extends BaseService {
                 limit: options.limit
             };
 
-            const result = await this.dataverseRepository.getSolutions(queryOptions);
+            // Pass environment config to repository if provided
+            const envConfig = options.environmentConfig || null;
+            const result = await this.dataverseRepository.getSolutions(queryOptions, envConfig);
             
             console.log('🔍 SolutionService DEBUG: Raw result from DataverseRepository:', {
                 success: result.success,

@@ -39,6 +39,13 @@ class DeploymentHistoryService extends BaseService {
      */
     async recordDeployment(deploymentData) {
         return this.executeOperation('recordDeployment', async () => {
+            console.log('🎯 DeploymentHistoryService.recordDeployment - Input:', {
+                hasEnvironmentId: !!deploymentData.environmentId,
+                environmentId: deploymentData.environmentId,
+                environmentName: deploymentData.environmentName,
+                environmentUrl: deploymentData.environmentUrl
+            });
+            
             const deploymentId = deploymentData.deploymentId || this.generateDeploymentId();
             const timestamp = new Date().toISOString();
             
@@ -69,6 +76,13 @@ class DeploymentHistoryService extends BaseService {
                     previousDeploymentId: await this.getLatestDeploymentId(deploymentData.environmentSuffix)
                 }
             };
+            
+            console.log('🎯 DeploymentHistoryService.recordDeployment - Record to save:', {
+                deploymentId: record.deploymentId,
+                environmentId: record.environmentId,
+                environmentName: record.environmentName,
+                environmentUrl: record.environmentUrl
+            });
 
             // Save deployment record
             await this.saveDeploymentRecord(record);
@@ -189,18 +203,86 @@ class DeploymentHistoryService extends BaseService {
      */
     async getDeploymentsByEnvironment(environmentId) {
         return this.executeOperation('getDeploymentsByEnvironment', async () => {
-            const allDeployments = await this.getAllDeployments();
-            
-            // If 'all' or no environmentId specified, return all deployments
+            // If 'all' or no environmentId specified, get deployments from all environment index files
             if (!environmentId || environmentId === 'all') {
-                return allDeployments;
+                return await this.getAllDeploymentsFromAllEnvironments();
             }
             
-            // Filter deployments by environmentId (check both environmentId and environmentSuffix for backward compatibility)
-            return allDeployments.filter(deployment => 
-                deployment.environmentId === environmentId || 
-                deployment.environmentSuffix === environmentId
-            );
+            // For specific environment, read from that environment's index file
+            const deployments = await this.getDeploymentHistory(environmentId, 1000);
+            
+            // Double-check filtering by environmentId in case index has mixed data
+            return deployments.filter(deployment => {
+                const deploymentEnvId = deployment.environmentId || deployment.environmentSuffix;
+                return deploymentEnvId && deploymentEnvId === environmentId;
+            });
+        });
+    }
+
+    /**
+     * Get all deployments from all environment index files
+     * @returns {Promise<Array>} All deployment records from all environments
+     */
+    async getAllDeploymentsFromAllEnvironments() {
+        return this.executeOperation('getAllDeploymentsFromAllEnvironments', async () => {
+            const fs = require('fs').promises;
+            const path = require('path');
+            
+            // Get all *_index.json files in the storage directory
+            const files = await fs.readdir(this.storageDir);
+            const indexFiles = files.filter(f => f.endsWith('_index.json'));
+            
+            const allDeploymentIds = new Set();
+            const deploymentMap = new Map();
+            
+            // Read all index files and collect unique deployment IDs
+            for (const indexFile of indexFiles) {
+                try {
+                    const indexPath = path.join(this.storageDir, indexFile);
+                    const indexData = await fs.readFile(indexPath, 'utf8');
+                    const index = JSON.parse(indexData);
+                    
+                    if (index.deployments && Array.isArray(index.deployments)) {
+                        for (const deployment of index.deployments) {
+                            if (deployment.deploymentId && !allDeploymentIds.has(deployment.deploymentId)) {
+                                allDeploymentIds.add(deployment.deploymentId);
+                                deploymentMap.set(deployment.deploymentId, deployment);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    // Skip invalid index files
+                    console.warn(`Failed to read index file ${indexFile}:`, error.message);
+                }
+            }
+            
+            // Convert to array and load full deployment details
+            const deploymentIds = Array.from(allDeploymentIds);
+            const fullDeployments = [];
+            
+            for (const deploymentId of deploymentIds) {
+                try {
+                    const deployment = await this.getDeploymentById(deploymentId);
+                    if (deployment) {
+                        fullDeployments.push(deployment);
+                    }
+                } catch (error) {
+                    // If full deployment not found, use summary from index
+                    const summary = deploymentMap.get(deploymentId);
+                    if (summary) {
+                        fullDeployments.push(summary);
+                    }
+                }
+            }
+            
+            // Sort by timestamp (newest first)
+            fullDeployments.sort((a, b) => {
+                const timeA = new Date(a.timestamp).getTime();
+                const timeB = new Date(b.timestamp).getTime();
+                return timeB - timeA;
+            });
+            
+            return fullDeployments;
         });
     }
 

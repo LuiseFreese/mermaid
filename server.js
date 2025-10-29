@@ -1,10 +1,19 @@
 /**
  * Root server entry point for Azure App Service
- * Redirects to the actual server in src/backend/server.js
+ * Redirects to the actual server in backend/server.js
  */
 
-// Change working directory to src for proper module resolution
-process.chdir(__dirname + '/src');
+// In Azure deployment: backend/ directory is at root level
+// In local dev: backend is at src/backend/
+const fs = require('fs');
+const path = require('path');
+
+// Detect deployment structure
+const backendPath = fs.existsSync(path.join(__dirname, 'backend'))
+  ? './backend/server.js'  // Azure deployment structure
+  : './src/backend/server.js';  // Local dev structure
+
+console.log(`🚀 Starting server from: ${backendPath}`);
 
 // Start the actual server
-require('./src/backend/server.js');
+require(backendPath);

@@ -134,6 +134,22 @@ const createMockParser = () => ({
     })
 });
 
+/**
+ * Creates a mock environment manager
+ * @returns {Object} Mock environment manager
+ */
+const createMockEnvironmentManager = () => ({
+    getEnvironmentConfig: jest.fn((envId) => ({
+        serverUrl: FIXTURES.config.serverUrl,  // Use consistent test fixture values
+        dataverseUrl: FIXTURES.config.serverUrl,
+        tenantId: FIXTURES.config.tenantId,
+        clientId: FIXTURES.config.clientId,
+        useManagedIdentity: FIXTURES.config.useManagedIdentity
+    })),
+    getEnvironment: jest.fn(),
+    initialize: jest.fn().mockResolvedValue(undefined)
+});
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -231,6 +247,7 @@ describe('DeploymentService', () => {
         const repositories = createMockRepositories();
         const services = createMockServices();
         const parser = createMockParser();
+        const environmentManager = createMockEnvironmentManager();
         const logger = global.testUtils?.createMockLogger() || {
             info: jest.fn(),
             error: jest.fn(),
@@ -242,6 +259,7 @@ describe('DeploymentService', () => {
             repositories,
             services,
             parser,
+            environmentManager,
             logger
         };
 
@@ -249,6 +267,7 @@ describe('DeploymentService', () => {
         deploymentService = new DeploymentService({
             dataverseRepository: repositories.dataverseRepo,
             configRepository: repositories.configRepo,
+            environmentManager,
             validationService: services.validationService,
             globalChoicesService: services.globalChoicesService,
             solutionService: services.solutionService,
@@ -270,6 +289,7 @@ describe('DeploymentService', () => {
         it('should initialize with required dependencies', () => {
             expect(deploymentService.dataverseRepository).toBe(mocks.repositories.dataverseRepo);
             expect(deploymentService.configRepository).toBe(mocks.repositories.configRepo);
+            expect(deploymentService.environmentManager).toBe(mocks.environmentManager);
             expect(deploymentService.validationService).toBe(mocks.services.validationService);
             expect(deploymentService.logger).toBe(mocks.logger);
         });
@@ -278,6 +298,7 @@ describe('DeploymentService', () => {
             expect(() => {
                 new DeploymentService({
                     configRepository: mocks.repositories.configRepo,
+                    environmentManager: mocks.environmentManager,
                     validationService: mocks.services.validationService,
                     logger: mocks.logger
                 });

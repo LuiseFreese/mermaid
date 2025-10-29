@@ -249,6 +249,10 @@ export const MainMenu: React.FC = () => {
         <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
           Powered by Microsoft Dataverse Web API • Azure Managed Identity • Mermaid.js
         </Text>
+        <br />
+        <Text size={100} style={{ color: tokens.colorNeutralForeground4, opacity: 0.5, fontSize: '10px', marginTop: '4px', display: 'block' }}>
+          Build: {import.meta.env.VITE_BUILD_TIME || 'Dev'}
+        </Text>
       </div>
     </div>
   );

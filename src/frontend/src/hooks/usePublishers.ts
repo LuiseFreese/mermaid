@@ -9,18 +9,25 @@ interface UsePublishersResult {
   refetch: () => Promise<void>;
 }
 
-export const usePublishers = (): UsePublishersResult => {
+export const usePublishers = (environmentId?: string): UsePublishersResult => {
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accounts, inProgress } = useMsal();
 
   const fetchPublishers = async () => {
+    // Don't fetch if no environment is selected
+    if (!environmentId) {
+      setPublishers([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
-      const data = await publisherService.getPublishers();
+      const data = await publisherService.getPublishers(environmentId);
       setPublishers(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch publishers';
@@ -35,11 +42,15 @@ export const usePublishers = (): UsePublishersResult => {
   };
 
   useEffect(() => {
-    // Only fetch publishers after authentication completes
-    if (accounts.length > 0 && inProgress === 'none') {
+    // Only fetch publishers after authentication completes and environment is selected
+    if (accounts.length > 0 && inProgress === 'none' && environmentId) {
       fetchPublishers();
+    } else if (!environmentId) {
+      // Clear publishers if no environment is selected
+      setPublishers([]);
+      setError(null);
     }
-  }, [accounts.length, inProgress]);
+  }, [accounts.length, inProgress, environmentId]);
 
   return {
     publishers,

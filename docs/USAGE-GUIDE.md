@@ -32,9 +32,11 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 
 ![Step 1 Upload](media/step-1-a-upload-file.png)
 
+- **Import**: You can also as an alternative choose from your already existing solutions in your Dataverse environment - either to copy the .mmd file or to deploy it again.
+
+![Step 1 Import](media/step-1-a-import-file.png)
+
 - **Real-time Parsing**: Immediate ERD structure analysis and entity detection
-
-
 - **Smart Validation**: Comprehensive validation with automatic error detection:
   - **CDM Detection**: Identifies entities matching Common Data Model (e.g., Account, Contact)
 
@@ -90,6 +92,106 @@ The application provides a **modern React wizard interface** with Fluent UI v9 c
 And finally 
 
 ![Success](media/step-4-success.png)
+
+## Deployment History & Multi-Environment Management
+
+After deploying your solutions, you can track and manage them across multiple environments using the Deployment History feature.
+
+### Viewing Deployment History
+
+1. **Open History Modal**: Click the "View History" button in the application header
+2. **Environment Filter**: Select which environment to view:
+   - **All Environments**: See deployments across all configured environments
+   - **Specific Environment**: Filter by Dev, Test, or Production environment
+3. **Environment Badges**: Each deployment shows a colored badge indicating its environment:
+   - 🔵 **Blue**: Development environment
+   - 🟣 **Purple**: Test environment  
+   - 🟢 **Green**: Production environment
+
+### Deployment Details
+
+Each deployment record shows:
+- **Solution Name**: The Dataverse solution that was created
+- **Environment**: Where the solution was deployed (with colored badge)
+- **Status**: Success, Failed, or Partial
+- **Timestamp**: When the deployment occurred
+- **Solution Link**: Direct link to view the solution in Power Platform
+- **Deployment Details**: Expandable section showing:
+  - Deployed entities and their properties
+  - Relationships created
+  - Global choices used
+  - Any errors or warnings
+
+### Rolling Back Deployments
+
+You can safely reverse a deployment and remove it from Dataverse:
+
+#### Eligibility Requirements
+- Deployment must have status "success" or "partial"
+- No dependent deployments exist
+- Solution components must be removable
+
+#### How to Rollback
+
+1. **Select Deployment**: In the deployment history, find the deployment you want to rollback
+2. **Check Environment**: Verify the environment badge shows the correct target environment
+3. **Click Rollback**: Click the "Rollback" button next to the deployment
+4. **Confirm**: Confirm the rollback operation
+5. **Monitor Progress**: Watch the real-time progress tracker showing:
+   - Relationship removal
+   - Entity deletion
+   - Global choice cleanup
+   - Solution removal
+   - Publisher cleanup (if applicable)
+
+#### What Gets Removed
+
+The rollback process removes components in this order:
+1. **Relationships**: All relationships between entities
+2. **Custom Entities**: Tables created during deployment (preserves data where possible)
+3. **Global Choices**: Choice sets that were created
+4. **Solution**: The Dataverse solution (if no other components remain)
+5. **Publisher**: The publisher (if no other solutions use it)
+
+#### Multi-Environment Rollback
+
+The rollback system is **environment-aware**:
+- Rollback operations target the **specific environment** where the deployment was created
+- You can safely rollback from Dev without affecting Test or Production
+- Each environment maintains its own deployment history
+- Rollback buttons only appear for eligible deployments in each environment
+
+### Multi-Environment Workflow Example
+
+**Typical deployment workflow:**
+
+1. **Development Phase**:
+   - Deploy ERD to Dev environment
+   - Test and iterate
+   - View Dev deployments: Filter by "Development" in history
+
+2. **Testing Phase**:
+   - Deploy same ERD to Test environment
+   - Perform validation
+   - View Test deployments: Filter by "Test" in history
+
+3. **Production Deployment**:
+   - Deploy verified ERD to Production
+   - Monitor in production
+   - View Prod deployments: Filter by "Production" in history
+
+4. **Rollback if Needed**:
+   - If issues found in Test, rollback Test deployment
+   - Dev and Production remain unaffected
+   - Fix issues and redeploy to Test
+
+### Best Practices
+
+- **Use Environment Filters**: Switch between environments to see environment-specific deployments
+- **Check Environment Before Rollback**: Always verify you're rolling back from the correct environment
+- **Monitor Progress**: Watch the progress tracker to ensure rollback completes successfully
+- **Review Dependencies**: Before rollback, check if other solutions depend on your entities
+- **Backup Data**: If your entities contain important data, export it before rollback
 
 ## Intelligent Validation & Auto-Corrections
 

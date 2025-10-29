@@ -13,10 +13,13 @@ export interface Solution {
 }
 
 class SolutionService {
-  async getSolutions(): Promise<Solution[]> {
+  async getSolutions(environmentId?: string): Promise<Solution[]> {
     try {
       // Use authenticated apiClient instead of raw fetch
-      const response = await apiClient.get('/solutions');
+      const params = environmentId ? { environmentId } : {};
+      console.log('🔍 SolutionService.getSolutions called with:', { environmentId, params });
+      const response = await apiClient.get('/solutions', { params });
+      console.log('🔍 SolutionService.getSolutions response:', response.data);
       
       if (response.data.success) {
         return response.data.solutions || [];

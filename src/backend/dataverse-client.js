@@ -3209,12 +3209,26 @@ class DataverseClient {
           results.stepDetails.push(successMsg);
           
         } catch (error) {
-          const errorMsg = `❌ CRITICAL: Failed to delete solution ${deploymentData.solutionInfo.solutionName}: ${error.message}`;
-          this._err(errorMsg);
-          results.errors.push(errorMsg);
+          // Check if error is "solution doesn't exist" - treat as already deleted (idempotent)
+          const isNotFound = error.message.includes('Does Not Exist') || 
+                            error.message.includes('not found') ||
+                            error.message.includes('404') ||
+                            error.statusCode === 404;
           
-          // HARD STOP: If solution can't be deleted, publisher deletion will likely fail
-          throw new Error(`Rollback stopped: Cannot delete solution '${deploymentData.solutionInfo.solutionName}'. Error: ${error.message}`);
+          if (isNotFound) {
+            const alreadyDeletedMsg = `✅ Solution already deleted (idempotent): ${deploymentData.solutionInfo.solutionName}`;
+            this._log(alreadyDeletedMsg);
+            results.stepDetails.push(alreadyDeletedMsg);
+            results.solutionDeleted = true; // Mark as success since it's already gone
+          } else {
+            // Other errors are critical - stop rollback
+            const errorMsg = `❌ CRITICAL: Failed to delete solution ${deploymentData.solutionInfo.solutionName}: ${error.message}`;
+            this._err(errorMsg);
+            results.errors.push(errorMsg);
+            
+            // HARD STOP: If solution can't be deleted, publisher deletion will likely fail
+            throw new Error(`Rollback stopped: Cannot delete solution '${deploymentData.solutionInfo.solutionName}'. Error: ${error.message}`);
+          }
         }
       } else {
         if (!rollbackConfig.solution) {

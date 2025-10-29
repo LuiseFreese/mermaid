@@ -74,9 +74,9 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
   const [environmentsLoading, setEnvironmentsLoading] = useState(false);
   const [environmentsError, setEnvironmentsError] = useState<string | null>(null);
   
-  // Use the custom hooks for publisher and solution data
-  const { publishers, loading: loadingPublishers, error: publisherError, refetch: refetchPublishers } = usePublishers();
-  const { solutions, loading: loadingSolutions, error: solutionError, refetch: refetchSolutions } = useSolutions();
+  // Use the custom hooks for publisher and solution data (with environment-specific loading)
+  const { publishers, loading: loadingPublishers, error: publisherError, refetch: refetchPublishers } = usePublishers(selectedEnvironment?.id);
+  const { solutions, loading: loadingSolutions, error: solutionError, refetch: refetchSolutions } = useSolutions(selectedEnvironment?.id);
 
   // Reset local search state when there's no wizard content (fresh start)
   useEffect(() => {

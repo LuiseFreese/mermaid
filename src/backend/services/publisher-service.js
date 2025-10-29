@@ -14,11 +14,12 @@ class PublisherService extends BaseService {
 
     /**
      * Get list of all publishers
+     * @param {Object} environmentConfig - Optional environment-specific config
      * @returns {Promise<Object>} Publishers result
      */
-    async getPublishers() {
+    async getPublishers(environmentConfig = null) {
         return this.executeOperation('getPublishers', async () => {
-            const result = await this.dataverseRepository.getPublishers();
+            const result = await this.dataverseRepository.getPublishers(environmentConfig);
             
             if (result.success) {
                 return this.createSuccess({

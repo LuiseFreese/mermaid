@@ -192,7 +192,7 @@ export const ValidationResultsDisplay: React.FC<ValidationResultsDisplayProps> =
                 const fixableWarnings = validationResults.warnings.filter((w: any) => 
                   !w.autoFixed && w.autoFixable && !fixedIssues.has(w.id)
                 );
-                const shouldShowButton = fixableWarnings.length > 1;
+                const shouldShowButton = fixableWarnings.length >= 1;
                 
                 console.log('🔧 DEBUG: Apply All Fixes button state:', {
                   totalWarnings: validationResults.warnings.length,

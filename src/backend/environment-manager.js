@@ -12,8 +12,24 @@ class EnvironmentManager {
   constructor() {
     this.environments = new Map();
     this.defaultEnvironmentId = null;
-    this.configPath = path.join(process.cwd(), 'data', 'environments.json');
+    
+    // Try multiple possible paths for environments.json
+    // 1. Development: project_root/data/environments.json (when cwd is project root)
+    // 2. Azure deployment: /home/site/wwwroot/data/environments.json (absolute Azure path)
+    // 3. Relative to backend: ../data/environments.json (one level up from backend folder)
+    // 4. Same directory as this file: ./data/environments.json (if deployed flat)
+    const possiblePaths = [
+      path.join(process.cwd(), 'data', 'environments.json'),  // Current working directory
+      '/home/site/wwwroot/data/environments.json',  // Azure App Service absolute path
+      path.join(__dirname, '..', 'data', 'environments.json'),  // One level up from backend folder
+      path.join(__dirname, 'data', 'environments.json')  // Same directory as backend
+    ];
+    
+    this.configPath = possiblePaths[0];  // Default to first path, will try all in loadConfiguration
+    this.possibleConfigPaths = possiblePaths;
     this.initialized = false;
+    
+    console.log('🔍 EnvironmentManager: Initialized with possible config paths:', possiblePaths);
   }
 
   /**
@@ -38,22 +54,39 @@ class EnvironmentManager {
    * Load environment configuration from file
    */
   async loadConfiguration() {
-    try {
-      const configData = await fs.readFile(this.configPath, 'utf8');
-      const config = JSON.parse(configData);
+    let lastError = null;
+    
+    // Try all possible configuration paths
+    for (const configPath of this.possibleConfigPaths) {
+      try {
+        console.log(`🔍 EnvironmentManager: Trying to load config from: ${configPath}`);
+        const configData = await fs.readFile(configPath, 'utf8');
+        const config = JSON.parse(configData);
 
-      this.environments.clear();
-      config.environments.forEach(env => {
-        this.environments.set(env.id, {
-          ...env,
-          lastConnected: env.lastConnected ? new Date(env.lastConnected) : null
+        this.environments.clear();
+        config.environments.forEach(env => {
+          this.environments.set(env.id, {
+            ...env,
+            lastConnected: env.lastConnected ? new Date(env.lastConnected) : null
+          });
         });
-      });
 
-      this.defaultEnvironmentId = config.defaultEnvironmentId;
-    } catch (error) {
-      throw new Error(`Failed to load environment configuration: ${error.message}`);
+        this.defaultEnvironmentId = config.defaultEnvironmentId;
+        this.configPath = configPath;  // Remember the successful path
+        
+        console.log(`✅ EnvironmentManager: Successfully loaded config from: ${configPath}`);
+        console.log(`   └─ Loaded ${this.environments.size} environment(s)`);
+        return;  // Success! Exit the function
+        
+      } catch (error) {
+        lastError = error;
+        console.log(`⚠️  EnvironmentManager: Config not found at ${configPath}: ${error.message}`);
+        // Continue trying next path
+      }
     }
+    
+    // If we get here, all paths failed
+    throw new Error(`Failed to load environment configuration from any path. Last error: ${lastError?.message}`);
   }
 
   /**
@@ -116,6 +149,27 @@ class EnvironmentManager {
    */
   getEnvironment(environmentId) {
     return this.environments.get(environmentId);
+  }
+
+  /**
+   * Get environment by URL
+   * @param {string} url - Environment URL to search for
+   * @returns {Object|null} Environment object or null if not found
+   */
+  getEnvironmentByUrl(url) {
+    if (!url) return null;
+    
+    // Normalize URL for comparison (remove trailing slash)
+    const normalizedUrl = url.replace(/\/$/, '').toLowerCase();
+    
+    for (const env of this.environments.values()) {
+      const envUrl = env.url.replace(/\/$/, '').toLowerCase();
+      if (envUrl === normalizedUrl) {
+        return env;
+      }
+    }
+    
+    return null;
   }
 
   /**
@@ -217,7 +271,8 @@ class EnvironmentManager {
     }
 
     return {
-      dataverseUrl: environment.url,
+      serverUrl: environment.url,  // DataverseClient expects 'serverUrl', not 'dataverseUrl'
+      dataverseUrl: environment.url,  // Keep for backward compatibility
       tenantId: process.env.TENANT_ID || '',
       clientId: process.env.CLIENT_ID || '',
       clientSecret: process.env.CLIENT_SECRET || '',

@@ -37,23 +37,20 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
       // Dark theme configuration - aligned with Fluent UI dark colors
       return {
         startOnLoad: true,
-        theme: 'base' as const,
+        theme: 'dark' as const,  // Use Mermaid's built-in dark theme
         securityLevel: 'loose' as const,
         themeVariables: {
-          // Dark theme entity styling
+          // Override dark theme colors for better contrast
+          darkMode: true,
           primaryColor: '#2d2d30',              // Dark surface for entity headers
           primaryBorderColor: '#0078d4',        // Fluent UI primary blue for borders
           lineColor: '#0078d4',                 // Relationship lines in blue
-          
-          // Dark backgrounds
-          secondaryColor: '#1e1e1e',            // Main dark background
-          tertiaryColor: '#3e3e42',             // Slightly lighter dark surface
-          background: '#1e1e1e',                // Dark diagram background
-          
-          // Light text for dark theme
           primaryTextColor: '#ffffff',          // White text
           secondaryTextColor: '#cccccc',        // Light gray text
-          tertiaryTextColor: '#ffffff'          // White text
+          
+          // Try to control attribute backgrounds
+          attributeFillOdd: '#3e3e42',          // Lighter dark for odd rows
+          attributeFillEven: '#2d2d30'          // Darker for even rows
         }
       };
     } else if (effectiveTheme === 'pink') {
@@ -200,6 +197,18 @@ export const useMermaidRenderer = (): UseMermaidRendererResult => {
 
         // Insert the rendered SVG
         elementRef.current.innerHTML = svg;
+        
+        // Apply custom color overrides for pink theme
+        if (effectiveTheme === 'pink') {
+          const svgElement = elementRef.current.querySelector('svg');
+          if (svgElement) {
+            // Apply pink theme color adjustments to relationship lines
+            const lines = svgElement.querySelectorAll('.er.relationshipLine');
+            lines.forEach(line => {
+              (line as SVGElement).setAttribute('stroke', '#e91e63');
+            });
+          }
+        }
         
         setLastRenderedContent(content);
 

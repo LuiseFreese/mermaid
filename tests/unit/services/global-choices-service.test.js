@@ -95,19 +95,37 @@ const createMockRepository = () => ({
 });
 
 /**
+ * Creates a mock environment manager
+ * @returns {Object} Mock environment manager
+ */
+const createMockEnvironmentManager = () => ({
+    getEnvironmentConfig: jest.fn((envId) => ({
+        serverUrl: `https://test-${envId || 'default'}.crm4.dynamics.com`,
+        dataverseUrl: `https://test-${envId || 'default'}.crm4.dynamics.com`,
+        tenantId: 'test-tenant-id',
+        clientId: 'test-client-id',
+        useManagedIdentity: true
+    })),
+    getEnvironment: jest.fn(),
+    initialize: jest.fn().mockResolvedValue(undefined)
+});
+
+/**
  * Creates service with mocks
  * @returns {Object} Service instance and mocks
  */
 const createService = () => {
     const mockLogger = createMockLogger();
     const mockDataverseRepository = createMockRepository();
+    const mockEnvironmentManager = createMockEnvironmentManager();
 
     const service = new GlobalChoicesService({
         dataverseRepository: mockDataverseRepository,
+        environmentManager: mockEnvironmentManager,
         logger: mockLogger
     });
 
-    return { service, mockDataverseRepository, mockLogger };
+    return { service, mockDataverseRepository, mockEnvironmentManager, mockLogger };
 };
 
 /**
@@ -129,10 +147,11 @@ const setupDuplicateCheck = (mockRepo, existingChoices = []) => {
 describe('GlobalChoicesService', () => {
     let service;
     let mockDataverseRepository;
+    let mockEnvironmentManager;
     let mockLogger;
 
     beforeEach(() => {
-        ({ service, mockDataverseRepository, mockLogger } = createService());
+        ({ service, mockDataverseRepository, mockEnvironmentManager, mockLogger } = createService());
     });
 
     afterEach(() => {
@@ -170,9 +189,10 @@ describe('GlobalChoicesService', () => {
             expect(result).toBeDefined();
             expect(result.success).toBe(true);
 
-            // Verify repository was called with correct options
+            // Verify repository was called with correct options (queryOptions, config)
             expect(mockDataverseRepository.getGlobalChoiceSets).toHaveBeenCalledWith(
-                FIXTURES.queryOptions.default
+                FIXTURES.queryOptions.default,
+                null  // config is null when no environmentId provided
             );
 
             // Verify choices were returned (flexible structure check)
@@ -188,7 +208,8 @@ describe('GlobalChoicesService', () => {
 
             expect(result).toBeDefined();
             expect(mockDataverseRepository.getGlobalChoiceSets).toHaveBeenCalledWith(
-                FIXTURES.queryOptions.custom
+                FIXTURES.queryOptions.custom,
+                null  // config is null when no environmentId provided
             );
         });
 

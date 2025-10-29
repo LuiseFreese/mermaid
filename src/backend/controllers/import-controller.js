@@ -10,6 +10,7 @@ class ImportController extends BaseController {
         super();
         this.dataverseExtractorService = dependencies.dataverseExtractorService;
         this.validationService = dependencies.validationService;
+        this.environmentManager = dependencies.environmentManager;
     }
 
     /**
@@ -36,14 +37,35 @@ class ImportController extends BaseController {
                 return this.sendBadRequest(res, 'Environment URL is required');
             }
 
-            this.log('Extracting solution from Dataverse', { environmentUrl, solutionName, authMethod });
+            // Lookup environment and get full config by URL
+            let environmentConfig = null;
+            if (this.environmentManager) {
+                try {
+                    const environment = this.environmentManager.getEnvironmentByUrl(environmentUrl);
+                    if (environment) {
+                        environmentConfig = this.environmentManager.getEnvironmentConfig(environment.id);
+                        this.log('Found environment config for URL', { 
+                            environmentId: environment.id, 
+                            environmentName: environment.name,
+                            environmentUrl: environment.url,
+                            configServerUrl: environmentConfig.dataverseUrl
+                        });
+                    } else {
+                        this.log('No environment config found for URL', { environmentUrl });
+                    }
+                } catch (error) {
+                    this.log('Error looking up environment config', { error: error.message });
+                }
+            }
 
-            // Extract solution using the service
+            this.log('Extracting solution from Dataverse', { environmentUrl, solutionName, authMethod, hasEnvironmentConfig: !!environmentConfig });
+
+            // Extract solution using the service, passing environment config if available
             const extractionResult = await this.dataverseExtractorService.extractSolution({
                 environmentUrl,
                 solutionName,
                 authMethod
-            });
+            }, environmentConfig);
 
             // Validate the generated ERD
             let validationResult = null;

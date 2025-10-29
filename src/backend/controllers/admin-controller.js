@@ -5,11 +5,13 @@
 const { BaseController } = require('./base-controller');
 
 class AdminController extends BaseController {
-    constructor(publisherService, globalChoicesService, solutionService) {
+    constructor(publisherService, globalChoicesService, solutionService, options = {}) {
         super();
         this.publisherService = publisherService;
         this.globalChoicesService = globalChoicesService;
         this.solutionService = solutionService;
+        this.environmentManager = options.environmentManager;
+        this.dataverseClientFactory = options.dataverseClientFactory;
         
         // Validate dependencies
         if (!this.publisherService || !this.globalChoicesService || !this.solutionService) {
@@ -19,13 +21,54 @@ class AdminController extends BaseController {
 
     /**
      * Get list of publishers
-     * GET /api/publishers
+     * GET /api/publishers?environmentId=<id>
      */
     async getPublishers(req, res) {
         this.log('getPublishers', { method: req.method, url: req.url });
 
         try {
-            const result = await this.publisherService.getPublishers();
+            const url = require('url');
+            const urlParts = url.parse(req.url, true);
+            
+            console.log('🔍 AdminController.getPublishers - Request URL:', req.url);
+            console.log('🔍 AdminController.getPublishers - Query params:', urlParts.query);
+            
+            // Extract environmentId from query parameters
+            const environmentId = urlParts.query.environmentId;
+            console.log('🔍 AdminController.getPublishers - environmentId:', environmentId);
+
+            // If environmentId is provided, get environment-specific config
+            let result;
+            if (environmentId && this.environmentManager) {
+                console.log('🎯 Using environment-specific client for:', environmentId);
+                
+                // Get environment configuration
+                const environment = this.environmentManager.getEnvironment(environmentId);
+                if (!environment) {
+                    console.error('❌ Environment not found:', environmentId);
+                    return this.sendError(res, 404, `Environment not found: ${environmentId}`);
+                }
+                
+                console.log('✅ Found environment:', environment.name, environment.url);
+
+                // Get environment configuration
+                const envConfig = this.environmentManager.getEnvironmentConfig(environmentId);
+                console.log('✅ Environment config:', { serverUrl: envConfig.serverUrl });
+                
+                // Get publishers with environment-specific config
+                result = await this.publisherService.getPublishers(envConfig);
+            } else {
+                console.log('⚠️  No environmentId provided - returning empty publishers list');
+                console.log('   Multi-environment mode requires an environmentId parameter');
+                // In multi-environment mode, environment selection is required
+                result = { 
+                    success: true, 
+                    data: { publishers: [] },
+                    message: 'No environment selected' 
+                };
+            }
+            
+            console.log('📊 Publishers result:', result.success, 'Publishers count:', result.data?.publishers?.length || 0);
             
             if (result.success) {
                 this.sendSuccess(res, { 
@@ -38,6 +81,7 @@ class AdminController extends BaseController {
             }
 
         } catch (error) {
+            console.error('❌ AdminController.getPublishers error:', error);
             this.sendInternalError(res, 'Failed to get publishers', error);
         }
     }
@@ -87,7 +131,19 @@ class AdminController extends BaseController {
             const url = require('url');
             const urlParts = url.parse(req.url, true);
             
+            // Extract environmentId from query params (required for multi-environment support)
+            const environmentId = urlParts.query.environmentId;
+            
+            if (!environmentId) {
+                return this.sendError(res, 400, 'Missing required parameter: environmentId', {
+                    all: [],
+                    grouped: { custom: [], builtIn: [] },
+                    summary: { total: 0, custom: 0, builtIn: 0 }
+                });
+            }
+            
             const options = {
+                environmentId,  // Pass environmentId to service
                 includeBuiltIn: urlParts.query.includeBuiltIn !== 'false',
                 includeCustom: urlParts.query.includeCustom !== 'false',
                 limit: parseInt(urlParts.query.limit) || undefined,
@@ -181,12 +237,15 @@ class AdminController extends BaseController {
 
     /**
      * Get list of solutions
-     * GET /api/solutions
+     * GET /api/solutions?environmentId=<id>
      */
     async getSolutions(req, res) {
         try {
             const url = require('url');
             const urlParts = url.parse(req.url, true);
+            
+            console.log('🔍 AdminController.getSolutions - Request URL:', req.url);
+            console.log('🔍 AdminController.getSolutions - Query params:', urlParts.query);
             
             const options = {
                 includeManaged: urlParts.query.includeManaged === 'true',
@@ -194,15 +253,58 @@ class AdminController extends BaseController {
                 limit: parseInt(urlParts.query.limit) || undefined
             };
 
-            const result = await this.solutionService.getSolutions(options);
+            // Extract environmentId from query parameters
+            const environmentId = urlParts.query.environmentId;
+            console.log('🔍 AdminController.getSolutions - environmentId:', environmentId);
+
+            // If environmentId is provided, get environment-specific config
+            let result;
+            if (environmentId && this.environmentManager) {
+                console.log('🎯 Using environment-specific client for:', environmentId);
+                
+                // Get environment configuration
+                const environment = this.environmentManager.getEnvironment(environmentId);
+                if (!environment) {
+                    console.error('❌ Environment not found:', environmentId);
+                    return this.sendError(res, 404, `Environment not found: ${environmentId}`);
+                }
+                
+                console.log('✅ Found environment:', environment.name, environment.url);
+
+                // Get environment configuration
+                const envConfig = this.environmentManager.getEnvironmentConfig(environmentId);
+                console.log('✅ Environment config:', { serverUrl: envConfig.serverUrl });
+                
+                // Pass environment config through options
+                const optionsWithEnv = {
+                    ...options,
+                    environmentConfig: envConfig
+                };
+
+                // Get solutions with environment-specific config
+                result = await this.solutionService.getSolutions(optionsWithEnv);
+            } else {
+                console.log('⚠️  No environmentId provided - returning empty solutions list');
+                console.log('   Multi-environment mode requires an environmentId parameter');
+                // In multi-environment mode, environment selection is required
+                result = { 
+                    success: true, 
+                    data: [],
+                    message: 'No environment selected' 
+                };
+            }
+            
+            console.log('📊 Solutions result:', result.success, 'Solutions count:', result.data?.length || 0);
             
             if (result.success) {
-                this.sendSuccess(res, result.data);
+                // Send response in the format frontend expects: { success: true, solutions: [...] }
+                this.sendSuccess(res, { solutions: result.data });
             } else {
                 this.sendError(res, 500, result.message);
             }
 
         } catch (error) {
+            console.error('❌ AdminController.getSolutions error:', error);
             this.sendInternalError(res, 'Failed to get solutions', error);
         }
     }

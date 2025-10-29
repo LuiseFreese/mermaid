@@ -404,66 +404,120 @@ export const App: React.FC = () => {
 
 ### 6. Deployment History Feature (`src/frontend/src/components/deployment-history/`)
 
-**Purpose**: Comprehensive deployment tracking and management system that provides users with detailed visibility into their Dataverse solution deployments.
+**Purpose**: Comprehensive deployment tracking and management system that provides users with detailed visibility into their Dataverse solution deployments **across multiple environments**.
 
 **Technology Stack**:
 - **React 18** with TypeScript and Fluent UI v9 components
 - **Modal Dialog Interface** with expandable accordions for deployment details
+- **Multi-Environment Support** with environment filtering and colored indicators
 - **API Integration** with backend deployment history service
 - **Power Platform Integration** with direct solution links
 
 **Key Features**:
+- **Multi-Environment Support**: Filter and view deployments across multiple Dataverse environments
+- **Environment Selector**: Dropdown with colored environment indicators (dev, test, prod)
+- **Environment-Specific Filtering**: View deployments for individual environments or all environments combined
+- **Colored Environment Badges**: Visual indicators showing which environment each deployment belongs to
 - **Complete Deployment Tracking**: Records all deployments with timestamps, status, and detailed entity information
 - **Solution Links**: Direct links to Power Platform solutions with dynamic environment ID configuration
 - **Deployment Details**: Expandable accordions showing deployed entities, columns, and relationships
 - **Status Visualization**: Clear success/failure indicators with detailed error information
 - **Table Styling**: Alternating row backgrounds and professional column formatting
-- **Environment Integration**: Configurable Power Platform environment ID for accurate solution URLs
 
-**Component Architecture**:
+**Multi-Environment Architecture**:
 ```typescript
-// Main deployment history modal component
+// Main deployment history modal component with environment support
 export const DeploymentHistory: React.FC = () => {
-  // Solution URL generation with environment ID
-  const generateSolutionUrl = (solutionId: string) => {
-    if (!config?.powerPlatformEnvironmentId) {
-      throw new Error('Power Platform Environment ID not configured');
-    }
-    return `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutions/${solutionId}`;
-  };
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
+  const [environments, setEnvironments] = useState<Environment[]>([]);
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
   
-  // Deployment history display with accordions
+  // Load environments on mount
+  useEffect(() => {
+    const loadEnvironments = async () => {
+      const response = await fetch('/api/environments');
+      const data = await response.json();
+      setEnvironments(data.environments);
+    };
+    loadEnvironments();
+  }, []);
+  
+  // Load deployments filtered by selected environment
+  useEffect(() => {
+    const loadDeployments = async () => {
+      const params = selectedEnvironment !== 'all' 
+        ? `?environmentId=${selectedEnvironment}` 
+        : '';
+      const response = await fetch(`/api/deployments${params}`);
+      const data = await response.json();
+      setDeployments(data.deployments);
+    };
+    loadDeployments();
+  }, [selectedEnvironment]);
+  
+  // Environment selector with colored options
   return (
     <Dialog modal open={isOpen} onOpenChange={onOpenChange}>
-      <DialogSurface style={{ maxWidth: '90vw', width: '1200px' }}>
-        {/* Deployment history table with solution links */}
-        {/* Expandable deployment details with entity information */}
+      <DialogSurface>
+        <Select value={selectedEnvironment} onChange={handleEnvironmentChange}>
+          <option value="all">All Environments</option>
+          {environments.map(env => (
+            <option key={env.id} value={env.id}>
+              <Badge color={getEnvironmentColor(env.type)} />
+              {env.name}
+            </option>
+          ))}
+        </Select>
+        
+        {/* Deployment table with environment badges */}
+        <Table>
+          {deployments.map(deployment => (
+            <TableRow key={deployment.id}>
+              <TableCell>
+                <Badge color={getEnvironmentColor(deployment.environmentType)}>
+                  {deployment.environmentName}
+                </Badge>
+              </TableCell>
+              {/* Other deployment details */}
+            </TableRow>
+          ))}
+        </Table>
       </DialogSurface>
     </Dialog>
   );
 };
 ```
 
-**Backend Integration**:
-- **DeploymentController**: Handles deployment history API endpoints
-- **DeploymentHistoryService**: Manages deployment data persistence and retrieval
-- **Configuration API**: Provides Power Platform environment ID for solution links
-- **File-based Storage**: JSON files for deployment tracking with an environment-specific organization
+**Backend Multi-Environment Support**:
+- **Environment-Specific Storage**: Deployment history stored in separate JSON files per environment
+- **Filtered Queries**: API endpoint supports `?environmentId=xxx` query parameter
+- **Environment Metadata**: Each deployment record includes `environmentId`, `environmentName`, and `environmentUrl`
+- **Merged View**: "All Environments" option combines deployments from all environment index files
 
-**Configuration Management**:
-- **Environment ID Setup**: Configured via PowerShell scripts during Azure deployment
-- **API Configuration**: Backend `/api/config` endpoint provides frontend with environment settings
-- **Dynamic Solution Links**: Real-time URL generation based on the configured environment
-- **Security Compliance**: No hardcoded environment-specific values in source code
+**API Endpoints**:
+```
+GET /api/environments                          # List all configured environments
+GET /api/deployments                           # Get all deployments (merged from all environments)
+GET /api/deployments?environmentId={id}        # Get deployments for specific environment
+GET /api/config                                # Get Power Platform environment configuration
+```
+
+**Environment Color Coding**:
+- **Development**: Blue badges and indicators
+- **Test**: Purple badges and indicators  
+- **Production**: Green badges and indicators
+- **Other**: Gray badges and indicators
 
 **User Experience Features**:
+- **Environment Filtering**: Quick switching between environments with visual feedback
+- **Colored Indicators**: Instant visual recognition of deployment environment
 - **Professional Table Design**: Alternating row backgrounds and bold column headers
 - **Expandable Details**: Deployment and entity accordions for comprehensive information viewing
 - **Direct Navigation**: Solution links open Power Platform in new tabs for seamless workflow
 - **Responsive Design**: Modal scales appropriately for different screen sizes
 - **Loading States**: Proper loading indicators during data fetching
 
-This deployment history system provides enterprise-grade deployment tracking with seamless Power Platform integration, enabling users to effectively manage and monitor their Dataverse solution deployments.
+This deployment history system provides enterprise-grade deployment tracking with **multi-environment support** and seamless Power Platform integration, enabling users to effectively manage and monitor their Dataverse solution deployments across development, test, and production environments.
 
 ## FileUploadStep Modular Architecture
 
@@ -1295,63 +1349,156 @@ POST /api/upload
 
 ### Rollback System
 
-**Purpose**: Comprehensive rollback functionality that allows users to safely reverse Dataverse deployments with step-by-step progress tracking matching the deployment experience.
+**Purpose**: Comprehensive rollback functionality that allows users to safely reverse Dataverse deployments with step-by-step progress tracking matching the deployment experience, **with full multi-environment support**.
 
 **Key Features**:
+- **Multi-Environment Rollback**: Delete deployments from the correct Dataverse environment
+- **Environment-Aware Operations**: Automatically routes rollback to the environment where deployment was created
 - **Enhanced Progress Tracking**: Real-time step-by-step progress indicators with pink pulsing animations
 - **Safe Rollback Operations**: Validates rollback eligibility and preserves data integrity
 - **Dependency-Aware Deletion**: Gracefully handles entities with dependencies - continues rollback instead of failing, skipping blocked entities and providing detailed reporting
 - **Comprehensive Component Removal**: Handles entities, relationships, global choices, solutions, and publishers
 - **Retry Logic**: Robust handling of Dataverse API concurrency conflicts
-- **Deployment History Integration**: Seamless rollback initiation from deployment history modal
+- **Deployment History Integration**: Seamless rollback initiation from deployment history modal with environment context
 
-**Rollback Architecture**:
+**Multi-Environment Rollback Architecture**:
 
 ```mermaid
 graph TD
-  %% root-level
-  A[src]
-
-  %% backend
-  subgraph B[backend/services/]
-    B1[rollback-service.js<br/>Rollback orchestration<br/>+ ProgressTracker integration]
-    B2[rollback-status-tracker.js<br/>Real-time rollback status tracking]
-    subgraph BC[controllers/]
-      BC1[rollback-controller.js<br/>HTTP endpoints for rollback & status]
-    end
+  %% Frontend
+  subgraph F[Frontend]
+    F1[DeploymentHistory.tsx<br/>User selects deployment to rollback<br/>Passes environmentId to API]
   end
 
-  %% frontend
-  subgraph F[frontend/src/components/]
-    subgraph F1[deployment-history/]
-      F1a[DeploymentHistory.tsx<br/>Rollback initiation & progress display]
-    end
-    subgraph F2[common/]
-      F2a[EnhancedProgress.tsx<br/>Shared progress component]
-    end
+  %% Backend API
+  subgraph B[Backend API]
+    BC[rollback-controller.js<br/>Receives environmentId<br/>Routes to correct environment]
   end
 
-  %% relationships
-  F1a -->|"calls API"| BC1
-  BC1 -->|"uses"| B1
-  B1 -->|"updates"| B2
-  F1a -->|"renders"| F2a
-  F2a -->|"visualizes status from"| B2
+  %% Services
+  subgraph S[Services]
+    RS[rollback-service.js<br/>Uses environmentId to get<br/>correct Dataverse client]
+    ES[environment-service.js<br/>Provides environment config]
+    DS[dataverse-client-factory.js<br/>Creates client for target env]
+  end
 
+  %% Dataverse Environments
+  subgraph DV[Dataverse Environments]
+    DV1[Dev Environment<br/>Rollback operations]
+    DV2[Test Environment<br/>Rollback operations]
+    DV3[Prod Environment<br/>Rollback operations]
+  end
+
+  F1 -->|"POST /api/rollback/{id}/execute<br/>{ environmentId: 'dev-123' }"| BC
+  BC -->|"Gets environment config"| ES
+  BC -->|"Creates client"| DS
+  BC -->|"Executes rollback"| RS
+  RS -->|"Deletes from correct env"| DV1
+  RS -->|"Deletes from correct env"| DV2
+  RS -->|"Deletes from correct env"| DV3
 ```
 
-**Rollback Process Flow**:
+**Environment-Aware Rollback Flow**:
+
+1. **User Action**: User clicks rollback button in deployment history modal
+2. **Environment Context**: Selected environment ID is passed to rollback API
+3. **Environment Resolution**: Backend retrieves full environment configuration
+4. **Client Creation**: Dataverse client created for the target environment
+5. **Rollback Execution**: All operations execute against the correct environment
+6. **History Update**: Deployment status updated in environment-specific history file
+
+**API Endpoint with Environment Support**:
+
+```typescript
+// Rollback controller - accepts environmentId
+POST /api/rollback/:deploymentId/execute
+Body: {
+  environmentId: "dev-princess-123",  // ID of target environment
+  confirmed: true
+}
+
+// Controller extracts environment and creates client
+const rollbackController = {
+  async executeRollback(req, res) {
+    const { deploymentId } = req.params;
+    const { environmentId, confirmed } = req.body;
+    
+    // Get environment configuration
+    const environment = environmentService.getEnvironment(environmentId);
+    if (!environment) {
+      return res.status(404).json({ error: 'Environment not found' });
+    }
+    
+    // Create Dataverse client for this environment
+    const dataverseClient = await dataverseClientFactory.createClient(
+      environment.url,
+      environment.clientId,
+      environment.clientSecret,
+      environment.tenantId
+    );
+    
+    // Execute rollback using environment-specific client
+    const result = await rollbackService.executeRollback(
+      deploymentId,
+      dataverseClient,
+      confirmed
+    );
+    
+    res.json(result);
+  }
+};
+```
+
+**Frontend Integration with Environment**:
+
+```typescript
+// DeploymentHistory.tsx - passes environment to rollback
+const handleRollback = async (deployment: Deployment) => {
+  const confirmed = window.confirm(
+    `Rollback deployment "${deployment.solutionName}" from ${deployment.environmentName}?`
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(
+      `/api/rollback/${deployment.id}/execute`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          environmentId: deployment.environmentId,  // Pass environment
+          confirmed: true
+        })
+      }
+    );
+    
+    const result = await response.json();
+    
+    // Refresh deployments for current environment filter
+    await loadDeployments(selectedEnvironment);
+    
+    alert(`Rollback ${result.success ? 'completed' : 'failed'}`);
+  } catch (error) {
+    console.error('Rollback failed:', error);
+    alert('Rollback failed');
+  }
+};
+```
+
+**Rollback Process Flow** (Environment-Aware):
 
 1. **Eligibility Check**: Validates that deployment can be safely rolled back
-2. **Preparation**: Initializes rollback tracker and validates stored rollback data
-3. **Component Removal**: Step-by-step removal in reverse dependency order:
+2. **Environment Validation**: Confirms environment exists and is accessible
+3. **Preparation**: Initializes rollback tracker and validates stored rollback data
+4. **Component Removal**: Step-by-step removal in reverse dependency order from the **correct environment**:
    - Relationships (dependencies first)
    - Custom Entities (data preservation)
    - Global Choices (solution integration)
    - Solution (if empty)
    - Publisher (if empty)
    - Cleanup Operations
-4. **Finalization**: Updates deployment status and completes rollback tracking
+5. **Finalization**: Updates deployment status in **environment-specific** history file
 
 **Enhanced Progress Features**:
 - **Step Activation**: Each step shows as "active" with pink pulsing background during execution

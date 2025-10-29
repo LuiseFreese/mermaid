@@ -58,7 +58,7 @@
 .mermaidContainer :global(svg) {
   max-width: 100%;
   height: auto;
-  background-color: white;
+  background-color: var(--colorNeutralBackground1);
   border-radius: 4px;
 }
 

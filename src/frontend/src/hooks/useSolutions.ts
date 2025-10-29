@@ -9,18 +9,25 @@ interface UseSolutionsResult {
   refetch: () => Promise<void>;
 }
 
-export const useSolutions = (): UseSolutionsResult => {
+export const useSolutions = (environmentId?: string): UseSolutionsResult => {
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accounts, inProgress } = useMsal();
 
   const fetchSolutions = async () => {
+    // Don't fetch if no environment is selected
+    if (!environmentId) {
+      setSolutions([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
-      const data = await solutionService.getSolutions();
+      const data = await solutionService.getSolutions(environmentId);
       setSolutions(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch solutions';
@@ -35,11 +42,15 @@ export const useSolutions = (): UseSolutionsResult => {
   };
 
   useEffect(() => {
-    // Only fetch solutions after authentication completes
-    if (accounts.length > 0 && inProgress === 'none') {
+    // Only fetch solutions after authentication completes and environment is selected
+    if (accounts.length > 0 && inProgress === 'none' && environmentId) {
       fetchSolutions();
+    } else if (!environmentId) {
+      // Clear solutions if no environment is selected
+      setSolutions([]);
+      setError(null);
     }
-  }, [accounts.length, inProgress]);
+  }, [accounts.length, inProgress, environmentId]);
 
   return {
     solutions,

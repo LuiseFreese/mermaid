@@ -8,14 +8,17 @@ export interface Publisher {
 }
 
 export interface PublisherService {
-  getPublishers(): Promise<Publisher[]>;
+  getPublishers(environmentId?: string): Promise<Publisher[]>;
 }
 
 class DataversePublisherService implements PublisherService {
-  async getPublishers(): Promise<Publisher[]> {
+  async getPublishers(environmentId?: string): Promise<Publisher[]> {
     try {
+      // Build query string with environmentId parameter
+      const queryParams = environmentId ? `?environmentId=${encodeURIComponent(environmentId)}` : '';
+      
       // Use authenticated apiClient instead of raw fetch
-      const response = await apiClient.get('/publishers');
+      const response = await apiClient.get(`/publishers${queryParams}`);
       
       const publishers = response.data.publishers || [];
       

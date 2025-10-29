@@ -134,6 +134,35 @@ class RollbackController {
             // Update status to in-progress
             this.statusTracker.updateStatus(rollbackId, 'in-progress');
             
+            // Get environment-specific configuration if environmentId provided
+            let rollbackConfig = { options };
+            
+            if (environmentId && environmentId !== 'default' && this.environmentManager) {
+                try {
+                    console.log(`🌍 Getting environment-specific configuration for: ${environmentId}`);
+                    const environment = this.environmentManager.getEnvironment(environmentId);
+                    
+                    if (environment) {
+                        console.log(`✅ Found environment: ${environment.name} (${environment.url})`);
+                        
+                        // Get environment-specific configuration
+                        const envConfig = this.environmentManager.getEnvironmentConfig(environmentId);
+                        console.log(`✅ Got environment configuration for ${environment.name}`);
+                        
+                        // Pass environment config to rollback service
+                        // The service will pass this to the repository's getClient method
+                        rollbackConfig.environmentConfig = envConfig;
+                        
+                        console.log(`✅ Will use environment-specific config for rollback`);
+                    } else {
+                        console.warn(`⚠️ Environment ${environmentId} not found, using default`);
+                    }
+                } catch (envError) {
+                    console.error(`❌ Failed to get environment configuration:`, envError);
+                    console.log(`   Falling back to default configuration`);
+                }
+            }
+            
             // Progress callback to update tracker
             // Updated to handle new format: (type, message, progressData)
             const progressCallback = (type, message, progressData) => {
@@ -153,11 +182,11 @@ class RollbackController {
                 }
             };
             
-            // Execute the rollback with progress tracking
+            // Execute the rollback with progress tracking and environment-specific config
             const result = await this.rollbackService.rollbackDeployment(
                 deploymentId,
                 progressCallback,
-                { options }
+                rollbackConfig
             );
             
             // Store successful result

@@ -1766,6 +1766,12 @@ class ValidationService extends BaseService {
     fixForeignKeyNaming(content, warning) {
         this.log('fixForeignKeyNaming', { content: content.length, warning: warning.type });
         
+        console.log('🔧 DEBUG: fixForeignKeyNaming called with:', {
+            warningType: warning.type,
+            warningMessage: warning.message,
+            warningId: warning.id
+        });
+        
         try {
             // Extract relationship info from warning message
             // Pattern: "Relationship 'A → B' exists with foreign keys present in 'B', but no FK named 'a_id' was found."
@@ -1799,8 +1805,8 @@ class ValidationService extends BaseService {
             console.log('🔧 DEBUG: Found entity definition:', entityDefinition);
             
             // Check if there's already a foreign key that could be renamed
-            // Look for foreign keys that reference the source entity
-            const fkPattern = new RegExp(`string\\s+(\\w+)\\s+FK(?:\\s+"[^"]*")?`, 'g');
+            // Look for foreign keys that reference the source entity - match any data type
+            const fkPattern = new RegExp(`(?:int|string|guid|datetime)\\s+(\\w+)\\s+FK(?:\\s+"[^"]*")?`, 'g');
             let fkMatch;
             const foreignKeys = [];
             
@@ -1813,17 +1819,43 @@ class ValidationService extends BaseService {
             // Look for a foreign key that might be incorrectly named
             // Check if any FK name suggests it should be the expected FK name
             const sourceEntityLower = sourceEntity.toLowerCase();
+            
+            console.log('🔧 DEBUG: Looking for candidate FK:', {
+                sourceEntityLower,
+                expectedFKName,
+                foreignKeys
+            });
+            
             const candidateFK = foreignKeys.find(fk => {
                 const fkLower = fk.toLowerCase();
-                return fkLower.includes(sourceEntityLower) || fkLower.includes('id');
+                const matches = fkLower.includes(sourceEntityLower) || fkLower.includes('id');
+                console.log(`🔧 DEBUG: Checking FK "${fk}": includes("${sourceEntityLower}")=${fkLower.includes(sourceEntityLower)}, includes("id")=${fkLower.includes('id')}, matches=${matches}`);
+                return matches;
             });
+            
+            console.log('🔧 DEBUG: Selected candidate FK:', candidateFK);
             
             if (candidateFK && candidateFK !== expectedFKName) {
                 console.log('🔧 DEBUG: Found candidate FK to rename:', candidateFK, '→', expectedFKName);
                 
-                // Rename the foreign key
-                const oldFKPattern = new RegExp(`(string\\s+)${candidateFK}(\\s+FK(?:\\s+"[^"]*")?)`, 'g');
+                // Rename the foreign key - match any data type (int, string, guid, etc.)
+                const oldFKPattern = new RegExp(`((?:int|string|guid|datetime)\\s+)${candidateFK}(\\s+FK(?:\\s+"[^"]*")?)`, 'g');
+                
+                // Test if pattern exists (create new regex for testing to avoid consuming the match)
+                const testPattern = new RegExp(`(?:int|string|guid|datetime)\\s+${candidateFK}\\s+FK`, 'g');
+                const patternExists = testPattern.test(content);
+                
                 const updatedContent = content.replace(oldFKPattern, `$1${expectedFKName}$2`);
+                
+                console.log('🔧 DEBUG: Replacement attempted:', {
+                    candidateFK,
+                    expectedFKName,
+                    pattern: oldFKPattern.toString(),
+                    patternExists,
+                    contentChanged: updatedContent !== content,
+                    originalLength: content.length,
+                    updatedLength: updatedContent.length
+                });
                 
                 if (updatedContent !== content) {
                     console.log('🔧 DEBUG: Successfully renamed foreign key');
@@ -1832,6 +1864,9 @@ class ValidationService extends BaseService {
                         content: updatedContent,
                         appliedFix: `Renamed foreign key '${candidateFK}' to '${expectedFKName}' in entity '${targetEntity}'`
                     };
+                } else {
+                    console.log('🔧 ERROR: Rename failed - content unchanged despite pattern match');
+                    return { success: false, error: `Failed to rename '${candidateFK}' to '${expectedFKName}'` };
                 }
             } else {
                 // Add the missing foreign key

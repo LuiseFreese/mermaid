@@ -46,6 +46,9 @@ import {
   PublisherFormData,
 } from './types';
 
+// Import wizard context
+import { useWizardContext } from '../../../../context/WizardContext';
+
 // Import utilities
 import styles from './SolutionSetupStep.module.css';
 
@@ -108,6 +111,9 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
   const [selectedEnvironment, setSelectedEnvironment] = useState<{ id: string; name: string; url: string; powerPlatformEnvironmentId?: string; color?: string; } | null>(null);
   const [_environmentsLoading, setEnvironmentsLoading] = useState(false);
   const [_environmentsError, setEnvironmentsError] = useState<string | null>(null);
+
+  // Wizard context
+  const { updateWizardData } = useWizardContext();
 
   // Configuration hooks
   const solutionConfig = useSolutionConfiguration();
@@ -281,6 +287,14 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
     
     loadEnvironments();
   }, []);
+
+  // Update wizard context when environment changes
+  useEffect(() => {
+    if (selectedEnvironment) {
+      console.log('📍 SolutionSetupStep: Updating wizard context with environment:', selectedEnvironment);
+      updateWizardData({ targetEnvironment: selectedEnvironment });
+    }
+  }, [selectedEnvironment, updateWizardData]);
 
   // Determine overall configuration status
   const isConfigurationComplete = Boolean(

@@ -237,8 +237,9 @@ describe('API Integration Tests', () => {
     });
 
     it('GET /api/global-choices-list should return global choices', async () => {
+      // Multi-environment support requires environmentId parameter
       const response = await app
-        .get('/api/global-choices-list')
+        .get('/api/global-choices-list?environmentId=test-env-id')
         .expect('Content-Type', /json/)
         .expect(200);
 

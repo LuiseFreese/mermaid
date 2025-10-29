@@ -8,8 +8,9 @@ class GlobalChoicesService extends BaseService {
     constructor(dependencies = {}) {
         super(dependencies);
         
-        this.validateDependencies(['dataverseRepository']);
+        this.validateDependencies(['dataverseRepository', 'environmentManager']);
         this.dataverseRepository = dependencies.dataverseRepository;
+        this.environmentManager = dependencies.environmentManager;
     }
 
     /**
@@ -19,6 +20,12 @@ class GlobalChoicesService extends BaseService {
      */
     async getGlobalChoices(options = {}) {
         return this.executeOperation('getGlobalChoices', async () => {
+            // Get environment-specific Dataverse config
+            let config = null;
+            if (options.environmentId) {
+                config = this.environmentManager.getEnvironmentConfig(options.environmentId);
+            }
+            
             const queryOptions = {
                 includeBuiltIn: options.includeBuiltIn !== false,
                 includeCustom: options.includeCustom !== false,
@@ -26,7 +33,8 @@ class GlobalChoicesService extends BaseService {
                 filter: options.filter
             };
 
-            const result = await this.dataverseRepository.getGlobalChoiceSets(queryOptions);
+            // Pass config as second parameter for environment-specific client
+            const result = await this.dataverseRepository.getGlobalChoiceSets(queryOptions, config);
             
             if (result.success) {
                 return this.createSuccess(result.data, 'Global choices retrieved successfully');
