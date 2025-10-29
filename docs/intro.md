@@ -13,6 +13,7 @@ The **Mermaid to Dataverse Converter** is a powerful tool that converts [Mermaid
 - **Global Choices**: Automatically manage and reuse global choice sets
 - **CDM Integration**: Seamlessly integrate with Common Data Model entities
 - **Solution Packaging**: Create complete Dataverse solutions ready for deployment
+- **Multi-Environment Support**: Deploy to multiple Dataverse environments (dev/test/prod) from a single deployment with dynamic environment selection
 - **Microsoft Entra Authentication**: Secure access with Microsoft identity
 - **Deployment History**: Track all your deployments with detailed logging
 - **Modular Rollback**: Selectively rollback components of your deployment
@@ -26,22 +27,24 @@ Get up and running in minutes:
 git clone https://github.com/LuiseFreese/mermaid.git
 cd mermaid
 
-# Install dependencies
-npm install
+# Install all dependencies (root + frontend)
+npm run install:all
 
-# Set up environment variables
+# Configure your Dataverse environments
+copy data\environments.example.json data\environments.json
+# Edit data/environments.json with your Dataverse environment URLs and IDs
+
+# Set up local environment variables (optional for local dev)
 copy .env.example .env.local
+# Edit .env.local with your credentials if testing real Dataverse connections
 
-# Start the backend server
-npm start
-
-# In a separate terminal, start the frontend
-cd src/frontend
-npm install
-npm start
+# Start both backend and frontend servers
+npm run dev
 ```
 
-The backend will be available at `http://localhost:8080` and the frontend wizard at `http://localhost:3003/wizard`.
+The backend will be available at `http://localhost:8080` and the frontend wizard at `http://localhost:3003`.
+
+> **Note**: Authentication is disabled by default in development mode (`AUTH_ENABLED=false`), so you can test the UI without Azure AD credentials. Configure `data/environments.json` to enable multi-environment features.
 
 ## Key Features
 

@@ -12,8 +12,12 @@ src/logs/
 dist/
 coverage/
 
-# Deployment data (contains personal/environment-specific information)
-data/
+# Data directory - environment-specific files
+data/environments.json
+data/deployments/
+
+# Keep the example file for reference
+!data/environments.example.json
 
 # Backup files
 *.backup

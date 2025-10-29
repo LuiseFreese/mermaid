@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "defaultEnvironmentId": "default",
+  "environments": [
+    {
+      "id": "default",
+      "name": "Default Environment",
+      "url": "https://org4caa9250.crm4.dynamics.com",
+      "description": "Default environment from environment variables",
+      "color": "blue",
+      "metadata": {
+        "organizationName": "",
+        "organizationDisplayName": "",
+        "region": "Unknown"
+      },
+      "lastConnected": null
+    }
+  ]
+}

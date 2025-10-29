@@ -161,38 +161,6 @@ The rollback system is **environment-aware**:
 - Each environment maintains its own deployment history
 - Rollback buttons only appear for eligible deployments in each environment
 
-### Multi-Environment Workflow Example
-
-**Typical deployment workflow:**
-
-1. **Development Phase**:
-   - Deploy ERD to Dev environment
-   - Test and iterate
-   - View Dev deployments: Filter by "Development" in history
-
-2. **Testing Phase**:
-   - Deploy same ERD to Test environment
-   - Perform validation
-   - View Test deployments: Filter by "Test" in history
-
-3. **Production Deployment**:
-   - Deploy verified ERD to Production
-   - Monitor in production
-   - View Prod deployments: Filter by "Production" in history
-
-4. **Rollback if Needed**:
-   - If issues found in Test, rollback Test deployment
-   - Dev and Production remain unaffected
-   - Fix issues and redeploy to Test
-
-### Best Practices
-
-- **Use Environment Filters**: Switch between environments to see environment-specific deployments
-- **Check Environment Before Rollback**: Always verify you're rolling back from the correct environment
-- **Monitor Progress**: Watch the progress tracker to ensure rollback completes successfully
-- **Review Dependencies**: Before rollback, check if other solutions depend on your entities
-- **Backup Data**: If your entities contain important data, export it before rollback
-
 ## Intelligent Validation & Auto-Corrections
 
 The React application includes sophisticated validation that provides real-time feedback and intelligent fixes:

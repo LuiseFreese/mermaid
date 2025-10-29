@@ -1,0 +1,58 @@
+{
+    "version": "1.0.0",
+    "defaultEnvironmentId": "customer-dev",
+    "environments": [
+        {
+            "id": "customer-dev",
+            "name": "Customer Development",
+            "url": "https://contoso-dev.crm.dynamics.com",
+            "description": "Development environment for customer-facing solutions",
+            "color": "blue",
+            "lastConnected": null,
+            "metadata": {
+                "organizationName": "contoso-dev",
+                "organizationDisplayName": "Contoso Development",
+                "region": "North America"
+            }
+        },
+        {
+            "id": "integration-test",
+            "name": "Integration Testing",
+            "url": "https://contoso-integration.crm.dynamics.com",
+            "description": "Integration testing with external systems",
+            "color": "yellow",
+            "lastConnected": null,
+            "metadata": {
+                "organizationName": "contoso-integration",
+                "organizationDisplayName": "Contoso Integration Test",
+                "region": "North America"
+            }
+        },
+        {
+            "id": "partner-uat",
+            "name": "Partner UAT",
+            "url": "https://contoso-partneruat.crm.dynamics.com",
+            "description": "User acceptance testing with partner organizations",
+            "color": "green",
+            "lastConnected": null,
+            "metadata": {
+                "organizationName": "contoso-partneruat",
+                "organizationDisplayName": "Contoso Partner UAT",
+                "region": "North America"
+            }
+        },
+        {
+            "id": "production-main",
+            "name": "Production (Main)",
+            "url": "https://contoso.crm.dynamics.com",
+            "description": "Live production environment",
+            "color": "red",
+            "lastConnected": null,
+            "metadata": {
+                "organizationName": "contoso",
+                "organizationDisplayName": "Contoso Production",
+                "region": "North America"
+            }
+        }
+    ]
+}
