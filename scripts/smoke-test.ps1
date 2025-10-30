@@ -157,7 +157,11 @@ Write-Host "`n📋 Test Suite 3: Dataverse Integration" -ForegroundColor Magenta
                 if ($response -and $response.Count -ge 0) {
                     Write-Host "   Publishers found: $($response.Count)" -ForegroundColor Gray
                     if ($response.Count -gt 0) {
-                        Write-Host "     Example: $($response[0].friendlyName)" -ForegroundColor DarkGray
+                        $publisher = $response[0]
+                        $displayName = if ($publisher.friendlyName) { $publisher.friendlyName } 
+                                      elseif ($publisher.uniqueName) { $publisher.uniqueName }
+                                      else { "(name not available)" }
+                        Write-Host "     Example: $displayName" -ForegroundColor DarkGray
                     }
                     return $true
                 }
