@@ -651,7 +651,8 @@ $smokeTestScript = Join-Path $PSScriptRoot "smoke-test.ps1"
 
 if (Test-Path $smokeTestScript) {
     try {
-        & $smokeTestScript -AppUrl $appUrl -TimeoutSeconds 30
+        # Run in fresh PowerShell session to avoid script caching issues
+        $result = pwsh -NoProfile -Command "& '$smokeTestScript' -AppUrl '$appUrl' -TimeoutSeconds 30; exit `$LASTEXITCODE"
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ All smoke tests passed" -ForegroundColor Green
