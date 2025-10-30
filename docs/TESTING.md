@@ -4,7 +4,64 @@ This document provides comprehensive testing strategies, tools, and workflows fo
 
 ## Testing Strategy
 
-### 1. Integration Testing
+### 1. Infrastructure Testing
+
+**Post-Deployment Smoke Tests**:
+```powershell
+# Run smoke tests against deployed application
+.\scripts\smoke-test.ps1 -AppUrl "https://app-mermaid-prod.azurewebsites.net"
+
+# With custom timeout
+.\scripts\smoke-test.ps1 -AppUrl "https://app-mermaid-prod.azurewebsites.net" -TimeoutSeconds 60
+```
+
+**What It Tests**:
+- Health endpoint availability and response time
+- Environment configuration API
+- Dataverse connectivity (publishers, solutions, global choices)
+- Frontend asset serving
+- Overall application stability post-deployment
+
+**Infrastructure Validation Tests** (Pester):
+```powershell
+# Install Pester (if not already installed)
+Install-Module -Name Pester -Force -SkipPublisherCheck
+
+# Run infrastructure tests
+Invoke-Pester -Path .\tests\infrastructure\validate-deployment.tests.ps1
+
+# Run with custom environment parameters
+$env:APP_NAME = "app-mermaid-prod"
+$env:RESOURCE_GROUP = "rg-mermaid-prod"
+$env:LOCATION = "westeurope"
+Invoke-Pester -Path .\tests\infrastructure\validate-deployment.tests.ps1
+```
+
+**What It Tests**:
+- Azure resource existence and configuration
+- App Service state and runtime
+- Managed Identity assignment
+- Environment variables
+- Application health endpoints
+- Multi-environment configuration
+- Performance benchmarks (response times)
+
+**Health Dependencies Monitoring**:
+```javascript
+// Backend service for dependency health checks
+const healthCheckService = require('./services/health-check-service');
+
+// Check overall health
+const health = await healthCheckService.checkHealth();
+
+// Check dependencies for specific environment
+const deps = await healthCheckService.checkDependencies('environment-id');
+
+// Check all environments
+const allEnvs = await healthCheckService.checkAllEnvironments();
+```
+
+### 2. Integration Testing
 
 **Test File**: `tests/test-schema-generation.js`
 
@@ -26,12 +83,15 @@ node tests/test-schema-generation.js examples/simple-sales.mmd myprefix
 - Dataverse naming conventions
 - Primary key validation
 
-### 2. API Testing
+### 3. API Testing
 
 **Built-in Endpoints**:
 ```bash
 # Health check
 GET /health
+
+# Health with dependencies
+GET /api/health/dependencies?environmentId=<id>
 
 # Solution status check (for deployment verification)
 GET /api/solution-status?solution=YourSolutionName
@@ -43,7 +103,7 @@ GET /api/publishers
 GET /api/global-choices-list
 ```
 
-### 3. Manual Testing Workflow
+### 4. Manual Testing Workflow
 
 1. **React Frontend Testing**: Use the modern React interface with sample files
 2. **Live Deployment**: Test actual Dataverse creation through the wizard

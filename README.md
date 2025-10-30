@@ -199,11 +199,34 @@ See [Usage Guide - Rollback Section](docs/USAGE-GUIDE.md#5-rollback-deployments)
 
 - [Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md) - System architecture and development setup
 - [Testing Guide](docs/TESTING.md) - Comprehensive testing strategies, tools, and workflows
+- [Infrastructure Testing Guide](docs/INFRASTRUCTURE-TESTING.md) - Post-deployment validation and health monitoring
 - [Deployment Guide](docs/DEPLOYMENT.md) - Detailed deployment instructions and troubleshooting
 - [Usage Guide](docs/USAGE-GUIDE.md) - Comprehensive usage examples
 - [Global Choices Guide](docs/GLOBAL-CHOICES-GUIDE.md) - Working with choice columns
 - [Relationship Types](docs/RELATIONSHIP_TYPES.md) - Supported relationship patterns
 - See the `examples/` directory for sample Mermaid ERD files
+
+## Infrastructure Resilience
+
+The application includes comprehensive infrastructure testing to ensure reliability:
+
+### Post-Deployment Validation
+- **Smoke Tests**: Automated validation of critical endpoints after deployment
+- **Infrastructure Tests**: Pester-based validation of Azure resources and configuration
+- **Health Monitoring**: Runtime dependency health checks with detailed status reporting
+
+### Running Infrastructure Tests
+
+```powershell
+# Smoke tests (automatically run after deployment)
+.\scripts\smoke-test.ps1 -AppUrl "https://your-app.azurewebsites.net"
+
+# Infrastructure validation (requires Pester)
+Install-Module -Name Pester -Force -SkipPublisherCheck
+Invoke-Pester -Path .\tests\infrastructure\validate-deployment.tests.ps1
+```
+
+**See [Infrastructure Testing Guide](docs/INFRASTRUCTURE-TESTING.md) for complete details.**
 
 ## Note on AI Usage
 

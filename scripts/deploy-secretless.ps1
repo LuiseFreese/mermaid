@@ -494,9 +494,29 @@ Write-Host "Creating deployment entry point..." -ForegroundColor Yellow
  * Uses managed identity authentication without Key Vault
  */
 const path = require('path');
+const fs = require('fs');
 
 // Set the correct working directory
 process.chdir(__dirname);
+
+// Debug: Log directory structure
+console.log('🔍 Server Entry Point Debug Info:');
+console.log('   Working Directory:', process.cwd());
+console.log('   __dirname:', __dirname);
+console.log('   Checking for data/environments.json...');
+try {
+  if (fs.existsSync(path.join(process.cwd(), 'data', 'environments.json'))) {
+    console.log('   ✅ data/environments.json FOUND');
+  } else {
+    console.log('   ❌ data/environments.json NOT FOUND');
+    console.log('   📁 Directory contents:');
+    fs.readdirSync(process.cwd()).forEach(item => {
+      console.log('      - ' + item);
+    });
+  }
+} catch (e) {
+  console.log('   ❌ Error checking file:', e.message);
+}
 
 // Set environment variables for secretless mode
 process.env.AUTH_MODE = 'managed_identity';
@@ -610,3 +630,91 @@ $appUrl = "https://$AppName.azurewebsites.net"
 
 Write-Host "🎉 Secretless deployment completed successfully!" -ForegroundColor Green
 Write-Host "App URL: $appUrl" -ForegroundColor Cyan
+
+# ============================================================================
+# Post-Deployment Validation
+# ============================================================================
+
+Write-Host ""
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host "Running Post-Deployment Validation..." -ForegroundColor Cyan
+Write-Host "============================================================================" -ForegroundColor Cyan
+
+# Give the app a moment to fully start
+Write-Host "Waiting for app to fully initialize (30 seconds)..." -ForegroundColor Yellow
+Start-Sleep -Seconds 30
+
+# Run smoke tests
+Write-Host ""
+Write-Host "Running smoke tests..." -ForegroundColor Cyan
+$smokeTestScript = Join-Path $PSScriptRoot "smoke-test.ps1"
+
+if (Test-Path $smokeTestScript) {
+    try {
+        & $smokeTestScript -AppUrl $appUrl -TimeoutSeconds 30
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ All smoke tests passed" -ForegroundColor Green
+        } else {
+            Write-Host "⚠️ Some smoke tests failed (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            Write-Host "   Review the test results above for details" -ForegroundColor Gray
+            Write-Host "   The application may still be functional" -ForegroundColor Gray
+        }
+    } catch {
+        Write-Warning "Smoke test execution failed: $_"
+        Write-Host "   This is non-critical - deployment completed but validation had issues" -ForegroundColor Gray
+    }
+} else {
+    Write-Warning "Smoke test script not found: $smokeTestScript"
+}
+
+# Run infrastructure tests (if Pester is available)
+Write-Host ""
+Write-Host "Running infrastructure validation tests..." -ForegroundColor Cyan
+
+if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
+    $infraTestScript = Join-Path (Split-Path $PSScriptRoot) "tests\infrastructure\validate-deployment.tests.ps1"
+    
+    if (Test-Path $infraTestScript) {
+        try {
+            # Set environment variables for Pester tests
+            $env:APP_NAME = $AppName
+            $env:RESOURCE_GROUP = $ResourceGroup
+            $env:LOCATION = "westeurope"
+            
+            # Run Pester tests
+            $pesterConfig = @{
+                Path = $infraTestScript
+                Output = "Detailed"
+                PassThru = $true
+            }
+            
+            $testResults = Invoke-Pester -Configuration $pesterConfig
+            
+            if ($testResults.FailedCount -eq 0) {
+                Write-Host "✅ All infrastructure tests passed ($($testResults.PassedCount) tests)" -ForegroundColor Green
+            } else {
+                Write-Host "⚠️ $($testResults.FailedCount) infrastructure tests failed" -ForegroundColor Yellow
+                Write-Host "   Passed: $($testResults.PassedCount) | Failed: $($testResults.FailedCount)" -ForegroundColor Gray
+            }
+        } catch {
+            Write-Warning "Infrastructure test execution failed: $_"
+            Write-Host "   This is non-critical - deployment completed but validation had issues" -ForegroundColor Gray
+        } finally {
+            # Clean up environment variables
+            Remove-Item Env:\APP_NAME -ErrorAction SilentlyContinue
+            Remove-Item Env:\RESOURCE_GROUP -ErrorAction SilentlyContinue
+            Remove-Item Env:\LOCATION -ErrorAction SilentlyContinue
+        }
+    } else {
+        Write-Host "ℹ️ Infrastructure test script not found (skipping)" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "ℹ️ Pester not installed (skipping infrastructure tests)" -ForegroundColor Gray
+    Write-Host "   Install: Install-Module -Name Pester -Force -SkipPublisherCheck" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host "Deployment and Validation Complete" -ForegroundColor Green
+Write-Host "============================================================================" -ForegroundColor Cyan
