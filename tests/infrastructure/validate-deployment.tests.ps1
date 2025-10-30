@@ -3,10 +3,10 @@
 # Run with: Invoke-Pester -Path .\tests\infrastructure\validate-deployment.tests.ps1
 
 BeforeAll {
-    # Test parameters (override with -Parameters when running)
-    $script:AppName = $env:APP_NAME ?? "app-mermaid-prod"
-    $script:ResourceGroup = $env:RESOURCE_GROUP ?? "rg-mermaid-prod"
-    $script:Location = $env:LOCATION ?? "westeurope"
+    # Test parameters (from environment variables)
+    $script:AppName = if ($env:APP_NAME) { $env:APP_NAME } else { "app-mermaid-prod" }
+    $script:ResourceGroup = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { "rg-mermaid-prod" }
+    $script:Location = if ($env:LOCATION) { $env:LOCATION } else { "westeurope" }
     
     Write-Host "Testing infrastructure for:" -ForegroundColor Cyan
     Write-Host "  App Name: $AppName" -ForegroundColor Gray

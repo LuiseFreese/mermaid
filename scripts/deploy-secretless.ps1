@@ -680,6 +680,18 @@ if (Test-Path $smokeTestScript) {
 Write-Host ""
 Write-Host "Running infrastructure validation tests..." -ForegroundColor Cyan
 
+# Ensure Pester v5 is installed
+$pesterModule = Get-Module -Name Pester -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+if (-not $pesterModule -or $pesterModule.Version.Major -lt 5) {
+    Write-Host "Installing Pester v5..." -ForegroundColor Yellow
+    try {
+        Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -SkipPublisherCheck -Scope CurrentUser -ErrorAction Stop
+        Write-Host "✅ Pester v5 installed successfully" -ForegroundColor Green
+    } catch {
+        Write-Warning "Could not install Pester v5: $_"
+    }
+}
+
 if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
     $infraTestScript = Join-Path (Split-Path $PSScriptRoot) "tests\infrastructure\validate-deployment.tests.ps1"
     
@@ -690,21 +702,12 @@ if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
             $env:RESOURCE_GROUP = $ResourceGroup
             $env:LOCATION = "westeurope"
             
-            # Detect Pester version and use appropriate syntax
-            $pesterModule = Get-Module -Name Pester -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
-            $pesterVersion = $pesterModule.Version.Major
-            
-            if ($pesterVersion -ge 5) {
-                # Pester v5+ syntax
-                $pesterConfig = New-PesterConfiguration
-                $pesterConfig.Run.Path = $infraTestScript
-                $pesterConfig.Output.Verbosity = 'Detailed'
-                $pesterConfig.Run.PassThru = $true
-                $testResults = Invoke-Pester -Configuration $pesterConfig
-            } else {
-                # Pester v4 syntax
-                $testResults = Invoke-Pester -Script $infraTestScript -PassThru
-            }
+            # Run Pester v5 tests
+            $pesterConfig = New-PesterConfiguration
+            $pesterConfig.Run.Path = $infraTestScript
+            $pesterConfig.Output.Verbosity = 'Detailed'
+            $pesterConfig.Run.PassThru = $true
+            $testResults = Invoke-Pester -Configuration $pesterConfig
             
             if ($testResults.FailedCount -eq 0) {
                 Write-Host "✅ All infrastructure tests passed ($($testResults.PassedCount) tests)" -ForegroundColor Green
