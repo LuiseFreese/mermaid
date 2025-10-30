@@ -240,8 +240,8 @@ Open browser to `http://localhost:3003`
 1. **Local Development**: Uses client secret → Microsoft Entra → Dataverse
 2. **Azure Production**: Uses managed identity → Microsoft Entra → Dataverse
 
-**Without Auth (default)**: Loads immediately ✅  
-**With Auth (optional)**: Redirects to Microsoft login first ✅
+**Without Auth (default)**: Loads immediately  
+**With Auth (optional)**: Redirects to Microsoft login first
 
 ## Advanced: Testing with Dev Proxy (Optional)
 
@@ -289,9 +289,9 @@ npm run dev:proxy:ratelimit
 ```
 
 These scripts automatically:
-- ✅ Start Dev Proxy with the right config
-- ✅ Start your dev server
-- ✅ Clean up on exit (Ctrl+C stops both)
+- Start Dev Proxy with the right config
+- Start your dev server
+- Clean up on exit (Ctrl+C stops both)
 
 #### Option B: PowerShell Wrapper (More Control)
 
@@ -395,12 +395,12 @@ Pre-configured tasks in `.vscode/tasks.json` for easy testing:
 
 ### Benefits
 
-✅ **Find bugs before production** - Test failure scenarios you can't easily reproduce  
-✅ **Faster development** - Use mocks instead of waiting for real API calls  
-✅ **Work offline** - No Dataverse needed during initial development  
-✅ **Better error handling** - Verify your error messages help users  
-✅ **Production confidence** - Know your app handles edge cases  
-✅ **Easy to use** - Just run `npm run dev:proxy` and you're testing!  
+**Find bugs before production** - Test failure scenarios you can't easily reproduce  
+**Faster development** - Use mocks instead of waiting for real API calls  
+**Work offline** - No Dataverse needed during initial development  
+**Better error handling** - Verify your error messages help users  
+**Production confidence** - Know your app handles edge cases  
+**Easy to use** - Just run `npm run dev:proxy` and you're testing!  
 
 ### Learn More
 
@@ -481,12 +481,12 @@ server: {
 | Feature | Local Development | Azure Production |
 |---------|-------------------|------------------|
 | **Setup Time** | ⚡ 30 seconds | 🐌 5-10 minutes |
-| **Authentication** | ❌ Disabled | ✅ Azure AD Required |
-| **Dataverse** | 🔄 Optional (mock or real) | ✅ Required |
-| **Hot Reload** | ✅ Yes | ❌ No |
+| **Authentication** | ❌ Disabled | Azure AD Required |
+| **Dataverse** | 🔄 Optional (mock or real) | Required |
+| **Hot Reload** | Yes | ❌ No |
 | **Debugging** | 🔍 Full (breakpoints, logs) | 📝 Limited (logs only) |
 | **Cost** | 💰 Free | 💰 ~$20-50/month |
-| **Secrets** | ⚠️ Client secrets OK | ✅ Managed Identity (no secrets!) |
+| **Secrets** | ⚠️ Client secrets OK | Managed Identity (no secrets!) |
 
 ## When to Use What?
 
@@ -502,7 +502,7 @@ server: {
 - � Testing authentication flow
 - 🌐 Need public URL
 - 📊 Testing with production Dataverse
-- ✅ Final validation before release
+- Final validation before release
 
 ## Quick Reference
 

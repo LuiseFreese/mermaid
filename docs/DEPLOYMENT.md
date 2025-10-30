@@ -76,12 +76,12 @@ The application supports deploying to multiple Dataverse environments from a sin
 ```
 
 **Key Features:**
-- ✅ Select target environment from dropdown (dev/test/prod)
-- ✅ Single Azure deployment serves all environments
-- ✅ No secrets needed - managed identity authenticates to all environments
-- ✅ **Environment-specific deployment tracking** with colored badges
-- ✅ **Multi-environment rollback** - safely undo deployments from any environment
-- ✅ Easy to add new environments - just update configuration
+- Select target environment from dropdown (dev/test/prod)
+- Single Azure deployment serves all environments
+- No secrets needed - managed identity authenticates to all environments
+- **Environment-specific deployment tracking** with colored badges
+- **Multi-environment rollback** - safely undo deployments from any environment
+- Easy to add new environments - just update configuration
 
 **Deployment History & Rollback:**
 - View deployment history filtered by environment (Dev/Test/Prod)

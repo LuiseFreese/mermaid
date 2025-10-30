@@ -2102,12 +2102,12 @@ The managed identity is **organization-wide**, not environment-specific:
 
 **Benefits**:
 
-✅ **No Per-Environment Configuration**: Single Azure deployment serves all environments
-✅ **User-Controlled Targeting**: Explicit environment selection, no accidents
-✅ **Secretless**: Managed identity authentication, no client secrets
-✅ **Easy to Add Environments**: Just update `data/environments.json`
-✅ **Environment Isolation**: Each deployment tracked separately per environment
-✅ **Scalable**: Add unlimited environments without infrastructure changes
+**No Per-Environment Configuration**: Single Azure deployment serves all environments
+**User-Controlled Targeting**: Explicit environment selection, no accidents
+**Secretless**: Managed identity authentication, no client secrets
+**Easy to Add Environments**: Just update `data/environments.json`
+**Environment Isolation**: Each deployment tracked separately per environment
+**Scalable**: Add unlimited environments without infrastructure changes
 
 **Related Documentation**:
 - Complete setup guide: [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md)

@@ -173,8 +173,8 @@ The managed identity (service principal) is **organization-wide**, not environme
 ### Why Include environments.json in Deployment?
 
 The file contains:
-- Environment names (dev-princess, test-princess, prod-princess)
-- Environment URLs (org4caa9250, org32dda8c3, org8efac90e)
+- Environment names 
+- Environment URLs 
 - Environment metadata (colors, owners, purposes)
 - Deployment settings (resource naming patterns)
 
