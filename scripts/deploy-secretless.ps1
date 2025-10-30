@@ -652,12 +652,19 @@ $smokeTestScript = Join-Path $PSScriptRoot "smoke-test.ps1"
 if (Test-Path $smokeTestScript) {
     try {
         # Run in fresh PowerShell session to avoid script caching issues
-        $result = pwsh -NoProfile -Command "& '$smokeTestScript' -AppUrl '$appUrl' -TimeoutSeconds 30; exit `$LASTEXITCODE"
+        # Capture output and display it, then check exit code
+        $output = pwsh -NoProfile -Command "& '$smokeTestScript' -AppUrl '$appUrl' -TimeoutSeconds 30; exit `$LASTEXITCODE" 2>&1
+        $exitCode = $LASTEXITCODE
         
-        if ($LASTEXITCODE -eq 0) {
+        # Display the full test output
+        $output | ForEach-Object { Write-Host $_ }
+        
+        if ($exitCode -eq 0) {
+            Write-Host ""
             Write-Host "✅ All smoke tests passed" -ForegroundColor Green
         } else {
-            Write-Host "⚠️ Some smoke tests failed (exit code: $LASTEXITCODE)" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "⚠️ Some smoke tests failed (exit code: $exitCode)" -ForegroundColor Yellow
             Write-Host "   Review the test results above for details" -ForegroundColor Gray
             Write-Host "   The application may still be functional" -ForegroundColor Gray
         }
@@ -683,12 +690,11 @@ if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
             $env:RESOURCE_GROUP = $ResourceGroup
             $env:LOCATION = "westeurope"
             
-            # Run Pester tests
-            $pesterConfig = @{
-                Path = $infraTestScript
-                Output = "Detailed"
-                PassThru = $true
-            }
+            # Run Pester tests with proper configuration for Pester v5
+            $pesterConfig = New-PesterConfiguration
+            $pesterConfig.Run.Path = $infraTestScript
+            $pesterConfig.Output.Verbosity = 'Detailed'
+            $pesterConfig.Run.PassThru = $true
             
             $testResults = Invoke-Pester -Configuration $pesterConfig
             
