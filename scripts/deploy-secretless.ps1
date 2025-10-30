@@ -690,13 +690,21 @@ if (Get-Command Invoke-Pester -ErrorAction SilentlyContinue) {
             $env:RESOURCE_GROUP = $ResourceGroup
             $env:LOCATION = "westeurope"
             
-            # Run Pester tests with proper configuration for Pester v5
-            $pesterConfig = New-PesterConfiguration
-            $pesterConfig.Run.Path = $infraTestScript
-            $pesterConfig.Output.Verbosity = 'Detailed'
-            $pesterConfig.Run.PassThru = $true
+            # Detect Pester version and use appropriate syntax
+            $pesterModule = Get-Module -Name Pester -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
+            $pesterVersion = $pesterModule.Version.Major
             
-            $testResults = Invoke-Pester -Configuration $pesterConfig
+            if ($pesterVersion -ge 5) {
+                # Pester v5+ syntax
+                $pesterConfig = New-PesterConfiguration
+                $pesterConfig.Run.Path = $infraTestScript
+                $pesterConfig.Output.Verbosity = 'Detailed'
+                $pesterConfig.Run.PassThru = $true
+                $testResults = Invoke-Pester -Configuration $pesterConfig
+            } else {
+                # Pester v4 syntax
+                $testResults = Invoke-Pester -Script $infraTestScript -PassThru
+            }
             
             if ($testResults.FailedCount -eq 0) {
                 Write-Host "✅ All infrastructure tests passed ($($testResults.PassedCount) tests)" -ForegroundColor Green
