@@ -42,13 +42,25 @@ export const usePublishers = (environmentId?: string): UsePublishersResult => {
   };
 
   useEffect(() => {
-    // Only fetch publishers after authentication completes and environment is selected
-    if (accounts.length > 0 && inProgress === 'none' && environmentId) {
+    // Fetch publishers when environment is selected
+    // Note: With Easy Auth v2, accounts might be empty (auth handled by App Service)
+    // so we check if auth is not in progress OR if we have accounts
+    const isAuthReady = inProgress === 'none' || accounts.length > 0;
+    
+    if (isAuthReady && environmentId) {
+      console.log('🔄 usePublishers: Fetching publishers for environment:', environmentId);
       fetchPublishers();
     } else if (!environmentId) {
       // Clear publishers if no environment is selected
+      console.log('⏸️ usePublishers: No environment selected, clearing publishers');
       setPublishers([]);
       setError(null);
+    } else {
+      console.log('⏸️ usePublishers: Waiting for auth:', {
+        isAuthReady,
+        accountsLength: accounts.length,
+        inProgress
+      });
     }
   }, [accounts.length, inProgress, environmentId]);
 

@@ -50,9 +50,21 @@ export const useGlobalChoices = (): UseGlobalChoicesResult => {
   };
 
   useEffect(() => {
-    // Only fetch global choices after authentication completes AND environment is selected
-    if (accounts.length > 0 && inProgress === 'none' && wizardData.targetEnvironment?.id) {
+    // Fetch global choices when environment is selected
+    // Note: With Easy Auth v2, accounts might be empty (auth handled by App Service)
+    // so we check if auth is not in progress OR if we have accounts
+    const isAuthReady = inProgress === 'none' || accounts.length > 0;
+    
+    if (isAuthReady && wizardData.targetEnvironment?.id) {
+      console.log('🔄 useGlobalChoices: Fetching global choices for environment:', wizardData.targetEnvironment.id);
       fetchGlobalChoices();
+    } else {
+      console.log('⏸️ useGlobalChoices: Waiting for auth/environment:', {
+        isAuthReady,
+        hasEnvironment: Boolean(wizardData.targetEnvironment?.id),
+        accountsLength: accounts.length,
+        inProgress
+      });
     }
   }, [accounts.length, inProgress, wizardData.targetEnvironment?.id]);
 

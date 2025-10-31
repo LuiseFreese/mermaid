@@ -68,6 +68,9 @@ AZURE-AD-AUTH-PRE-COMMIT-CHECKLIST.md
 history.md
 PLANNING-*.md
 
+# AI Agent instructions (keep local only)
+.github/copilot-instructions.md
+
 # Docusaurus website
 website/node_modules/
 website/build/

@@ -70,9 +70,11 @@ az webapp auth update --name app-mermaid-prod --resource-group rg-mermaid-prod `
 **Script**: `tests/infrastructure/validate-deployment.tests.ps1`
 
 **Prerequisites**:
+- Pester v5 or later is automatically installed by the deployment script if not present
+- Manual installation (optional):
 ```powershell
-# Install Pester module
-Install-Module -Name Pester -Force -SkipPublisherCheck
+# Install Pester v5 module manually
+Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -SkipPublisherCheck -Scope CurrentUser
 ```
 
 **Usage**:
@@ -116,7 +118,7 @@ Invoke-Pester -Path .\tests\infrastructure\validate-deployment.tests.ps1
 - Health endpoint response time (&lt;5 seconds)
 - Environments API response time (&lt;10 seconds)
 
-**Integration**: Automatically runs after deployment if Pester is installed
+**Integration**: Automatically runs after deployment. The deployment script ensures Pester v5 is installed before running tests.
 
 ---
 
@@ -211,9 +213,10 @@ Start-Sleep -Seconds 5
 # Deploy
 .\scripts\deploy-secretless.ps1 -EnvironmentSuffix prod
 
-# Deployment script automatically runs:
-# 1. Smoke tests (exit code 0/1)
-# 2. Infrastructure tests (if Pester installed)
+# Deployment script automatically:
+# 1. Installs Pester v5 if not present
+# 2. Runs smoke tests (exit code 0/1)
+# 3. Runs infrastructure tests with Pester
 
 # Manual retest if needed
 .\scripts\smoke-test.ps1 -AppUrl "https://app-mermaid-prod.azurewebsites.net"

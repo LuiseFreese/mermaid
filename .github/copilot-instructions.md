@@ -77,6 +77,10 @@ npm run test:coverage     # Full coverage report
 npm run dev:proxy:errors      # Random API failures
 npm run dev:proxy:mocks       # Offline development with mocks
 npm run dev:proxy:rate-limit  # Rate limiting simulation
+
+# Infrastructure Testing (post-deployment validation)
+.\scripts\smoke-test.ps1                              # Run smoke tests (6 suites)
+Invoke-Pester tests/infrastructure/*.tests.ps1       # Run Pester infrastructure tests
 ```
 **Important**: Test files use Jest + Vitest. Frontend uses Vitest with React Testing Library.
 
@@ -89,13 +93,14 @@ Copy-Item data/environments.example.json data/environments.json
 # Step 2: Infrastructure + identity setup + multi-environment app users
 .\scripts\setup-secretless.ps1 -EnvironmentSuffix "prod" -Unattended
 
-# Step 3: Deploy application code
+# Step 3: Deploy application code (includes automatic smoke tests)
 .\scripts\deploy-secretless.ps1 -EnvironmentSuffix "prod"
 ```
 - **Configuration required first**: `data/environments.json` must exist before running setup
 - Setup creates: App Registration, Managed Identity, Dataverse Application User(s), Federated Credentials
 - **Multi-environment**: Setup automatically reads `data/environments.json` and creates app users in ALL configured environments
 - Deploy packages: Frontend build + backend files + `data/environments.json` (for multi-env routing)
+- **Post-deployment validation**: Smoke tests run automatically after deployment
 - Always run frontend build locally before deploy: `cd src/frontend && npm run build`
 
 ## Project-Specific Patterns
@@ -197,6 +202,21 @@ Global state via React Context:
 - **Backend**: Unit tests for services, integration tests for API endpoints
 - **Pattern**: Separate `tests/unit/` and `tests/integration/` directories
 
+### 8. Infrastructure Testing & Monitoring
+- **Smoke Tests**: Post-deployment validation with 6 test suites in `scripts/smoke-test.ps1`
+  - Health endpoint, Environments API, Publishers, Solutions, Global Choices, Frontend
+  - Auto-detects Azure deployments, uses public monitoring endpoints
+  - Integrated into `deploy-secretless.ps1` (runs automatically after deployment)
+- **Health Service**: Runtime monitoring in `src/backend/services/health-check-service.js`
+  - Methods: `checkHealth()`, `checkDependencies(environmentId)`, `checkAllEnvironments()`
+  - Monitors: Environment config, Dataverse connectivity, managed identity, latency
+- **Pester Tests**: Infrastructure validation in `tests/infrastructure/validate-deployment.tests.ps1`
+  - Azure resource validation, performance benchmarks (<5s health, <10s APIs)
+- **Easy Auth v2**: Monitoring endpoints (/health, /api/environments) configured as public
+  - Application endpoints remain protected
+  - Upgrade: `az webapp auth config-version upgrade`
+  - Configure: `az webapp auth update --excluded-paths "/health /api/environments"`
+
 ## Key Documentation
 - `docs/DEVELOPER_ARCHITECTURE.md` - Complete architecture diagrams and layer details
 - `docs/LOCAL-DEVELOPMENT.md` - Zero-config dev setup
@@ -204,6 +224,7 @@ Global state via React Context:
 - `docs/VALIDATION-AND-AUTOFIX.md` - All 40+ validation rules and auto-fixes
 - `docs/TESTING.md` - Testing strategy and Dev Proxy integration
 - `docs/DEV-PROXY-TESTING.md` - API failure simulation setup
+- `docs/INFRASTRUCTURE-TESTING.md` - Post-deployment validation and health monitoring
 
 ## Quick Reference
 

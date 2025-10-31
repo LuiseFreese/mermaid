@@ -47,8 +47,8 @@ class PublisherService extends BaseService {
             });
 
             // Validate prefix format
-            if (!/^[a-z]{2,8}$/.test(publisherData.prefix)) {
-                throw new Error('Publisher prefix must be 2-8 lowercase letters');
+            if (!/^[a-z]{3,8}$/.test(publisherData.prefix)) {
+                throw new Error('Publisher prefix must be 3-8 lowercase letters');
             }
 
             // Check if publisher already exists
@@ -156,9 +156,9 @@ class PublisherService extends BaseService {
             this.validateInput({ prefix }, ['prefix'], { prefix: 'string' });
 
             // Check format
-            if (!/^[a-z]{2,8}$/.test(prefix)) {
+            if (!/^[a-z]{3,8}$/.test(prefix)) {
                 return this.createError('Invalid prefix format', [
-                    'Prefix must be 2-8 lowercase letters'
+                    'Prefix must be 3-8 lowercase letters'
                 ]);
             }
 
