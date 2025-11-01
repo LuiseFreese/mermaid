@@ -263,25 +263,25 @@ describe('PublisherService', () => {
             test('should validate prefix format - too short', async () => {
                 await expect(
                     service.createPublisher(FIXTURES.invalidData.prefixTooShort)
-                ).rejects.toThrow('Publisher prefix must be 2-8 lowercase letters');
+                ).rejects.toThrow('Publisher prefix must be 3-8 lowercase letters');
             });
 
             test('should validate prefix format - too long', async () => {
                 await expect(
                     service.createPublisher(FIXTURES.invalidData.prefixTooLong)
-                ).rejects.toThrow('Publisher prefix must be 2-8 lowercase letters');
+                ).rejects.toThrow('Publisher prefix must be 3-8 lowercase letters');
             });
 
             test('should validate prefix format - uppercase letters', async () => {
                 await expect(
                     service.createPublisher(FIXTURES.invalidData.prefixUppercase)
-                ).rejects.toThrow('Publisher prefix must be 2-8 lowercase letters');
+                ).rejects.toThrow('Publisher prefix must be 3-8 lowercase letters');
             });
 
             test('should validate prefix format - numbers and special chars', async () => {
                 await expect(
                     service.createPublisher(FIXTURES.invalidData.prefixWithNumbers)
-                ).rejects.toThrow('Publisher prefix must be 2-8 lowercase letters');
+                ).rejects.toThrow('Publisher prefix must be 3-8 lowercase letters');
             });
 
             test('should validate parameter types', async () => {
@@ -342,9 +342,9 @@ describe('PublisherService', () => {
 
             try {
                 await service.getPublishers();
-                fail('Should have thrown error');
+                throw new Error('Should have thrown error');
             } catch (error) {
-                // Expected
+                expect(error.message).toContain('getPublishers failed');
             }
 
             expect(mockLogger.error).toHaveBeenCalledWith(

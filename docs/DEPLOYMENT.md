@@ -41,8 +41,9 @@ Copy-Item data/environments.example.json data/environments.json
 - **Validate that `data/environments.json` exists** (required!)
 - Create Backend App Registration with federated credentials (linked to managed identity)
 - Create Frontend App Registration with Microsoft Entra authentication for user sign-in
-- Deploy Azure infrastructure (App Service, Managed Identity, etc.)
-- Configure secure managed identity authentication for backend
+- Deploy Azure infrastructure (App Service, Managed Identity, Storage Account)
+- Configure secure managed identity authentication for backend and storage
+- **Create Azure Blob Storage for persistent deployment history** (`stmermaid{suffix}`)
 - **Automatically create Application Users in ALL configured environments** from `data/environments.json`
 - Assign System Customizer security role to all Application Users (grants table access)
 - Enable Azure App Service authentication for frontend protection
@@ -53,8 +54,20 @@ Copy-Item data/environments.example.json data/environments.json
 - Package backend files and **multi-environment configuration** (`data/environments.json`)
 - Deploy to Azure App Service with proper static file serving
 - Configure runtime settings for optimal performance
-- Enable deployment history tracking with Power Platform integration
+- Enable **persistent deployment history tracking** with Azure Blob Storage
 - Inject Azure AD authentication configuration into frontend build
+
+## Storage Infrastructure
+
+The application includes **Azure Blob Storage** for persistent deployment history:
+
+- **Storage Account**: `stmermaid{suffix}` (e.g., `stmermaidprod`)
+- **Container**: `deployment-history` (created automatically)
+- **Authentication**: Managed Identity with Storage Blob Data Contributor role
+- **Benefits**: Deployment history persists across app restarts and redeployments
+- **Environment Support**: Separate storage paths for each Dataverse environment
+
+For detailed information, see [Azure Storage Integration Guide](./AZURE-STORAGE-INTEGRATION.md).
 
 ## Multi-Environment Support
 
@@ -84,11 +97,13 @@ The application supports deploying to multiple Dataverse environments from a sin
 - Easy to add new environments - just update configuration
 
 **Deployment History & Rollback:**
+- **Persistent Storage**: Azure Blob Storage ensures deployment history survives app restarts
 - View deployment history filtered by environment (Dev/Test/Prod)
 - Each deployment shows colored environment badge for easy identification
 - Rollback feature automatically targets the correct environment
-- Environment-specific deployment history stored separately
+- Environment-specific deployment history with downloadable JSON records
 - "All Environments" view merges history from all configured environments
+- **Storage Health Monitoring**: Built-in health checks for Azure Storage connectivity
 
 For complete details, see [Azure Multi-Environment Guide](./AZURE-MULTI-ENVIRONMENT.md) and [Usage Guide](./USAGE-GUIDE.md#deployment-history--multi-environment-management).
 - Configure authentication middleware for API protection

@@ -103,7 +103,10 @@ export const SolutionSetupStep: React.FC<SolutionSetupStepProps> = ({
         
         // Auto-select first environment if available
         if (envData.environments && envData.environments.length > 0 && !selectedEnvironment) {
-          setSelectedEnvironment(envData.environments[0]);
+          const firstEnv = envData.environments[0];
+          setSelectedEnvironment(firstEnv);
+          // Also update wizard context immediately
+          updateWizardData({ targetEnvironment: firstEnv });
         }
       } catch (error) {
         console.error('Failed to load environments:', error);

@@ -30,32 +30,40 @@ if ($isAzure) {
         Write-Host "   App: $appName" -ForegroundColor Gray
         Write-Host "   Resource Group: $resourceGroup" -ForegroundColor Gray
         
-        # Get the client ID configured for Easy Auth
-        $authConfig = az webapp auth-classic show --name $appName --resource-group $resourceGroup --query "clientId" -o tsv 2>$null
+        # Get the client ID configured for Easy Auth v2
+        $authConfig = az webapp auth show --name $appName --resource-group $resourceGroup --query "identityProviders.azureActiveDirectory.registration.clientId" -o tsv 2>$null
         
         if ($authConfig) {
             Write-Host "   Client ID: $authConfig" -ForegroundColor Gray
             
-            # Get token for this specific app
-            $tokenResponse = az account get-access-token --resource $authConfig --query "accessToken" -o tsv 2>$null
+            # Get token for Easy Auth v2 - use the app URL as resource
+            $tokenResponse = az account get-access-token --resource $AppUrl --query "accessToken" -o tsv 2>$null
             
             if (-not $tokenResponse -or $tokenResponse.Length -lt 100) {
-                # Try with the app's URL as resource
-                $tokenResponse = az account get-access-token --resource $AppUrl --query "accessToken" -o tsv 2>$null
+                # Try with Microsoft Graph as resource (common for Easy Auth)
+                $tokenResponse = az account get-access-token --resource "https://graph.microsoft.com" --query "accessToken" -o tsv 2>$null
+            }
+            
+            if (-not $tokenResponse -or $tokenResponse.Length -lt 100) {
+                # Try with the application ID URI format
+                $appIdUri = "api://$authConfig"
+                $tokenResponse = az account get-access-token --resource $appIdUri --query "accessToken" -o tsv 2>$null
             }
             
             if ($tokenResponse -and $tokenResponse.Length -gt 100) {
                 $authToken = $tokenResponse
                 Write-Host "   ✅ Access token obtained" -ForegroundColor Green
             } else {
-                Write-Host "   ⚠️  Could not obtain access token for app" -ForegroundColor Yellow
+                Write-Host "   ⚠️  Could not obtain access token (continuing with public endpoints)" -ForegroundColor Yellow
+                Write-Host "   Note: All monitoring endpoints are configured as public" -ForegroundColor Gray
             }
         } else {
-            Write-Host "   ⚠️  Could not retrieve auth configuration" -ForegroundColor Yellow
+            Write-Host "   ⚠️  Could not retrieve auth configuration (Easy Auth v2)" -ForegroundColor Yellow
+            Write-Host "   Note: Smoke tests use public monitoring endpoints" -ForegroundColor Gray
         }
     } catch {
         Write-Host "   ⚠️  Error obtaining token: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "   Continuing with unauthenticated requests..." -ForegroundColor Gray
+        Write-Host "   This is expected for Easy Auth v2 - continuing with public endpoints..." -ForegroundColor Gray
     }
 }
 
@@ -208,6 +216,41 @@ $passed = Invoke-SmokeTest -TestName "Frontend Landing Page" -Url "$AppUrl/" -Va
     # Check if we got HTML content (frontend is served)
     if ($response -match "<!DOCTYPE html>" -or $response -match "<html") {
         Write-Host "   Frontend HTML served successfully" -ForegroundColor Gray
+        return $true
+    }
+    return $false
+}
+if ($passed) { $testsPassed++ } else { $testsFailed++ }
+
+# Test Suite 5: Azure Storage Integration
+Write-Host "`n📋 Test Suite 5: Azure Storage Integration" -ForegroundColor Magenta
+
+# Test 7: Storage Health Check
+$passed = Invoke-SmokeTest -TestName "Storage Health Check" -Url "$AppUrl/api/health/storage" -Validation {
+    param($response)
+    if ($response -and $response.PSObject.Properties['storage'] -and $response.storage.status -eq "healthy") {
+        Write-Host "   Storage Status: $($response.storage.status)" -ForegroundColor Gray
+        Write-Host "   Storage Type: $($response.storage.type)" -ForegroundColor Gray
+        if ($response.storage.PSObject.Properties['containerName']) {
+            Write-Host "   Container: $($response.storage.containerName)" -ForegroundColor Gray
+        }
+        return $true
+    }
+    return $false
+}
+if ($passed) { $testsPassed++ } else { $testsFailed++ }
+
+# Test 8: Deployment History API (Storage Backend)
+$passed = Invoke-SmokeTest -TestName "Deployment History Storage" -Url "$AppUrl/api/deployments/history?limit=1" -Validation {
+    param($response)
+    if ($response -and $response.PSObject.Properties['success'] -and $response.success -eq $true) {
+        Write-Host "   API Response: Success" -ForegroundColor Gray
+        Write-Host "   Storage Backend: Working" -ForegroundColor Gray
+        if ($response.PSObject.Properties['deployments'] -and $response.deployments) {
+            Write-Host "   Deployments Found: $($response.deployments.Count)" -ForegroundColor Gray
+        } else {
+            Write-Host "   Deployments Found: 0 (empty - normal for new deployment)" -ForegroundColor Gray
+        }
         return $true
     }
     return $false

@@ -94,8 +94,10 @@ graph TB
         end
         
         subgraph "Data Storage"
-            DeploymentFiles[Deployment History<br/>JSON Files by Environment]
-            IndexFiles[Deployment Index<br/>Environment-specific]
+            StorageProvider[Storage Provider<br/>Abstract Interface]
+            LocalStorage[Local File Storage<br/>Development]
+            AzureBlob[Azure Blob Storage<br/>Production]
+            DeploymentFiles[Deployment History<br/>Environment-based JSON]
         end
     end
 
@@ -489,7 +491,8 @@ export const DeploymentHistory: React.FC = () => {
 ```
 
 **Backend Multi-Environment Support**:
-- **Environment-Specific Storage**: Deployment history stored in separate JSON files per environment
+- **Environment-Specific Storage**: Deployment history stored persistently in Azure Blob Storage (production) or local files (development)
+- **Storage Abstraction**: Unified storage interface supporting both local and Azure backends
 - **Filtered Queries**: API endpoint supports `?environmentId=xxx` query parameter
 - **Environment Metadata**: Each deployment record includes `environmentId`, `environmentName`, and `environmentUrl`
 - **Merged View**: "All Environments" option combines deployments from all environment index files

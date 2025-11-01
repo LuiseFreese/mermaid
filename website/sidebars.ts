@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'USAGE-GUIDE',
         'DEPLOYMENT',
         'AZURE-MULTI-ENVIRONMENT',
+        'AZURE-STORAGE-INTEGRATION',
       ],
     },
     {

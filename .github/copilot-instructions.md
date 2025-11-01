@@ -8,8 +8,9 @@ A React 18 + Node.js application that converts Mermaid ERD diagrams into Microso
 ### Tech Stack
 - **Frontend**: React 18 + TypeScript + Fluent UI v9 + Vite (port 3003 in dev)
 - **Backend**: Node.js 20 with custom HTTP server (port 8080)
+- **Storage**: Azure Blob Storage for persistent deployment history (production), local files (development)
 - **Deployment**: Azure App Service with User-Assigned Managed Identity
-- **Security**: Federated credentials (zero secrets), managed identity for Dataverse
+- **Security**: Federated credentials (zero secrets), managed identity for Dataverse and Storage
 
 ### Core Service Layers
 ```
@@ -19,8 +20,9 @@ Controllers (HTTP) → Services (Business Logic) → Repositories (Data Access)
 **Key Files:**
 - `src/backend/server.js` - Dependency injection container, routes to controllers
 - `src/backend/controllers/` - HTTP request/response handling
-- `src/backend/services/` - Business logic (ValidationService, DeploymentService)
+- `src/backend/services/` - Business logic (ValidationService, DeploymentService, DeploymentHistoryService)
 - `src/backend/repositories/` - Dataverse API abstraction
+- `src/backend/storage/` - Storage abstraction (LocalStorageProvider, AzureStorageProvider)
 - `src/backend/mermaid-parser.js` - ERD parsing with CommonJS module pattern
 - `src/backend/environment-manager.js` - Multi-environment routing from `data/environments.json`
 
@@ -45,7 +47,7 @@ Step 2: Setup (once per environment suffix)
     ├─ Validates data/environments.json exists
     ├─ Creates App Registration with FIC
     ├─ Creates Managed Identity
-    ├─ Deploys Azure infrastructure
+    ├─ Deploys Azure infrastructure (App Service + Storage Account)
     └─ Creates Application Users in ALL environments
 
 Step 3: Deploy (every code update)

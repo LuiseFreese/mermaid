@@ -248,14 +248,40 @@ class DeploymentController extends BaseController {
             // Use new getDeploymentsByEnvironment method for filtering
             let deployments = await this.deploymentHistoryService.getDeploymentsByEnvironment(environmentId);
             
-            // Apply limit
+            // Apply limit to index results first
             deployments = deployments.slice(0, limit);
+
+            // Load full deployment records with solutionInfo and rollbackData
+            const enrichedDeployments = [];
+            for (const deployment of deployments) {
+                try {
+                    // Load full deployment record
+                    const fullRecord = await this.deploymentHistoryService.getDeployment(deployment.deploymentId);
+                    if (fullRecord) {
+                        // Merge index data with full record data
+                        enrichedDeployments.push({
+                            ...deployment,
+                            solutionInfo: fullRecord.solutionInfo || null,
+                            rollbackData: fullRecord.rollbackData || null,
+                            erdContent: fullRecord.erdContent || null,
+                            deploymentLogs: fullRecord.deploymentLogs || [],
+                            metadata: fullRecord.metadata || {}
+                        });
+                    } else {
+                        // Fallback to index data if full record not found
+                        enrichedDeployments.push(deployment);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to load full record for deployment ${deployment.deploymentId}:`, error.message);
+                    enrichedDeployments.push(deployment);
+                }
+            }
 
             this.sendJson(res, 200, {
                 success: true,
                 environment: environmentId,
-                count: deployments.length,
-                deployments
+                count: enrichedDeployments.length,
+                deployments: enrichedDeployments
             });
         } catch (error) {
             this.sendInternalError(res, 'Failed to get deployment history', error);

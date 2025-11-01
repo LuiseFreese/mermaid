@@ -121,6 +121,7 @@ if (-not $EnvironmentSuffix) {
 $AppServiceName = "app-mermaid-$EnvironmentSuffix"
 $ManagedIdentityName = "mi-mermaid-$EnvironmentSuffix"
 $AppServicePlanName = "plan-mermaid-$EnvironmentSuffix"
+$StorageAccountName = "stmermaid$EnvironmentSuffix"  # Must be globally unique, lowercase, no hyphens
 
 if (-not $ResourceGroup) { 
     $ResourceGroup = "rg-mermaid-$EnvironmentSuffix" 
@@ -135,6 +136,7 @@ Write-Info "  Resource Group: $ResourceGroup"
 Write-Info "  App Service: $AppServiceName"
 Write-Info "  App Registration: $AppRegistrationName"
 Write-Info "  Managed Identity: $ManagedIdentityName"
+Write-Info "  Storage Account: $StorageAccountName"
 
 if ($DryRun) {
     Write-Warning "DRY RUN MODE - No changes will be made"
@@ -239,6 +241,7 @@ if (Test-Path $bicepFile) {
             appServiceName=$AppServiceName `
             appServicePlanName=$AppServicePlanName `
             managedIdentityName=$ManagedIdentityName `
+            storageAccountName=$StorageAccountName `
             environment=$EnvironmentSuffix `
             location=$Location | ConvertFrom-Json
     

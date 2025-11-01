@@ -264,6 +264,7 @@ async function initializeComponents() {
       globalChoicesService,
       publisherService,
       solutionService,
+      deploymentHistoryService,
       
       // Environment Management
       environmentManager,
@@ -593,6 +594,11 @@ async function routeRequest(pathname, req, res, components) {
 
 async function handleApiRoutes(pathname, req, res, components) {
   const route = pathname.replace('/api/', '');
+
+  // Storage health check route
+  if (route === 'health/storage' && req.method === 'GET') {
+    return handleStorageHealthCheck(req, res, components);
+  }
 
   // Configuration routes
   if (route === 'config/environment') {
@@ -1154,9 +1160,123 @@ async function handleApiRoutes(pathname, req, res, components) {
       }
       break;
 
+    case 'deployment-history':
+      if (req.method === 'POST') {
+        return handleCreateDeploymentRecord(req, res, components);
+      }
+      if (req.method === 'GET') {
+        return handleGetDeploymentHistory(req, res, components);
+      }
+      break;
+
+    case 'deployments/history':
+      if (req.method === 'GET') {
+        return handleGetDeploymentHistory(req, res, components);
+      }
+      break;
+
     default:
       // Unknown API route
       await components.errorHandler.handle404(req, res);
+  }
+}
+
+// --- Deployment History API Handlers -----------------------------------
+async function handleCreateDeploymentRecord(req, res, components) {
+  try {
+    console.log('🎯 POST /api/deployment-history - Creating deployment record');
+    
+    const body = req.rawBody;
+    if (!body) {
+      throw new Error('Request body is required');
+    }
+    
+    const deploymentData = JSON.parse(body);
+    console.log('🎯 Parsed deployment data:', { 
+      environmentSuffix: deploymentData.environmentSuffix,
+      status: deploymentData.status
+    });
+    
+    // Use the deployment history service to record the deployment
+    const deploymentId = await components.deploymentHistoryService.recordDeployment(deploymentData);
+    console.log('🎯 Deployment recorded with ID:', deploymentId);
+    
+    res.writeHead(201, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      deploymentId,
+      message: 'Deployment record created successfully'
+    }));
+  } catch (error) {
+    console.error('❌ Failed to create deployment record:', error);
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: false,
+      error: error.message
+    }));
+  }
+}
+
+async function handleGetDeploymentHistory(req, res, components) {
+  try {
+    const { query } = url.parse(req.url, true);
+    const environmentSuffix = query.environmentSuffix || 'default';
+    const limit = parseInt(query.limit) || 10;
+    const includeDetails = query.includeDetails !== 'false'; // Default to true
+    
+    console.log('🔧 DEBUG: handleGetDeploymentHistory called', { environmentSuffix, limit, includeDetails });
+    
+    // Get basic history from index
+    const history = await components.deploymentHistoryService.getDeploymentHistory(environmentSuffix, limit);
+    console.log('🔧 DEBUG: Basic history loaded:', history.length, 'deployments');
+    
+    // If details are requested, load full deployment records
+    let enrichedHistory = history;
+    if (includeDetails && history.length > 0) {
+      console.log('🔧 DEBUG: Loading full deployment records...');
+      enrichedHistory = [];
+      for (const deployment of history) {
+        try {
+          // Load full deployment record
+          const fullRecord = await components.deploymentHistoryService.getDeployment(deployment.deploymentId);
+          console.log('🔧 DEBUG: Full record for', deployment.deploymentId, ':', !!fullRecord, fullRecord ? 'has solutionInfo:' + !!fullRecord.solutionInfo : '');
+          if (fullRecord) {
+            // Merge index data with full record data
+            enrichedHistory.push({
+              ...deployment,
+              solutionInfo: fullRecord.solutionInfo || null,
+              rollbackData: fullRecord.rollbackData || null,
+              erdContent: fullRecord.erdContent || null,
+              deploymentLogs: fullRecord.deploymentLogs || [],
+              metadata: fullRecord.metadata || {}
+            });
+          } else {
+            // Fallback to index data if full record not found
+            enrichedHistory.push(deployment);
+          }
+        } catch (error) {
+          console.warn(`Failed to load full record for deployment ${deployment.deploymentId}:`, error.message);
+          enrichedHistory.push(deployment);
+        }
+      }
+      console.log('🔧 DEBUG: Enriched history prepared with', enrichedHistory.length, 'deployments');
+    }
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      environmentSuffix,
+      deployments: enrichedHistory,
+      count: enrichedHistory.length
+    }));
+  } catch (error) {
+    console.error('Failed to get deployment history:', error);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: false,
+      error: error.message,
+      deployments: []
+    }));
   }
 }
 
@@ -1184,6 +1304,68 @@ async function handleHealthCheck(req, res, components) {
     res.end(JSON.stringify(health, null, 2));
   } catch (error) {
     await components.errorHandler.handle(error, req, res);
+  }
+}
+
+async function handleStorageHealthCheck(req, res, components) {
+  try {
+    const startTime = Date.now();
+    let storageHealth = {
+      status: 'unknown',
+      type: 'unknown',
+      timestamp: new Date().toISOString(),
+      responseTime: 0
+    };
+
+    // Check storage via deployment history service
+    if (components.deploymentHistoryService) {
+      try {
+        // Test storage connectivity by checking storage type
+        const isAzureStorage = process.env.USE_AZURE_STORAGE === 'true' || process.env.AZURE_STORAGE_ACCOUNT_NAME;
+        
+        if (isAzureStorage) {
+          storageHealth.type = 'azure-blob';
+          storageHealth.containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'deployments';
+          storageHealth.accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+        } else {
+          storageHealth.type = 'local-filesystem';
+          storageHealth.basePath = './data/deployments';
+        }
+
+        // Test storage by getting deployment history (should not fail even if empty)
+        const testResult = await components.deploymentHistoryService.getDeploymentHistory('health-check', 1);
+        storageHealth.status = 'healthy';
+        storageHealth.testResult = 'accessible';
+        storageHealth.testRecordsCount = testResult ? testResult.length : 0;
+        
+      } catch (error) {
+        storageHealth.status = 'unhealthy';
+        storageHealth.error = error.message;
+        storageHealth.testResult = 'failed';
+      }
+    } else {
+      storageHealth.status = 'unavailable';
+      storageHealth.error = 'DeploymentHistoryService not available';
+    }
+
+    storageHealth.responseTime = Date.now() - startTime;
+
+    const response = {
+      storage: storageHealth,
+      timestamp: new Date().toISOString()
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(response, null, 2));
+  } catch (error) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      storage: {
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }
+    }, null, 2));
   }
 }
 
