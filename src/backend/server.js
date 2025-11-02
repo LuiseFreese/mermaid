@@ -43,6 +43,9 @@ const DeploymentController = require('./controllers/deployment-controller');
 const { AdminController } = require('./controllers/admin-controller');
 const RollbackController = require('./controllers/rollback-controller');
 const { ImportController } = require('./controllers/import-controller');
+const { AnalyticsController } = require('./controllers/analytics-controller');
+const { SearchController } = require('./controllers/search-controller');
+const { TemplatesController } = require('./controllers/templates-controller');
 
 // Services
 const { ValidationService } = require('./services/validation-service');
@@ -211,6 +214,11 @@ async function initializeComponents() {
       streamingMiddleware: streamingHandler
     });
 
+    // New Phase-1 controllers
+    const analyticsController = new AnalyticsController({ analyticsService: null });
+    const searchController = new SearchController({ deploymentHistoryService });
+    const templatesController = new TemplatesController({ templatesDir: path.join(__dirname, '../../data/templates') });
+
     // Set deployment history service on the deployment controller
     deploymentController.setDeploymentHistoryService(deploymentHistoryService);
 
@@ -283,7 +291,12 @@ async function initializeComponents() {
       deploymentController,
       rollbackController,
       importController,
-      adminController
+      adminController,
+      
+      // Phase-1 controllers
+      analyticsController,
+      searchController,
+      templatesController
     };
 
     console.log('Application components initialized successfully');
@@ -1175,7 +1188,53 @@ async function handleApiRoutes(pathname, req, res, components) {
       }
       break;
 
+    // Phase-1: Analytics routes
+    case 'analytics/deployment-trends':
+      if (req.method === 'GET') {
+        return components.analyticsController.getDeploymentTrends(req, res);
+      }
+      break;
+
+    case 'analytics/success-rates':
+      if (req.method === 'GET') {
+        return components.analyticsController.getSuccessRates(req, res);
+      }
+      break;
+
+    case 'analytics/rollback-frequency':
+      if (req.method === 'GET') {
+        return components.analyticsController.getRollbackFrequency(req, res);
+      }
+      break;
+
+    // Phase-1: Search routes
+    case 'deployments/search':
+      if (req.method === 'GET') {
+        return components.searchController.searchDeployments(req, res);
+      }
+      break;
+
+    // Phase-1: Templates routes
+    case 'templates':
+      if (req.method === 'GET') {
+        return components.templatesController.listTemplates(req, res);
+      }
+      if (req.method === 'POST') {
+        return components.templatesController.createTemplate(req, res);
+      }
+      break;
+
     default:
+      // Check for templates by ID (dynamic routes)
+      if (route.startsWith('templates/')) {
+        if (req.method === 'GET') {
+          return components.templatesController.getTemplate(req, res);
+        }
+        if (req.method === 'DELETE') {
+          return components.templatesController.deleteTemplate(req, res);
+        }
+      }
+
       // Unknown API route
       await components.errorHandler.handle404(req, res);
   }
