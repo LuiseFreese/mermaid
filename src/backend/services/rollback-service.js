@@ -566,7 +566,9 @@ class RollbackService extends BaseService {
                 rollbackOptions: validation.config
             };
 
-            await this.deploymentHistoryService.updateDeployment(deploymentId, updateData);
+            await this.deploymentHistoryService.updateDeployment(deploymentId, newStatus, {
+                rollbackInfo: updateData.rollbackInfo
+            });
 
             progressTracker.completeStep('finalization', 'Rollback operation finalized');
             

@@ -51,7 +51,6 @@ import {
   CheckmarkRegular,
   DismissCircleRegular
 } from '@fluentui/react-icons';
-import { ApiService } from '../../services/apiService';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
 import type { DataverseEnvironment } from '../../../../shared/types/environment';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -139,14 +138,32 @@ const useStyles = makeStyles({
   },
 });
 
-// Helper function to generate Power Platform solution URL
-const generateSolutionUrl = async (solutionId: string): Promise<string> => {
+// Helper function to get Power Platform environment ID for a deployment
+const getPowerPlatformEnvironmentId = (deployment: DeploymentSummary, environments: any[]): string | null => {
+  // Get the environment ID from the deployment
+  const deploymentEnvId = (deployment as any).environmentId || (deployment as any).environmentSuffix;
+  
+  if (!deploymentEnvId || !environments.length) {
+    return null;
+  }
+  
+  // Find the matching environment configuration
+  const environment = environments.find(env => env.id === deploymentEnvId);
+  return environment?.powerPlatformEnvironmentId || null;
+};
+
+// Helper function to generate Power Platform solution URL for a specific deployment
+const generateSolutionUrl = async (solutionId: string, deployment: DeploymentSummary, environments: any[]): Promise<string> => {
   try {
-    const config = await ApiService.getConfig();
-    return `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutions/${solutionId}`;
+    const powerPlatformEnvId = getPowerPlatformEnvironmentId(deployment, environments);
+    
+    if (!powerPlatformEnvId) {
+      throw new Error('Unable to determine Power Platform environment ID for this deployment');
+    }
+    
+    return `https://make.powerapps.com/environments/${powerPlatformEnvId}/solutions/${solutionId}`;
   } catch (error) {
-    console.error('Failed to fetch environment config:', error);
-    // Return null if API fails - solution link won't be shown
+    console.error('Failed to generate solution URL:', error);
     throw new Error('Unable to generate solution URL: environment configuration not available');
   }
 };
@@ -219,22 +236,12 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   // Expandable row state for rollback details
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
-  // Environment ID for solution history links
-  const [environmentId, setEnvironmentId] = useState<string>('');
-
   useEffect(() => {
     // Only load deployment history after user is authenticated
     if (accounts.length > 0 && inProgress === 'none') {
       loadEnvironments();
       loadDeploymentHistory();
     }
-    
-    // Fetch environment ID once for solution history links
-    ApiService.getConfig().then(config => {
-      setEnvironmentId(config.powerPlatformEnvironmentId);
-    }).catch(err => {
-      console.error('Failed to get environment ID:', err);
-    });
   }, [accounts.length, inProgress]);
 
   // Reload deployments when selected environment changes
@@ -288,14 +295,26 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
           return !isRollbackRecord;
         });
         
+        // Sanitize deployment data to prevent React object rendering errors
+        const sanitizedDeployments = originalDeployments.map((deployment: any) => ({
+          ...deployment,
+          status: typeof deployment.status === 'string' ? deployment.status : 'unknown',
+          solutionInfo: deployment.solutionInfo && typeof deployment.solutionInfo === 'object' ? {
+            ...deployment.solutionInfo,
+            solutionName: typeof deployment.solutionInfo.solutionName === 'string' ? deployment.solutionInfo.solutionName : undefined,
+            publisherName: typeof deployment.solutionInfo.publisherName === 'string' ? deployment.solutionInfo.publisherName : undefined,
+          } : deployment.solutionInfo,
+          rollbackInfo: deployment.rollbackInfo && typeof deployment.rollbackInfo === 'object' ? deployment.rollbackInfo : undefined
+        }));
+        
         console.log('🔧 DEBUG: Filtered deployments:', {
           totalCount: data.deployments.length,
           originalCount: originalDeployments.length,
           filteredOutCount: data.deployments.length - originalDeployments.length
         });
         
-        setDeployments(originalDeployments);
-        console.log('🔧 DEBUG: Set deployments state (excluding rollback records):', originalDeployments);
+        setDeployments(sanitizedDeployments);
+        console.log('🔧 DEBUG: Set deployments state (sanitized, excluding rollback records):', sanitizedDeployments);
       } else {
         setError('Failed to load deployment history');
         console.log('🔧 DEBUG: API returned success=false');
@@ -371,9 +390,13 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       // For rolled-back deployments, show solution history instead of specific solution
       if (deployment.status === 'rolled-back') {
         try {
-          const config = await ApiService.getConfig();
-          const historyUrl = `https://make.powerapps.com/environments/${config.powerPlatformEnvironmentId}/solutionsHistory`;
-          setSolutionUrl(historyUrl);
+          const powerPlatformEnvId = getPowerPlatformEnvironmentId(deployment, environments);
+          if (powerPlatformEnvId) {
+            const historyUrl = `https://make.powerapps.com/environments/${powerPlatformEnvId}/solutionsHistory`;
+            setSolutionUrl(historyUrl);
+          } else {
+            setSolutionUrl(null);
+          }
         } catch (error) {
           console.error('Failed to generate solution history URL:', error);
           setSolutionUrl(null);
@@ -381,7 +404,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       } else if (deployment.solutionInfo?.solutionId) {
         // For active deployments, show the specific solution
         try {
-          const url = await generateSolutionUrl(deployment.solutionInfo.solutionId);
+          const url = await generateSolutionUrl(deployment.solutionInfo.solutionId, deployment, environments);
           setSolutionUrl(url);
         } catch (error) {
           console.error('Failed to generate solution URL:', error);
@@ -1043,7 +1066,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                             color={getStatusColor(deployment.status)}
                             className={styles.statusBadge}
                           >
-                            {deployment.status}
+                            {typeof deployment.status === 'string' ? deployment.status : 'unknown'}
                           </Badge>
                         </TableCellLayout>
                       </TableCell>
@@ -1160,36 +1183,39 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                                               {options?.solution ? 'Solution History:' : 'Solution:'}
                                             </Text>
                                             <div>
-                                              {environmentId ? (
-                                                <a
-                                                  href={
-                                                    options?.solution 
-                                                      ? `https://make.powerapps.com/environments/${environmentId}/solutionsHistory`
-                                                      : `https://make.powerapps.com/environments/${environmentId}/solutions/${deployment.solutionInfo?.solutionId}`
-                                                  }
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px',
-                                                    color: tokens.colorBrandForeground1,
-                                                    textDecoration: 'none',
-                                                    fontSize: '14px'
-                                                  }}
-                                                  onMouseEnter={(e) => {
-                                                    e.currentTarget.style.textDecoration = 'underline';
-                                                  }}
-                                                  onMouseLeave={(e) => {
-                                                    e.currentTarget.style.textDecoration = 'none';
-                                                  }}
-                                                >
-                                                  <LinkRegular style={{ fontSize: '12px' }} />
-                                                  View in Power Platform
-                                                </a>
-                                              ) : (
-                                                <Text size={200} style={{ opacity: 0.5 }}>Loading...</Text>
-                                              )}
+                                              {(() => {
+                                                const powerPlatformEnvId = getPowerPlatformEnvironmentId(deployment, environments);
+                                                return powerPlatformEnvId ? (
+                                                  <a
+                                                    href={
+                                                      options?.solution 
+                                                        ? `https://make.powerapps.com/environments/${powerPlatformEnvId}/solutionsHistory`
+                                                        : `https://make.powerapps.com/environments/${powerPlatformEnvId}/solutions/${deployment.solutionInfo?.solutionId}`
+                                                    }
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                      display: 'inline-flex',
+                                                      alignItems: 'center',
+                                                      gap: '4px',
+                                                      color: tokens.colorBrandForeground1,
+                                                      textDecoration: 'none',
+                                                      fontSize: '14px'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                      e.currentTarget.style.textDecoration = 'underline';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                      e.currentTarget.style.textDecoration = 'none';
+                                                    }}
+                                                  >
+                                                    <LinkRegular style={{ fontSize: '12px' }} />
+                                                    View in Power Platform
+                                                  </a>
+                                                ) : (
+                                                  <Text size={200} style={{ opacity: 0.5 }}>Environment not found</Text>
+                                                );
+                                              })()}
                                             </div>
                                           </div>
                                         )}
@@ -1373,7 +1399,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                       <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px' }}>
                         <strong>Status:</strong>
                         <span style={{ color: selectedDeployment.status === 'success' ? tokens.colorPaletteGreenForeground1 : tokens.colorPaletteRedForeground1 }}>
-                          {selectedDeployment.status}
+                          {typeof selectedDeployment.status === 'string' ? selectedDeployment.status : 'unknown'}
                         </span>
                         
                         <strong>Solution Name:</strong>
