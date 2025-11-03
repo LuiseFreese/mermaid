@@ -400,7 +400,7 @@ export const MainMenu: React.FC = () => {
           fontSize: '11px',
           opacity: 0.7
         }}>
-          Build: {import.meta.env.VITE_BUILD_TIME || 'Dev'} • Version 2.2.1
+          Build: {import.meta.env.VITE_BUILD_TIME || 'Dev'} • Version 2.2.2
         </Text>
       </div>
     </div>
