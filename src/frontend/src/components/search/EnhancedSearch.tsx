@@ -1,36 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import {
-  makeStyles,
-  shorthands,
-  tokens,
   Card,
-  Text,
   Title1,
   Title2,
-  SearchBox,
+  Text,
   Button,
+  Field,
+  SearchBox,
   Dropdown,
   Option,
-  Field,
   Input,
   Badge,
   Spinner,
   MessageBar,
   Table,
   TableHeader,
+  TableRow,
   TableHeaderCell,
   TableBody,
-  TableRow,
   TableCell,
   Menu,
   MenuTrigger,
   MenuPopover,
   MenuList,
   MenuItem,
-  Tooltip,
+  tokens,
+  makeStyles,
+  shorthands,
 } from '@fluentui/react-components';
 import {
-  Search24Regular,
+  Search24Filled,
   Filter24Regular,
   CheckmarkCircle24Filled,
   ErrorCircle24Filled,
@@ -42,18 +41,18 @@ import {
 
 const useStyles = makeStyles({
   container: {
-    display: 'flex',
-    flexDirection: 'column',
-    ...shorthands.gap('24px'),
     ...shorthands.padding('24px'),
     backgroundColor: tokens.colorNeutralBackground1,
     minHeight: '100vh',
+    ...shorthands.gap('24px'),
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    ...shorthands.gap('12px'),
+    ...shorthands.margin('0', '0', '24px', '0'),
   },
   headerLeft: {
     display: 'flex',
@@ -98,25 +97,26 @@ const useStyles = makeStyles({
     ...shorthands.margin('16px', '0', '0', '0'),
     maxHeight: '600px',
     overflowY: 'auto',
+    ...shorthands.border('1px', 'solid', tokens.colorNeutralStroke2),
+    ...shorthands.borderRadius(tokens.borderRadiusMedium),
   },
   statusBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    ...shorthands.gap('4px'),
-  },
-  environmentBadge: {
+    ...shorthands.padding('4px', '8px'),
+    ...shorthands.borderRadius('12px'),
     fontSize: '12px',
     fontWeight: '500',
   },
-  deploymentId: {
-    fontFamily: 'monospace',
+  environmentBadge: {
+    ...shorthands.padding('4px', '8px'),
+    ...shorthands.borderRadius('12px'),
     fontSize: '12px',
-    color: tokens.colorNeutralForeground2,
+    fontWeight: '500',
+    color: tokens.colorNeutralForeground1,
   },
   actionButton: {
-    minWidth: '32px',
+    minWidth: 'auto',
   },
-  loading: {
+  loadingContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -208,14 +208,17 @@ export const EnhancedSearch: React.FC = () => {
 
       const response = await fetch(`/api/deployments/search?${params}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch deployments');
+        throw new Error(`Search failed: ${response.statusText}`);
       }
 
       const data = await response.json();
       setResults(data.data || []);
-      setTotalCount(data.count || 0);
+      setTotalCount(data.data?.length || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Search error:', err);
+      setError(err instanceof Error ? err.message : 'Search failed');
+      setResults([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -230,20 +233,19 @@ export const EnhancedSearch: React.FC = () => {
     setLimit('20');
     // No need to call performSearch - the useEffect will handle it automatically
   };
-  };
 
   const getStatusIcon = (status: string) => {
-    const normalizedStatus = status.toLowerCase();
-    if (normalizedStatus.includes('success') || normalizedStatus.includes('completed')) {
+    switch (status.toLowerCase()) {
+    case 'success':
       return <CheckmarkCircle24Filled style={{ color: tokens.colorPaletteGreenForeground3 }} />;
-    }
-    if (normalizedStatus.includes('failed') || normalizedStatus.includes('error')) {
+    case 'failed':
+    case 'error':
       return <ErrorCircle24Filled style={{ color: tokens.colorPaletteRedForeground3 }} />;
-    }
-    if (normalizedStatus.includes('rolled') || normalizedStatus.includes('rollback')) {
+    case 'rolled-back':
       return <ArrowUndo24Regular style={{ color: tokens.colorPaletteDarkOrangeForeground3 }} />;
-    }
+    default:
     return <Warning24Filled style={{ color: tokens.colorPaletteYellowForeground3 }} />;
+    }
   };
 
   const getEnvironmentColor = (envName: string) => {
@@ -280,21 +282,11 @@ export const EnhancedSearch: React.FC = () => {
     return 'Deployment completed';
   };
 
-  const filteredResults = results.filter(result => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      result.deploymentId.toLowerCase().includes(search) ||
-      result.environmentName.toLowerCase().includes(search) ||
-      getSummaryText(result.summary).toLowerCase().includes(search)
-    );
-  });
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <Search24Regular />
+          <Search24Filled />
           <Title1>Enhanced Search</Title1>
         </div>
         <Badge appearance="outline">{totalCount} deployments found</Badge>
@@ -320,7 +312,7 @@ export const EnhancedSearch: React.FC = () => {
               selectedOptions={statusFilter ? [statusFilter] : []}
               onOptionSelect={(_, data) => setStatusFilter(data.optionValue || '')}
             >
-              {statusOptions.map(option => (
+              {statusOptions.map((option) => (
                 <Option key={option.value} value={option.value}>
                   {option.label}
                 </Option>
@@ -395,33 +387,33 @@ export const EnhancedSearch: React.FC = () => {
       <Card className={styles.resultsCard}>
         <div className={styles.resultsHeader}>
           <Title2>Search Results</Title2>
-          <Text>{filteredResults.length} of {totalCount} deployments</Text>
+          <Text>{results.length} of {totalCount} deployments</Text>
         </div>
 
+        {error && (
+          <MessageBar intent="error">
+            {error}
+          </MessageBar>
+        )}
+
         {loading && (
-          <div className={styles.loading}>
+          <div className={styles.loadingContainer}>
             <Spinner size="large" />
             <Text>Searching deployments...</Text>
           </div>
         )}
 
-        {error && (
-          <MessageBar intent="error">
-            <Text>Error: {error}</Text>
-          </MessageBar>
-        )}
-
-        {!loading && !error && filteredResults.length === 0 && (
+        {!loading && !error && results.length === 0 && (
           <div className={styles.emptyState}>
-            <Search24Regular style={{ fontSize: '48px' }} />
-            <Text>No deployments found</Text>
-            <Text>Try adjusting your search criteria</Text>
+            <Search24Filled fontSize={48} />
+            <Text weight="semibold">No deployments found</Text>
+            <Text>Try adjusting your search criteria or filters</Text>
           </div>
         )}
 
-        {!loading && !error && filteredResults.length > 0 && (
+        {!loading && !error && results.length > 0 && (
           <div className={styles.tableContainer}>
-            <Table arial-label="Deployment search results">
+            <Table sortable>
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Status</TableHeaderCell>
@@ -433,29 +425,19 @@ export const EnhancedSearch: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredResults.map((deployment) => (
+                {results.map((deployment) => (
                   <TableRow key={deployment.deploymentId}>
                     <TableCell>
-                      <div className={styles.statusBadge}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {getStatusIcon(deployment.status)}
-                        <Badge
-                          appearance={deployment.status.toLowerCase().includes('success') ? 'filled' : 'outline'}
-                          color={deployment.status.toLowerCase().includes('success') ? 'success' : 'important'}
-                        >
-                          {deployment.status}
-                        </Badge>
+                        <Text>{deployment.status}</Text>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Tooltip content={deployment.deploymentId} relationship="description">
-                        <Text className={styles.deploymentId}>
-                          {deployment.deploymentId.substring(0, 12)}...
-                        </Text>
-                      </Tooltip>
+                      <Text weight="semibold">{deployment.deploymentId.slice(-8)}</Text>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        appearance="tint"
                         className={styles.environmentBadge}
                         style={{ backgroundColor: getEnvironmentColor(deployment.environmentName) + '20' }}
                       >
@@ -499,5 +481,3 @@ export const EnhancedSearch: React.FC = () => {
     </div>
   );
 };
-
-export { EnhancedSearch };
