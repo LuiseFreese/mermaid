@@ -184,12 +184,22 @@ export const EnhancedSearch: React.FC = () => {
     performSearch();
   }, []);
 
+  // Live filtering - trigger search when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      performSearch();
+    }, 300); // Debounce for 300ms to avoid too many API calls
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, statusFilter, environmentFilter, fromDate, toDate, limit]);
+
   const performSearch = async () => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
+      if (searchTerm) params.append('q', searchTerm);
       if (statusFilter) params.append('status', statusFilter);
       if (environmentFilter) params.append('environment', environmentFilter);
       if (fromDate) params.append('from', fromDate);
@@ -211,10 +221,6 @@ export const EnhancedSearch: React.FC = () => {
     }
   };
 
-  const handleSearch = () => {
-    performSearch();
-  };
-
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('');
@@ -222,7 +228,8 @@ export const EnhancedSearch: React.FC = () => {
     setFromDate('');
     setToDate('');
     setLimit('20');
-    performSearch();
+    // No need to call performSearch - the useEffect will handle it automatically
+  };
   };
 
   const getStatusIcon = (status: string) => {
@@ -302,6 +309,7 @@ export const EnhancedSearch: React.FC = () => {
               placeholder="Search deployments, environments, or descriptions..."
               value={searchTerm}
               onChange={(_, data) => setSearchTerm(data.value)}
+              disabled={loading}
             />
           </Field>
 
@@ -364,13 +372,23 @@ export const EnhancedSearch: React.FC = () => {
             </Dropdown>
           </Field>
 
-          <Button appearance="primary" icon={<Filter24Regular />} onClick={handleSearch}>
-            Search
-          </Button>
-
-          <Button appearance="outline" onClick={clearFilters}>
-            Clear
-          </Button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+            <Button 
+              appearance="outline" 
+              icon={<Filter24Regular />} 
+              onClick={clearFilters}
+              style={{ minWidth: 'auto' }}
+            >
+              Clear Filters
+            </Button>
+            <Text size={200} style={{ 
+              color: tokens.colorNeutralForeground3,
+              fontSize: '12px',
+              alignSelf: 'center'
+            }}>
+              Results update automatically as you type and filter
+            </Text>
+          </div>
         </div>
       </Card>
 
@@ -482,4 +500,4 @@ export const EnhancedSearch: React.FC = () => {
   );
 };
 
-export default EnhancedSearch;
+export { EnhancedSearch };

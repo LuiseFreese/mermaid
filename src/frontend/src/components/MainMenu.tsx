@@ -11,16 +11,14 @@ import {
   MessageBarBody,
 } from '@fluentui/react-components';
 import { 
-  ArrowUploadRegular,
-  ArrowUndoRegular,
-  // ArrowDownloadRegular,
   DatabaseRegular,
-  // DocumentRegular,
   ChevronRightRegular,
   WarningRegular,
-  DataTrending24Regular,
-  Search24Regular,
-  DocumentText24Regular
+  DataTrending24Filled,
+  Search24Filled,
+  DocumentEdit24Filled,
+  CloudArrowUp24Filled,
+  ArrowUndo24Filled
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import { useDeploymentContext } from '../context/DeploymentContext';
@@ -35,7 +33,7 @@ export const MainMenu: React.FC = () => {
       title: 'Deploy Solution',
       subtitle: 'Mermaid ERD → Dataverse',
       description: 'Convert your Mermaid ERD diagrams into Dataverse solutions with entities, attributes, and relationships.',
-      icon: <ArrowUploadRegular fontSize={32} />,
+      icon: <CloudArrowUp24Filled fontSize={32} />,
       color: tokens.colorPaletteGreenForeground1,
       backgroundColor: tokens.colorPaletteGreenBackground3,
       route: '/wizard',
@@ -52,7 +50,7 @@ export const MainMenu: React.FC = () => {
       title: 'Analytics Dashboard',
       subtitle: 'Deployment Insights',
       description: 'Visualize deployment trends, success rates, and performance metrics with interactive charts and statistics.',
-      icon: <DataTrending24Regular fontSize={32} />,
+      icon: <DataTrending24Filled fontSize={32} />,
       color: tokens.colorPaletteBlueForeground2,
       backgroundColor: tokens.colorPaletteBlueBackground2,
       route: '/analytics',
@@ -69,7 +67,7 @@ export const MainMenu: React.FC = () => {
       title: 'Enhanced Search',
       subtitle: 'Find Deployments',
       description: 'Search and filter deployment history with advanced filtering by status, environment, date ranges, and more.',
-      icon: <Search24Regular fontSize={32} />,
+      icon: <Search24Filled fontSize={32} />,
       color: tokens.colorPalettePurpleForeground2,
       backgroundColor: tokens.colorPalettePurpleBackground2,
       route: '/search',
@@ -86,7 +84,7 @@ export const MainMenu: React.FC = () => {
       title: 'Template Management',
       subtitle: 'Reusable ERDs',
       description: 'Create, manage, and share reusable ERD templates for faster deployment and standardized patterns.',
-      icon: <DocumentText24Regular fontSize={32} />,
+      icon: <DocumentEdit24Filled fontSize={32} />,
       color: tokens.colorPaletteTealForeground2,
       backgroundColor: tokens.colorPaletteTealBackground2,
       route: '/templates',
@@ -103,7 +101,7 @@ export const MainMenu: React.FC = () => {
       title: 'Rollback Solution',
       subtitle: 'Undo Deployment',
       description: 'Safely rollback previously deployed solutions with automatic dependency checking and data preservation.',
-      icon: <ArrowUndoRegular fontSize={32} />,
+      icon: <ArrowUndo24Filled fontSize={32} />,
       color: tokens.colorPaletteDarkOrangeForeground1,
       backgroundColor: tokens.colorPaletteDarkOrangeBackground3,
       route: '/rollback',
