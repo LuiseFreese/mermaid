@@ -17,7 +17,10 @@ import {
   DatabaseRegular,
   // DocumentRegular,
   ChevronRightRegular,
-  WarningRegular
+  WarningRegular,
+  DataTrending24Regular,
+  Search24Regular,
+  DocumentText24Regular
 } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
 import { useDeploymentContext } from '../context/DeploymentContext';
@@ -42,6 +45,57 @@ export const MainMenu: React.FC = () => {
         'CDM entity detection',
         'Relationship mapping',
         'Real-time preview'
+      ]
+    },
+    {
+      id: 'analytics',
+      title: 'Analytics Dashboard',
+      subtitle: 'Deployment Insights',
+      description: 'Visualize deployment trends, success rates, and performance metrics with interactive charts and statistics.',
+      icon: <DataTrending24Regular fontSize={32} />,
+      color: tokens.colorPaletteBlueForeground2,
+      backgroundColor: tokens.colorPaletteBlueBackground2,
+      route: '/analytics',
+      badges: ['New', 'Phase-1'],
+      features: [
+        'Deployment trends',
+        'Success rate analysis',
+        'Rollback frequency',
+        'Interactive charts'
+      ]
+    },
+    {
+      id: 'search',
+      title: 'Enhanced Search',
+      subtitle: 'Find Deployments',
+      description: 'Search and filter deployment history with advanced filtering by status, environment, date ranges, and more.',
+      icon: <Search24Regular fontSize={32} />,
+      color: tokens.colorPalettePurpleForeground2,
+      backgroundColor: tokens.colorPalettePurpleBackground2,
+      route: '/search',
+      badges: ['New', 'Phase-1'],
+      features: [
+        'Advanced filtering',
+        'Date range search',
+        'Environment filtering',
+        'Status tracking'
+      ]
+    },
+    {
+      id: 'templates',
+      title: 'Template Management',
+      subtitle: 'Reusable ERDs',
+      description: 'Create, manage, and share reusable ERD templates for faster deployment and standardized patterns.',
+      icon: <DocumentText24Regular fontSize={32} />,
+      color: tokens.colorPaletteTealForeground2,
+      backgroundColor: tokens.colorPaletteTealBackground2,
+      route: '/templates',
+      badges: ['New', 'Phase-1'],
+      features: [
+        'Template library',
+        'Quick deployment',
+        'Version control',
+        'Share templates'
       ]
     },
     {
@@ -126,8 +180,8 @@ export const MainMenu: React.FC = () => {
       {/* Menu Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
-        gap: '24px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+        gap: '20px',
         marginBottom: '32px'
       }}>
         {menuItems.map((item) => (
@@ -230,8 +284,11 @@ export const MainMenu: React.FC = () => {
                   style={{ width: '100%' }}
                 >
                   {item.id === 'deploy' ? 'Start Conversion' : 
-                   item.id === 'reverse' ? 'Extract Solution' : 
-                   'View History'}
+                   item.id === 'analytics' ? 'View Analytics' :
+                   item.id === 'search' ? 'Search Deployments' :
+                   item.id === 'templates' ? 'Manage Templates' :
+                   item.id === 'rollback' ? 'View History' : 
+                   'Open'}
                 </Button>
               </div>
             </CardPreview>

@@ -5,6 +5,9 @@ import { DeploymentHistory } from './components/deployment-history';
 import { MainMenu } from './components/MainMenu';
 import { RollbackPage } from './components/RollbackPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { EnhancedSearch } from './components/search/EnhancedSearch';
+import { TemplateManagement } from './components/templates/TemplateManagement';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { DeploymentProvider } from './context/DeploymentContext';
 import { AuthProvider } from './auth/AuthProvider';
@@ -38,13 +41,16 @@ const AppContent: React.FC = () => {
       <div className={styles.app}>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<Navigate to="/wizard" replace />} />
+            <Route path="/" element={<MainMenu />} />
             <Route path="/wizard/*" element={<WizardShell />} />
             <Route path="/rollback" element={<RollbackPage />} />
             <Route path="/deployment-history" element={<DeploymentHistory />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/search" element={<EnhancedSearch />} />
+            <Route path="/templates" element={<TemplateManagement />} />
             {/* Redirect old routes */}
-            <Route path="/home" element={<Navigate to="/wizard" replace />} />
-            <Route path="/menu" element={<MainMenu />} />
+            <Route path="/home" element={<Navigate to="/" replace />} />
+            <Route path="/menu" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
       </div>
