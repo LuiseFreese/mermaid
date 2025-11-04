@@ -1,0 +1,288 @@
+/* Deployment History Component Styles */
+
+.container {
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.header {
+  background-color: var(--color-banner-background);
+  color: var(--color-banner-text);
+  padding: 32px 24px;
+  text-align: center;
+  position: relative;
+}
+
+.themeToggle {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+}
+
+.headerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 16px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 16px;
+  text-align: center;
+}
+
+.tableContainer {
+  margin-top: 24px;
+  background-color: var(--color-surface);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.constrainedTable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* Column width constraints */
+.statusColumn {
+  width: 160px !important;
+  max-width: 160px !important;
+  position: relative;
+}
+
+.solutionColumn {
+  width: 180px !important;
+  max-width: 180px !important;
+  position: relative;
+}
+
+.publisherColumn {
+  width: 150px !important;
+  max-width: 150px !important;
+  position: relative;
+}
+
+.dateColumn {
+  width: 140px !important;
+  max-width: 140px !important;
+  position: relative;
+}
+
+.deploymentColumn {
+  width: 300px !important;
+  max-width: 300px !important;
+  position: relative;
+}
+
+.tablesColumn {
+  width: 120px !important;
+  max-width: 120px !important;
+  position: relative;
+}
+
+.actionsColumn {
+  width: 100px !important;
+  max-width: 100px !important;
+  position: relative;
+}
+
+.filterContainer {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Table row styling */
+.tableRowEven {
+  background-color: transparent;
+}
+
+.tableRowEven:hover {
+  background-color: #f5f5f5;
+}
+
+.tableRowOdd {
+  background-color: #fafafa;
+}
+
+.tableRowOdd:hover {
+  background-color: #f0f0f0;
+}
+
+.statusBadge {
+  margin-left: 8px;
+}
+
+.actionButton {
+  margin-left: 8px;
+}
+
+.errorContainer {
+  padding: 24px;
+  text-align: center;
+  background-color: var(--color-error-background);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  color: var(--color-error);
+}
+
+/* Filter section styles */
+.filterSection {
+  margin-bottom: 24px;
+}
+
+.searchBar {
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 400px;
+}
+
+.resultsSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.limitSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Environment selector */
+.environmentSelector {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.environmentControls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Source indicator styles */
+.sourceIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Filter row styles */
+.filterRow {
+  background-color: #fafafa;
+  border-bottom: 1px solid #e1e1e1;
+}
+
+.filterCell {
+  padding: 4px;
+}
+
+.statusFilter {
+  width: 150px;
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.solutionFilter,
+.publisherFilter,
+.deploymentFilter {
+  font-size: 14px;
+}
+
+.solutionFilter {
+  width: 170px;
+}
+
+.publisherFilter {
+  width: 140px;
+}
+
+.deploymentFilter {
+  width: 240px;
+}
+
+.dateFilter {
+  width: 130px;
+}
+
+/* Navigation styles */
+.backButton {
+  color: var(--color-banner-text);
+  border: 1px solid #e1e1e1;
+}
+
+.navigationControls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Environment dot indicator */
+.environmentDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.environmentIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .header {
+    padding: 24px 16px;
+  }
+  
+  .content {
+    padding: 24px 16px;
+  }
+  
+  .environmentSelector {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .resultsSummary {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

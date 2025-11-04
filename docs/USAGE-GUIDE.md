@@ -161,6 +161,55 @@ The rollback system is **environment-aware**:
 - Each environment maintains its own deployment history
 - Rollback buttons only appear for eligible deployments in each environment
 
+## Analytics Dashboard
+
+The Analytics Dashboard provides comprehensive insights into your deployment patterns and success metrics across all environments. Access it from the main menu to visualize your deployment history.
+
+![Analytics Dashboard](media/analytics-dashboard.png)
+
+### Key Metrics & Visualizations
+
+The dashboard displays several key performance indicators:
+
+**Success Rate Overview:**
+- Total deployments across all environments
+- Success vs. failure rates with visual breakdown
+- Deployment trend analysis over time
+
+**Interactive Charts:**
+- **Deployment Trends**: Line chart showing deployment frequency over the last 7 days
+- **Success Rate Distribution**: Pie chart displaying successful vs. failed deployments
+- **Rollback Frequency**: Statistics on rollback operations and their frequency
+
+**Multi-Environment Analytics:**
+- Cross-environment deployment aggregation
+- Environment-specific metrics and comparisons
+- Filtering options to focus on specific environments
+
+### Theme-Aware Visualizations
+
+The dashboard charts automatically adapt to your selected theme:
+- **Light Mode**: Professional blue/purple color scheme
+- **Dark Mode**: High-contrast colors optimized for dark backgrounds  
+- **Pink Mode**: Pink-themed color palette
+- **Neon Mode**: Vibrant cyan/magenta neon colors
+
+All charts use dynamic color injection to ensure perfect visibility regardless of your theme preference.
+
+### Using the Analytics Dashboard
+
+1. **Navigate**: Click "Analytics Dashboard" from the main menu
+2. **Review Metrics**: View overall success rates and deployment counts
+3. **Analyze Trends**: Use the trend chart to identify deployment patterns
+4. **Monitor Health**: Track rollback frequency to assess deployment quality
+5. **Theme Integration**: Charts automatically update when you change themes
+
+The analytics help you:
+- **Monitor Deployment Health**: Track success rates and identify issues
+- **Identify Patterns**: Understand deployment frequency and timing
+- **Measure Impact**: See rollback rates and deployment stability
+- **Cross-Environment Insights**: Compare performance across dev/test/prod environments
+
 ## Intelligent Validation & Auto-Corrections
 
 The React application includes sophisticated validation that provides real-time feedback and intelligent fixes:

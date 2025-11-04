@@ -77,6 +77,7 @@ graph TB
             ValidationSvc[Validation Service<br/>ERD Parsing & CDM Detect]
             DeploymentSvc[Deployment Service<br/>Solution Orchestration]
             DeploymentHistorySvc[Deployment History Service<br/>Tracking & Retrieval]
+            AnalyticsSvc[Analytics Service<br/>Deployment Insights & Metrics]
             PublisherSvc[Publisher Service<br/>Publisher Management]
             ChoicesSvc[Global Choices Service<br/>Option Set Management]
             SolutionSvc[Solution Service<br/>Solution Operations]
@@ -137,10 +138,12 @@ graph TB
     
     DeploymentCtrl --> DeploymentSvc
     DeploymentCtrl --> DeploymentHistorySvc
+    DeploymentCtrl --> AnalyticsSvc
     DeploymentSvc --> DataverseRepo
     DeploymentSvc --> ConfigRepo
     DeploymentHistorySvc --> DeploymentFiles
     DeploymentHistorySvc --> IndexFiles
+    AnalyticsSvc --> DeploymentHistorySvc
     
     ConfigCtrl --> ConfigRepo
     
@@ -167,7 +170,7 @@ graph TB
     
     class UI,Router,Context,Services,Components,HistoryModal frontend
     class HTTP,Logger,CORS,Error,Stream,WizardCtrl,ValidationCtrl,DeploymentCtrl,AdminCtrl,ConfigCtrl backend
-    class ValidationSvc,DeploymentSvc,DeploymentHistorySvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
+    class ValidationSvc,DeploymentSvc,DeploymentHistorySvc,AnalyticsSvc,PublisherSvc,ChoicesSvc,SolutionSvc,DataverseRepo,ConfigRepo service
     class Dataverse,EntraID,ManagedIdentity,Parser,DataverseClient,PowerPlatform external
     class DeploymentFiles,IndexFiles storage
 ```

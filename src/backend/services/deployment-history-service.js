@@ -326,8 +326,8 @@ class DeploymentHistoryService extends BaseService {
     async getAllEnvironments() {
         return this.executeOperation('getAllEnvironments', async () => {
             try {
-                // List all index files
-                const indexFiles = await this.storage.list('indexes/', { extension: '_index.json' });
+                // List all index files - they are in the root of the storage directory, not in 'indexes/' subfolder
+                const indexFiles = await this.storage.list('', { extension: '_index.json' });
                 
                 const environments = [];
                 for (const indexFile of indexFiles) {

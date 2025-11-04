@@ -194,7 +194,6 @@ $localDevSecret = $existingSecrets | Where-Object { $_.displayName -eq "Local De
 
 if ($localDevSecret) {
     Write-Warning "A 'Local Development Secret' already exists. Skipping secret creation."
-    Write-Info "If you need a new secret, manually delete the old one first or create via Azure Portal."
     $clientSecret = $null
 } else {
     # Create new client secret (valid for 1 year)

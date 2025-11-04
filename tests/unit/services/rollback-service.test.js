@@ -685,8 +685,8 @@ describe('RollbackService', () => {
 
         expect(mockDeploymentHistoryService.updateDeployment).toHaveBeenCalledWith(
           'deploy_12345_test',
+          'rolled-back',
           expect.objectContaining({
-            status: 'rolled-back',
             rollbackInfo: expect.objectContaining({
               lastRollback: expect.objectContaining({
                 rollbackTimestamp: expect.any(String)
@@ -1226,6 +1226,7 @@ describe('RollbackService', () => {
 
         expect(mockDeploymentHistoryService.updateDeployment).toHaveBeenCalledWith(
           'deploy_12345_test',
+          'modified',
           expect.objectContaining({
             rollbackInfo: expect.objectContaining({
               rollbacks: expect.arrayContaining([
@@ -1332,6 +1333,7 @@ describe('RollbackService', () => {
 
         expect(mockDeploymentHistoryService.updateDeployment).toHaveBeenCalledWith(
           'deploy_12345_test',
+          'modified',
           expect.objectContaining({
             rollbackInfo: expect.objectContaining({
               rollbacks: expect.arrayContaining([

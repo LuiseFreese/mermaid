@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   makeStyles,
   shorthands,
@@ -10,6 +10,7 @@ import {
   Title3,
   Spinner,
   MessageBar,
+  Button,
 } from '@fluentui/react-components';
 import {
   Chart as ChartJS,
@@ -28,7 +29,11 @@ import {
   DataTrending24Regular,
   CheckmarkCircle24Regular,
   ArrowUndo24Regular,
+  ArrowLeftRegular,
 } from '@fluentui/react-icons';
+import { Link } from 'react-router-dom';
+import { ThemeToggle } from '../common/ThemeToggle';
+import { useTheme } from '../../context/ThemeContext';
 
 // Register Chart.js components
 ChartJS.register(
@@ -133,9 +138,60 @@ interface AnalyticsData {
 
 export const AnalyticsDashboard: React.FC = () => {
   const styles = useStyles();
+  const { effectiveTheme } = useTheme();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Get theme colors dynamically
+  const themeColors = useMemo(() => {
+    const computedStyle = getComputedStyle(document.documentElement);
+    
+    // Define theme-appropriate color schemes
+    let colorScheme;
+    switch (effectiveTheme) {
+      case 'dark':
+        colorScheme = {
+          primary: '#4A9EFF', // Brighter blue for dark mode
+          secondary: '#7B68EE', // Purple-blue
+          success: '#54B054',
+          error: '#FF6B6B',
+        };
+        break;
+      case 'pink':
+        colorScheme = {
+          primary: '#E91E63', // Pink primary
+          secondary: '#F06292', // Lighter pink
+          success: '#E91E63', // Pink for success in pink theme
+          error: '#AD1457', // Darker pink for contrast
+        };
+        break;
+      case 'neon':
+        colorScheme = {
+          primary: '#00FFFF', // Cyan neon
+          secondary: '#FF00FF', // Magenta neon
+          success: '#00FFFF', // Cyan for success in neon theme
+          error: '#FF007F', // Bright pink for contrast
+        };
+        break;
+      default: // light
+        colorScheme = {
+          primary: '#0078D4', // Standard blue
+          secondary: '#5C2D91', // Purple
+          success: '#107C10',
+          error: '#D13438',
+        };
+        break;
+    }
+    
+    return {
+      ...colorScheme,
+      background: computedStyle.getPropertyValue('--color-background').trim(),
+      textPrimary: computedStyle.getPropertyValue('--color-text-primary').trim(),
+      textSecondary: computedStyle.getPropertyValue('--color-text-secondary').trim(),
+      border: computedStyle.getPropertyValue('--color-border').trim(),
+    };
+  }, [effectiveTheme]); // Recalculate when theme changes
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -187,13 +243,13 @@ export const AnalyticsDashboard: React.FC = () => {
         {
           label: 'Deployments',
           data: last7Days.map(d => d.deployments),
-          borderColor: tokens.colorBrandForeground1,
-          backgroundColor: tokens.colorBrandBackground2,
+          borderColor: themeColors.primary,
+          backgroundColor: themeColors.primary + '20', // Add transparency
           borderWidth: 3,
           fill: true,
           tension: 0.4,
-          pointBackgroundColor: tokens.colorBrandForeground1,
-          pointBorderColor: tokens.colorNeutralBackground1,
+          pointBackgroundColor: themeColors.primary,
+          pointBorderColor: themeColors.background,
           pointBorderWidth: 2,
           pointRadius: 6,
         },
@@ -213,14 +269,23 @@ export const AnalyticsDashboard: React.FC = () => {
         {
           data: [success, failed],
           backgroundColor: [
-            tokens.colorPaletteGreenBackground3,
-            tokens.colorPaletteRedBackground3,
+            themeColors.primary,     // Use primary theme color for successful
+            themeColors.secondary,   // Use secondary theme color for failed
           ],
           borderColor: [
-            tokens.colorPaletteGreenBorder2,
-            tokens.colorPaletteRedBorder2,
+            themeColors.primary,
+            themeColors.secondary,
           ],
           borderWidth: 2,
+          hoverBackgroundColor: [
+            themeColors.primary + 'CC', // Add slight transparency on hover
+            themeColors.secondary + 'CC',
+          ],
+          hoverBorderColor: [
+            themeColors.primary,
+            themeColors.secondary,
+          ],
+          hoverBorderWidth: 3,
         },
       ],
     };
@@ -238,6 +303,7 @@ export const AnalyticsDashboard: React.FC = () => {
           font: {
             size: 12,
           },
+          color: themeColors.textPrimary,
         },
       },
     },
@@ -245,18 +311,18 @@ export const AnalyticsDashboard: React.FC = () => {
       y: {
         beginAtZero: true,
         grid: {
-          color: tokens.colorNeutralStroke2,
+          color: themeColors.border,
         },
         ticks: {
-          color: tokens.colorNeutralForeground2,
+          color: themeColors.textSecondary,
         },
       },
       x: {
         grid: {
-          color: tokens.colorNeutralStroke2,
+          color: themeColors.border,
         },
         ticks: {
-          color: tokens.colorNeutralForeground2,
+          color: themeColors.textSecondary,
         },
       },
     },
@@ -274,6 +340,7 @@ export const AnalyticsDashboard: React.FC = () => {
           font: {
             size: 12,
           },
+          color: themeColors.textPrimary,
         },
       },
     },
@@ -306,11 +373,72 @@ export const AnalyticsDashboard: React.FC = () => {
   const weeklyDeployments = data.deploymentTrends.slice(-7).reduce((sum, d) => sum + d.deployments, 0);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <DataTrending24Regular className={styles.icon} />
-        <Title1>Analytics Dashboard</Title1>
-      </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: 'var(--color-background)',
+      color: 'var(--color-text-primary)',
+    }}>
+      {/* Header Section with flat background like wizard page */}
+      <header style={{
+        backgroundColor: 'var(--color-banner-background)',
+        color: 'var(--color-banner-text)',
+        padding: '32px 24px',
+        textAlign: 'center',
+        position: 'relative',
+      }}>
+        {/* Back button and Theme Toggle in top-right corner */}
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '24px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+        }}>
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <Button 
+              appearance="subtle"
+              icon={<ArrowLeftRegular />}
+              style={{ 
+                color: 'var(--color-banner-text)',
+                border: `1px solid ${tokens.colorNeutralStroke2}`,
+              }}
+            >
+              Back to Menu
+            </Button>
+          </Link>
+          <ThemeToggle />
+        </div>
+        
+        <div style={{
+          maxWidth: '1000px',
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <Title1 style={{ 
+            color: 'var(--color-banner-text)'
+          }}>
+            Analytics Dashboard
+          </Title1>
+          <Text size={400} style={{ 
+            color: 'var(--color-banner-text-secondary)'
+          }}>
+            Visualize deployment trends, success rates, and performance metrics
+          </Text>
+        </div>
+      </header>
+
+      <main style={{
+        maxWidth: '1000px',
+        margin: '0 auto',
+        paddingLeft: '24px',
+        paddingRight: '24px',
+        paddingTop: '32px',
+        paddingBottom: '40px'
+      }}>
+        <div className={styles.container}>
 
       <div className={styles.statsGrid}>
         <Card className={styles.statCard}>
@@ -370,6 +498,8 @@ export const AnalyticsDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+        </div>
+      </main>
     </div>
   );
 };

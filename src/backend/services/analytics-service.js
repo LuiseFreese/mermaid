@@ -9,14 +9,31 @@ function getDhs() {
   return _dhs;
 }
 
+// Helper function to determine if a deployment is a rollback operation
+function isRollbackOperation(deployment) {
+  const status = String(deployment.status || '').toLowerCase();
+  const operationType = String(deployment.summary?.operationType || '').toLowerCase();
+  const deploymentMethod = String(deployment.metadata?.deploymentMethod || '').toLowerCase();
+  
+  // Check for rollback status OR rollback operation type
+  return status === 'rolled-back' || 
+         status === 'rolled back' || 
+         status === 'rollback' ||
+         operationType === 'rollback' ||
+         deploymentMethod === 'rollback';
+}
+
 async function getDeploymentTrends() {
   // Query deployment history and return aggregated counts per day (last 30 days)
   const all = await getDhs().getAllDeploymentsFromAllEnvironments();
+  // Filter out rollback entries - only count actual deployments
+  const deployments = all.filter(d => !isRollbackOperation(d));
+  
   const byDay = {};
   const now = Date.now();
   const msPerDay = 24 * 60 * 60 * 1000;
 
-  all.forEach(d => {
+  deployments.forEach(d => {
     const ts = new Date(d.timestamp || d.createdAt || now).toISOString().slice(0, 10);
     byDay[ts] = (byDay[ts] || 0) + 1;
   });
@@ -33,15 +50,20 @@ async function getDeploymentTrends() {
 
 async function getSuccessRates() {
   const all = await getDhs().getAllDeploymentsFromAllEnvironments();
-  const total = all.length;
-  const success = all.filter(d => String(d.status).toLowerCase() === 'succeeded').length;
+  // Filter out rollback entries - only count actual deployments
+  const deployments = all.filter(d => !isRollbackOperation(d));
+  const total = deployments.length;
+  const success = deployments.filter(d => String(d.status).toLowerCase() === 'success').length;
   return { total, success, successRate: total === 0 ? 0 : success / total };
 }
 
 async function getRollbackFrequency() {
   const all = await getDhs().getAllDeploymentsFromAllEnvironments();
-  const rollbacks = all.filter(d => String(d.status).toLowerCase() === 'rolled-back' || String(d.status).toLowerCase() === 'rolled back').length;
-  return { total: all.length, rollbacks, rollbackRate: all.length === 0 ? 0 : rollbacks / all.length };
+  // Filter out rollback entries for total count - only count actual deployments
+  const deployments = all.filter(d => !isRollbackOperation(d));
+  // Count rollback operations separately
+  const rollbacks = all.filter(d => isRollbackOperation(d)).length;
+  return { total: deployments.length, rollbacks, rollbackRate: deployments.length === 0 ? 0 : rollbacks / deployments.length };
 }
 
 module.exports = {

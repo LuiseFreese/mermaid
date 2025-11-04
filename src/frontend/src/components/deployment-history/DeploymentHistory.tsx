@@ -17,7 +17,6 @@ import {
   TableCell,
   TableCellLayout,
   tokens,
-  makeStyles,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -32,7 +31,13 @@ import {
   Checkbox,
   Tooltip,
   Dropdown,
-  Option
+  Option,
+  Input,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem
 } from '@fluentui/react-components';
 import {
   HistoryRegular,
@@ -49,94 +54,17 @@ import {
   CheckmarkCircleRegular,
   InfoRegular,
   CheckmarkRegular,
-  DismissCircleRegular
+  DismissCircleRegular,
+  MoreHorizontalRegular,
+  EyeRegular,
+  CloudRegular
 } from '@fluentui/react-icons';
 import type { DeploymentSummary } from '../../types/deployment-history.types';
 import type { DataverseEnvironment } from '../../../../shared/types/environment';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserMenu } from '../../auth/UserMenu';
-import { EnhancedProgress } from '../common';
-
-const useStyles = makeStyles({
-  container: {
-    minHeight: '100vh',
-    backgroundColor: 'var(--color-background)',
-    color: 'var(--color-text-primary)',
-  },
-  header: {
-    backgroundColor: 'var(--color-banner-background)',
-    color: 'var(--color-banner-text)',
-    padding: '32px 24px',
-    textAlign: 'center',
-    position: 'relative',
-  },
-  themeToggle: {
-    position: 'absolute',
-    top: '16px',
-    right: '24px',
-  },
-  headerContent: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  content: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '32px 24px',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '300px',
-    gap: '16px',
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '300px',
-    gap: '16px',
-    textAlign: 'center',
-  },
-  tableContainer: {
-    marginTop: '24px',
-    backgroundColor: 'var(--color-surface)',
-    borderRadius: tokens.borderRadiusMedium,
-    border: `1px solid var(--color-border)`,
-  },
-  tableRowEven: {
-    backgroundColor: 'transparent',
-    '&:hover': {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-    },
-  },
-  tableRowOdd: {
-    backgroundColor: tokens.colorNeutralBackground2,
-    '&:hover': {
-      backgroundColor: tokens.colorNeutralBackground2Hover,
-    },
-  },
-  statusBadge: {
-    marginLeft: '8px',
-  },
-  actionButton: {
-    marginLeft: '8px',
-  },
-  errorContainer: {
-    padding: '24px',
-    textAlign: 'center',
-    backgroundColor: 'var(--color-error-background)',
-    border: `1px solid var(--color-error-border)`,
-    borderRadius: tokens.borderRadiusMedium,
-    color: 'var(--color-error)',
-  },
-});
+import { EnhancedProgress } from '../common/EnhancedProgress';
+import styles from './DeploymentHistory.module.css';
 
 // Helper function to get Power Platform environment ID for a deployment
 const getPowerPlatformEnvironmentId = (deployment: DeploymentSummary, environments: any[]): string | null => {
@@ -171,35 +99,8 @@ const generateSolutionUrl = async (solutionId: string, deployment: DeploymentSum
 interface DeploymentHistoryProps {}
 
 export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
-  const styles = useStyles();
   const { accounts, inProgress } = useMsal();
   
-  // Add CSS animation for gradient background
-  React.useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      
-      @keyframes pinkPulse {
-        0%, 100% { 
-          background-color: rgba(255, 182, 193, 0.2);
-          box-shadow: 0 0 15px rgba(255, 20, 147, 0.3);
-        }
-        50% { 
-          background-color: rgba(255, 20, 147, 0.4);
-          box-shadow: 0 0 25px rgba(255, 20, 147, 0.6);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
   const [deployments, setDeployments] = useState<DeploymentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,6 +136,15 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
   
   // Expandable row state for rollback details
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [solutionFilter, setSolutionFilter] = useState('');
+  const [publisherFilter, setPublisherFilter] = useState('');
+  const [deploymentFilter, setDeploymentFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [limit, setLimit] = useState('20');
   
   useEffect(() => {
     // Only load deployment history after user is authenticated
@@ -288,11 +198,15 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       });
       
       if (data.success) {
-        // Filter out rollback records - only show original deployments
+        // Filter out rollback records and rolled-back deployments - only show original successful deployments
         const originalDeployments = data.deployments.filter((deployment: DeploymentSummary) => {
+          const status = String(deployment.status || '').toLowerCase();
           const isRollbackRecord = deployment.summary?.operationType === 'rollback' || 
                                    deployment.metadata?.deploymentMethod === 'rollback';
-          return !isRollbackRecord;
+          const isRolledBackDeployment = status === 'rolled-back' || 
+                                        status === 'rolled back' || 
+                                        status === 'rollback';
+          return !isRollbackRecord && !isRolledBackDeployment;
         });
         
         // Sanitize deployment data to prevent React object rendering errors
@@ -347,6 +261,45 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     }
   };
 
+  // Determine deployment source based on available data
+  const getDeploymentSource = (deployment: DeploymentSummary): 'azure' | 'local' => {
+    // For now, we'll use heuristics. This can be enhanced when backend provides explicit source info
+    // Deployments with complete rollback info and detailed timestamps are likely from Azure Storage
+    if (deployment.rollbackInfo && deployment.completedAt && deployment.duration) {
+      return 'azure';
+    }
+    // Deployments with simpler data structure are likely local-only
+    return 'local';
+  };
+
+  const getSourceIcon = (source: 'azure' | 'local') => {
+    if (source === 'azure') {
+      return (
+        <Tooltip content="Stored in Azure Storage" relationship="label">
+          <Badge 
+            appearance="tint" 
+            color="brand"
+            size="small"
+          >
+            Azure
+          </Badge>
+        </Tooltip>
+      );
+    } else {
+      return (
+        <Tooltip content="Local storage only" relationship="label">
+          <Badge 
+            appearance="tint" 
+            color="subtle"
+            size="small"
+          >
+            Local
+          </Badge>
+        </Tooltip>
+      );
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
@@ -375,7 +328,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
       case 'rolled-back':
         return 'informative' as const;
       case 'modified':
-        return 'warning' as const; // Orange/yellow for modified
+        return 'warning' as const; 
       default:
         return 'subtle' as const;
     }
@@ -800,6 +753,27 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     return env?.name || envId || 'Default';
   };
 
+  // Generate Azure Storage URL for deployment
+  const generateAzureStorageUrl = (deployment: DeploymentSummary): string | null => {
+    // Only generate for Azure deployments
+    if (getDeploymentSource(deployment) !== 'azure') {
+      return null;
+    }
+
+    // This would need to be configured based on your Azure Storage setup
+    // For now, using a placeholder structure - you'll need to update these values
+    const subscriptionId = 'fdf0235b-0756-409c-bc69-23d183fbff17'; // Replace with your subscription ID
+    const resourceGroupName = 'rg-mermaid-prod'; // Replace with your resource group
+    const storageAccountName = 'stmermaidprod'; // Replace with your storage account name
+    const containerName = 'deployment-history'; // Replace with your container name
+    
+    // Construct the Azure Portal URL for the specific deployment file
+    const storageAccountResourceId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.Storage/storageAccounts/${storageAccountName}`;
+    const encodedStorageAccountId = encodeURIComponent(storageAccountResourceId);
+    
+    return `https://portal.azure.com/#view/Microsoft_Azure_Storage/ContainerMenuBlade/~/overview/storageAccountId/${encodedStorageAccountId}/path/${containerName}/defaultId//publicAccessVal/None`;
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -953,12 +927,62 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
     );
   }
 
+  // Filter deployments based on search and filter criteria
+  const filteredDeployments = deployments.filter(deployment => {
+    // Search term filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = 
+        deployment.deploymentId.toLowerCase().includes(searchLower) ||
+        deployment.solutionInfo?.solutionName?.toLowerCase().includes(searchLower) ||
+        deployment.solutionInfo?.publisherName?.toLowerCase().includes(searchLower) ||
+        deployment.status.toLowerCase().includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (statusFilter && deployment.status !== statusFilter) {
+      return false;
+    }
+
+    // Solution filter
+    if (solutionFilter && !deployment.solutionInfo?.solutionName?.toLowerCase().includes(solutionFilter.toLowerCase())) {
+      return false;
+    }
+
+    // Publisher filter
+    if (publisherFilter && !deployment.solutionInfo?.publisherName?.toLowerCase().includes(publisherFilter.toLowerCase())) {
+      return false;
+    }
+
+    // Deployment filter
+    if (deploymentFilter && !deployment.deploymentId?.toLowerCase().includes(deploymentFilter.toLowerCase())) {
+      return false;
+    }
+
+    // Date filter
+    if (dateFilter) {
+      const deploymentDate = new Date(deployment.timestamp);
+      const filterDate = new Date(dateFilter);
+      // Check if deployment is on the same date
+      if (deploymentDate.toDateString() !== filterDate.toDateString()) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Apply limit
+  const displayedDeployments = limit === 'all' ? filteredDeployments : filteredDeployments.slice(0, parseInt(limit));
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.themeToggle}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <Link to="/wizard" style={{ textDecoration: 'none' }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
               <Button 
                 appearance="subtle"
                 icon={<ArrowLeftRegular />}
@@ -967,7 +991,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                   border: `1px solid ${tokens.colorNeutralStroke2}`,
                 }}
               >
-                Back to Wizard
+                Back to Menu
               </Button>
             </Link>
             <ThemeToggle />
@@ -1023,20 +1047,130 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
           </div>
         </div>
 
+        {/* Search and Filter Section */}
+        <div style={{ marginBottom: '24px' }}>
+          {/* Search Bar */}
+          <div style={{ marginBottom: '16px' }}>
+            <Input
+              placeholder="Search deployments..."
+              value={searchTerm}
+              onChange={(_, data) => setSearchTerm(data.value)}
+              style={{ width: '100%', maxWidth: '400px' }}
+            />
+          </div>
+
+          {/* Results Summary */}
+          {deployments.length > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '12px 16px',
+              backgroundColor: '#f5f5f5',
+              borderRadius: '4px',
+              marginBottom: '16px'
+            }}>
+              <Text size={300}>
+                {filteredDeployments.length} of {deployments.length} deployments
+              </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Text size={200}>Show:</Text>
+                <Dropdown
+                  value={limit}
+                  selectedOptions={[limit]}
+                  onOptionSelect={(_, data) => setLimit(data.optionValue || '20')}
+                  size="small"
+                  style={{ minWidth: '80px' }}
+                >
+                  <Option value="10">10</Option>
+                  <Option value="20">20</Option>
+                  <Option value="50">50</Option>
+                  <Option value="100">100</Option>
+                  <Option value="all">All</Option>
+                </Dropdown>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className={styles.tableContainer}>
-          <Table arial-label="Deployment history table">
+          <Table arial-label="Deployment history table" className={styles.constrainedTable}>
             <TableHeader>
               <TableRow>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Status</TableHeaderCell>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Solution</TableHeaderCell>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Publisher</TableHeaderCell>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Date</TableHeaderCell>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Tables</TableHeaderCell>
-                <TableHeaderCell style={{ fontWeight: 'bold' }}>Actions</TableHeaderCell>
+                <TableHeaderCell className={styles.statusColumn} style={{ fontWeight: 'bold' }}>Status</TableHeaderCell>
+                <TableHeaderCell className={styles.solutionColumn} style={{ fontWeight: 'bold' }}>Solution</TableHeaderCell>
+                <TableHeaderCell className={styles.publisherColumn} style={{ fontWeight: 'bold' }}>Publisher</TableHeaderCell>
+                <TableHeaderCell className={styles.dateColumn} style={{ fontWeight: 'bold' }}>Date</TableHeaderCell>
+                <TableHeaderCell className={styles.deploymentColumn} style={{ fontWeight: 'bold' }}>Deployment</TableHeaderCell>
+                <TableHeaderCell className={styles.tablesColumn} style={{ fontWeight: 'bold' }}>Tables</TableHeaderCell>
+                <TableHeaderCell className={styles.actionsColumn} style={{ fontWeight: 'bold' }}>Actions</TableHeaderCell>
+              </TableRow>
+              <TableRow className={styles.filterRow}>
+                <TableCell className={`${styles.statusColumn} ${styles.filterCell}`}>
+                  <div className={styles.filterContainer}>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className={styles.statusFilter}
+                    >
+                      <option value="">All</option>
+                      <option value="success">Success</option>
+                      <option value="failed">Failed</option>
+                      <option value="rolled-back">Rolled Back</option>
+                      <option value="modified">Modified</option>
+                    </select>
+                  </div>
+                </TableCell>
+                <TableCell className={`${styles.solutionColumn} ${styles.filterCell}`}>
+                  <div className={styles.filterContainer}>
+                    <Input
+                      placeholder="Search..."
+                      value={solutionFilter}
+                      onChange={(_, data) => setSolutionFilter(data.value)}
+                      size="small"
+                      className={styles.solutionFilter}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className={`${styles.publisherColumn} ${styles.filterCell}`}>
+                  <div className={styles.filterContainer}>
+                    <Input
+                      placeholder="Search..."
+                      value={publisherFilter}
+                      onChange={(_, data) => setPublisherFilter(data.value)}
+                      size="small"
+                      className={styles.publisherFilter}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className={`${styles.dateColumn} ${styles.filterCell}`}>
+                  <div className={styles.filterContainer}>
+                    <Input
+                      type="date"
+                      value={dateFilter}
+                      onChange={(_, data) => setDateFilter(data.value)}
+                      size="small"
+                      className={styles.dateFilter}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className={`${styles.deploymentColumn} ${styles.filterCell}`}>
+                  <div className={styles.filterContainer}>
+                    <Input
+                      placeholder="Search..."
+                      value={deploymentFilter}
+                      onChange={(_, data) => setDeploymentFilter(data.value)}
+                      size="small"
+                      className={styles.deploymentFilter}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className={`${styles.tablesColumn} ${styles.filterCell}`}></TableCell>
+                <TableCell className={`${styles.actionsColumn} ${styles.filterCell}`}></TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {deployments.map((deployment, index) => {
+              {displayedDeployments.map((deployment, index) => {
                 const isExpanded = expandedRows.has(deployment.deploymentId);
                 const hasRollbackInfo = (deployment.status === 'rolled-back' || deployment.status === 'modified') && deployment.rollbackInfo;
                 
@@ -1072,13 +1206,12 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                       </TableCell>
                       <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
                         <TableCellLayout>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{
-                              width: '8px',
-                              height: '8px',
-                              borderRadius: '50%',
-                              backgroundColor: getEnvironmentColor(deployment)
-                            }} title={getEnvironmentName(deployment)}></div>
+                          <div className={styles.sourceIndicator}>
+                            <div 
+                              className={styles.environmentDot}
+                              style={{ backgroundColor: getEnvironmentColor(deployment) }}
+                              title={getEnvironmentName(deployment)}
+                            ></div>
                             <Text>{deployment.solutionInfo?.solutionName || 'N/A'}</Text>
                           </div>
                         </TableCellLayout>
@@ -1096,6 +1229,14 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                       </TableCell>
                       <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
                         <TableCellLayout>
+                          <div className={styles.sourceIndicator}>
+                            {getSourceIcon(getDeploymentSource(deployment))}
+                            <Text>{deployment.deploymentId}</Text>
+                          </div>
+                        </TableCellLayout>
+                      </TableCell>
+                      <TableCell onClick={() => handleViewDetails(deployment.deploymentId)}>
+                        <TableCellLayout>
                           <Text weight="semibold">{deployment.summary?.totalEntities || 0}</Text>
                           <Text size={200} style={{ marginLeft: '4px', opacity: 0.7 }}>
                             ({deployment.summary?.cdmEntities || 0} CDM, {deployment.summary?.customEntities || 0} custom)
@@ -1104,18 +1245,45 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                       </TableCell>
                       <TableCell>
                         <TableCellLayout>
-                          {canShowRollbackButton(deployment) && (
-                            <Button
-                              appearance="subtle"
-                              size="small"
-                              icon={<ArrowUndoRegular />}
-                              onClick={(e) => handleRollbackClick(e, deployment)}
-                              title="Rollback this deployment"
-                              style={{ color: tokens.colorPaletteRedForeground1 }}
-                            >
-                              Rollback
-                            </Button>
-                          )}
+                          <Menu>
+                            <MenuTrigger disableButtonEnhancement>
+                              <Button
+                                appearance="subtle"
+                                size="small"
+                                icon={<MoreHorizontalRegular />}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </MenuTrigger>
+                            <MenuPopover>
+                              <MenuList>
+                                <MenuItem onClick={() => handleViewDetails(deployment.deploymentId)}>
+                                  <EyeRegular style={{ marginRight: '8px' }} />
+                                  View Deployment
+                                </MenuItem>
+                                {getDeploymentSource(deployment) === 'azure' && generateAzureStorageUrl(deployment) && (
+                                  <MenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    const storageUrl = generateAzureStorageUrl(deployment);
+                                    if (storageUrl) {
+                                      window.open(storageUrl, '_blank');
+                                    }
+                                  }}>
+                                    <CloudRegular style={{ marginRight: '8px' }} />
+                                    Open in Azure Storage
+                                  </MenuItem>
+                                )}
+                                {canShowRollbackButton(deployment) && (
+                                  <MenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRollbackClick(e, deployment);
+                                  }}>
+                                    <ArrowUndoRegular style={{ marginRight: '8px' }} />
+                                    Rollback
+                                  </MenuItem>
+                                )}
+                              </MenuList>
+                            </MenuPopover>
+                          </Menu>
                         </TableCellLayout>
                       </TableCell>
                     </TableRow>
@@ -1123,7 +1291,7 @@ export const DeploymentHistory: React.FC<DeploymentHistoryProps> = () => {
                     {/* Expandable Rollback Details Row */}
                     {hasRollbackInfo && isExpanded && deployment.rollbackInfo && (
                       <TableRow className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}>
-                        <TableCell colSpan={6} style={{ padding: '16px 32px', backgroundColor: tokens.colorNeutralBackground3 }}>
+                        <TableCell colSpan={7} style={{ padding: '16px 32px', backgroundColor: tokens.colorNeutralBackground3 }}>
                           {(() => {
                             const rollbackInfo = deployment.rollbackInfo!;
                             const rollbacks = rollbackInfo.rollbacks || [rollbackInfo]; // Support both old and new format
