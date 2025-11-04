@@ -1,6 +1,6 @@
 {
   "name": "mermaid-to-dataverse",
-  "version": "1.0.0",
+  "version": "2.3.0",
   "description": "Convert Mermaid ERD diagrams to Microsoft Dataverse tables and relationships",
   "main": "server.js",
   "scripts": {

@@ -330,7 +330,7 @@ export const MainMenu: React.FC = () => {
             opacity: 0.7,
             textAlign: 'center'
           }}>
-            Build: {import.meta.env.VITE_BUILD_TIME || 'Dev'} • Version 2.2.2
+            Build: {import.meta.env.VITE_BUILD_TIME || 'Dev'} • Version 2.3.0
           </Text>
         </div>
       </main>
