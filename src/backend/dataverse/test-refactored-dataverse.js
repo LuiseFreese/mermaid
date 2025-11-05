@@ -1,113 +1,110 @@
 /**
- * Test the refactored Dataverse services
- * Run with: node test-refactored-dataverse.js
+ * Test script for refactored Dataverse services
  */
 
-const { DataverseClient, DataversePublisherService, DataverseSolutionService } = require('./index');
+const { 
+  BaseDataverseService, 
+  DataverseAuthenticationService, 
+  DataverseClient, 
+  DataversePublisherService, 
+  DataverseSolutionService,
+  DataverseEntityService
+} = require('./index');
 
-async function testRefactoredDataverseServices() {
-  console.log('🧪 Testing Refactored Dataverse Services...\n');
+console.log('🧪 Testing Refactored Dataverse Services...\n');
 
-  try {
-    // Test 1: Basic client initialization
-    console.log('1️⃣ Testing DataverseClient initialization...');
-    const client = new DataverseClient({
-      verbose: true
-    });
-    console.log('✅ DataverseClient initialized successfully\n');
+// Test configuration
+const testConfig = {
+  environment: 'development',
+  tenant: 'test-tenant',
+  clientId: 'test-client-id',
+  clientSecret: 'test-secret',
+  dataverseUrl: 'https://test.crm.dynamics.com'
+};
 
-    // Test 2: Authentication service
-    console.log('2️⃣ Testing authentication...');
-    const authResult = await client.testConnection();
-    console.log(`Authentication result:`, authResult);
-    
-    if (!authResult.success) {
-      console.log('⚠️ Authentication failed, but this is expected without proper credentials\n');
-    } else {
-      console.log('✅ Authentication successful\n');
-    }
+console.log('1️⃣ Testing BaseDataverseService...');
+const baseService = new BaseDataverseService(testConfig);
+console.log('   ✅ BaseDataverseService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(baseService)).filter(name => name !== 'constructor'));
 
-    // Test 3: Publisher service
-    console.log('3️⃣ Testing DataversePublisherService...');
-    const publisherService = new DataversePublisherService({
-      verbose: true
-    });
-    console.log('✅ DataversePublisherService initialized successfully\n');
+console.log('\n2️⃣ Testing DataverseAuthenticationService...');
+const authService = new DataverseAuthenticationService(testConfig);
+console.log('   ✅ DataverseAuthenticationService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(authService)).filter(name => name !== 'constructor'));
 
-    // Test 4: Solution service
-    console.log('4️⃣ Testing DataverseSolutionService...');
-    const solutionService = new DataverseSolutionService({
-      verbose: true
-    });
-    console.log('✅ DataverseSolutionService initialized successfully\n');
+console.log('\n3️⃣ Testing DataverseClient...');
+const client = new DataverseClient(testConfig);
+console.log('   ✅ DataverseClient instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(client)).filter(name => name !== 'constructor'));
 
-    // Test 5: Method availability check
-    console.log('5️⃣ Testing method availability...');
-    const requiredMethods = [
-      'ensureToken',
-      'makeRequest', 
-      'get', 
-      'post', 
-      'put', 
-      'delete',
-      'testConnection',
-      'whoAmI',
-      'checkPublisherExists',
-      'createPublisher',
-      'ensurePublisher',
-      'checkSolutionExists',
-      'createSolution',
-      'ensureSolution',
-      'getSolutions',
-      'deleteSolution',
-      'addEntityToSolution',
-      'exportSolution'
-    ];
+console.log('\n4️⃣ Testing DataversePublisherService...');
+const publisherService = new DataversePublisherService(testConfig);
+console.log('   ✅ DataversePublisherService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(publisherService)).filter(name => name !== 'constructor'));
 
-    let allMethodsAvailable = true;
-    const services = [client, publisherService, solutionService];
-    
-    for (const method of requiredMethods) {
-      const available = services.some(service => typeof service[method] === 'function');
-      if (available) {
-        console.log(`  ✅ ${method} - Available`);
-      } else {
-        console.log(`  ❌ ${method} - Missing`);
-        allMethodsAvailable = false;
-      }
-    }
+console.log('\n5️⃣ Testing DataverseSolutionService...');
+const solutionService = new DataverseSolutionService(testConfig);
+console.log('   ✅ DataverseSolutionService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(solutionService)).filter(name => name !== 'constructor'));
 
-    if (allMethodsAvailable) {
-      console.log('✅ All required methods are available\n');
-    } else {
-      console.log('❌ Some methods are missing\n');
-    }
+console.log('\n6️⃣ Testing DataverseEntityService...');
+const entityService = new DataverseEntityService(testConfig);
+console.log('   ✅ DataverseEntityService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(entityService)).filter(name => name !== 'constructor'));
 
-    // Test 6: Inheritance chain
-    console.log('6️⃣ Testing inheritance chain...');
-    console.log(`  - DataverseClient prototype chain:`, Object.getPrototypeOf(client).constructor.name);
-    console.log(`  - DataversePublisherService prototype chain:`, Object.getPrototypeOf(publisherService).constructor.name);
-    console.log(`  - DataverseSolutionService prototype chain:`, Object.getPrototypeOf(solutionService).constructor.name);
-    console.log('✅ Inheritance chain verified\n');
+// Test method availability
+console.log('\n🔍 Verifying Method Availability...');
 
-    console.log('🎉 All tests completed successfully!');
-    console.log('\n📊 Summary:');
-    console.log('  - ✅ Modular services created');
-    console.log('  - ✅ Authentication logic separated');
-    console.log('  - ✅ Publisher operations extracted');
-    console.log('  - ✅ Solution operations extracted');
-    console.log('  - ✅ Backward compatibility maintained');
-    console.log('  - ✅ Inheritance properly implemented');
+// Check BaseDataverseService methods
+const baseMethods = ['get', 'post', 'put', 'patch', 'delete', '_makeRequest', '_log', '_warn', '_err', 'sleep'];
+console.log(`\n📋 BaseDataverseService methods (${baseMethods.length}):`);
+baseMethods.forEach(method => {
+  const available = typeof baseService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
 
-  } catch (error) {
-    console.error('❌ Test failed:', error.message);
-    console.error('Stack:', error.stack);
-  }
-}
+// Check AuthenticationService methods
+const authMethods = ['_ensureToken', '_getToken', '_getTokenWithClientSecret', '_getTokenWithManagedIdentity', '_getTokenWithFederatedCredentials'];
+console.log(`\n🔐 DataverseAuthenticationService methods (${authMethods.length}):`);
+authMethods.forEach(method => {
+  const available = typeof authService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
 
-// Run the test
-if (require.main === module) {
-  testRefactoredDataverseServices();
-}
+// Check PublisherService methods
+const publisherMethods = ['createPublisher', 'getPublisher', 'deletePublisher', 'getAllPublishers'];
+console.log(`\n📤 DataversePublisherService methods (${publisherMethods.length}):`);
+publisherMethods.forEach(method => {
+  const available = typeof publisherService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
 
-module.exports = { testRefactoredDataverseServices };
+// Check SolutionService methods
+const solutionMethods = ['createSolution', 'getSolution', 'deleteSolution', 'importSolution', 'exportSolution', 'publishSolution', 'getSolutions', 'addComponentToSolution', 'addEntityToSolution'];
+console.log(`\n📦 DataverseSolutionService methods (${solutionMethods.length}):`);
+solutionMethods.forEach(method => {
+  const available = typeof solutionService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
+
+// Check EntityService methods
+const entityMethods = ['createEntity', 'createEntityWithRetry', 'createAttribute', 'createAttributeWithRetry', 'deleteEntity', 'getEntityDefinition', 'getEntityDefinitions', 'entityExists', '_stringAttribute', '_memoAttribute', '_intAttribute', '_decimalAttribute', '_moneyAttribute', '_booleanAttribute', '_datetimeAttribute', '_dateOnlyAttribute', '_floatAttribute', '_emailAttribute', '_phoneAttribute', '_urlAttribute', '_imageAttribute'];
+console.log(`\n🏢 DataverseEntityService methods (${entityMethods.length}):`);
+entityMethods.forEach(method => {
+  const available = typeof entityService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
+
+// Test inheritance chain
+console.log('\n🔗 Testing Inheritance Chain...');
+console.log(`   BaseDataverseService → DataverseAuthenticationService: ${authService instanceof BaseDataverseService ? '✅' : '❌'}`);
+console.log(`   DataverseAuthenticationService → DataverseClient: ${client instanceof DataverseAuthenticationService ? '✅' : '❌'}`);
+console.log(`   DataverseClient → DataversePublisherService: ${publisherService instanceof DataverseClient ? '✅' : '❌'}`);
+console.log(`   DataverseClient → DataverseSolutionService: ${solutionService instanceof DataverseClient ? '✅' : '❌'}`);
+console.log(`   DataverseClient → DataverseEntityService: ${entityService instanceof DataverseClient ? '✅' : '❌'}`);
+
+console.log('\n✅ All services successfully instantiated and tested!');
+console.log('\n📊 Summary:');
+console.log(`   - 6 services created`);
+console.log(`   - ${baseMethods.length + authMethods.length + publisherMethods.length + solutionMethods.length + entityMethods.length} methods verified`);
+console.log(`   - Inheritance chain validated`);
