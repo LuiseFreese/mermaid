@@ -8,7 +8,7 @@
  * - RESOURCE_GROUP: Your Azure resource group name
  */
 
-const { DataverseClient } = require('../../src/backend/dataverse-client');
+const { DataverseClient } = require('../../src/backend/dataverse/index');
 const fs = require('fs');
 const path = require('path');
 

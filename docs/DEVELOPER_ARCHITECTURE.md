@@ -1623,7 +1623,7 @@ GET /api/solution-status?solution=SolutionName
 
 **Purpose**: Handle all Microsoft Dataverse Web API interactions with comprehensive entity, relationship, and solution management.
 
-**Location**: `src/backend/dataverse-client.js`
+**Location**: `src/backend/dataverse/index.js` (modular service architecture)
 
 **Key Features**:
 - **Managed Identity Authentication**: Passwordless authentication via Azure
@@ -1755,11 +1755,11 @@ Invoke-WebRequest -Uri "https://your-app.azurewebsites.net/api/publishers" -Head
 ```
 
 
-### 8. Managed Identity Authentication (`src/backend/dataverse-client.js`)
+### 8. Managed Identity Authentication (`src/backend/dataverse/index.js`)
 
 **Purpose**: Secure, passwordless authentication using Azure Managed Identity for Dataverse access.
 
-**Location**: `src/backend/dataverse-client.js`
+**Location**: `src/backend/dataverse/index.js` (modular service architecture)
 
 **Key Features**:
 - **Zero Secrets**: No client secrets, passwords, or certificates required

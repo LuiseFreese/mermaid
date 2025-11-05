@@ -27,7 +27,9 @@ deploy.zip
 ├── package.json                 # Dependencies
 ├── backend/                     # Backend code
 │   ├── server.js
-│   ├── dataverse-client.js     # Handles 3 auth modes
+│   ├── dataverse/              # Modular Dataverse services
+│   │   ├── index.js            # Main client with 3 auth modes
+│   │   └── services/           # Specialized service modules
 │   ├── environment-manager.js  # Reads data/environments.json
 │   └── ... (all backend files)
 ├── data/                        # ✅ NOW INCLUDED
@@ -40,7 +42,7 @@ deploy.zip
 
 ### DataverseClient Authentication Modes
 
-The `dataverse-client.js` supports 3 authentication modes:
+The `dataverse/index.js` supports 3 authentication modes:
 
 1. **Client Secret** (Local Development)
    ```javascript

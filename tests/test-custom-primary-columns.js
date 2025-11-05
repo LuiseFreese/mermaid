@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { MermaidERDParser } = require('../src/backend/mermaid-parser.js');
-const { DataverseClient } = require('../src/backend/dataverse-client.js');
+const { DataverseClient } = require('../src/backend/dataverse/index');
 
 console.log('🧪 CUSTOM PRIMARY COLUMNS TEST SUITE');
 console.log('=====================================\n');

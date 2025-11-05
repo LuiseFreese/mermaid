@@ -5,7 +5,7 @@
  * configured for specific environments.
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseClient } = require('./dataverse/index');
 
 class DataverseClientFactory {
   constructor(environmentManager) {
