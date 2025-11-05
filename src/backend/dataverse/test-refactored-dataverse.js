@@ -9,7 +9,8 @@ const {
   DataversePublisherService, 
   DataverseSolutionService,
   DataverseEntityService,
-  DataverseRelationshipService
+  DataverseRelationshipService,
+  DataverseGlobalChoicesService
 } = require('./index');
 
 console.log('🧪 Testing Refactored Dataverse Services...\n');
@@ -57,6 +58,11 @@ console.log('\n7️⃣ Testing DataverseRelationshipService...');
 const relationshipService = new DataverseRelationshipService(testConfig);
 console.log('   ✅ DataverseRelationshipService instantiated');
 console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(relationshipService)).filter(name => name !== 'constructor'));
+
+console.log('\n8️⃣ Testing DataverseGlobalChoicesService...');
+const globalChoicesService = new DataverseGlobalChoicesService(testConfig);
+console.log('   ✅ DataverseGlobalChoicesService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(globalChoicesService)).filter(name => name !== 'constructor'));
 
 // Test method availability
 console.log('\n🔍 Verifying Method Availability...');
@@ -109,6 +115,14 @@ relationshipMethods.forEach(method => {
   console.log(`   ${available ? '✅' : '❌'} ${method}`);
 });
 
+// Check GlobalChoicesService methods
+const globalChoicesMethods = ['getGlobalChoiceSets', 'getGlobalChoiceSet', 'createGlobalChoice', 'deleteGlobalChoice', 'addGlobalChoicesToSolution', 'createAndAddCustomGlobalChoices', '_isAuthConfigured', '_addExistingChoiceToSolution', '_waitForChoiceCreation'];
+console.log(`\n🎨 DataverseGlobalChoicesService methods (${globalChoicesMethods.length}):`);
+globalChoicesMethods.forEach(method => {
+  const available = typeof globalChoicesService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
+
 // Test inheritance chain
 console.log('\n🔗 Testing Inheritance Chain...');
 console.log(`   BaseDataverseService → DataverseAuthenticationService: ${authService instanceof BaseDataverseService ? '✅' : '❌'}`);
@@ -117,9 +131,10 @@ console.log(`   DataverseClient → DataversePublisherService: ${publisherServic
 console.log(`   DataverseClient → DataverseSolutionService: ${solutionService instanceof DataverseClient ? '✅' : '❌'}`);
 console.log(`   DataverseClient → DataverseEntityService: ${entityService instanceof DataverseClient ? '✅' : '❌'}`);
 console.log(`   DataverseClient → DataverseRelationshipService: ${relationshipService instanceof DataverseClient ? '✅' : '❌'}`);
+console.log(`   DataverseClient → DataverseGlobalChoicesService: ${globalChoicesService instanceof DataverseClient ? '✅' : '❌'}`);
 
 console.log('\n✅ All services successfully instantiated and tested!');
 console.log('\n📊 Summary:');
-console.log(`   - 7 services created`);
-console.log(`   - ${baseMethods.length + authMethods.length + publisherMethods.length + solutionMethods.length + entityMethods.length + relationshipMethods.length} methods verified`);
+console.log(`   - 8 services created`);
+console.log(`   - ${baseMethods.length + authMethods.length + publisherMethods.length + solutionMethods.length + entityMethods.length + relationshipMethods.length + globalChoicesMethods.length} methods verified`);
 console.log(`   - Inheritance chain validated`);
