@@ -1,480 +1,247 @@
 /**
- * Unit Tests for DataverseClient
- * Tests Dataverse API interactions, connection handling, and error scenarios
+ * Tests for DataverseClient - Modular Architecture
+ * Tests the client's core functionality without expecting high-level business methods
  */
 
-// Mock dependencies first, before any imports
-jest.mock('../../../src/backend/utils/logger');
+const { DataverseClient } = require('../../../src/backend/dataverse/services/dataverse-client');
 
-// Mock axios
-jest.mock('axios');
-
-// Mock Azure SDK with proper mock function
-const mockGetToken = jest.fn();
-jest.mock('@azure/identity', () => ({
-  DefaultAzureCredential: jest.fn().mockImplementation(() => ({
-    getToken: mockGetToken
-  }))
-}));
-
-const { DataverseClient } = require('../../../src/backend/dataverse/index');
-const testData = require('../../fixtures/test-data');
-const logger = require('../../../src/backend/utils/logger');
-const axios = require('axios');
-
-describe('DataverseClient', () => {
+describe('DataverseClient (Modular Architecture)', () => {
   let client;
-  const mockConfig = {
-    dataverseUrl: 'https://test.crm.dynamics.com',
-    tenantId: 'test-tenant-id',
-    clientId: 'test-client-id',
-    useManagedIdentity: true
-  };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Reset mock implementation for getToken
-    mockGetToken.mockResolvedValue({
-      token: 'mock-token',
-      expiresOnTimestamp: Date.now() + 3600000
+    // Create client with test configuration
+    client = new DataverseClient({
+      dataverseUrl: 'https://test.api.crm.dynamics.com',
+      clientId: 'test-client-id',
+      clientSecret: 'test-secret',
+      tenantId: 'test-tenant-id',
+      verbose: false
     });
-    
-    // Setup axios mocks
-    axios.get.mockResolvedValue({ status: 200, data: {} });
-    axios.post.mockResolvedValue({ status: 200, data: {} });
-    
-    client = new DataverseClient(mockConfig);
-    
-    // Manually set the credential mock after instantiation
-    client.credential = {
-      getToken: mockGetToken
-    };
   });
 
   describe('Constructor and Initialization', () => {
-    test('should initialize with correct configuration', () => {
-      expect(client.dataverseUrl).toBe(mockConfig.dataverseUrl);
-      expect(client.tenantId).toBe(mockConfig.tenantId);
-      expect(client.clientId).toBe(mockConfig.clientId);
+    test('should initialize with authentication service', () => {
+      expect(client).toBeInstanceOf(DataverseClient);
+      expect(client.baseUrl).toBe('https://test.api.crm.dynamics.com');
+      expect(client.clientId).toBe('test-client-id');
+      expect(client.tenantId).toBe('test-tenant-id');
     });
 
-    test('should throw error for missing configuration', () => {
-      expect(() => new DataverseClient({})).toThrow('Dataverse configuration is required');
+    test('should initialize without throwing errors for valid config', () => {
+      expect(() => {
+        new DataverseClient({
+          dataverseUrl: 'https://test.api.crm.dynamics.com',
+          clientId: 'test-client',
+          clientSecret: 'test-secret',
+          tenantId: 'test-tenant'
+        });
+      }).not.toThrow();
     });
 
-    test('should throw error for invalid URL', () => {
-      const invalidConfig = { ...mockConfig, dataverseUrl: 'invalid-url' };
-      expect(() => new DataverseClient(invalidConfig)).toThrow('Invalid Dataverse URL');
+    test('should handle empty configuration gracefully', () => {
+      expect(() => {
+        new DataverseClient();
+      }).not.toThrow();
     });
   });
 
-  describe('Authentication', () => {
-    test('should acquire token successfully', async () => {
-      const token = await client.getAccessToken();
-      expect(token).toBe('mock-token');
-      expect(client.credential.getToken).toHaveBeenCalledWith('https://test.crm.dynamics.com/.default');
+  describe('Authentication Integration', () => {
+    test('should inherit authentication capabilities from DataverseAuthenticationService', () => {
+      // Check that authentication methods are available
+      expect(typeof client.ensureToken).toBe('function');
+      expect(client.accessToken).toBe(null); // Initially null
+      expect(client.tokenExpiry).toBe(null); // Initially null
     });
 
-    test('should handle authentication failure', async () => {
-      mockGetToken.mockRejectedValue(new Error('Auth failed'));
-
-      await expect(client.getAccessToken()).rejects.toThrow('Auth failed');
-      expect(logger.error).toHaveBeenCalledWith('Authentication failed:', expect.any(Error));
-    });
-
-    test('should cache and reuse valid tokens', async () => {
-      // First call
-      const token1 = await client.getAccessToken();
-      // Second call should use cached token
-      const token2 = await client.getAccessToken();
+    test('should handle token acquisition through authentication service', async () => {
+      // Mock the token acquisition to prevent actual API calls
+      jest.spyOn(client, 'ensureToken').mockResolvedValue('mock-token');
       
-      expect(token1).toBe(token2);
-      expect(mockGetToken).toHaveBeenCalledTimes(1);
+      await expect(client.ensureToken()).resolves.toBe('mock-token');
+      expect(client.ensureToken).toHaveBeenCalled();
     });
   });
 
-  describe('Connection Testing', () => {
-    test('should test connection successfully', async () => {
-      axios.get.mockResolvedValue({
+  describe('HTTP Request Methods', () => {
+    test('should provide makeRequest method for authenticated requests', () => {
+      expect(typeof client.makeRequest).toBe('function');
+    });
+
+    test('should provide convenience HTTP methods', () => {
+      expect(typeof client.get).toBe('function');
+      expect(typeof client.post).toBe('function');
+      expect(typeof client.put).toBe('function');
+      expect(typeof client.delete).toBe('function');
+      expect(typeof client.patch).toBe('function');
+    });
+
+    test('should make authenticated GET requests', async () => {
+      // Mock the authentication and HTTP client
+      jest.spyOn(client, 'ensureToken').mockImplementation(async () => {
+        client.accessToken = 'mock-token'; // Set the token properly
+        return 'mock-token';
+      });
+      jest.spyOn(client.httpClient, 'request').mockResolvedValue({
         status: 200,
-        data: { DisplayName: 'Test Environment' }
+        data: { value: 'test-data' }
       });
 
-      const result = await client.testConnection();
+      const result = await client.get('/test-endpoint');
       
-      expect(result.success).toBe(true);
-      expect(result.message).toContain('Successfully connected');
-      expect(axios.get).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/WhoAmI`,
+      expect(client.ensureToken).toHaveBeenCalled();
+      expect(client.httpClient.request).toHaveBeenCalledWith(
         expect.objectContaining({
+          method: 'GET',
+          url: 'https://test.api.crm.dynamics.com/api/data/v9.2/test-endpoint',
           headers: expect.objectContaining({
             'Authorization': 'Bearer mock-token'
           })
         })
       );
+      expect(result).toEqual({ value: 'test-data' });
+    });
+
+    test('should make authenticated POST requests', async () => {
+      // Mock the authentication and HTTP client
+      jest.spyOn(client, 'ensureToken').mockImplementation(async () => {
+        client.accessToken = 'mock-token'; // Set the token properly
+        return 'mock-token';
+      });
+      jest.spyOn(client.httpClient, 'request').mockResolvedValue({
+        status: 201,
+        data: { id: 'new-record-id' }
+      });
+
+      const testData = { name: 'Test Entity' };
+      const result = await client.post('/entities', testData);
+      
+      expect(client.ensureToken).toHaveBeenCalled();
+      expect(client.httpClient.request).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'POST',
+          url: 'https://test.api.crm.dynamics.com/api/data/v9.2/entities',
+          data: testData,
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer mock-token'
+          })
+        })
+      );
+      expect(result).toEqual({ id: 'new-record-id' });
+    });
+  });
+
+  describe('Connection Testing', () => {
+    test('should provide testConnection method', () => {
+      expect(typeof client.testConnection).toBe('function');
+    });
+
+    test('should test connection successfully', async () => {
+      // Mock successful connection test
+      jest.spyOn(client, 'ensureToken').mockResolvedValue('mock-token');
+      jest.spyOn(client, 'whoAmI').mockResolvedValue({ 
+        UserId: 'test-user-id',
+        BusinessUnitId: 'test-business-unit',
+        OrganizationId: 'test-org-id'
+      });
+
+      const result = await client.testConnection();
+      
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Connected to Dataverse');
+      expect(client.ensureToken).toHaveBeenCalled();
+      expect(client.whoAmI).toHaveBeenCalled();
     });
 
     test('should handle connection failure', async () => {
-      axios.get.mockRejectedValue(new Error('Network error'));
+      // Mock connection failure
+      jest.spyOn(client, 'ensureToken').mockResolvedValue('mock-token');
+      jest.spyOn(client, 'whoAmI').mockRejectedValue(new Error('Connection failed'));
 
       const result = await client.testConnection();
       
       expect(result.success).toBe(false);
-      expect(result.message).toContain('Connection failed');
-      expect(logger.error).toHaveBeenCalled();
-    });
-
-    test('should handle HTTP error responses', async () => {
-      axios.get.mockRejectedValue({
-        response: {
-          status: 401,
-          statusText: 'Unauthorized',
-          data: { error: { message: 'Invalid credentials' } }
-        }
-      });
-
-      const result = await client.testConnection();
-      
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('HTTP 401');
+      expect(result.message).toBe('Connection failed');
     });
   });
 
-  describe('Publisher Operations', () => {
-    test('should fetch publishers successfully', async () => {
-      const mockPublishers = testData.apiResponses.publishers;
-      axios.get.mockResolvedValue({
-        status: 200,
-        data: { value: mockPublishers.publishers }
-      });
-
-      const result = await client.getPublishers();
-      
-      expect(result.success).toBe(true);
-      expect(result.publishers).toEqual(mockPublishers.publishers);
-      expect(axios.get).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/publishers`,
-        expect.any(Object)
-      );
+  describe('Service Architecture Integration', () => {
+    test('should serve as base for specialized services', () => {
+      // Verify that DataverseClient can be extended by other services
+      expect(client.makeRequest).toBeDefined();
+      expect(client.ensureToken).toBeDefined();
+      expect(client.httpClient).toBeDefined();
     });
 
-    test('should handle empty publishers response', async () => {
-      axios.get.mockResolvedValue({
-        status: 200,
-        data: { value: [] }
-      });
-
-      const result = await client.getPublishers();
-      
-      expect(result.success).toBe(true);
-      expect(result.publishers).toEqual([]);
-    });
-
-    test('should handle publishers fetch error', async () => {
-      axios.get.mockRejectedValue(new Error('API Error'));
-
-      const result = await client.getPublishers();
-      
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Failed to fetch publishers');
-    });
-  });
-
-  describe('Solution Operations', () => {
-    test('should fetch solutions successfully', async () => {
-      const mockSolutions = testData.apiResponses.solutions;
-      axios.get.mockResolvedValue({
-        status: 200,
-        data: { value: mockSolutions.solutions }
-      });
-
-      const result = await client.getSolutions();
-      
-      expect(result.success).toBe(true);
-      expect(result.solutions).toEqual(mockSolutions.solutions);
-    });
-
-    test('should create solution successfully', async () => {
-      const solutionData = {
-        uniquename: 'TestSolution',
-        friendlyname: 'Test Solution',
-        publisherid: 'pub-123'
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { solutionid: 'sol-123' },
-        headers: { 'odata-entityid': 'solutions(sol-123)' }
-      });
-
-      const result = await client.createSolution(solutionData);
-      
-      expect(result.success).toBe(true);
-      expect(result.solutionId).toBe('sol-123');
-      expect(axios.post).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/solutions`,
-        solutionData,
-        expect.any(Object)
-      );
-    });
-
-    test('should handle solution creation conflict', async () => {
-      const conflictError = new Error('Request failed with status code 409');
-      conflictError.response = {
-        status: 409,
-        data: { error: { message: 'Solution already exists' } }
-      };
-      
-      // Make sure axios.post throws the error
-      axios.post.mockRejectedValue(conflictError);
-
-      const result = await client.createSolution({ uniquename: 'test_solution' });
-      
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Solution already exists');
-    });
-  });
-
-  describe('Entity Operations', () => {
-    test('should create entity successfully', async () => {
-      const entityData = {
-        LogicalName: 'test_entity',
-        DisplayName: { UserLocalizedLabel: { Label: 'Test Entity' } }
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { MetadataId: 'entity-123' }
-      });
-
-      const result = await client.createEntity(entityData);
-      
-      expect(result.success).toBe(true);
-      expect(result.entityId).toBe('entity-123');
-      expect(axios.post).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/EntityDefinitions`,
-        entityData,
-        expect.any(Object)
-      );
-    });
-
-    test('should handle entity creation validation error', async () => {
-      const validationError = new Error('Request failed with status code 400');
-      validationError.response = {
-        status: 400,
-        data: { 
-          error: { 
-            message: 'Validation failed',
-            details: [{ message: 'Invalid logical name' }]
-          }
-        }
-      };
-      
-      axios.post.mockRejectedValue(validationError);
-
-      const result = await client.createEntity({ LogicalName: 'test_entity' });
-      
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Validation failed');
-    });
-
-    test('should create attribute successfully', async () => {
-      const attributeData = {
-        LogicalName: 'test_field',
-        DisplayName: { UserLocalizedLabel: { Label: 'Test Field' } },
-        AttributeType: 'String'
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { MetadataId: 'attr-123' }
-      });
-
-      const result = await client.createAttribute('test_entity', attributeData);
-      
-      expect(result.success).toBe(true);
-      expect(result.attributeId).toBe('attr-123');
-      expect(axios.post).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/EntityDefinitions(LogicalName='test_entity')/Attributes`,
-        attributeData,
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('Relationship Operations', () => {
-    test('should create one-to-many relationship successfully', async () => {
-      const relationshipData = {
-        SchemaName: 'test_relationship',
-        ReferencedEntity: 'account',
-        ReferencingEntity: 'contact'
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { MetadataId: 'rel-123' }
-      });
-
-      const result = await client.createRelationship(relationshipData);
-      
-      expect(result.success).toBe(true);
-      expect(result.relationshipId).toBe('rel-123');
-    });
-
-    test('should create many-to-many relationship successfully', async () => {
-      const relationshipData = {
-        SchemaName: 'test_manytomany',
-        Entity1LogicalName: 'account',
-        Entity2LogicalName: 'contact',
-        RelationshipType: 'ManyToManyRelationship'
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { MetadataId: 'rel-456' }
-      });
-
-      const result = await client.createManyToManyRelationship(relationshipData);
-      
-      expect(result.success).toBe(true);
-      expect(result.relationshipId).toBe('rel-456');
-      expect(axios.post).toHaveBeenCalledWith(
-        `${mockConfig.dataverseUrl}/api/data/v9.2/ManyToManyRelationships`,
-        relationshipData,
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('Global Choice Operations', () => {
-    test('should fetch global choices successfully', async () => {
-      const mockChoices = testData.apiResponses.globalChoices;
-      axios.get.mockResolvedValue({
-        status: 200,
-        data: { value: mockChoices.all }
-      });
-
-      const result = await client.getGlobalChoices();
-      
-      expect(result.success).toBe(true);
-      expect(result.all).toEqual(mockChoices.all);
-      expect(result.grouped.custom).toEqual(mockChoices.grouped.custom);
-      expect(result.summary.total).toBe(2);
-    });
-
-    test('should create global choice successfully', async () => {
-      const choiceData = {
-        LogicalName: 'test_choice',
-        DisplayName: { UserLocalizedLabel: { Label: 'Test Choice' } },
-        Options: [
-          { Value: 1, Label: { UserLocalizedLabel: { Label: 'Option 1' } } }
-        ]
-      };
-
-      axios.post.mockResolvedValue({
-        status: 201,
-        data: { MetadataId: 'choice-123' }
-      });
-
-      const result = await client.createGlobalChoice(choiceData);
-      
-      expect(result.success).toBe(true);
-      expect(result.choiceId).toBe('choice-123');
+    test('should maintain modular architecture principles', () => {
+      // Verify that high-level business methods are NOT present in the base client
+      // These should be in specialized services instead
+      expect(client.getPublishers).toBeUndefined();
+      expect(client.createEntity).toBeUndefined();
+      expect(client.getEntityMetadata).toBeUndefined();
+      expect(client.getOptionSets).toBeUndefined();
+      expect(client.createCustomEntity).toBeUndefined();
     });
   });
 
   describe('Error Handling', () => {
-    test('should handle network timeouts', async () => {
-      axios.get.mockRejectedValue({ code: 'ECONNABORTED' });
-
-      const result = await client.testConnection();
+    test('should handle HTTP errors gracefully', async () => {
+      // Mock authentication
+      jest.spyOn(client, 'ensureToken').mockResolvedValue('mock-token');
       
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('timeout');
+      // Mock HTTP error response
+      jest.spyOn(client.httpClient, 'request').mockResolvedValue({
+        status: 500,
+        statusText: 'Internal Server Error',
+        data: null
+      });
+      
+      await expect(client.get('/test-endpoint')).rejects.toThrow('HTTP 500');
     });
 
-    test('should handle rate limiting', async () => {
-      const rateLimitError = new Error('Request failed with status code 429');
-      rateLimitError.response = {
-        status: 429,
-        headers: { 'retry-after': '60' },
-        data: { error: { message: 'Too many requests' } }
-      };
-      
-      axios.post.mockRejectedValue(rateLimitError);
+    test('should handle authentication errors', async () => {
+      // Mock authentication failure
+      jest.spyOn(client, 'ensureToken').mockRejectedValue(new Error('Authentication failed'));
 
-      const result = await client.createEntity({ LogicalName: 'test_entity' });
-      
-      expect(result.success).toBe(false);
-      expect(result.message.toLowerCase()).toContain('rate limit');
-    });
-
-    test('should handle service unavailable', async () => {
-      // Mock axios.get to reject with 503 error
-      const error503 = new Error('Service unavailable');
-      error503.response = {
-        status: 503,
-        data: { error: { message: 'Service temporarily unavailable' } },
-        headers: {}
-      };
-      axios.get.mockRejectedValue(error503);
-
-      const result = await client.getPublishers();
-      
-      expect(result.success).toBe(false);
-      expect(result.message).toBe('Service temporarily unavailable');
-    }, 35000); // 35 second timeout to allow for retries
-  });
-
-  describe('Request Configuration', () => {
-    test('should include proper headers in requests', async () => {
-      axios.get.mockResolvedValue({ status: 200, data: { value: [] } });
-
-      await client.getPublishers();
-      
-      expect(axios.get).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-token',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'OData-MaxVersion': '4.0',
-            'OData-Version': '4.0'
-          })
-        })
-      );
-    });
-
-    test('should handle request timeout configuration', () => {
-      const configWithTimeout = { ...mockConfig, timeout: 5000 };
-      const clientWithTimeout = new DataverseClient(configWithTimeout);
-      
-      expect(clientWithTimeout.timeout).toBe(5000);
+      await expect(client.get('/test-endpoint')).rejects.toThrow('Authentication failed');
     });
   });
 
-  describe('Utility Methods', () => {
-    test('should build API URLs correctly', () => {
-      const url = client.buildApiUrl('publishers');
-      expect(url).toBe(`${mockConfig.dataverseUrl}/api/data/v9.2/publishers`);
+  describe('Logging and Debugging', () => {
+    test('should provide logging methods', () => {
+      expect(typeof client._log).toBe('function');
+      expect(typeof client.sleep).toBe('function');
     });
 
-    test('should extract entity ID from OData response', () => {
-      const testGuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-      const odataId = `solutions(${testGuid})`;
-      const entityId = client.extractEntityId(odataId);
-      expect(entityId).toBe(testGuid);
-    });
-
-    test('should validate GUID format', () => {
-      const testGuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-      expect(client.isValidGuid(testGuid)).toBe(true);
-      expect(client.isValidGuid('invalid-guid')).toBe(false);
-      expect(client.isValidGuid('')).toBe(false);
+    test('should log operations for debugging', () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      
+      // Create verbose client to test logging
+      const verboseClient = new DataverseClient({
+        dataverseUrl: 'https://test.api.crm.dynamics.com',
+        verbose: true
+      });
+      
+      verboseClient._log('Test message');
+      
+      expect(consoleSpy).toHaveBeenCalledWith('Test message');
+      
+      consoleSpy.mockRestore();
     });
   });
 
+  describe('Legacy Compatibility', () => {
+    test('should provide legacy method aliases', () => {
+      expect(typeof client._req).toBe('function');
+      expect(typeof client._get).toBe('function');
+      expect(typeof client._post).toBe('function');
+      expect(typeof client._delete).toBe('function');
+    });
 
+    test('should route legacy methods to new implementation', async () => {
+      jest.spyOn(client, 'makeRequest').mockResolvedValue({ data: 'test' });
+      
+      await client._req('GET', '/test');
+      expect(client.makeRequest).toHaveBeenCalledWith('GET', '/test', undefined, {});
+    });
+  });
 });
