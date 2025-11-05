@@ -6,8 +6,14 @@
 const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
 class DataverseEntityService extends DataverseAuthenticationService {
-  constructor(config = {}) {
+  constructor(config = {}, parentClient = null) {
     super(config);
+    
+    // If parent client is provided, use its makeRequest method
+    if (parentClient && typeof parentClient.makeRequest === 'function') {
+      this.makeRequest = parentClient.makeRequest.bind(parentClient);
+      console.log('🔗 EntityService using parent client makeRequest');
+    }
   }
 
   /**

@@ -172,14 +172,52 @@ describe('DataverseClient (Modular Architecture)', () => {
       expect(client.httpClient).toBeDefined();
     });
 
-    test('should maintain modular architecture principles', () => {
-      // Verify that high-level business methods are NOT present in the base client
-      // These should be in specialized services instead
-      expect(client.getPublishers).toBeUndefined();
-      expect(client.createEntity).toBeUndefined();
-      expect(client.getEntityMetadata).toBeUndefined();
-      expect(client.getOptionSets).toBeUndefined();
-      expect(client.createCustomEntity).toBeUndefined();
+    test('should provide facade pattern with service delegation', () => {
+      // Verify that specialized services are initialized
+      expect(client.publisherService).toBeDefined();
+      expect(client.solutionService).toBeDefined();
+      expect(client.entityService).toBeDefined();
+      expect(client.relationshipService).toBeDefined();
+      expect(client.globalChoicesService).toBeDefined();
+    });
+
+    test('should maintain modular architecture through delegation', () => {
+      // Verify that high-level business methods ARE present as delegation methods
+      // These delegate to specialized services
+      expect(typeof client.getPublishers).toBe('function');
+      expect(typeof client.getSolutions).toBe('function');
+      expect(typeof client.getGlobalChoiceSets).toBe('function');
+      
+      // But internal service methods should not be exposed directly
+      expect(client.createEntityMetadata).toBeUndefined();
+      expect(client.createRelationshipMetadata).toBeUndefined();
+    });
+
+    test('should delegate methods to appropriate services', async () => {
+      // Mock the service methods to verify delegation
+      jest.spyOn(client.publisherService, 'getPublishers').mockResolvedValue([]);
+      jest.spyOn(client.solutionService, 'getSolutions').mockResolvedValue([]);
+      
+      // Call delegated methods
+      await client.getPublishers();
+      await client.getSolutions();
+      
+      // Verify that service methods were called
+      expect(client.publisherService.getPublishers).toHaveBeenCalled();
+      expect(client.solutionService.getSolutions).toHaveBeenCalled();
+    });
+
+    test('should pass parent client to services for makeRequest access', () => {
+      // Verify that services have access to makeRequest method (bound from parent)
+      expect(typeof client.publisherService.makeRequest).toBe('function');
+      expect(typeof client.solutionService.makeRequest).toBe('function');
+      expect(typeof client.entityService.makeRequest).toBe('function');
+      expect(typeof client.relationshipService.makeRequest).toBe('function');
+      expect(typeof client.globalChoicesService.makeRequest).toBe('function');
+      
+      // Verify that the bound methods are properly configured
+      expect(client.publisherService.makeRequest.name).toBe('bound makeRequest');
+      expect(client.solutionService.makeRequest.name).toBe('bound makeRequest');
     });
   });
 
