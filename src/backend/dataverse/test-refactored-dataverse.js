@@ -3,7 +3,7 @@
  * Run with: node test-refactored-dataverse.js
  */
 
-const { DataverseClient, DataversePublisherService } = require('./index');
+const { DataverseClient, DataversePublisherService, DataverseSolutionService } = require('./index');
 
 async function testRefactoredDataverseServices() {
   console.log('🧪 Testing Refactored Dataverse Services...\n');
@@ -34,8 +34,15 @@ async function testRefactoredDataverseServices() {
     });
     console.log('✅ DataversePublisherService initialized successfully\n');
 
-    // Test 4: Method availability check
-    console.log('4️⃣ Testing method availability...');
+    // Test 4: Solution service
+    console.log('4️⃣ Testing DataverseSolutionService...');
+    const solutionService = new DataverseSolutionService({
+      verbose: true
+    });
+    console.log('✅ DataverseSolutionService initialized successfully\n');
+
+    // Test 5: Method availability check
+    console.log('5️⃣ Testing method availability...');
     const requiredMethods = [
       'ensureToken',
       'makeRequest', 
@@ -47,12 +54,22 @@ async function testRefactoredDataverseServices() {
       'whoAmI',
       'checkPublisherExists',
       'createPublisher',
-      'ensurePublisher'
+      'ensurePublisher',
+      'checkSolutionExists',
+      'createSolution',
+      'ensureSolution',
+      'getSolutions',
+      'deleteSolution',
+      'addEntityToSolution',
+      'exportSolution'
     ];
 
     let allMethodsAvailable = true;
+    const services = [client, publisherService, solutionService];
+    
     for (const method of requiredMethods) {
-      if (typeof client[method] === 'function' || typeof publisherService[method] === 'function') {
+      const available = services.some(service => typeof service[method] === 'function');
+      if (available) {
         console.log(`  ✅ ${method} - Available`);
       } else {
         console.log(`  ❌ ${method} - Missing`);
@@ -66,10 +83,11 @@ async function testRefactoredDataverseServices() {
       console.log('❌ Some methods are missing\n');
     }
 
-    // Test 5: Inheritance chain
-    console.log('5️⃣ Testing inheritance chain...');
+    // Test 6: Inheritance chain
+    console.log('6️⃣ Testing inheritance chain...');
     console.log(`  - DataverseClient prototype chain:`, Object.getPrototypeOf(client).constructor.name);
     console.log(`  - DataversePublisherService prototype chain:`, Object.getPrototypeOf(publisherService).constructor.name);
+    console.log(`  - DataverseSolutionService prototype chain:`, Object.getPrototypeOf(solutionService).constructor.name);
     console.log('✅ Inheritance chain verified\n');
 
     console.log('🎉 All tests completed successfully!');
@@ -77,6 +95,7 @@ async function testRefactoredDataverseServices() {
     console.log('  - ✅ Modular services created');
     console.log('  - ✅ Authentication logic separated');
     console.log('  - ✅ Publisher operations extracted');
+    console.log('  - ✅ Solution operations extracted');
     console.log('  - ✅ Backward compatibility maintained');
     console.log('  - ✅ Inheritance properly implemented');
 
