@@ -8,7 +8,8 @@ const {
   DataverseClient, 
   DataversePublisherService, 
   DataverseSolutionService,
-  DataverseEntityService
+  DataverseEntityService,
+  DataverseRelationshipService
 } = require('./index');
 
 console.log('🧪 Testing Refactored Dataverse Services...\n');
@@ -51,6 +52,11 @@ console.log('\n6️⃣ Testing DataverseEntityService...');
 const entityService = new DataverseEntityService(testConfig);
 console.log('   ✅ DataverseEntityService instantiated');
 console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(entityService)).filter(name => name !== 'constructor'));
+
+console.log('\n7️⃣ Testing DataverseRelationshipService...');
+const relationshipService = new DataverseRelationshipService(testConfig);
+console.log('   ✅ DataverseRelationshipService instantiated');
+console.log('   Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(relationshipService)).filter(name => name !== 'constructor'));
 
 // Test method availability
 console.log('\n🔍 Verifying Method Availability...');
@@ -95,6 +101,14 @@ entityMethods.forEach(method => {
   console.log(`   ${available ? '✅' : '❌'} ${method}`);
 });
 
+// Check RelationshipService methods
+const relationshipMethods = ['checkRelationshipExists', 'createRelationship', 'createRelationshipWithRetry', 'deleteRelationship', 'discoverRelationships', 'createRelationshipsSmart', '_resolveLogicalNameForRelationship', '_buildRelationshipPayload', '_isOurCustomRelationship'];
+console.log(`\n🔗 DataverseRelationshipService methods (${relationshipMethods.length}):`);
+relationshipMethods.forEach(method => {
+  const available = typeof relationshipService[method] === 'function';
+  console.log(`   ${available ? '✅' : '❌'} ${method}`);
+});
+
 // Test inheritance chain
 console.log('\n🔗 Testing Inheritance Chain...');
 console.log(`   BaseDataverseService → DataverseAuthenticationService: ${authService instanceof BaseDataverseService ? '✅' : '❌'}`);
@@ -102,9 +116,10 @@ console.log(`   DataverseAuthenticationService → DataverseClient: ${client ins
 console.log(`   DataverseClient → DataversePublisherService: ${publisherService instanceof DataverseClient ? '✅' : '❌'}`);
 console.log(`   DataverseClient → DataverseSolutionService: ${solutionService instanceof DataverseClient ? '✅' : '❌'}`);
 console.log(`   DataverseClient → DataverseEntityService: ${entityService instanceof DataverseClient ? '✅' : '❌'}`);
+console.log(`   DataverseClient → DataverseRelationshipService: ${relationshipService instanceof DataverseClient ? '✅' : '❌'}`);
 
 console.log('\n✅ All services successfully instantiated and tested!');
 console.log('\n📊 Summary:');
-console.log(`   - 6 services created`);
-console.log(`   - ${baseMethods.length + authMethods.length + publisherMethods.length + solutionMethods.length + entityMethods.length} methods verified`);
+console.log(`   - 7 services created`);
+console.log(`   - ${baseMethods.length + authMethods.length + publisherMethods.length + solutionMethods.length + entityMethods.length + relationshipMethods.length} methods verified`);
 console.log(`   - Inheritance chain validated`);

@@ -9,6 +9,7 @@ const { DataverseClient } = require('./services/dataverse-client');
 const { DataversePublisherService } = require('./services/dataverse-publisher-service');
 const { DataverseSolutionService } = require('./services/dataverse-solution-service');
 const { DataverseEntityService } = require('./services/dataverse-entity-service');
+const { DataverseRelationshipService } = require('./services/dataverse-relationship-service');
 
 module.exports = {
   BaseDataverseService,
@@ -16,5 +17,6 @@ module.exports = {
   DataverseClient,
   DataversePublisherService,
   DataverseSolutionService,
-  DataverseEntityService
+  DataverseEntityService,
+  DataverseRelationshipService
 };
