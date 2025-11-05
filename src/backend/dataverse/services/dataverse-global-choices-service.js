@@ -3,9 +3,9 @@
  * Handles global choice set creation, management, and deletion
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
-class DataverseGlobalChoicesService extends DataverseClient {
+class DataverseGlobalChoicesService extends DataverseAuthenticationService {
   constructor(config = {}) {
     super(config);
   }

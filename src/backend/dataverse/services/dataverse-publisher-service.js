@@ -1,11 +1,11 @@
 /**
  * Dataverse Publisher Service
- * Handles publisher management operations
+ * Handles publisher creation, management, and querying
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
-class DataversePublisherService extends DataverseClient {
+class DataversePublisherService extends DataverseAuthenticationService {
   constructor(config = {}) {
     super(config);
   }

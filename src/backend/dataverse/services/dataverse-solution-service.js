@@ -1,11 +1,11 @@
 /**
  * Dataverse Solution Service
- * Handles solution management operations
+ * Handles solution creation, management, and component operations
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
-class DataverseSolutionService extends DataverseClient {
+class DataverseSolutionService extends DataverseAuthenticationService {
   constructor(config = {}) {
     super(config);
   }

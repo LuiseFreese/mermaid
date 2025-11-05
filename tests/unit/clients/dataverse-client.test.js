@@ -17,7 +17,7 @@ jest.mock('@azure/identity', () => ({
   }))
 }));
 
-const DataverseClient = require('../../../src/backend/clients/dataverse-client');
+const { DataverseClient } = require('../../../src/backend/dataverse/index');
 const testData = require('../../fixtures/test-data');
 const logger = require('../../../src/backend/utils/logger');
 const axios = require('axios');

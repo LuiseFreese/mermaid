@@ -1,11 +1,11 @@
 /**
  * Dataverse Entity Service
- * Handles entity creation, attribute management, and entity-related operations
+ * Handles entity creation, management, and schema operations
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
-class DataverseEntityService extends DataverseClient {
+class DataverseEntityService extends DataverseAuthenticationService {
   constructor(config = {}) {
     super(config);
   }

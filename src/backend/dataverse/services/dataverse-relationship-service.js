@@ -1,11 +1,11 @@
 /**
  * Dataverse Relationship Service
- * Handles relationship creation, management, and deletion between entities
+ * Handles relationship creation, management, and lookup operations
  */
 
-const { DataverseClient } = require('./dataverse-client');
+const { DataverseAuthenticationService } = require('./dataverse-authentication-service');
 
-class DataverseRelationshipService extends DataverseClient {
+class DataverseRelationshipService extends DataverseAuthenticationService {
   constructor(config = {}) {
     super(config);
   }
