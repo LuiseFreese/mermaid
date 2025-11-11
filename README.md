@@ -199,6 +199,7 @@ See [Usage Guide - Rollback Section](docs/USAGE-GUIDE.md#5-rollback-deployments)
 ## Documentation
 
 - [Developer & Architecture Guide](docs/DEVELOPER_ARCHITECTURE.md) - System architecture and development setup
+- [Dataverse Modular Architecture](docs/DATAVERSE-ARCHITECTURE.md) - **NEW!** Complete guide to the modular Dataverse service architecture
 - [Testing Guide](docs/TESTING.md) - Comprehensive testing strategies, tools, and workflows
 - [Infrastructure Testing Guide](docs/INFRASTRUCTURE-TESTING.md) - Post-deployment validation and health monitoring
 - [Deployment Guide](docs/DEPLOYMENT.md) - Detailed deployment instructions and troubleshooting

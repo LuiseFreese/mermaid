@@ -1621,9 +1621,13 @@ GET /api/solution-status?solution=SolutionName
 
 ## Dataverse Client
 
-**Purpose**: Handle all Microsoft Dataverse Web API interactions with comprehensive entity, relationship, and solution management.
+> **Comprehensive Documentation**: See [DATAVERSE-ARCHITECTURE.md](./DATAVERSE-ARCHITECTURE.md) for complete modular architecture details, service hierarchy, integration patterns, and usage examples.
 
-**Location**: `src/backend/dataverse/index.js` (modular service architecture)
+**Purpose**: Handle all Microsoft Dataverse Web API interactions through a modular service architecture with specialized services for different domains.
+
+**Location**: `src/backend/dataverse/services/` (modular service directory - 8 specialized services)
+
+**Architecture**: Modular service hierarchy with facade pattern for clean separation of concerns.
 
 **Key Features**:
 - **Managed Identity Authentication**: Passwordless authentication via Azure
