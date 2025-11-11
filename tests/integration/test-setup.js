@@ -17,7 +17,7 @@ process.env.KEY_VAULT_URI = '';
 process.env.AUTH_MODE = '';
 
 // Mock the Dataverse client before any imports
-jest.mock('../../src/backend/dataverse-client.js', () => {
+jest.mock('../../src/backend/dataverse/index', () => {
   return {
     DataverseClient: jest.fn().mockImplementation(() => ({
       getPublishers: jest.fn().mockResolvedValue([

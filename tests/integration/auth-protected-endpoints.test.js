@@ -2,7 +2,7 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 
 // Mock the Dataverse client before requiring server
-jest.mock('../../src/backend/dataverse-client.js', () => {
+jest.mock('../../src/backend/dataverse/index', () => {
   return {
     DataverseClient: jest.fn().mockImplementation(() => ({
       getPublishers: jest.fn().mockResolvedValue([

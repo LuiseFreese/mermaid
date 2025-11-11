@@ -216,7 +216,7 @@ For detailed testing scenarios and workflows, see [TESTING-SCENARIOS.md](./TESTI
 
 ## Backend Retry Logic
 
-The application has built-in retry logic in `src/backend/dataverse-client.js`:
+The application has built-in retry logic in `src/backend/dataverse/services/`:
 
 **Features**:
 - **Exponential backoff**: 1s, 2s, 4s, 8s, 16s delays

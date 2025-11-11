@@ -17,7 +17,7 @@ jest.mock('@azure/identity', () => ({
   }))
 }));
 
-const { DataverseClient } = require('../../../src/backend/dataverse-client');
+const { DataverseClient } = require('../../../src/backend/dataverse/index');
 const axios = require('axios');
 
 describe('Rollback Dependency Handling', () => {

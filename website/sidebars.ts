@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
       label: 'Development & Testing',
       items: [
         'DEVELOPER_ARCHITECTURE',
+        'DATAVERSE-ARCHITECTURE',
         'TESTING',
         'TESTING-SCENARIOS',
         'DEV-PROXY-TESTING',

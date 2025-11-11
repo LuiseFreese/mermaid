@@ -1,4 +1,4 @@
-const { DataverseClient } = require('../../../src/backend/dataverse-client');
+const { DataverseClient } = require('../../../src/backend/dataverse/index');
 
 describe('Rollback Relationship Schema Names', () => {
     let client;

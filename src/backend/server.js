@@ -78,7 +78,7 @@ let MermaidERDParser = null;
 let DataverseClient  = null;
 try {
   const { MermaidERDParser: Parser } = require('./mermaid-parser.js');
-  const { DataverseClient: Client }  = require('./dataverse-client.js');
+  const { DataverseClient: Client }  = require('./dataverse/index');
   MermaidERDParser = Parser;
   DataverseClient  = Client;
 } catch (e) {
